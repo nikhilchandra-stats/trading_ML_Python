@@ -1,10 +1,5 @@
 import pandas
 import numpy
-import xgboost as xgb
-import math
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import mean_squared_error
 
 #example.groupby('name')['number'].fillna(method='ffill')
 
@@ -42,9 +37,9 @@ def join_asset_to_macro(macro_data = read_macro_data(),
                         asset_data = read_yahoo_finance(
                             start_date = '2019-01-01',
                             end_date = '2024-02-16',
-                            asset_symbol = 'AUDUSD'), 
-                        pip_value = 100
+                            asset_symbol = 'AUDUSD')
                         ):
+    
     #Clean Input Variables
     macro_data_vars = "|".join(macro_vars)
     symbol_data_vars = "|".join(symbol_vars) 
@@ -52,11 +47,9 @@ def join_asset_to_macro(macro_data = read_macro_data(),
     macro_dat_filt = macro_data[macro_data['event'].str.contains(macro_data_vars, regex=True)]
     macro_dat_filt2 =macro_dat_filt[macro_data['symbol'].str.contains(symbol_data_vars, regex=True)]
 
-    asset_data['Date'] = pandas.to_datetime(asset_data['Date']).dt.date
-    macro_dat_filt2['date'] = pandas.to_datetime(macro_dat_filt2['date']).dt.date
+    asset_data['Date'] = pandas.to_datetime(asset_data['Date'])
+    macro_dat_filt2['date'] = pandas.to_datetime(macro_dat_filt2['date'])
     asset_data = asset_data.rename(columns={'Date':'date'}) 
-    
-    macro_dat_filt2['actual'] = pandas.to_numeric(macro_dat_filt2['actual'])
     
     for i in  range(len(symbol_vars)):
         temp_data = macro_dat_filt2[macro_dat_filt2['event'].str.contains(macro_vars[i])]
@@ -69,35 +62,5 @@ def join_asset_to_macro(macro_data = read_macro_data(),
                                     on="date", how = "left" )
         asset_data[new_col_name] = asset_data[new_col_name].fillna(method='ffill')
         
-    asset_data['daily return'] = (asset_data['Close'] - asset_data['Open'])*pip_value    
-        
-    return asset_data 
-
-# macro_data = read_macro_data()
-# macro_vars = ['S&P Global Manufacturing PMI', 'RBA Trimmed Mean CPI \(QoQ\)', 
-#               'CFTC AUD NC Net', 'CFTC Gold NC Net Positions', 'Consumer Price Index \(MoM\)']
-# symbol_vars = ['USD','AUD','AUD', 'USD', 'USD']
-# asset_data = read_yahoo_finance( 
-#                 start_date = '2014-01-01',
-#                 end_date = '2024-02-16',
-#                 asset_symbol = 'AUDUSD'
-#                 ) 
-# pip_value = 100
-
-   
-# macro_test_set = join_asset_to_macro(macro_data=macro_data,
-#                                      macro_vars=macro_vars,
-#                                      symbol_vars=symbol_vars,
-#                                      asset_data=asset_data, 
-#                                      pip_value=pip_value  )
-
-# macro_test_set = macro_test_set.dropna()
-# macro_test_set['dependant variable'] = numpy.where(macro_test_set['daily return'] > 0, 'win', 'loss')
-
-kk = numpy.ones((5,20))
-
-print(kk[:, :2])
-
-# test = pandas.DataFrame({'A':range(0,10)})
-# test['B'] = test['A']*2
-# print(test['A'].rolling(window=2).sum())
+    return asset_data
+    
