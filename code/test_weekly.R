@@ -335,14 +335,14 @@ safely_n_net <- safely(neuralnet::neuralnet, otherwise = NULL)
 
 n <- safely_n_net(reg_formula ,
                   data = testing_data_train,
-                  hidden = c(50),
+                  hidden = c(110),
                   err.fct = "sse",
                   linear.output = TRUE,
                   lifesign = 'full',
                   rep = 1,
                   algorithm = "rprop+",
                   stepmax = 15*(10^6),
-                  threshold = 0.15) %>%
+                  threshold = 0.1) %>%
   pluck('result')
 
 prediction_nn <- compute(n, rep = 1, testing_data_test %>%
@@ -695,7 +695,7 @@ plot_data_raw <- analysis_data %>%
   ungroup()
 
 plot_data <- plot_data_raw %>%
-  filter(total_trades > 100)
+  filter(total_trades > 50)
 
 plot_data %>% ungroup() %>%  distinct(trade_type)
 
