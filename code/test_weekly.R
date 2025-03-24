@@ -38,11 +38,6 @@ aud_usd_with_exports <- aud_usd %>%
   ) %>%
   filter(!is.na(Daily_Change))
 
-cor(aud_usd_with_exports$Price, aud_usd_with_exports$US_Export)
-cor(aud_usd_with_exports$Price, aud_usd_with_exports$Aus_Export)
-
-cor(aud_usd_with_exports$Daily_Change, aud_usd_with_exports$US_Export)
-cor(aud_usd_with_exports$Daily_Change, aud_usd_with_exports$Aus_Export)
 
 
 #-------------------------------------------------
@@ -359,6 +354,82 @@ reg_formula_lm <-  create_lm_formula_no_space(dependant = dependant_var,
 lm_reg <- lm(data = testing_data_train, formula = reg_formula_lm)
 predict.lm(lm_reg, testing_data_test)
 summary(lm_reg)
+
+asset_data_daily <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
+  mutate(asset_name =
+           str_remove(path, "C\\:\\/Users/Nikhil Chandra\\/Documents\\/Asset Data\\/Futures\\/") %>%
+           str_remove("\\.csv") %>%
+           str_remove("Historical Data")%>%
+           str_remove("Stock Price") %>%
+           str_remove("History")
+  ) %>%
+  dplyr::select(path, asset_name) %>%
+  split(.$asset_name, drop = FALSE) %>%
+  map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
+             mutate(Asset = .x[1,2] %>% as.character())
+  )
+
+asset_data_daily <- asset_data_daily_raw %>%
+  mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))
+
+raw_LM_trade_df <- testing_data_test %>%
+  dplyr::select(Asset, week_date) %>%
+  mutate(
+    LM_pred = predict.lm(lm_reg, testing_data_test) %>% as.numeric()
+  )
+
+mean_LM_value <-
+  testing_data_train %>%
+  dplyr::select(Asset, week_date) %>%
+  mutate(
+    LM_pred = predict.lm(lm_reg, testing_data_train) %>% as.numeric()
+  ) %>%
+  group_by(Asset) %>%
+  summarise(
+    mean_value = mean(LM_pred, na.rm = T),
+    sd_value = sd(LM_pred, na.rm = T)
+  )
+
+
+trade_with_daily_data <- asset_data_daily %>%
+  mutate(
+    week_date = lubridate::floor_date(Date, "week")
+  ) %>%
+  left_join(raw_LM_trade_df, by = c("week_date", "Asset")) %>%
+  group_by(Asset) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  group_by(Asset) %>%
+  mutate(
+    Pred_Filled = LM_pred
+  ) %>%
+  group_by(Asset) %>%
+  fill(Pred_Filled, .direction = "down") %>%
+  ungroup() %>%
+  mutate(
+    new_week_date = lubridate::floor_date(Date, "week",week_start = 1)
+  ) %>%
+  mutate(
+    Pred_trade =
+      case_when(
+        new_week_date == Date ~ LM_pred
+      )
+  ) %>%
+  filter(!is.na(Pred_Filled)) %>%
+  left_join(mean_LM_value) %>%
+  mutate(
+    trade_col =
+      case_when(
+
+        between(Pred_trade,mean_value  + sd_value*2,  mean_value  + sd_value*3) ~ "Long",
+        between(Pred_trade,mean_value  + sd_value*0,  mean_value  + sd_value*1) ~ "Long",
+        between(Pred_trade,mean_value  - sd_value*1,  mean_value  - sd_value*0) ~ "Long",
+
+        between(Pred_trade,mean_value  - sd_value*9,  mean_value  - sd_value*5) ~ "Short",
+        between(Pred_trade,mean_value  + sd_value*3.0001,  mean_value  + sd_value*10) ~ "Short",
+
+        between(Pred_trade,mean_value  - sd_value*50,  mean_value  - sd_value*10) ~ "Long"
+      )
+  )
 
 NN_mean <-
   testing_data_train %>% dplyr::select(Asset) %>%

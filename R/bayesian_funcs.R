@@ -62,8 +62,8 @@ get_pois_calc <- function(asset_data = read_csv("C:/Users/Nikhil Chandra/Documen
                                       .complete = FALSE)
     ) %>%
     mutate(
-      prior_rate = round(tau*prior_weight*prior_period),
-      prior_shape = round(lag(running_sum, 2)*tau*prior_weight*prior_period)
+      prior_rate = round(tau),
+      prior_shape = round(lag(running_sum, 2)*tau)
     ) %>%
     group_by(Asset, week_date) %>%
     mutate(
@@ -75,7 +75,7 @@ get_pois_calc <- function(asset_data = read_csv("C:/Users/Nikhil Chandra/Documen
     ungroup() %>%
     mutate(
       post_shape_comp1 = lag(running_mean)*tau,
-      post_shape = prior_shape + post_shape_comp1,
+      post_shape = (prior_shape*prior_weight) + (post_shape_comp1*(1 - prior_weight)),
       post_rate = prior_rate + tau
     ) %>%
     group_by(Asset, week_date) %>%
@@ -223,9 +223,9 @@ test_func_temp <- function() {
     )
 
 
-  rolling_periods <- seq(2, 200, 10)
-  prior_periods <- seq(2, 200, 10)
-  prior_weights <- c(0.5,2,10)
+  rolling_periods <- seq(5, 300, 20)
+  prior_periods <- seq(5, 300, 20)
+  prior_weights <- c(0.1,  0.3,  0.5,  0.7, 0.9)
   accumulator <- list()
   c <- 0
 
@@ -254,7 +254,14 @@ test_func_temp <- function() {
     group_by(Asset, rolling_period, prior_period, prior_weight) %>%
     mutate(Pois_Change = post_mean - lag(post_mean, 1))
 
+
+# Change Model
   sd_point = 0.75
+  i = 1
+  j = 1
+  stop_factor <- c(0.2, 0.5, 0.7, 1)
+  profit_factor <- c(0.2, 0.5, 0.7, 1)
+
   raw_pois_data_plot2 <- raw_pois_data %>%
     ungroup() %>%
     mutate(
@@ -289,14 +296,355 @@ test_func_temp <- function() {
     ) %>%
     filter(total_trades > 100)
 
-  test_lm <- lm(data = raw_pois_data,
-                formula = Weekly_Low_to_Close  ~ post_mean + rolling_period + prior_weight +prior_period)
 
-  summary(test_lm)
+  sd_point = 0.5
+  i = 4
+  j = 4
+  stop_factor <- c(0.2, 0.5, 0.7, 1)
+  profit_factor <- c(0.2, 0.5, 0.7, 1)
 
-  test_lm <- lm(data = raw_pois_data_plot2,
-                formula = ratio_mean_high_to_low  ~  rolling_period + prior_weight +prior_period)
+  raw_pois_data_plot2 <- raw_pois_data %>%
+    ungroup() %>%
+    mutate(
+      break_point =
+        case_when(
+          Pois_Change > median(Pois_Change, na.rm = T) +  0*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.2*sd(Pois_Change, na.rm = T) ~ "Upper 0-0.15",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.2*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.4*sd(Pois_Change, na.rm = T) ~ "Upper 0.15-0.3",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.4*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.6*sd(Pois_Change, na.rm = T) ~ "Upper 0.3-0.45",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.6*sd(Pois_Change, na.rm = T)  &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.8*sd(Pois_Change, na.rm = T)  ~ "Upper 0.45-0.6",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.8*sd(Pois_Change, na.rm = T)  ~ "Upper >0.6",
 
-  summary(test_lm)
+          Pois_Change < median(Pois_Change, na.rm = T) -  0*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.2*sd(Pois_Change, na.rm = T) ~ "Lower 0-0.15",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.2*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.4*sd(Pois_Change, na.rm = T) ~ "Lower 0.15-0.3",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.4*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.6*sd(Pois_Change, na.rm = T) ~ "Lower 0.3-0.45",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.6*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.8*sd(Pois_Change, na.rm = T) ~ "Lower 0.45-0.6",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.8*sd(Pois_Change, na.rm = T)  ~ "Lower >0.6"
+        ),
+      break_horizontal  = median(Pois_Change, na.rm = T) +  sd_point*sd(Pois_Change, na.rm = T)
+    )  %>%
+    left_join(mean_returns) %>%
+    filter(!is.na(avg_low_open )) %>%
+    mutate(
+      loss_value_short = abs(avg_high_open)*stop_factor[i],
+      loss_value_long = abs(avg_low_open)*stop_factor[i],
+
+      win_value_short = abs(avg_low_open)*profit_factor[j],
+      win_value_long = abs(avg_high_open)*profit_factor[j]
+    ) %>%
+    mutate(
+      short_win =
+        ifelse(abs(Weekly_Low_to_Close) > abs(avg_low_open)*profit_factor[j]  &
+                 abs(Weekly_Close_to_High ) < abs(avg_high_open)*stop_factor[i] , 1, 0),
+
+      short_loss =
+        ifelse(abs(Weekly_Low_to_Close) >= abs(avg_low_open)*stop_factor[i] &
+                           abs(Weekly_Close_to_High ) <= abs(avg_high_open)*profit_factor[j] , 1, 0),
+
+      long_win =
+        ifelse(abs(Weekly_Low_to_Close) < abs(avg_low_open)*stop_factor[i] &
+                 abs(Weekly_Close_to_High ) > abs(avg_high_open)*profit_factor[j] , 1, 0),
+
+      long_loss =
+        ifelse(abs(Weekly_Low_to_Close) >= abs(avg_low_open)*stop_factor[i] &
+                           abs(Weekly_Close_to_High ) <= abs(avg_high_open)*profit_factor[j] , 1, 0),
+
+      short_win_value =
+        case_when(
+          abs(Weekly_Low_to_Close) > abs(avg_low_open)*profit_factor[j]  &
+            abs(Weekly_Close_to_High ) < abs(avg_high_open)*stop_factor[i] ~ profit_factor[j]*abs(avg_low_open),
+
+          abs(Weekly_Low_to_Close) <= abs(avg_low_open)*profit_factor[j]  &
+            abs(Weekly_Close_to_High ) >= abs(avg_high_open)*stop_factor[i] ~ -1*stop_factor[i]*abs(avg_high_open),
+
+          # TRUE ~ -1*Weekly_Close_to_Close
+          TRUE ~ 0
+
+        ),
+
+      long_win_value =
+        case_when(
+          abs(Weekly_Low_to_Close) < abs(avg_low_open)*stop_factor[i] &
+            abs(Weekly_Close_to_High ) > abs(avg_high_open)*profit_factor[j] ~ profit_factor[j]*abs(avg_high_open),
+          abs(Weekly_Low_to_Close) >= abs(avg_low_open)*stop_factor[i] &
+            abs(Weekly_Close_to_High ) <= abs(avg_high_open)*profit_factor[j] ~ -1*stop_factor[i]*abs(avg_low_open),
+          # TRUE ~Weekly_Close_to_Close
+          TRUE ~0
+        )
+
+    ) %>%
+    group_by(rolling_period, prior_period, prior_weight, break_point) %>%
+      summarise(
+        total_trades = n(),
+
+        short_loss = sum(short_loss, na.rm = T),
+        long_loss = sum(long_loss, na.rm = T),
+
+        short_win = sum(short_win, na.rm = T),
+        long_win = sum(long_win, na.rm = T),
+        short_win_value = sum(short_win_value, na.rm = T),
+        long_win = sum(long_win, na.rm = T),
+        short_win_value = sum(short_win_value, na.rm = T),
+        long_win_value = sum(long_win_value, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(
+        perc_short = short_win/total_trades,
+        perc_long = long_win/total_trades
+      ) %>%
+      mutate(
+        total_known_short = short_win +short_loss,
+        total_known_long = long_win +long_loss,
+
+        total_unknown_short = total_trades - total_known_short,
+        total_unknown_long = total_trades - total_known_long,
+
+        adj_short_win = (total_unknown_short)*0.3 + short_win,
+        adj_long_win = (total_unknown_long)*0.3 + long_win,
+        adj_perc_short = adj_short_win/total_trades,
+        adj_perc_long = adj_long_win/total_trades,
+        profit_factor = profit_factor[j],
+        stop_factor = stop_factor[i],
+      ) %>%
+    filter(total_trades > 100)
+
+
+  #--------------------------------Probability Model
+  test <- raw_pois_data %>%
+    mutate(
+      sucess_1_prob = dpois(1, lambda = post_mean ),
+      sucess_2_prob = dpois(2, lambda = post_mean ),
+      sucess_3_prob = dpois(3, lambda = post_mean ),
+      sucess_4_prob = dpois(4, lambda = post_mean ),
+      sucess_5_prob = dpois(5, lambda = post_mean ),
+      bull_prob = sucess_3_prob + sucess_4_prob + sucess_5_prob
+    )
+
+  prob_test <- test %>%
+    group_by(rolling_period, prior_period, prior_weight) %>%
+    mutate(
+      bull_prob_mean = mean(bull_prob, na.rm = T),
+      bull_prob_sd = sd(bull_prob, na.rm = T)
+    ) %>%
+    ungroup() %>%
+    mutate(
+      split_point =
+        case_when(
+          bull_prob < bull_prob_mean - bull_prob_sd*0 &
+            bull_prob >= bull_prob_mean - bull_prob_sd*0.5 ~ "0-0.5 SD",
+
+          bull_prob < bull_prob_mean - bull_prob_sd*0.5 &
+            bull_prob >= bull_prob_mean - bull_prob_sd*1 ~ "0.5-1 SD",
+
+          bull_prob < bull_prob_mean - bull_prob_sd*1 &
+            bull_prob >= bull_prob_mean - bull_prob_sd*1.5 ~ "1-1.5 SD",
+
+          bull_prob < bull_prob_mean - bull_prob_sd*1.5  ~ ">1.5 SD",
+
+          bull_prob >= bull_prob_mean + bull_prob_sd*0 &
+            bull_prob < bull_prob_mean + bull_prob_sd*0.5 ~ "0-0.5 SD pos",
+
+          bull_prob >= bull_prob_mean + bull_prob_sd*0.5 &
+            bull_prob < bull_prob_mean + bull_prob_sd*1 ~ "0.5-1 SD pos",
+
+          bull_prob >= bull_prob_mean + bull_prob_sd*1 &
+            bull_prob < bull_prob_mean + bull_prob_sd*1.5 ~ "1-1.5 SD pos",
+
+          bull_prob >= bull_prob_mean + bull_prob_sd*1.5  ~ ">1.5 SD pos"
+        )
+
+    ) %>%
+    mutate(
+      close_bin = ifelse(Weekly_Close_to_Close > 0, 1, 0),
+      low_to_high_bin = ifelse(abs(Weekly_Low_to_Close) < abs(Weekly_Close_to_High ) , 1, 0),
+      low_to_high_ratio = (abs(Weekly_Close_to_High/Weekly_Low_to_Close))
+    ) %>%
+    group_by(rolling_period, prior_period, prior_weight, split_point) %>%
+    summarise(
+      close_bin = sum(close_bin, na.rm = T),
+      low_to_high_bin = sum(low_to_high_bin, na.rm = T),
+      low_to_high_ratio = median(low_to_high_ratio, na.rm = T),
+      total_trades = n(),
+      mean_low = mean(Weekly_Low_to_Close, na.rm = T),
+      mean_high = mean(Weekly_Close_to_High, na.rm = T),
+      running_bin_sum  = mean(running_bin_sum , na.rm = T),
+      total_bear = sum(Weekly_Low_to_Close, na.rm = T),
+      total_bull = sum(Weekly_Close_to_High, na.rm = T)
+    ) %>%
+    mutate(
+      close_bin_perc = close_bin/total_trades,
+      low_to_high_bin_perc = low_to_high_bin/total_trades,
+      ratio_mean_high_to_low = abs(mean_high/mean_low)
+    ) %>%
+    ungroup() %>%
+    filter(!is.na(split_point)) %>%
+    filter(total_trades >= 100) %>%
+    filter(ratio_mean_high_to_low < 1 & close_bin_perc < 0.45)
+
+  stop_factor <- c(0.2, 0.5, 0.7, 1)
+  profit_factor <- c(0.2, 0.5, 0.7, 1)
+
+  mean_returns <- test %>%
+    group_by(Asset) %>%
+    summarise(
+      avg_low_open = mean(Weekly_Low_to_Close, na.rm = T),
+      avg_high_open = mean(Weekly_Close_to_High, na.rm = T),
+      sd_low_open = sd(Weekly_Low_to_Close, na.rm = T),
+      sd_high_open = sd(Weekly_Close_to_High, na.rm = T)
+    )
+
+  prob_test_accumulator <- list()
+  c = 0
+
+  for (i in 1:length(stop_factor) ) {
+
+    for (j in 1:length(profit_factor) ) {
+
+      c = c + 1
+
+      prob_test_accumulator[[c]] <-  test %>%
+        group_by(rolling_period, prior_period, prior_weight) %>%
+        mutate(
+          bull_prob_mean = mean(bull_prob, na.rm = T),
+          bull_prob_sd = sd(bull_prob, na.rm = T)
+        ) %>%
+        ungroup() %>%
+        mutate(
+          split_point =
+            case_when(
+              bull_prob < bull_prob_mean - bull_prob_sd*0 &
+                bull_prob >= bull_prob_mean - bull_prob_sd*0.5 ~ "0-0.5 SD",
+
+              bull_prob < bull_prob_mean - bull_prob_sd*0.5 &
+                bull_prob >= bull_prob_mean - bull_prob_sd*1 ~ "0.5-1 SD",
+
+              bull_prob < bull_prob_mean - bull_prob_sd*1 &
+                bull_prob >= bull_prob_mean - bull_prob_sd*1.5 ~ "1-1.5 SD",
+
+              bull_prob < bull_prob_mean - bull_prob_sd*1.5  ~ ">1.5 SD",
+
+              bull_prob >= bull_prob_mean + bull_prob_sd*0 &
+                bull_prob < bull_prob_mean + bull_prob_sd*0.5 ~ "0-0.5 SD pos",
+
+              bull_prob >= bull_prob_mean + bull_prob_sd*0.5 &
+                bull_prob < bull_prob_mean + bull_prob_sd*1 ~ "0.5-1 SD pos",
+
+              bull_prob >= bull_prob_mean + bull_prob_sd*1 &
+                bull_prob < bull_prob_mean + bull_prob_sd*1.5 ~ "1-1.5 SD pos",
+
+              bull_prob >= bull_prob_mean + bull_prob_sd*1.5  ~ ">1.5 SD pos"
+            )
+        ) %>%
+        left_join(mean_returns) %>%
+        filter(!is.na(avg_low_open )) %>%
+        mutate(
+          loss_value_short = abs(avg_high_open)*stop_factor[i],
+          loss_value_long = abs(avg_low_open)*stop_factor[i],
+
+          win_value_short = abs(avg_low_open)*profit_factor[j],
+          win_value_long = abs(avg_high_open)*profit_factor[j]
+        ) %>%
+        mutate(
+          short_win =
+            ifelse(abs(Weekly_Low_to_Close) > abs(avg_low_open)*profit_factor[j]  &
+                     abs(Weekly_Close_to_High ) < abs(avg_high_open)*stop_factor[i] , 1, 0),
+          long_win =
+            ifelse(abs(Weekly_Low_to_Close) < abs(avg_low_open)*stop_factor[i] &
+                     abs(Weekly_Close_to_High ) > abs(avg_high_open)*profit_factor[j] , 1, 0),
+
+          short_win_value =
+            case_when(
+              abs(Weekly_Low_to_Close) > abs(avg_low_open)*profit_factor[j]  &
+                abs(Weekly_Close_to_High ) < abs(avg_high_open)*stop_factor[i] ~ profit_factor[j]*abs(avg_low_open),
+
+              abs(Weekly_Low_to_Close) <= abs(avg_low_open)*profit_factor[j]  &
+                abs(Weekly_Close_to_High ) >= abs(avg_high_open)*stop_factor[i] ~ -1*stop_factor[i]*abs(avg_high_open),
+
+              TRUE ~ -1*Weekly_Close_to_Close
+
+            ),
+
+          long_win_value =
+            case_when(
+              abs(Weekly_Low_to_Close) < abs(avg_low_open)*stop_factor[i] &
+                abs(Weekly_Close_to_High ) > abs(avg_high_open)*profit_factor[j] ~ profit_factor[j]*abs(avg_high_open),
+              abs(Weekly_Low_to_Close) >= abs(avg_low_open)*stop_factor[i] &
+                abs(Weekly_Close_to_High ) <= abs(avg_high_open)*profit_factor[j] ~ -1*stop_factor[i]*abs(avg_low_open),
+              TRUE ~Weekly_Close_to_Close
+            )
+
+        ) %>%
+        group_by(rolling_period, prior_period, prior_weight, split_point) %>%
+        summarise(
+          total_trades = n(),
+          short_win = sum(short_win, na.rm = T),
+          long_win = sum(long_win, na.rm = T),
+          short_win_value = sum(short_win_value, na.rm = T),
+          long_win_value = sum(long_win_value, na.rm = T)
+        ) %>%
+        ungroup() %>%
+        mutate(
+          perc_short = short_win/total_trades,
+          perc_long = long_win/total_trades
+        ) %>%
+        mutate(
+          profit_factor = profit_factor[j],
+          stop_factor = stop_factor[i]
+        )
+
+    }
+
+  }
+
+  tagged_trades <-  raw_pois_data %>%
+    ungroup() %>%
+    mutate(
+      break_point =
+        case_when(
+          Pois_Change > median(Pois_Change, na.rm = T) +  0*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.2*sd(Pois_Change, na.rm = T) ~ "Upper 0-0.15",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.2*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.4*sd(Pois_Change, na.rm = T) ~ "Upper 0.15-0.3",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.4*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.6*sd(Pois_Change, na.rm = T) ~ "Upper 0.3-0.45",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.6*sd(Pois_Change, na.rm = T)  &
+            Pois_Change <= median(Pois_Change, na.rm = T) +  0.8*sd(Pois_Change, na.rm = T)  ~ "Upper 0.45-0.6",
+          Pois_Change > median(Pois_Change, na.rm = T) +  0.8*sd(Pois_Change, na.rm = T)  ~ "Upper >0.6",
+
+          Pois_Change < median(Pois_Change, na.rm = T) -  0*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.2*sd(Pois_Change, na.rm = T) ~ "Lower 0-0.15",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.2*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.4*sd(Pois_Change, na.rm = T) ~ "Lower 0.15-0.3",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.4*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.6*sd(Pois_Change, na.rm = T) ~ "Lower 0.3-0.45",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.6*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  0.8*sd(Pois_Change, na.rm = T) ~ "Lower 0.45-0.6",
+          Pois_Change < median(Pois_Change, na.rm = T) -  0.8*sd(Pois_Change, na.rm = T)  ~ "Lower >0.6"
+        ),
+      break_horizontal  = median(Pois_Change, na.rm = T) +  sd_point*sd(Pois_Change, na.rm = T)
+    ) %>%
+    mutate(
+      break_point_trade =
+        case_when(
+          break_point == "Upper 0-0.15" ~ "long",
+          break_point == "Upper 0.15-0.3" ~ "long",
+          break_point == "Upper 0.3-0.45" ~ "long",
+          break_point == "Upper 0.45-0.6" ~ "long",
+          break_point == "Upper >0.6" ~ "long",
+
+          break_point == "Lower 0-0.15" ~ "short",
+          break_point == "Lower 0.15-0.3" ~ "short",
+          break_point == "Lower 0.3-0.45" ~ "short",
+          break_point == "Lower 0.45-0.6" ~ "short",
+          break_point == "Lower >0.6" ~ "short"
+        )
+    )
 
 }
