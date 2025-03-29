@@ -1,13 +1,13 @@
 helperfunctions35South::load_custom_functions()
 one_drive_path <- helperfunctions35South::create_one_drive_path(
   path_extension = "raw data")
-
 library(neuralnet)
+
+
+
 raw_macro_data <- get_macro_event_data()
 
 eur_data <- get_EUR_exports()
-
-aud_usd <- read_csv("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/AUD_USD Historical Data.csv")
 
 AUD_exports_total <- get_AUS_exports()  %>%
   pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
@@ -22,25 +22,6 @@ USD_exports_total <- get_US_exports()  %>%
   left_join(AUD_exports_total) %>%
   ungroup()
 
-aud_usd_with_exports <- aud_usd %>%
-  mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))  %>%
-  rename(date = Date) %>%
-  arrange(date) %>%
-  left_join(USD_exports_total) %>%
-  fill(c(US_Export, Aus_Export), .direction = "down") %>%
-  mutate(
-    Price = log(Price)
-  ) %>%
-  filter(!is.na(US_Export))%>%
-  filter(!is.na(Aus_Export)) %>%
-  mutate(
-    Daily_Change = Price - lag(Price)
-  ) %>%
-  filter(!is.na(Daily_Change))
-
-
-
-#-------------------------------------------------
 USD_exports_total <- USD_exports_total %>%
   mutate(
     month_date = lubridate::floor_date(date, "month")
@@ -50,137 +31,6 @@ AUD_exports_total <- AUD_exports_total %>%
   mutate(
     month_date = lubridate::floor_date(date, "month")
   )
-
-transform_asset_to_weekly <- function(asset_data= aud_usd) {
-
-  transformed_asset_data <- asset_data %>%
-    mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))  %>%
-    rename(date = Date) %>%
-    arrange(date) %>%
-    mutate(
-      week_date = lubridate::floor_date(date, "week")
-    ) %>%
-    group_by(week_date) %>%
-    mutate(
-      week_start_price = case_when(
-        date == min(date, na.rm = T) ~ Price
-      )
-    ) %>%
-    ungroup() %>%
-    filter(!is.na(week_start_price)) %>%
-    arrange(week_date) %>%
-    dplyr::select(-date) %>%
-    # left_join(USD_exports_total) %>%
-    # fill(c(US_Export, Aus_Export), .direction = "down") %>%
-    mutate(
-      week_start_price = log(week_start_price)
-    ) %>%
-    # filter(!is.na(US_Export))%>%
-    # filter(!is.na(Aus_Export)) %>%
-    arrange(week_date) %>%
-    mutate(
-      Week_Change = lead(week_start_price) - week_start_price,
-      Week_Change_lag = week_start_price - lag(week_start_price) ,
-      # Month_Change_US_EXPORT = US_Export  - lag(US_Export ),
-      # Month_Change_Aus_Export  = Aus_Export   - lag(Aus_Export  )
-    ) %>%
-    filter(!is.na(Week_Change), !is.na(Week_Change_lag)) %>%
-    dplyr::select(-Vol., -`Change %`)
-
-  return(transformed_asset_data)
-
-}
-
-transform_macro_to_monthly <- function(
-    macro_dat_for_transform = get_USD_Indicators(raw_macro_data = raw_macro_data),
-    transform_to_week = FALSE) {
-
-  if(transform_to_week == FALSE) {
-
-    transformed_dat <- macro_dat_for_transform %>%
-      mutate(
-        month_date = lubridate::floor_date(date, "month") + months(1)
-      ) %>%
-      group_by(month_date) %>%
-      summarise(across(.cols = where(is.numeric), .fns = ~ median(.))) %>%
-      ungroup() %>%
-      mutate(
-        across(.cols = where(is.numeric), .fns = ~ ifelse(. == 0, NA, .))
-      ) %>%
-      ungroup() %>%
-      fill(where(is.numeric), .direction = "down") %>%
-      # fill(where(is.numeric), .direction = "up") %>%
-      mutate(
-        across(
-          .cols = where(is.numeric), .fns = ~. - lag(.)
-        )
-      ) %>%
-      filter(if_all(where(is.numeric), ~ !is.na(.)))
-
-  }
-
-  if(transform_to_week) {
-
-    transformed_dat <- macro_dat_for_transform %>%
-      mutate(
-        month_date = lubridate::floor_date(date, "month") + months(1)
-      ) %>%
-      group_by(month_date) %>%
-      summarise(across(.cols = where(is.numeric), .fns = ~ median(.))) %>%
-      ungroup()  %>%
-      mutate(
-        across(
-          .cols = where(is.numeric), .fns = ~. - lag(.)
-        )
-      ) %>%
-      mutate(
-        across(.cols = where(is.numeric), .fns = ~ ifelse(. == 0, NA, .))
-      ) %>%
-      ungroup() %>%
-      fill(where(is.numeric), .direction = "down") %>%
-      mutate(
-        across(
-          contains(c("Interest", "Index")),
-          ~ ifelse(is.na(.), 0, .)
-        )
-      ) %>%
-      # fill(where(is.numeric), .direction = "up") %>%
-      mutate(
-        across(
-          .cols = where(is.numeric), .fns = ~. - lag(.)
-        )
-      ) %>%
-      filter(if_all(where(is.numeric), ~ !is.na(.)))
-
-    start_date <- transformed_dat$month_date %>% min(na.rm = T)
-    end_date <- transformed_dat$month_date %>% max(na.rm = T)
-
-    redo_tibble <-
-      tibble(
-        week_date = seq(start_date, end_date, "week")
-      ) %>%
-      mutate(
-        month_date = lubridate::floor_date(week_date, "month")
-      ) %>%
-      left_join(transformed_dat) %>%
-      mutate(
-        across(.cols = where(is.numeric), .fns = ~ ifelse(. == 0, NA, .))
-      ) %>%
-      fill(where(is.numeric), .direction = "down")%>%
-      fill(where(is.numeric), .direction = "up") %>%
-      dplyr::select(-month_date) %>%
-      mutate(
-        week_date  = lubridate::floor_date(week_date, "week")
-      )
-
-    transformed_dat <-redo_tibble
-
-  }
-
-  return(transformed_dat)
-
-}
-
 
 asset_data_combined <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
   mutate(asset_name =
@@ -322,6 +172,17 @@ dependant_var <- "Week_Change"
 
 reg_formula <- create_lm_formula_no_space(dependant = dependant_var, independant = reg_vars)
 
+reg_formula_lm <-  create_lm_formula_no_space(dependant = dependant_var,
+                                              independant = reg_vars
+                                              # keep(~ !str_detect(.x, "CAD_") &
+                                              #        !str_detect(.x, "_check")
+                                              #      ) %>%
+                                              # unlist() %>% as.character()
+)
+lm_reg <- lm(data = testing_data_train, formula = reg_formula_lm)
+predict.lm(lm_reg, testing_data_test)
+summary(lm_reg)
+
 safely_n_net <- safely(neuralnet::neuralnet, otherwise = NULL)
 
 #----------------Notes
@@ -343,17 +204,6 @@ n <- safely_n_net(reg_formula ,
 prediction_nn <- compute(n, rep = 1, testing_data_test %>%
                            dplyr::select(matches(reg_vars, ignore.case = FALSE)))
 prediction_nn$net.result
-
-reg_formula_lm <-  create_lm_formula_no_space(dependant = dependant_var,
-                                              independant = reg_vars
-                                              # keep(~ !str_detect(.x, "CAD_") &
-                                              #        !str_detect(.x, "_check")
-                                              #      ) %>%
-                                              # unlist() %>% as.character()
-)
-lm_reg <- lm(data = testing_data_train, formula = reg_formula_lm)
-predict.lm(lm_reg, testing_data_test)
-summary(lm_reg)
 
 asset_data_daily <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
   mutate(asset_name =
@@ -422,12 +272,12 @@ trade_with_daily_data <- asset_data_daily %>%
 
         between(Pred_trade,mean_value  + sd_value*2,  mean_value  + sd_value*3) ~ "Long",
         between(Pred_trade,mean_value  + sd_value*0,  mean_value  + sd_value*1) ~ "Long",
-        between(Pred_trade,mean_value  - sd_value*1,  mean_value  - sd_value*0) ~ "Long",
+        # between(Pred_trade,mean_value  - sd_value*1,  mean_value  - sd_value*0) ~ "Long",
 
-        between(Pred_trade,mean_value  - sd_value*9,  mean_value  - sd_value*5) ~ "Short",
-        between(Pred_trade,mean_value  + sd_value*3.0001,  mean_value  + sd_value*10) ~ "Short",
+        between(Pred_trade,mean_value  - sd_value*200,  mean_value  - sd_value*20) ~ "Short",
+        between(Pred_trade,mean_value  + sd_value*15,  mean_value  + sd_value*100) ~ "Long",
 
-        between(Pred_trade,mean_value  - sd_value*50,  mean_value  - sd_value*10) ~ "Long"
+        # between(Pred_trade,mean_value  - sd_value*50,  mean_value  - sd_value*10) ~ "Long"
       )
   )
 

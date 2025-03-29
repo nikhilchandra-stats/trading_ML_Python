@@ -235,7 +235,7 @@ test_func_temp <- function() {
 
         c <- c + 1
         temp <- get_pois_calc(
-          asset_data = asset_data,
+          asset_data = asset_data_combined,
           rolling_period = i,
           lm_dependant_var = "Weekly_Close_to_Close",
           independant_var = c("Pois_Change"),
@@ -254,7 +254,163 @@ test_func_temp <- function() {
     group_by(Asset, rolling_period, prior_period, prior_weight) %>%
     mutate(Pois_Change = post_mean - lag(post_mean, 1))
 
+  db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/Pois_Tagged_TimeSeries.db")
 
+  write_table_sql_lite(.data = raw_pois_data,
+                       table_name = "Pois_Tagged_TimeSeries",
+                       conn = db_con,
+                       overwrite_true = TRUE)
+
+  DBI::dbDisconnect(db_con)
+
+  rm(raw_pois_data)
+
+  db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/Pois_Tagged_TimeSeries.db")
+
+  raw_pois_data <- DBI::dbGetQuery(conn = db_con,
+                                   statement = "SELECT * FROM Pois_Tagged_TimeSeries")
+
+  raw_pois_data <- raw_pois_data %>%
+    mutate(week_date = lubridate::as_date(week_date))
+
+  test <- raw_pois_data %>%
+    filter(rolling_period %in% c(5,10), prior_period %in% c(5,10), prior_weight == 0.5)
+
+  asset_data_daily_raw <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
+    mutate(asset_name =
+             str_remove(path, "C\\:\\/Users/Nikhil Chandra\\/Documents\\/Asset Data\\/Futures\\/") %>%
+             str_remove("\\.csv") %>%
+             str_remove("Historical Data")%>%
+             str_remove("Stock Price") %>%
+             str_remove("History")
+    ) %>%
+    dplyr::select(path, asset_name) %>%
+    split(.$asset_name, drop = FALSE) %>%
+    map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
+               mutate(Asset = .x[1,2] %>% as.character())
+    )
+
+  asset_data_daily_raw <- asset_data_daily_raw %>%
+    mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))
+
+  mean_values_by_asset_for_loop =
+    wrangle_asset_data(
+      asset_data_daily_raw = asset_data_daily_raw,
+      summarise_means = TRUE
+    )
+
+bind_pois_to_daily_price <- function(raw_pois_data = raw_pois_data,
+                                     asset_data_daily_raw = asset_data_daily_raw,
+                                     rolling_period_var = 5,
+                                     prior_period_var = 5,
+                                     prior_weight_var = 0.5,
+                                     sd_fac_low = 0,
+                                     sd_fac_high = 1) {
+
+  tagged_trades <-
+    raw_pois_data %>%
+    filter(rolling_period %in% c(rolling_period_var),
+           prior_period %in% c(prior_period_var),
+           prior_weight %in% c(prior_weight_var) ) %>%
+    mutate(
+      trade_col =
+        case_when(
+          Pois_Change > median(Pois_Change, na.rm = T) +  sd_fac_low*sd(Pois_Change, na.rm = T) &
+            Pois_Change <= median(Pois_Change, na.rm = T) + sd_fac_high*sd(Pois_Change, na.rm = T) ~ "Long",
+
+          Pois_Change < median(Pois_Change, na.rm = T) -  sd_fac_low*sd(Pois_Change, na.rm = T) &
+            Pois_Change >= median(Pois_Change, na.rm = T) -  sd_fac_high*sd(Pois_Change, na.rm = T) ~ "Short"
+        )
+    )
+
+  tagged_trades_with_Price <- asset_data_daily_raw %>%
+    left_join(
+      tagged_trades,
+      by = c("Asset", "Date" = "week_date")
+    ) %>%
+    mutate(
+      sd_fac_low = sd_fac_low,
+      sd_fac_high = sd_fac_high
+    )
+
+  return(tagged_trades_with_Price)
+
+}
+
+rolling_periods <- seq(5, 100, 20)
+prior_periods <- seq(5, 100, 20)
+prior_weights <- c(0.5, 0.3)
+
+sd_fac_low <- 0
+sd_fac_high <- 1
+stop_fac <- 3
+prof_fac <- 3
+
+variation_params1 <- rolling_periods %>%
+  map_dfr(
+    ~ tibble(
+      prior_periods = prior_periods
+    )  %>%
+      mutate(
+        rolling_periods = .x
+      )
+  )
+
+variation_params2 <- prior_weights %>%
+  map_dfr(
+    ~ variation_params1 %>%
+      mutate(
+        prior_weights = .x
+      )
+  )
+
+variation_params <- variation_params2 %>%
+  mutate(
+      split_index = row_number()
+  ) %>%
+  split(.$split_index) %>%
+  map_dfr(
+    ~
+      bind_pois_to_daily_price(
+        raw_pois_data = raw_pois_data,
+        asset_data_daily_raw = asset_data_daily_raw,
+        rolling_period_var = .x$rolling_periods[1] %>% as.numeric(),
+        prior_period_var = .x$prior_periods[1] %>% as.numeric(),
+        prior_weight_var = .x$prior_weights[1] %>% as.numeric(),
+        sd_fac_low = 1,
+        sd_fac_high = 2
+      )
+  )
+
+trade_results <-
+    generic_trade_finder(
+      tagged_trades = variation_params,
+      asset_data_daily_raw = asset_data_daily_raw,
+      stop_factor = stop_fac,
+      profit_factor = prof_fac,
+      trade_col = "trade_col",
+      date_col = "Date",
+      max_hold_period = 100,
+      start_price_col = "Price",
+      mean_values_by_asset = mean_values_by_asset_for_loop,
+      return_summary = TRUE,
+      additional_grouping_vars = c("Asset", "rolling_period", "prior_period", "prior_weight")
+    ) %>%
+    map_dfr(bind_rows)
+
+trade_results_sum <- trade_results %>%
+    group_by(stop_factor, profit_factor,
+             rolling_period, prior_period, prior_weight, trade_direction, trade_category) %>%
+    summarise(
+      wins = sum(Trades, na.rm = T)
+    ) %>%
+  pivot_wider(names_from = trade_category, values_from = wins)%>%
+  mutate(
+    Total_Trades = `TRUE WIN` + `TRUE LOSS` + `NA`,
+    Perc =  `TRUE WIN`/Total_Trades
+  )
+
+#-----------------------------------------------------------------------Legacy Code
 # Change Model
   sd_point = 0.75
   i = 1

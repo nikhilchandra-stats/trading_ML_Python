@@ -5,22 +5,28 @@ generic_trade_finder <- function(
                                  profit_factor =3,
                                  trade_col = "trade_col",
                                  date_col = "Date",
-                                 max_hold_period = 80,
+                                 max_hold_period = 100,
                                  start_price_col = "Price",
                                  mean_values_by_asset =
                                    wrangle_asset_data(
                                      asset_data_daily_raw = asset_data_daily_raw,
                                      summarise_means = TRUE
-                                   )
+                                   ),
+                                 return_summary = TRUE,
+                                 additional_grouping_vars = c("Asset")
                                  ) {
 
 
   trades_stripped_down <-
     tagged_trades %>%
-    distinct(!!as.name(date_col), !!as.name(trade_col), Asset, Price, Low, High, Open)
+    distinct(!!as.name(date_col), !!as.name(trade_col),
+             across(matches(additional_grouping_vars)),
+             Price, Low, High, Open)
 
  long_analysis <- trades_stripped_down %>%
-   group_by(Asset) %>%
+   group_by(across(matches(additional_grouping_vars))) %>%
+   arrange(!!as.name(date_col), .by_group = TRUE) %>%
+   group_by(across(matches(additional_grouping_vars))) %>%
    mutate(
      start_price = ifelse(!!as.name(trade_col) == "Long", !!as.name(start_price_col), NA),
      max_in_30_days= slider::slide_dbl(.x = High, .f = ~ max(.x, na.rm = T), .after = max_hold_period ),
@@ -107,20 +113,28 @@ generic_trade_finder <- function(
  long_analysis_summary <-
    long_analysis %>%
    filter(!is.na(!!as.name(trade_col)), !!as.name(trade_col) == "Long" ) %>%
-   group_by(trade_category) %>%
+   group_by(trade_category, across(matches(additional_grouping_vars)) ) %>%
    summarise(
      Trades = n(),
-     profit_loss = round(sum(profit_loss_value, na.rm = T))
+     profit_loss = round(sum(profit_loss_value, na.rm = T)),
+     average_stop = median(stop_value, na.rm = T),
+     averaeg_profit = median(profit_value, na.rm = T)
    ) %>%
    ungroup() %>%
+   group_by(across(matches(additional_grouping_vars))) %>%
    mutate(
      total_trades = sum(Trades, na.rm = T),
-     Perc = Trades/total_trades
+     Perc = Trades/total_trades,
+     profit_factor = profit_factor,
+     stop_factor = stop_factor,
+     trade_direction = "Long"
    )
 
 
  short_analysis <- trades_stripped_down %>%
-   group_by(Asset) %>%
+   group_by(across(matches(additional_grouping_vars))) %>%
+   arrange(!!as.name(date_col), .by_group = TRUE) %>%
+   group_by(across(matches(additional_grouping_vars))) %>%
    mutate(
      start_price = ifelse(!!as.name(trade_col) == "Short", !!as.name(start_price_col), NA),
      max_in_30_days= slider::slide_dbl(.x = High, .f = ~ max(.x, na.rm = T), .after = max_hold_period ),
@@ -195,17 +209,30 @@ generic_trade_finder <- function(
  short_analysis_summary <-
    short_analysis %>%
    filter(!is.na(!!as.name(trade_col)), !!as.name(trade_col) == "Short" ) %>%
-   group_by(trade_category) %>%
+   group_by(trade_category, across(matches(additional_grouping_vars)) ) %>%
    summarise(
      Trades = n(),
-     profit_loss = round(sum(profit_loss_value, na.rm = T))
+     profit_loss = round(sum(profit_loss_value, na.rm = T)),
+     average_stop = median(stop_value, na.rm = T),
+     averaeg_profit = median(profit_value, na.rm = T)
    ) %>%
    ungroup() %>%
+   group_by(Asset) %>%
    mutate(
      total_trades = sum(Trades, na.rm = T),
-     Perc = Trades/total_trades
+     Perc = Trades/total_trades,
+     profit_factor = profit_factor,
+     stop_factor = stop_factor,
+     trade_direction = "Short"
    )
 
+ if(return_summary) {
+   return(list(long_analysis_summary, short_analysis_summary))
+ }
+
+ if(return_summary == FALSE) {
+   return(list(long_analysis, short_analysis))
+ }
 
 }
 
