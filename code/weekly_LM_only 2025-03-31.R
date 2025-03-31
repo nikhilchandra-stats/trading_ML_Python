@@ -53,8 +53,6 @@ reg_data_list <- run_reg_weekly_variant(
   asset_data_combined = asset_data_combined
 )
 
-
-
 asset_data_daily_raw <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
   mutate(asset_name =
            str_remove(path, "C\\:\\/Users/Nikhil Chandra\\/Documents\\/Asset Data\\/Futures\\/") %>%
@@ -110,8 +108,6 @@ mean_values_by_asset_for_loop =
     summarise_means = TRUE
   )
 
-c = 0
-
 get_trade_tags_weekly_LM <- function(trade_data_for_tagging = trade_with_daily_data,
                                      sd_factor_low = sd_factor_low ,
                                      sd_factor_high = sd_factor_high) {
@@ -130,9 +126,10 @@ get_trade_tags_weekly_LM <- function(trade_data_for_tagging = trade_with_daily_d
 }
 
 accumualtor <- list()
+c = 5987 - 1
 trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 
-for (j in 1:dim(profit_loss_factors)) {
+for (j in 247:dim(profit_loss_factors)) {
 
   stop_fac <- profit_loss_factors[j,1] %>% pull(loss_factor ) %>% as.numeric()
   prof_fac <- profit_loss_factors[j,2] %>% pull(prof_factor ) %>% as.numeric()
@@ -181,8 +178,8 @@ for (j in 1:dim(profit_loss_factors)) {
 
 store_already_looped <- accumualtor
 #stopped point
-i = 622
-j = 10
+i = 247
+j = 8
 
 
 #--------------------------
@@ -191,7 +188,7 @@ db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/weekly_LM_tra
 trade_frame <- accumualtor %>% map_dfr(bind_rows)
 
 write_table_sql_lite(.data = trade_frame,
-                     table_name = "weekly_LM_trade_sim",
+                     table_name = "weekly_LM_trade_sim_with_binary",
                      conn = db_con,
                      overwrite_true = TRUE)
 

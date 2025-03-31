@@ -1430,15 +1430,15 @@ run_reg_weekly_variant <- function(
     group_by(Asset) %>%
     fill(where(is.numeric), .direction = "up") %>%
     ungroup() %>%
-    # mutate(
-    #   EUR_check = ifelse(str_detect(Asset, "EUR"), 1, 0),
-    #   AUD_check = ifelse(str_detect(Asset, "AUD"), 1, 0),
-    #   USD_check = ifelse(str_detect(Asset, "USD"), 1, 0),
-    #   GBP_check = ifelse(str_detect(Asset, "GBP"), 1, 0),
-    #   JPY_check = ifelse(str_detect(Asset, "JPY"), 1, 0),
-    #   CNY_check = ifelse(str_detect(Asset, "CNY"), 1, 0),
-    #   CAD_check = ifelse(str_detect(Asset, "CAD"), 1, 0)
-    # ) %>%
+    mutate(
+      EUR_check = ifelse(str_detect(Asset, "EUR"), 1, 0),
+      AUD_check = ifelse(str_detect(Asset, "AUD"), 1, 0),
+      USD_check = ifelse(str_detect(Asset, "USD"), 1, 0),
+      GBP_check = ifelse(str_detect(Asset, "GBP"), 1, 0),
+      JPY_check = ifelse(str_detect(Asset, "JPY"), 1, 0),
+      CNY_check = ifelse(str_detect(Asset, "CNY"), 1, 0),
+      CAD_check = ifelse(str_detect(Asset, "CAD"), 1, 0)
+    ) %>%
     mutate(
       bin_dat = case_when(
         Week_Change >= 0 ~ 1,
