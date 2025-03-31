@@ -299,6 +299,8 @@ test_func_temp <- function() {
       summarise_means = TRUE
     )
 
+  gc()
+
 bind_pois_to_daily_price <- function(raw_pois_data = raw_pois_data,
                                      asset_data_daily_raw = asset_data_daily_raw,
                                      rolling_period_var = 5,
@@ -377,10 +379,12 @@ variation_params <- variation_params2 %>%
         rolling_period_var = .x$rolling_periods[1] %>% as.numeric(),
         prior_period_var = .x$prior_periods[1] %>% as.numeric(),
         prior_weight_var = .x$prior_weights[1] %>% as.numeric(),
-        sd_fac_low = 1,
-        sd_fac_high = 2
+        sd_fac_low = 3,
+        sd_fac_high = 4
       )
   )
+
+gc()
 
 trade_results <-
     generic_trade_finder(

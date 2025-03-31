@@ -120,15 +120,15 @@ testing_data <- trading_dat %>%
   group_by(Asset) %>%
   fill(where(is.numeric), .direction = "up") %>%
   ungroup() %>%
-  # mutate(
-  #   EUR_check = ifelse(str_detect(Asset, "EUR"), 1, 0),
-  #   AUD_check = ifelse(str_detect(Asset, "AUD"), 1, 0),
-  #   USD_check = ifelse(str_detect(Asset, "USD"), 1, 0),
-  #   GBP_check = ifelse(str_detect(Asset, "GBP"), 1, 0),
-  #   JPY_check = ifelse(str_detect(Asset, "JPY"), 1, 0),
-  #   CNY_check = ifelse(str_detect(Asset, "CNY"), 1, 0),
-  #   CAD_check = ifelse(str_detect(Asset, "CAD"), 1, 0)
-  # ) %>%
+  mutate(
+    EUR_check = ifelse(str_detect(Asset, "EUR"), 1, 0),
+    AUD_check = ifelse(str_detect(Asset, "AUD"), 1, 0),
+    USD_check = ifelse(str_detect(Asset, "USD"), 1, 0),
+    GBP_check = ifelse(str_detect(Asset, "GBP"), 1, 0),
+    JPY_check = ifelse(str_detect(Asset, "JPY"), 1, 0),
+    CNY_check = ifelse(str_detect(Asset, "CNY"), 1, 0),
+    CAD_check = ifelse(str_detect(Asset, "CAD"), 1, 0)
+  ) %>%
   mutate(
     bin_dat = case_when(
       Week_Change >= 0 ~ 1,
@@ -355,6 +355,13 @@ write_table_sql_lite(.data = trade_frame,
                      conn = db_con,
                      overwrite_true = TRUE)
 
+db_con_LM_weekly <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/weekly_LM_trade_sim.db")
+trade_frame <- DBI::dbGetQuery(conn = db_con_LM_weekly,
+                               statement = "SELECT * FROM weekly_LM_trade_sim")
+DBI::dbDisconnect(db_con_LM_weekly)
+rm(db_con_LM_weekly)
+gc()
+
 trade_frame_2 <- trade_frame %>%
   group_by(sd_factor_high, sd_factor_low,
            trade_direction,
@@ -373,7 +380,7 @@ trade_frame_2 <- trade_frame %>%
   mutate(
     Perc = round(Trades/Total_Trades, 5)
   ) %>%
-  filter(Total_Trades >= 400)
+  filter(Total_Trades >= 200)
 
 trade_frame_3 <- trade_frame_2 %>%
   dplyr::select(
@@ -401,7 +408,7 @@ trade_frame_4 <- trade_frame_2 %>%
   group_by(
     trade_direction
   ) %>%
-  filter(`TRUE WIN` >= 0.55) %>%
+  filter(`TRUE WIN` >= 0.6) %>%
   group_by(
     trade_direction
   ) %>%

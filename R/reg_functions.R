@@ -1497,7 +1497,7 @@ run_reg_weekly_variant <- function(
   raw_LM_trade_df_training <- testing_data_train %>%
     dplyr::select(Asset, week_date) %>%
     mutate(
-      LM_pred = predict.lm(lm_reg, prediction_training) %>% as.numeric()
+      LM_pred = predict.lm(lm_reg, testing_data_train) %>% as.numeric()
     )
 
   return(
@@ -1526,47 +1526,21 @@ prep_LM_wkly_trade_data <- function(
       map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
                  mutate(Asset = .x[1,2] %>% as.character())
       ),
-
-    testing_data_test,
-    lm_reg
+    raw_LM_trade_df,
+    raw_LM_trade_df_training
 
   ) {
-
-  asset_data_daily_raw <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
-    mutate(asset_name =
-             str_remove(path, "C\\:\\/Users/Nikhil Chandra\\/Documents\\/Asset Data\\/Futures\\/") %>%
-             str_remove("\\.csv") %>%
-             str_remove("Historical Data")%>%
-             str_remove("Stock Price") %>%
-             str_remove("History")
-    ) %>%
-    dplyr::select(path, asset_name) %>%
-    split(.$asset_name, drop = FALSE) %>%
-    map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
-               mutate(Asset = .x[1,2] %>% as.character())
-    )
 
   asset_data_daily <- asset_data_daily_raw %>%
     mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))
 
-  raw_LM_trade_df <- testing_data_test %>%
-    dplyr::select(Asset, week_date) %>%
-    mutate(
-      LM_pred = predict.lm(lm_reg, testing_data_test) %>% as.numeric()
-    )
-
   mean_LM_value <-
-    testing_data_train %>%
-    dplyr::select(Asset, week_date) %>%
-    mutate(
-      LM_pred = predict.lm(lm_reg, testing_data_train) %>% as.numeric()
-    ) %>%
+    raw_LM_trade_df_training %>%
     group_by(Asset) %>%
     summarise(
       mean_value = mean(LM_pred, na.rm = T),
       sd_value = sd(LM_pred, na.rm = T)
     )
-
 
   trade_with_daily_data <- asset_data_daily %>%
     mutate(
@@ -1593,5 +1567,12 @@ prep_LM_wkly_trade_data <- function(
     ) %>%
     filter(!is.na(Pred_Filled)) %>%
     left_join(mean_LM_value)
+
+  return(
+    list(
+      "LM Merged to Daily" = trade_with_daily_data,
+      "Mean LM Values" = mean_LM_value
+    )
+  )
 
 }
