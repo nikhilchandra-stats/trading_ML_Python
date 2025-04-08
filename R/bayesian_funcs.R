@@ -223,11 +223,15 @@ test_func_temp <- function() {
     )
 
 
-  rolling_periods <- seq(5, 300, 20)
-  prior_periods <- seq(5, 300, 20)
-  prior_weights <- c(0.1,  0.3,  0.5,  0.7, 0.9)
+  rolling_periods <- seq(5, 100, 20)
+  prior_periods <- seq(5, 100, 20)
+  prior_weights <- seq(2, 0.5, -0.2)
   accumulator <- list()
   c <- 0
+
+  db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/Pois_Tagged_TimeSeries.db")
+
+  DBI::dbListTables(db_con)
 
   for (k in prior_weights) {
     for (i in rolling_periods) {
@@ -242,39 +246,44 @@ test_func_temp <- function() {
           prior_weight = k,
           prior_period = j
         )
-        accumulator[[c]] <- temp
+
+        if(c == 1) {
+
+          write_table_sql_lite(.data = temp,
+                               table_name = "Pois_Tagged_TimeSeries_2025_03_31_High_Weight",
+                               conn = db_con,
+                               overwrite_true = TRUE)
+
+          db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/Pois_Tagged_TimeSeries.db")
+
+        }
+
+        if(c > 1) {
+
+          append_table_sql_lite(.data = temp,
+                                table_name = "Pois_Tagged_TimeSeries_2025_03_31_High_Weight",
+                                conn = db_con)
+
+        }
+
       }
     }
   }
 
-
-  raw_pois_data  <-accumulator %>%
-    keep(~ !is.null(.x)) %>%
-    map_dfr(bind_rows) %>%
-    group_by(Asset, rolling_period, prior_period, prior_weight) %>%
-    mutate(Pois_Change = post_mean - lag(post_mean, 1))
-
-  db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/Pois_Tagged_TimeSeries.db")
-
-  write_table_sql_lite(.data = raw_pois_data,
-                       table_name = "Pois_Tagged_TimeSeries",
-                       conn = db_con,
-                       overwrite_true = TRUE)
-
-  DBI::dbDisconnect(db_con)
-
-  rm(raw_pois_data)
-
   db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/Pois_Tagged_TimeSeries.db")
 
   raw_pois_data <- DBI::dbGetQuery(conn = db_con,
-                                   statement = "SELECT * FROM Pois_Tagged_TimeSeries")
+                                   statement =
+                                     "SELECT Asset,week_date,prior_period,rolling_period,prior_weight,Pois_Change,post_rate
+                                      FROM Pois_Tagged_TimeSeries")
+
+  DBI::dbDisconnect(db_con)
+
+  rm(db_con)
 
   raw_pois_data <- raw_pois_data %>%
+    distinct() %>%
     mutate(week_date = lubridate::as_date(week_date))
-
-  test <- raw_pois_data %>%
-    filter(rolling_period %in% c(5,10), prior_period %in% c(5,10), prior_weight == 0.5)
 
   asset_data_daily_raw <- fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
     mutate(asset_name =
@@ -303,11 +312,11 @@ test_func_temp <- function() {
 
 bind_pois_to_daily_price <- function(raw_pois_data = raw_pois_data,
                                      asset_data_daily_raw = asset_data_daily_raw,
-                                     rolling_period_var = 5,
-                                     prior_period_var = 5,
-                                     prior_weight_var = 0.5,
-                                     sd_fac_low = 0,
-                                     sd_fac_high = 1) {
+                                     rolling_period_var = 125,
+                                     prior_period_var = 125,
+                                     prior_weight_var = 0.3,
+                                     sd_fac_low = 1,
+                                     sd_fac_high = 2) {
 
   tagged_trades <-
     raw_pois_data %>%
@@ -324,6 +333,17 @@ bind_pois_to_daily_price <- function(raw_pois_data = raw_pois_data,
             Pois_Change >= median(Pois_Change, na.rm = T) -  sd_fac_high*sd(Pois_Change, na.rm = T) ~ "Short"
         )
     )
+    # mutate(
+    #   # week_date =
+    #   #   case_when(
+    #   #     week_date == max(week_date, na.rm = T) ~ week_date + lubridate::days(1),
+    #   #     TRUE ~ week_date
+    #   #   )
+    #   week_date = week_date + lubridate::days(1)
+    # )
+
+  median_value <- median(tagged_trades$Pois_Change, na.rm = T)
+  sd_value <- sd(tagged_trades$Pois_Change, na.rm = T)
 
   tagged_trades_with_Price <- asset_data_daily_raw %>%
     left_join(
@@ -339,14 +359,19 @@ bind_pois_to_daily_price <- function(raw_pois_data = raw_pois_data,
 
 }
 
-rolling_periods <- seq(5, 100, 20)
-prior_periods <- seq(5, 100, 20)
-prior_weights <- c(0.5, 0.3)
+raw_pois_data %>%
+  distinct(prior_weight)
+
+rolling_periods <- seq(5, 150, 20)
+prior_periods <- seq(5, 150, 20)
+prior_weights <- c(0.4,0.3)
 
 sd_fac_low <- 0
 sd_fac_high <- 1
-stop_fac <- 3
-prof_fac <- 3
+stop_fac <- 4
+prof_fac <- 4
+
+gc()
 
 variation_params1 <- rolling_periods %>%
   map_dfr(
@@ -379,15 +404,18 @@ variation_params <- variation_params2 %>%
         rolling_period_var = .x$rolling_periods[1] %>% as.numeric(),
         prior_period_var = .x$prior_periods[1] %>% as.numeric(),
         prior_weight_var = .x$prior_weights[1] %>% as.numeric(),
-        sd_fac_low = 3,
-        sd_fac_high = 4
+        sd_fac_low = 1,
+        sd_fac_high = 2
       )
   )
 
 gc()
 
+testing <- variation_params %>%
+  filter(!is.na(trade_col))
+
 trade_results <-
-    generic_trade_finder(
+  generic_trade_finder_conservative(
       tagged_trades = variation_params,
       asset_data_daily_raw = asset_data_daily_raw,
       stop_factor = stop_fac,
@@ -409,10 +437,35 @@ trade_results_sum <- trade_results %>%
       wins = sum(Trades, na.rm = T)
     ) %>%
   pivot_wider(names_from = trade_category, values_from = wins)%>%
+  mutate(across(.cols = c(`TRUE WIN`, `TRUE LOSS`, `NA`),
+                .fns = ~ ifelse(is.na(.), 0, .))) %>%
   mutate(
     Total_Trades = `TRUE WIN` + `TRUE LOSS` + `NA`,
     Perc =  `TRUE WIN`/Total_Trades
   )
+
+trade_results_sum_filt <- trade_results_sum %>%
+  filter(Total_Trades > 100) %>%
+  group_by(trade_direction) %>%
+  slice_max(Perc)
+
+trade_results %>%
+  ungroup() %>%
+  filter(trade_direction == "Long") %>%
+  filter(trade_category == "TRUE WIN") %>%
+  ggplot(aes(x =  rolling_period, y = Perc, color = prior_period)) +
+  geom_point() +
+  theme_minimal()
+
+lm_model <- lm(formula = Perc ~ rolling_period + prior_period + prior_weight,
+               data = trade_results %>%
+                 filter(trade_direction == "Long") %>%
+                 filter(trade_category == "TRUE WIN")
+               )
+summary(lm_model)
+
+#Model Params
+# stop 4, profit 4, rolling period 125, prior_period 125, trade_direction Long, SD low = 1, SD High = 2
 
 #-----------------------------------------------------------------------Legacy Code
 # Change Model

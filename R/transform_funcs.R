@@ -1,4 +1,5 @@
-transform_asset_to_weekly <- function(asset_data= aud_usd) {
+transform_asset_to_weekly <- function(asset_data= aud,
+                                      filt_NA_lead_values = TRUE) {
 
   transformed_asset_data <- asset_data %>%
     mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))  %>%
@@ -30,9 +31,19 @@ transform_asset_to_weekly <- function(asset_data= aud_usd) {
       Week_Change_lag = week_start_price - lag(week_start_price) ,
       # Month_Change_US_EXPORT = US_Export  - lag(US_Export ),
       # Month_Change_Aus_Export  = Aus_Export   - lag(Aus_Export  )
-    ) %>%
-    filter(!is.na(Week_Change), !is.na(Week_Change_lag)) %>%
-    dplyr::select(-Vol., -`Change %`)
+    )
+
+  if(filt_NA_lead_values) {
+    transformed_asset_data <-
+      transformed_asset_data %>%
+      filter(!is.na(Week_Change), !is.na(Week_Change_lag)) %>%
+      dplyr::select(-Vol., -`Change %`)
+  } else {
+    transformed_asset_data <-
+      transformed_asset_data %>%
+      filter(!is.na(Week_Change_lag)) %>%
+      dplyr::select(-Vol., -`Change %`)
+  }
 
   return(transformed_asset_data)
 

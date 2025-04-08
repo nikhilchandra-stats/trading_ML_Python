@@ -1,2 +1,12 @@
 library(tidyverse)
 library(niksmacrohelpers)
+
+library("tidyverse")
+library("lubridate")
+library("jsonlite")
+library("httr")
+library(curl)
+library(zoo)
+library(glue)
+library(expm)
+library(helpeR)

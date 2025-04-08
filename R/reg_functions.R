@@ -1252,11 +1252,27 @@ get_US_exports <- function() {
 
 }
 
-get_EUR_exports <- function(  path_var = "C:/Users/Nikhil Chandra/Documents/51000-0006_en_flat.csv") {
+#' How to get data:
+#'
+#' https://www-genesis.destatis.de/datenbank/online/statistic/51000/table/51000-0006/
+#'
+#' Customise the view and then click on the year values and tick all the way back to 2011
+#'
+#' @param path_var
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_EUR_exports <- function(
+    # path_var = "C:/Users/Nikhil Chandra/Documents/51000-0006_en_flat.csv"
+  path_var = "C:/Users/Nikhil Chandra/Documents/51000-0006_en_flat_2025-04-08.csv"
+    ) {
 
   test <- read_delim(path_var, ";")
 
   returned_EUR_trade <- test %>%
+    filter(value_unit == "EUR 1000") %>%
     dplyr::select(`3_variable_attribute_label`, value,
                   value_variable_label, time, `1_variable_attribute_label`) %>%
     mutate(
@@ -1277,9 +1293,11 @@ get_EUR_exports <- function(  path_var = "C:/Users/Nikhil Chandra/Documents/5100
         as.character() %>%
         as.Date(format = "%Y-%B-%d")
     ) %>%
-    dplyr::select(date, pivot_wide_var, value)
+    dplyr::select(date, pivot_wide_var, value) %>%
+    mutate(value = as.numeric(value))
 
-  eur_trade_totals <- returned_EUR_trade %>%
+  eur_trade_totals <-
+    returned_EUR_trade %>%
     group_by(date) %>%
     summarise(value = sum(value, na.rm = T),
               pivot_wide_var = "EUR Export Total")
@@ -1287,7 +1305,7 @@ get_EUR_exports <- function(  path_var = "C:/Users/Nikhil Chandra/Documents/5100
   returned_EUR_trade2 <-
     returned_EUR_trade %>%
     bind_rows(eur_trade_totals) %>%
-    pivot_wider(names_from = pivot_wide_var, values_from = value) %>%
+    pivot_wider(names_from = pivot_wide_var, values_from = value, values_fn = sum) %>%
     mutate(
       date =
         case_when(
@@ -1449,11 +1467,11 @@ run_reg_weekly_variant <- function(
 
   testing_data_train <- testing_data %>%
     group_by(Asset) %>%
-    slice_head(n = 300) %>%
+    slice_head(prop = 0.6) %>%
     ungroup()
   testing_data_test <- testing_data %>%
     group_by(Asset) %>%
-    slice_tail(n = 250)%>%
+    slice_tail(prop = 0.4)%>%
     ungroup()
 
   remove_spaces_in_names <- names(testing_data_train) %>%
