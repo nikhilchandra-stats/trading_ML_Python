@@ -215,6 +215,10 @@ trade_results_sum_filt <- trade_results_sum %>%
   group_by(trade_direction) %>%
   slice_max(Perc, n = 5)
 
+write.csv(trade_results_sum_filt,
+          file = "data/Poisson_Trade_Results.csv",
+          row.names = FALSE)
+
 #-------------
 join_trade_infor <-
   trade_results_sum_filt %>%

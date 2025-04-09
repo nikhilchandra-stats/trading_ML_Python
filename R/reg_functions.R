@@ -1360,7 +1360,9 @@ run_reg_weekly_variant <- function(
       map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
                  transform_asset_to_weekly()  %>%
                  mutate(Asset = .x[1,2] %>% as.character())
-      )
+      ),
+
+    train_percent = 0.6
   ) {
 
   trading_dat <- asset_data_combined
@@ -1467,11 +1469,11 @@ run_reg_weekly_variant <- function(
 
   testing_data_train <- testing_data %>%
     group_by(Asset) %>%
-    slice_head(prop = 0.6) %>%
+    slice_head(prop = train_percent) %>%
     ungroup()
   testing_data_test <- testing_data %>%
     group_by(Asset) %>%
-    slice_tail(prop = 0.4)%>%
+    slice_tail(prop = (1 - train_percent) )%>%
     ungroup()
 
   remove_spaces_in_names <- names(testing_data_train) %>%
