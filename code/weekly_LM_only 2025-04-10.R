@@ -44,56 +44,34 @@ asset_list_oanda <- get_oanda_symbols() %>%
                     "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
                     "CH20_CHF", "ESPIX_EUR", "XPT_USD", "EUR_AUD", "SOYBN_USD", "US2000_USD",
                     "BCO_USD")
-        )
-
-asset_infor <- get_instrument_info()
-
-extracted_asset_data <- list()
-save_path_oanda_assets <- "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/"
-for (i in 1:length(asset_list_oanda)) {
-
-  extracted_asset_data[[i]] <-
-    get_oanda_data_candles_normalised(
-      assets = c(asset_list_oanda[i]),
-      granularity = "D",
-      date_var = "2011-01-01",
-      date_var_start = NULL,
-      time = "T15:00:00.000000000Z",
-      how_far_back = 5000,
-      bid_or_ask = "bid",
-      sleep_time = 0
-    ) %>%
-    mutate(
-      Asset = asset_list_oanda[i]
-    )
-
-  write.csv(
-    x = extracted_asset_data[[i]],
-    file= glue::glue("{save_path_oanda_assets}{asset_list_oanda[i]}.csv"),
-    row.names = FALSE
   )
 
-}
-
 asset_infor <- get_instrument_info()
+
+extracted_asset_data <-
+  read_all_asset_data(
+    asset_list_oanda = asset_list_oanda,
+    save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+    read_csv_or_API = "csv"
+  )
 
 asset_data_combined <- extracted_asset_data %>%
   map_dfr(~ .x %>%
             transform_asset_to_weekly(filt_NA_lead_values = FALSE)
-          )
+  )
+asset_data_daily_raw <- extracted_asset_data %>% map_dfr(bind_rows)
+asset_data_daily <- asset_data_daily_raw
 
 reg_data_list <- run_reg_weekly_variant(
   raw_macro_data = raw_macro_data,
   eur_data = eur_data,
   AUD_exports_total = AUD_exports_total,
   USD_exports_total = USD_exports_total,
-  asset_data_combined = asset_data_combined
+  asset_data_combined = asset_data_combined,
+  train_percent = 0.57
 )
 
 regression_prediction <- reg_data_list[[2]]
-
-asset_data_daily_raw <- extracted_asset_data %>% map_dfr(bind_rows)
-asset_data_daily <- asset_data_daily_raw
 
 raw_LM_trade_df <- reg_data_list[[2]]
 
@@ -154,8 +132,8 @@ for (j in 1:dim(trade_params)[1]) {
     generic_trade_finder_conservative(
       tagged_trades = temp_for_trade,
       asset_data_daily_raw = asset_data_daily_raw,
-      stop_factor = profit_factor,
-      profit_factor = stop_factor,
+      stop_factor =  stop_factor,
+      profit_factor = profit_factor,
       trade_col = "trade_col",
       date_col = "Date",
       max_hold_period = 100,
@@ -239,7 +217,9 @@ new_trades_this_week_filt <-
 
     profit_points_pip =  profit_points/(10^pipLocation),
     stop_points_pip = stop_points/(10^pipLocation)
-  )
+  ) %>%
+  filter(!is.na(trade_col)) %>%
+  filter(Perc >= 0.55)
 
 write.csv(retest_data_filt %>%
             mutate(stop_factor = stop_factor,

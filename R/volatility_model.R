@@ -66,7 +66,7 @@ get_volatility_trades <- function(
 
   lm_model_low <-
     lm(data = training_data,
-       formula = absolute_open_to_high ~
+       formula = absolute_open_to_low_mean ~
          lag_open_to_high + lag_open_to_low +
          EUR_check + AUD_check +
          USD_check + GBP_check +
@@ -119,7 +119,7 @@ get_volatility_trades <- function(
       volume_1_stop_dollar = stop_value_pip*(10^pipLocation),
       volume_1_profit_dollar = profit_value_pip*(10^pipLocation),
 
-      volume_required = round(risk_dollar_value/volume_1_stop_dollar),
+      volume_required = (risk_dollar_value/stop_value_pip)/(10^pipLocation),
 
       stop_volume_equated_dollar = volume_required*stop_value_pip*(10^pipLocation),
       profit_volume_equated_dollar = volume_required*profit_value_pip*(10^pipLocation)

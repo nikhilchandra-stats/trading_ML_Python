@@ -420,3 +420,77 @@ get_instrument_info <- function( account_var = 2){
 
 }
 
+
+
+#' read_all_asset_data
+#'
+#' @param asset_list_oanda
+#' @param save_path_oanda_assets
+#' @param read_csv_or_API
+#'
+#' @return
+#' @export
+#'
+#' @examples
+read_all_asset_data <- function(
+    asset_list_oanda = get_oanda_symbols() %>%
+      keep( ~ .x %in% c("HK33_HKD", "USD_JPY", "BTC_USD", "AUD_NZD", "GBP_CHF",
+                        "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD", "USB02Y_USD",
+                        "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK", "DE30_EUR",
+                        "AUD_CAD", "UK10YB_GBP", "XPD_USD", "UK100_GBP", "USD_CHF", "GBP_NZD",
+                        "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
+                        "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+                        "XAU_USD", "DE10YB_EUR", "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+                        "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
+                        "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD", "USB10Y_USD",
+                        "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
+                        "CH20_CHF", "ESPIX_EUR", "XPT_USD", "EUR_AUD", "SOYBN_USD", "US2000_USD",
+                        "BCO_USD")
+      ),
+    save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+    read_csv_or_API = "csv"
+) {
+
+  if(read_csv_or_API == "csv") {
+    extracted_asset_data <- fs::dir_info(save_path_oanda_assets) %>%
+      pull(path) %>%
+      map(read_csv)
+  }
+
+  if(read_csv_or_API == "API") {
+
+    asset_infor <- get_instrument_info()
+    extracted_asset_data <- list()
+
+    for (i in 1:length(asset_list_oanda)) {
+
+      extracted_asset_data[[i]] <-
+        get_oanda_data_candles_normalised(
+          assets = c(asset_list_oanda[i]),
+          granularity = "D",
+          date_var = "2011-01-01",
+          date_var_start = NULL,
+          time = "T15:00:00.000000000Z",
+          how_far_back = 5000,
+          bid_or_ask = "bid",
+          sleep_time = 0
+        ) %>%
+        mutate(
+          Asset = asset_list_oanda[i]
+        )
+
+      write.csv(
+        x = extracted_asset_data[[i]],
+        file= glue::glue("{save_path_oanda_assets}{asset_list_oanda[i]}.csv"),
+        row.names = FALSE
+      )
+
+    }
+
+  }
+
+  return(extracted_asset_data)
+
+}
+
+

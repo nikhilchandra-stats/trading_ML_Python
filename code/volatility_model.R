@@ -23,6 +23,7 @@ extracted_asset_data <- list()
 save_path_oanda_assets <- "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/"
 for (i in 1:length(asset_list_oanda)) {
 
+  Sys.sleep(1)
   extracted_asset_data[[i]] <-
     get_oanda_data_candles_normalised(
       assets = c(asset_list_oanda[i]),
@@ -50,10 +51,7 @@ asset_data_daily_raw <- extracted_asset_data  %>%
   map_dfr(bind_rows)
 
 asset_data_daily_raw_week <- extracted_asset_data  %>%
-  map_dfr(~ .x
-            # transform_asset_to_weekly(filt_NA_lead_values = FALSE,
-            #                           drop_high_low = FALSE)
-          ) %>%
+  map_dfr(~ .x) %>%
   mutate(
     week_date = Date,
     week_start_price = Price,
@@ -62,7 +60,7 @@ asset_data_daily_raw_week <- extracted_asset_data  %>%
   ) %>%
   dplyr::select(-Date, Price, -Low, -High, -Open)
 
- vol_data <- asset_data_daily_raw_week %>%
+vol_data <- asset_data_daily_raw_week %>%
   group_by(Asset) %>%
   arrange(week_date, .by_group = TRUE) %>%
   ungroup() %>%
@@ -104,10 +102,12 @@ asset_data_daily_raw_week <- extracted_asset_data  %>%
      ZAR_check = ifelse(str_detect(Asset, "ZAR"), 1, 0)
    )
 
- training_data <- vol_data %>%
-   slice_head(prop = 0.5)
+training_data <- vol_data %>%
+  group_by(Asset) %>%
+  slice_head(prop = 0.5) %>%
+  ungroup()
 
- lm_model_high <-
+lm_model_high <-
    lm(data = training_data,
       formula = absolute_open_to_high ~
         lag_open_to_high + lag_open_to_low +
@@ -120,7 +120,7 @@ summary(lm_model_high)
 
 lm_model_low <-
   lm(data = training_data,
-     formula = absolute_open_to_high ~
+     formula = absolute_open_to_low_mean ~
        lag_open_to_high + lag_open_to_low +
        EUR_check + AUD_check +
        USD_check + GBP_check +
@@ -131,18 +131,24 @@ summary(lm_model_low)
 
 testing_data <- vol_data %>%
    ungroup() %>%
+   group_by(Asset) %>%
    slice_tail(prop = 0.5) %>%
+   ungroup() %>%
    mutate(predicted_open_high_vol =
             predict.lm(lm_model_high,
                        vol_data %>%
                          ungroup() %>%
-                         slice_tail(prop = 0.5) ) %>% as.numeric(),
+                         group_by(Asset) %>%
+                         slice_tail(prop = 0.5) %>%
+                         ungroup() ) %>% as.numeric(),
 
           predicted_open_low_vol =
             predict.lm(lm_model_low,
                        vol_data %>%
                          ungroup() %>%
-                         slice_tail(prop = 0.5) ) %>% as.numeric()
+                         group_by(Asset) %>%
+                         slice_tail(prop = 0.5) %>%
+                         ungroup()  ) %>% as.numeric()
           ) %>%
    mutate(
      error_high = predicted_open_high_vol - absolute_open_to_high,
@@ -160,12 +166,14 @@ error_summary <-
           quant_low_75 = quantile(error_low, 0.75, na.rm = T)
           )
 
+sd_value <- 0
+
 trading_data_vol <- testing_data %>%
   mutate(
     trade_col =
       case_when(
-        predicted_open_high_vol >= absolute_open_to_high_mean + 0*absolute_open_to_high_sd|
-          predicted_open_low_vol >= absolute_open_to_low_mean + 0*absolute_open_to_low_sd ~ "TRADE"
+        predicted_open_high_vol >= median(predicted_open_high_vol, na.rm = T) + sd_value*sd(predicted_open_high_vol, na.rm = T)|
+          predicted_open_low_vol >= median(predicted_open_low_vol, na.rm = T) + sd_value*sd(predicted_open_low_vol, na.rm = T) ~ "TRADE"
       )
   )
 
@@ -177,6 +185,13 @@ daily_price_with_vol_trade <-
     by = c("Date" = "week_date", "Asset")
   )
 
+asset_infor <- get_instrument_info()
+
+mean_values_by_asset_for_loop =
+  wrangle_asset_data(
+    asset_data_daily_raw = asset_data_daily_raw,
+    summarise_means = TRUE
+  )
 
 accumualtor <- list()
 prof_stop_tibble <-
@@ -235,9 +250,40 @@ vol_trade_summary <- accumualtor %>%
   map_dfr(bind_rows)
 
 vol_trade_summary_total <- vol_trade_summary %>%
+  mutate(
+    per_symbol_profitable =
+      case_when(
+        Profit > 0 ~ 1,
+        Profit < 0 ~ 0
+      )
+  ) %>%
   group_by(prof_value, loss_value) %>%
   summarise(Profit_dollar  = sum(Profit_dollar , na.rm = T),
-            Profit  = sum(Profit , na.rm = T))
+            Profit  = sum(Profit , na.rm = T),
+            avg_perc = mean(Perc, na.rm = T),
+            avg_win = mean(average_win_pip, na.rm = T),
+            avg_loss = mean(average_loss_pip, na.rm = T),
+            per_symbol_profitable = sum(per_symbol_profitable, na.rm = T),
+            total_symbols = n()
+            ) %>%
+  mutate(
+    expected_win_avg = avg_perc*avg_win,
+    expected_return_avg = avg_perc*avg_win - (1 - avg_perc)*avg_loss,
+    per_symbol_profitable_perc =per_symbol_profitable/total_symbols,
+    symbol_weighted_profit = per_symbol_profitable_perc*Profit
+  )
+
+vol_trade_summary_filt <- vol_trade_summary %>%
+  ungroup() %>%
+  #filter for minimum desired per symbol profitable
+  # filter(per_symbol_profitable_perc > 0.95)
+  filter(prof_value == 1.4 & loss_value < 0.57 & loss_value > 0.55) %>%
+  left_join(asset_infor %>%
+              dplyr::select(Asset = name, pipLocation)
+            ) %>%
+  mutate(
+    Profit_Pip = Profit/(10^pipLocation)
+  )
 
 write.csv(x = vol_trade_summary_total,
           file = "data/volatility_trade_params.csv",
@@ -250,11 +296,12 @@ latest_trades_to_take <- daily_price_with_vol_trade %>%
   slice_max(Date)
 
 #--------------------------------------------------------------------------------
+
 generic_trade_finder_volatility <- function(
     tagged_trades = daily_price_with_vol_trade,
     asset_data_daily_raw = asset_data_daily_raw,
     stop_factor = 0.3,
-    profit_factor = 0.5,
+    profit_factor = 0.8,
     trade_col = "trade_col",
     date_col = "Date",
     max_hold_period = 100,
@@ -296,7 +343,7 @@ generic_trade_finder_volatility <- function(
       return_summary = FALSE,
       additional_grouping_vars = additional_grouping_vars
     ) %>%
-    map_dfr(bind_rows)
+    pluck(2)
 
   trade_results_short_losses <- trade_results_short %>%
     dplyr::select(Date, Asset, stop_value, trade_category) %>%
@@ -328,7 +375,7 @@ generic_trade_finder_volatility <- function(
       return_summary = FALSE,
       additional_grouping_vars = additional_grouping_vars
     ) %>%
-    map_dfr(bind_rows)
+    pluck(1)
 
   trade_results_long_losses <- trade_results_long %>%
     dplyr::select(Date, Asset, stop_value, trade_category) %>%
@@ -356,7 +403,8 @@ generic_trade_finder_volatility <- function(
       stop_value = stop_value/(10^pipLocation)
     ) %>%
     mutate(
-      required_volume = prof_loss_dollar_equiv/profit_value
+      required_volume =prof_loss_dollar_equiv/stop_value,
+      required_volume = round(required_volume/(10^pipLocation))
     )  %>%
     dplyr::select(
       Asset, required_volume, pipLocation
@@ -370,7 +418,12 @@ generic_trade_finder_volatility <- function(
              .fns = ~ ifelse(is.na(.), 0, .))
     ) %>%
     mutate(
-      Profit = `Long Direction Win` - (`Long Direction Loss` + `Short Direction Loss`)
+      Profit = `Long Direction Win` - (`Long Direction Loss` + `Short Direction Loss`),
+      win_loss =
+        case_when(
+          Profit < 0 ~ 0,
+          Profit > 0 ~ 1
+          )
     ) %>%
     left_join(
       volume_required
@@ -382,10 +435,24 @@ generic_trade_finder_volatility <- function(
 
   variant_1_summary <-
     variant_1 %>%
+    mutate(
+      win_value = case_when(Profit > 0 ~ `Long Direction Win` - `Short Direction Loss`),
+      loss_value = case_when(Profit < 0 ~ `Long Direction Loss` + `Short Direction Loss`)
+    ) %>%
+    group_by(Asset) %>%
+    fill(c(win_value, loss_value), .direction = "updown") %>%
     group_by(Asset) %>%
     summarise(
       Profit = sum(Profit, na.rm = T),
-      Profit_dollar = sum(Profit_dollar, na.rm = T)
+      Profit = sum(Profit/(10^pipLocation), na.rm = T),
+      Profit_dollar = sum(Profit_dollar, na.rm = T),
+      win_loss  = sum(win_loss),
+      total_trades = n(),
+      average_win_pip = round(mean( (win_value)/(10^pipLocation), na.rm = T), digits = 4),
+      average_loss_pip = round(mean( (loss_value)/(10^pipLocation), na.rm = T), digits = 4)
+    )  %>%
+    mutate(
+      Perc =win_loss/total_trades
     ) %>%
     mutate(
       Variant = "Short Loss join Long Win and Long Loss"
@@ -400,7 +467,12 @@ generic_trade_finder_volatility <- function(
              .fns = ~ ifelse(is.na(.), 0, .))
     ) %>%
     mutate(
-      Profit = `Short Direction Win` - (`Long Direction Loss` + `Short Direction Loss`)
+      Profit = `Short Direction Win` - (`Long Direction Loss` + `Short Direction Loss`),
+      win_loss =
+        case_when(
+          Profit < 0 ~ 0,
+          Profit > 0 ~ 1
+        )
     ) %>%
     left_join(
       volume_required
@@ -412,10 +484,24 @@ generic_trade_finder_volatility <- function(
 
   variant_2_summary <-
     variant_2 %>%
+    mutate(
+      win_value = case_when(Profit > 0 ~ `Short Direction Win` - `Long Direction Loss`),
+      loss_value = case_when(Profit < 0 ~ `Long Direction Loss` + `Short Direction Loss`)
+    ) %>%
+    group_by(Asset) %>%
+    fill(c(win_value, loss_value), .direction = "updown") %>%
     group_by(Asset) %>%
     summarise(
       Profit = sum(Profit, na.rm = T),
-      Profit_dollar = sum(Profit_dollar, na.rm = T)
+      Profit = sum(Profit/(10^pipLocation), na.rm = T),
+      Profit_dollar = sum(Profit_dollar, na.rm = T),
+      win_loss  = sum(win_loss),
+      total_trades = n(),
+      average_win_pip = round(mean( (win_value)/(10^pipLocation), na.rm = T), digits = 4),
+      average_loss_pip = round(mean( (loss_value)/(10^pipLocation), na.rm = T), digits = 4)
+    )  %>%
+    mutate(
+      Perc =win_loss/total_trades
     ) %>%
     mutate(
       Variant = "Long Loss join Short Win and Short Loss"
