@@ -56,53 +56,45 @@ bind_pois_to_daily_price_temp <- function(raw_pois_data = raw_pois_data,
 
 }
 
-
 asset_list_oanda <- get_oanda_symbols() %>%
-  keep( ~ .x %in% c("HK33_HKD", "USD_JPY", "BTC_USD", "AUD_NZD", "GBP_CHF",
-                    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD", "USB02Y_USD",
-                    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK", "DE30_EUR",
-                    "AUD_CAD", "UK10YB_GBP", "XPD_USD", "UK100_GBP", "USD_CHF", "GBP_NZD",
+  keep( ~ .x %in% c("HK33_HKD", "USD_JPY",
+                    # "BTC_USD",
+                    "AUD_NZD", "GBP_CHF",
+                    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
+                    # "USB02Y_USD",
+                    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
+                    "DE30_EUR",
+                    "AUD_CAD",
+                    # "UK10YB_GBP",
+                    "XPD_USD",
+                    "UK100_GBP",
+                    "USD_CHF", "GBP_NZD",
                     "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
                     "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
-                    "XAU_USD", "DE10YB_EUR", "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+                    "XAU_USD",
+                    "DE10YB_EUR",
+                    "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
                     "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
-                    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD", "USB10Y_USD",
+                    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+                    # "USB10Y_USD",
                     "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
-                    "CH20_CHF", "ESPIX_EUR", "XPT_USD", "EUR_AUD", "SOYBN_USD", "US2000_USD",
-                    "BCO_USD")
+                    # "CH20_CHF", "ESPIX_EUR", "XPT_USD",
+                    "EUR_AUD", "SOYBN_USD", "US2000_USD",
+                    "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD", "AUD_JPY", "AUD_SEK")
   )
 
 asset_infor <- get_instrument_info()
 
-extracted_asset_data <- list()
-save_path_oanda_assets <- "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/"
-for (i in 1:length(asset_list_oanda)) {
-
-  extracted_asset_data[[i]] <-
-    get_oanda_data_candles_normalised(
-      assets = c(asset_list_oanda[i]),
-      granularity = "D",
-      date_var = "2011-01-01",
-      date_var_start = NULL,
-      time = "T15:00:00.000000000Z",
-      how_far_back = 5000,
-      bid_or_ask = "bid",
-      sleep_time = 0
-    ) %>%
-    mutate(
-      Asset = asset_list_oanda[i]
-    )
-
-  write.csv(
-    x = extracted_asset_data[[i]],
-    file= glue::glue("{save_path_oanda_assets}{asset_list_oanda[i]}.csv"),
-    row.names = FALSE
+extracted_asset_data <-
+  read_all_asset_data(
+    asset_list_oanda = asset_list_oanda,
+    save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+    read_csv_or_API = "API"
   )
 
-}
-
-asset_data_combined_dily <- extracted_asset_data %>% map_dfr(bind_rows)
-
+asset_data_combined <- extracted_asset_data %>% map_dfr(bind_rows)
+asset_data_daily_raw <- extracted_asset_data %>% map_dfr(bind_rows)
+asset_data_daily <- asset_data_daily_raw
 
 rolling_periods <- c(5,30,60,100,150,200, 250, 300)
 prior_periods <- c(5,30,60,100,150,200, 250, 300)
@@ -115,7 +107,7 @@ for (j in 1:length(rolling_periods)) {
     for (k in 1:length(prior_weights)) {
       c = c + 1
       temp <- get_pois_calc(
-        asset_data = asset_data_combined_dily,
+        asset_data = asset_data_daily,
         rolling_period = rolling_periods[j],
         lm_dependant_var = "Weekly_Close_to_Close",
         independant_var = c("Pois_Change"),
@@ -151,8 +143,6 @@ sd_fac_low <- 0.5
 sd_fac_high <- 200
 stop_fac <- 2.5
 prof_fac <- 5
-
-asset_data_daily_raw <- asset_data_combined_dily
 
 mean_values_by_asset_for_loop =
   wrangle_asset_data(
@@ -213,7 +203,11 @@ trade_results_sum <- trade_results %>%
 trade_results_sum_filt <- trade_results_sum %>%
   filter(Total_Trades > 50) %>%
   group_by(trade_direction) %>%
-  slice_max(Perc, n = 5)
+  slice_max(Perc, n = 10)  %>%
+  mutate(
+    risk_weighted_return =
+      Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
+  )
 
 write.csv(trade_results_sum_filt,
           file = "data/Poisson_Trade_Results.csv",
@@ -225,10 +219,10 @@ join_trade_infor <-
   distinct(stop_factor, profit_factor, rolling_period, prior_period ,prior_weight, trade_direction, Perc) %>%
   rename(trade_col = trade_direction)
 
-latest_trades <- trade_frame %>%
-  filter(Date == "2025-04-06") %>%
-  left_join(join_trade_infor) %>%
-  filter(!is.na(trade_col))
+latest_trades <- trade_frame  %>%
+  filter(!is.na(trade_col)) %>%
+  slice_max(Date)
+  left_join(join_trade_infor)
 
 latest_trades_long <- latest_trades %>%
   filter(!is.na(Perc)) %>%

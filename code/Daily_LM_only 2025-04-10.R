@@ -32,17 +32,31 @@ AUD_exports_total <- AUD_exports_total %>%
 
 
 asset_list_oanda <- get_oanda_symbols() %>%
-  keep( ~ .x %in% c("HK33_HKD", "USD_JPY", "BTC_USD", "AUD_NZD", "GBP_CHF",
-                    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD", "USB02Y_USD",
-                    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK", "DE30_EUR",
-                    "AUD_CAD", "UK10YB_GBP", "XPD_USD", "UK100_GBP", "USD_CHF", "GBP_NZD",
+  keep( ~ .x %in% c("HK33_HKD", "USD_JPY",
+                    # "BTC_USD",
+                    "AUD_NZD", "GBP_CHF",
+                    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
+                    "USB02Y_USD",
+                    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
+                    "DE30_EUR",
+                    "AUD_CAD",
+                    "UK10YB_GBP",
+                    "XPD_USD",
+                    "UK100_GBP",
+                    "USD_CHF", "GBP_NZD",
                     "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
                     "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
-                    "XAU_USD", "DE10YB_EUR", "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+                    "XAU_USD",
+                    "DE10YB_EUR",
+                    "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
                     "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
-                    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD", "USB10Y_USD",
+                    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+                    "USB10Y_USD",
                     "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
-                    "CH20_CHF", "ESPIX_EUR", "XPT_USD", "EUR_AUD", "SOYBN_USD", "US2000_USD",
+                    "CH20_CHF", "ESPIX_EUR",
+                    "XPT_USD",
+                    "EUR_AUD", "SOYBN_USD",
+                    "US2000_USD",
                     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD", "AUD_JPY", "AUD_SEK")
   )
 
@@ -106,13 +120,45 @@ mean_values_by_asset_for_loop =
 
 trade_params <-
   tibble(
-    sd_factor_low = c(0,1,2,3,4,5,6,7,8,9,10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+    sd_factor_low = c(0,0.5, 1, 1.5, 2, 2.5, 3, 4,5,6,7,8,9,10, 12,
+                      13, 14, 15)
   ) %>%
   mutate(
     sd_factor_high = sd_factor_low*2,
     sd_factor_high = ifelse(sd_factor_high == 0, 1, sd_factor_high)
+  )  %>%
+  bind_rows(
+    tibble(
+      sd_factor_low = c(0,0.5, 1, 1.5, 2, 2.5, 3, 4,5,6,7,8,9,10, 12,
+                        13, 14, 15)
+    ) %>%
+      mutate(
+        sd_factor_high = sd_factor_low*1.5,
+        sd_factor_high = ifelse(sd_factor_high == 0, 1*2, sd_factor_high)
+      )
+  ) %>%
+  bind_rows(
+    tibble(
+      sd_factor_low = c(0,0.5, 1, 1.5, 2, 2.5, 3, 4,5,6,7,8,9,10, 12,
+                        13, 14, 15)
+    ) %>%
+      mutate(
+        sd_factor_high = sd_factor_low*3,
+        sd_factor_high = ifelse(sd_factor_high == 0, 1*3, sd_factor_high)
+      )
+  ) %>%
+  bind_rows(
+    tibble(
+      sd_factor_low = c(0,0.5, 1, 1.5, 2, 2.5, 3, 4,5,6,7,8,9,10, 12,
+                        13, 14, 15)
+    ) %>%
+      mutate(
+        sd_factor_high = sd_factor_low*4,
+        sd_factor_high = ifelse(sd_factor_high == 0, 1*4, sd_factor_high)
+      )
   )
-profit_factor  = 6
+
+profit_factor  = 7
 stop_factor  = 4
 
 trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
@@ -184,7 +230,9 @@ for (j in 1:dim(trade_params)[1]) {
           between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Short"
         )
     ) %>%
-    dplyr::slice_max(Date, n = 1) %>%
+    # mutate(Date = as_date(Date)) %>%
+    # filter(Date >= today()  - days(5))
+    dplyr::slice_max(Date) %>%
     mutate(
       sd_factor_low = sd_factor_low,
       sd_factor_high = sd_factor_high
@@ -202,19 +250,18 @@ new_trades_this_week <- new_trades_this_week %>% map_dfr(bind_rows)
 
 retest_data_filt <- retest_data %>%
   mutate(Total = `TRUE LOSS` + `TRUE WIN`) %>%
-  filter(Total > 100) %>%
+  filter(Total > 50) %>%
   group_by(trade_direction) %>%
-  slice_max(Perc, n = 10)  %>%
+  slice_max(Perc, n = 15)  %>%
   mutate(
     risk_weighted_return =
       Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
   )
 
-risk_dollar_value <- 25
+risk_dollar_value <- 30
 
 new_trades_this_week_filt <-
   new_trades_this_week %>%
-  filter(!is.na(trade_col)) %>%
   group_by(Asset, trade_col) %>%
   slice_max(Perc) %>%
   left_join(mean_values_by_asset_for_loop)  %>%
@@ -229,13 +276,13 @@ new_trades_this_week_filt <-
     profit_points_pip =  profit_points/(10^pipLocation),
     stop_points_pip = stop_points/(10^pipLocation)
   ) %>%
-  filter(!is.na(trade_col))  %>%
   mutate(
     risk_weighted_return =
       Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
   ) %>%
+  filter(!is.na(trade_col))  %>%
   # filter(risk_weighted_return > 0.2) %>%
-  filter(risk_weighted_return > 0.1) %>%
+  filter(risk_weighted_return >= 0.1) %>%
   mutate(
 
     mean_pip = mean_daily/(10^pipLocation),
@@ -261,97 +308,55 @@ currency_conversion <-
     tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
   )
 
-analyse_volume <- new_trades_this_week_filt %>%
-  distinct(Asset, Price, stop_points, stop_points_pip, profit_points, pipLocation, minimumTradeSize) %>%
-  mutate(
-    minimumTradeSize = abs(log10(as.numeric(minimumTradeSize)))
-  ) %>%
-  mutate(
-    asset_size = floor(log10(Price))
-  ) %>%
-  mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")) %>%
-  left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
-  mutate(
-    volume_adjustment =
-      case_when(
-        # asset_size == -1 ~ 1,
-        # asset_size == 0 ~ 1,
-        # asset_size == 1 ~ 0.1,
-        # asset_size == 2 ~ 0.01,
-        # asset_size == 3 ~ 1,
-        # asset_size == 4 ~ 1,
-        # TRUE ~ 1,
-
-        str_detect(Asset, "ZAR") ~ 10,
-        str_detect(Asset, "NOK") ~ 10,
-        str_detect(Asset, "SEK") ~ 10,
-        TRUE ~ 1
-      ),
-    #Unweighted
-    loss_per_1 = 1*stop_points,
-    loss_per_10 = 10*stop_points,
-    loss_per_100 = 100*stop_points,
-    loss_per_1000 = 1000*stop_points,
-    risk_dollar_value_AUD =
-      case_when(
-        !is.na(adjusted_conversion) ~ risk_dollar_value*adjusted_conversion,
-        TRUE ~ risk_dollar_value
-      ),
-    reverse_volume_calc = risk_dollar_value/stop_points,
-    reverse_volume_calc =
-      case_when(
-        !is.na(adjusted_conversion) ~ reverse_volume_calc/adjusted_conversion,
-        TRUE ~ reverse_volume_calc
-      ),
-    reverse_volume_calc_pip_weighted = reverse_volume_calc*(volume_adjustment),
-    reverse_volume_calc_pip_weighted = round(reverse_volume_calc_pip_weighted, minimumTradeSize),
-    volume_required = reverse_volume_calc_pip_weighted
-  )
-
-
-
 required_trades <-
   new_trades_this_week_filt %>%
   mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")) %>%
-  mutate(
-    minimumTradeSize = abs(log10(as.numeric(minimumTradeSize)))
-  ) %>%
   left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
+  mutate(
+    minimumTradeSize = abs(log10(as.numeric(minimumTradeSize))),
+    marginRate = as.numeric(marginRate),
+    pipLocation = as.numeric(pipLocation),
+    displayPrecision = as.numeric(displayPrecision)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    stop_points = round(stop_points, abs(pipLocation) ),
+    profit_points = round(profit_points, abs(pipLocation) )
+  ) %>%
   mutate(
     asset_size = floor(log10(Price)),
     volume_adjustment =
       case_when(
-        # asset_size == -1 ~ 1,
-        # asset_size == 0 ~ 1,
-        # asset_size == 1 ~ 0.1,
-        # asset_size == 2 ~ 0.01,
-        # asset_size == 3 ~ 1,
-        # asset_size == 4 ~ 1,
-        # TRUE ~ 1,
-
-        str_detect(Asset, "ZAR") ~ 100,
-        str_detect(Asset, "NOK") ~ 10,
-        str_detect(Asset, "SEK") ~ 10,
+        str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
+        str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
+        str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
+        str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
+        str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
         TRUE ~ 1
       )
   ) %>%
   mutate(
-    risk_dollar_value_AUD =
+    AUD_Price =
       case_when(
-        !is.na(adjusted_conversion) ~ risk_dollar_value*adjusted_conversion,
-        TRUE ~ risk_dollar_value
+        !is.na(adjusted_conversion) ~ (Price*adjusted_conversion)/volume_adjustment,
+        TRUE ~ Price/volume_adjustment
       ),
-    reverse_volume_calc = risk_dollar_value/stop_points,
-    reverse_volume_calc =
+    stop_value_AUD =
       case_when(
-        !is.na(adjusted_conversion) ~ reverse_volume_calc/adjusted_conversion,
-        TRUE ~ reverse_volume_calc
+        !is.na(adjusted_conversion) ~ (stop_points*adjusted_conversion)/volume_adjustment,
+        TRUE ~ stop_points/volume_adjustment
       ),
-    reverse_volume_calc_pip_weighted = reverse_volume_calc*(volume_adjustment),
-    reverse_volume_calc_pip_weighted = round(reverse_volume_calc_pip_weighted, minimumTradeSize),
-    volume_required = reverse_volume_calc_pip_weighted,
-    estimated_margin = as.numeric(marginRate)*volume_required
-  )
+
+    volume_unadj =  risk_dollar_value/stop_value_AUD,
+    volume_required = volume_unadj,
+    volume_adj = round(volume_unadj, minimumTradeSize),
+    minimal_loss =  volume_adj*stop_value_AUD,
+    trade_value = AUD_Price*volume_adj*marginRate,
+    estimated_margin = trade_value,
+    volume_required = volume_adj
+  ) %>%
+  arrange(desc(estimated_margin)) %>%
+  filter(estimated_margin <= 120)
 
 write.csv(retest_data_filt %>%
             mutate(stop_factor = stop_factor,
@@ -372,6 +377,7 @@ current_trades <- current_trades %>%
   rename(Asset = instrument )
 
 trade_list_for_today <- required_trades %>%
+  filter(volume_required > 0) %>%
   left_join(current_trades %>%
               mutate(units  =
                        case_when(
@@ -387,18 +393,6 @@ trade_list_for_today <- required_trades %>%
       case_when(
         trade_col == "Long" ~ volume_required,
         trade_col == "Short" ~ -1*volume_required,
-      )
-  ) %>%
-  mutate(
-    stop_points =
-      case_when(
-        stop_points > 1 ~ round(stop_points, 2),
-        stop_points < 1 & stop_points > 0 ~ round(stop_points, 4)
-      ),
-    profit_points =
-      case_when(
-        profit_points > 1 ~ round(profit_points, 2),
-        profit_points < 1 & profit_points > 0 ~ round(profit_points, 4)
       )
   )
 
@@ -421,12 +415,12 @@ for (i in 1:dim(trade_list_for_today)[1]) {
     profit_var <- trade_list_for_today$profit_points[i] %>% as.numeric()
 
     if(loss_var > 10) { loss_var <- round(loss_var)}
-    if(profit_var > 10) { loss_var <- round(profit_var)}
+    if(profit_var > 10) { profit_var <- round(profit_var)}
 
-    if(asset == "NATGAS_USD") {
-      loss_var <- round(loss_var, 3)
-      profit_var <- round(profit_var, 3)
-    }
+    # if(asset == "NATGAS_USD") {
+    #   loss_var <- round(loss_var, 3)
+    #   profit_var <- round(profit_var, 3)
+    # }
 
     # This is misleading because it is price distance and not pip distance
     http_return <- oanda_place_order_pip_stop(

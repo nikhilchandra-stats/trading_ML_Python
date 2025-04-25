@@ -90,8 +90,8 @@ get_volatility_trades <- function(
     mutate(
       trade_col =
         case_when(
-          predicted_open_high_vol >= absolute_open_to_high_mean + sd_facs*absolute_open_to_high_sd|
-            predicted_open_low_vol >= absolute_open_to_low_mean + sd_facs*absolute_open_to_low_sd ~ "TRADE"
+          predicted_open_high_vol >= median(predicted_open_high_vol, na.rm = T) + sd_facs*sd(predicted_open_high_vol, na.rm = T)|
+            predicted_open_low_vol >= median(predicted_open_low_vol, na.rm = T) + sd_facs*sd(predicted_open_low_vol, na.rm = T) ~ "TRADE"
         )
     )
 

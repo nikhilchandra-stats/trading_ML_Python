@@ -342,12 +342,14 @@ get_closed_positions <- function(save_csv = FALSE,
 
     returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
 
-    if(any(str_detect(names(returned_value$trades),"trailingStopLossOrder|guaranteedStopLossOrder")) == TRUE){
-      returned_value$trades <- returned_value$trades %>%
-        select(-trailingStopLossOrder,-guaranteedStopLossOrder)
-    }else{
-      returned_value$trades <-  returned_value$trades
-    }
+    # if(any(str_detect(names(returned_value$trades),"trailingStopLossOrder|guaranteedStopLossOrder")) == TRUE){
+    #   returned_value$trades <- returned_value$trades %>%
+    #     select(-trailingStopLossOrder,-guaranteedStopLossOrder)
+    # }else{
+    #   returned_value$trades <-  returned_value$trades
+    # }
+
+    returned_value$trades <-  returned_value$trades
 
     winning <- returned_value$trades  %>%
       select(-takeProfitOrder,-stopLossOrder) %>%
