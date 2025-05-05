@@ -163,6 +163,19 @@ stop_factor  = 4
 
 trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 
+test <- trade_with_daily_data  %>%
+  slice_max(Date >= today() - days(50) ) %>%
+  mutate(
+    how_many_divs =
+      case_when(
+        abs(Pred_trade - mean_value)/sd_value & Pred_trade<mean_value ~ -abs(Pred_trade - mean_value)/sd_value,
+        abs(Pred_trade - mean_value)/sd_value & Pred_trade>mean_value ~ abs(Pred_trade - mean_value)/sd_value
+        )
+  )
+
+write.csv(test,
+          glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/LM_trades_CHECK_{today()}.csv"), row.names = FALSE)
+
 new_trades_this_week <- list()
 retest_data <- list()
 
@@ -250,9 +263,9 @@ new_trades_this_week <- new_trades_this_week %>% map_dfr(bind_rows)
 
 retest_data_filt <- retest_data %>%
   mutate(Total = `TRUE LOSS` + `TRUE WIN`) %>%
-  filter(Total > 50) %>%
+  # filter(Total > 50) %>%
   group_by(trade_direction) %>%
-  slice_max(Perc, n = 15)  %>%
+  slice_max(Perc, n = 30)  %>%
   mutate(
     risk_weighted_return =
       Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
@@ -327,11 +340,11 @@ required_trades <-
     asset_size = floor(log10(Price)),
     volume_adjustment =
       case_when(
-        str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
-        str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "ZAR") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "JPY") & type == "CURRENCY" ~ 100,
+        str_detect(ending_value, "NOK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "SEK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "CZK") & type == "CURRENCY" ~ 10,
         TRUE ~ 1
       )
   ) %>%
@@ -355,8 +368,8 @@ required_trades <-
     estimated_margin = trade_value,
     volume_required = volume_adj
   ) %>%
-  arrange(desc(estimated_margin)) %>%
-  filter(estimated_margin <= 120)
+  arrange(desc(estimated_margin))
+  # filter(estimated_margin <= 120)
 
 write.csv(retest_data_filt %>%
             mutate(stop_factor = stop_factor,

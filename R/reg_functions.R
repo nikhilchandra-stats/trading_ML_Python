@@ -1688,8 +1688,8 @@ run_reg_daily_variant <- function(
     left_join(Macro_CNY, by = c("Date" = "week_date")) %>%
     left_join(Macro_GBP, by = c("Date" = "week_date")) %>%
     left_join(macro_cad, by = c("Date" = "week_date")) %>%
-    left_join(EUR_trade2, by = c("Date" = "week_date")) %>%
-    left_join(USD_exports_total2, by = c("Date" = "week_date")) %>%
+    # left_join(EUR_trade2, by = c("Date" = "week_date")) %>%
+    # left_join(USD_exports_total2, by = c("Date" = "week_date")) %>%
     # left_join(AUD_exports_total2) %>%
     # filter(!is.na(`USD Monthly Budget Statement`)) %>%
     # filter(!is.na(`EUR Export Total`)) %>%

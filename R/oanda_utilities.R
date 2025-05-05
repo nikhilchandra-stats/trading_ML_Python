@@ -39,6 +39,69 @@ get_oanda_data_candles_normalised <- function(
 
 }
 
+get_oanda_data_candles_normalised_intra <- function(
+    assets = c("AUD_USD"),
+    granularity = "D",
+    date_var = "2011-01-01",
+    date_var_start = NULL,
+    time = "T15:00:00.000000000Z",
+    how_far_back = 5000,
+    bid_or_ask = "bid",
+    sleep_time = 1
+) {
+
+  oanda_asset_data <-
+    get_oanda_data_candles(
+      assets = assets,
+      granularity = granularity,
+      date_var = date_var,
+      date_var_start = date_var_start,
+      time = time,
+      how_far_back = how_far_back,
+      sleep_time = sleep_time
+    )
+
+  transformed_data_1 <-
+    oanda_asset_data %>%
+    filter(bid_ask == bid_or_ask) %>%
+    dplyr::select(
+      Date = date_time,
+      Price = c,
+      Open = o
+      # High = h,
+      # Low = l,
+      # `Vol.` = volume
+    )
+    # mutate(
+    #   `Change %` = Price -  Open
+    # )
+
+  if(bid_or_ask == "bid") {
+    second_bid_ask <- "ask"
+  } else {
+    second_bid_ask <- "bid"
+  }
+
+  transformed_data_2 <-
+    oanda_asset_data %>%
+    filter(bid_ask == second_bid_ask) %>%
+    dplyr::select(
+      Date = date_time,
+      High = h,
+      Low = l,
+      `Vol.` = volume
+    )
+
+  transformed_data <- transformed_data_1 %>%
+    left_join(
+      transformed_data_2
+    )
+
+
+  return(transformed_data)
+
+}
+
 get_oanda_api_keyring <- function(){
 
   vars_sys <- Sys.getenv()
@@ -463,6 +526,7 @@ read_all_asset_data <- function(
 
     asset_infor <- get_instrument_info()
     extracted_asset_data <- list()
+    Sys.sleep(0.5)
 
     for (i in 1:length(asset_list_oanda)) {
 
@@ -496,3 +560,364 @@ read_all_asset_data <- function(
 }
 
 
+#' read_all_asset_data
+#'
+#' @param asset_list_oanda
+#' @param save_path_oanda_assets
+#' @param read_csv_or_API
+#'
+#' @return
+#' @export
+#'
+#' @examples
+read_all_asset_data_intra_day <- function(
+    asset_list_oanda = get_oanda_symbols() %>%
+      keep( ~ .x %in% c("HK33_HKD", "USD_JPY", "BTC_USD", "AUD_NZD", "GBP_CHF",
+                        "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD", "USB02Y_USD",
+                        "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK", "DE30_EUR",
+                        "AUD_CAD", "UK10YB_GBP", "XPD_USD", "UK100_GBP", "USD_CHF", "GBP_NZD",
+                        "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
+                        "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+                        "XAU_USD", "DE10YB_EUR", "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+                        "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
+                        "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD", "USB10Y_USD",
+                        "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
+                        "CH20_CHF", "ESPIX_EUR", "XPT_USD", "EUR_AUD", "SOYBN_USD", "US2000_USD",
+                        "BCO_USD")
+      ),
+    save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+    read_csv_or_API = "csv",
+    time_frame = "H1",
+    bid_or_ask = "bid",
+    how_far_back = 5000,
+    start_date = "2011-01-01"
+) {
+
+  read_csv_or_API = "API"
+
+  if(read_csv_or_API == "API") {
+
+    extracted_asset_data <- list()
+    Sys.sleep(0.5)
+
+    for (i in 1:length(asset_list_oanda)) {
+
+      extracted_asset_data[[i]] <-
+        get_oanda_data_candles_normalised_intra(
+          assets = c(asset_list_oanda[i]),
+          granularity = time_frame,
+          date_var = start_date,
+          date_var_start = NULL,
+          time = "T15:00:00.000000000Z",
+          how_far_back = how_far_back,
+          bid_or_ask = bid_or_ask,
+          sleep_time = 0
+        ) %>%
+        mutate(
+          Asset = asset_list_oanda[i]
+        )
+
+    }
+
+  }
+
+  return(extracted_asset_data)
+
+}
+
+get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
+
+  aud_usd_today <- asset_data_daily_raw %>% filter(str_detect(Asset, "AUD")) %>%
+    slice_max(Date)  %>%
+    dplyr::select(Price, Asset) %>%
+    mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_"),
+           starting_value = str_extract(Asset, "[A-Z][A-Z][A-Z]_") %>% str_remove_all("_")) %>%
+    mutate(
+      adjusted_conversion =
+        case_when(
+          ending_value != "AUD" ~ 1/Price,
+          TRUE ~ Price
+        ),
+      ending_value =
+        case_when(
+          ending_value == "AUD" ~ starting_value,
+          TRUE ~ ending_value
+        )
+    ) %>%
+    dplyr::select(-starting_value) %>%
+    filter(!is.na(ending_value))
+
+  aud_usd_value <- aud_usd_today %>%
+    filter(Asset == "AUD_USD") %>%
+    dplyr::select(Asset, adjusted_conversion) %>%
+    pull(adjusted_conversion)
+
+  SEK_ZAR_HUF_NOK_conversion <- asset_data_daily_raw %>%
+    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY"))  %>%
+    slice_max(Date)  %>%
+    dplyr::select(Price, Asset) %>%
+    dplyr::mutate(dummy_join = "USD") %>%
+    mutate(
+      adjusted_conversion = aud_usd_value,
+      adjusted_conversion = Price/adjusted_conversion,
+      ending_value  = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")
+    ) %>%
+    dplyr::select(-dummy_join)
+
+  returned_value <- aud_usd_today %>%
+    bind_rows(SEK_ZAR_HUF_NOK_conversion) %>%
+    filter(!str_detect(ending_value, "XAU|XAG"))
+
+  return(returned_value)
+
+}
+
+convert_stop_profit_AUD <- function(trade_data = trade_data,
+                                    asset_infor = asset_infor,
+                                    currency_conversion = currency_conversion,
+                                    asset_col = "Asset",
+                                    stop_col = "starting_stop_value",
+                                    profit_col = "starting_profit_value",
+                                    price_col = "trade_start_prices",
+                                    risk_dollar_value = 20,
+                                    returns_present = FALSE,
+                                    trade_return_col = "trade_return") {
+
+  asset_infor_internal <- asset_infor %>%
+    rename(!!as.name(asset_col) := name)
+
+  analysis <-
+    trade_data %>%
+    mutate(ending_value = str_extract(!!as.name(asset_col), "_[A-Z][A-Z][A-Z]"),
+           ending_value = str_remove_all(ending_value, "_")
+           ) %>%
+    left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
+    left_join(asset_infor_internal) %>%
+    mutate(
+      minimumTradeSize = abs(log10(as.numeric(minimumTradeSize))),
+      marginRate = as.numeric(marginRate),
+      pipLocation = as.numeric(pipLocation),
+      displayPrecision = as.numeric(displayPrecision)
+    ) %>%
+    ungroup() %>%
+    mutate(
+      stop_value = round(!!as.name(stop_col), abs(pipLocation) ),
+      profit_value = round(!!as.name(profit_col), abs(pipLocation) )
+    ) %>%
+    mutate(
+      asset_size = floor(log10(!!as.name(price_col))),
+      volume_adjustment = 1,
+      AUD_Price =
+        case_when(
+          !is.na(adjusted_conversion) ~ (!!as.name(price_col)*adjusted_conversion)/volume_adjustment,
+          TRUE ~ !!as.name(price_col)/volume_adjustment
+        ),
+      stop_value_AUD =
+        case_when(
+          !is.na(adjusted_conversion) ~ (stop_value*adjusted_conversion)/volume_adjustment,
+          TRUE ~ stop_value/volume_adjustment
+        ),
+      profit_value_AUD =
+        case_when(
+          !is.na(adjusted_conversion) ~ (profit_value*adjusted_conversion)/volume_adjustment,
+          TRUE ~ profit_value/volume_adjustment
+        )
+    ) %>%
+    mutate(
+      volume_unadj =  risk_dollar_value/stop_value_AUD,
+      volume_required = volume_unadj,
+      volume_adj = round(volume_unadj, minimumTradeSize),
+      minimal_loss =  volume_adj*stop_value_AUD,
+      maximum_win =  volume_adj*profit_value_AUD,
+      trade_value = AUD_Price*volume_adj*marginRate,
+      estimated_margin = trade_value,
+      volume_required = volume_adj
+    )
+
+  if(returns_present == TRUE) {
+
+    analysis <- analysis %>%
+      mutate(
+        trade_return_dollars_AUD =
+          case_when(
+            !!as.name(trade_return_col) < 0 ~ -minimal_loss,
+            !!as.name(trade_return_col) > 0 ~ maximum_win
+          )
+      )
+
+  }
+
+  analysis <- analysis %>%
+    dplyr::select(-c(displayPrecision,
+                     tradeUnitsPrecision,
+                     maximumOrderUnits,
+                     maximumPositionSize,
+                     maximumTrailingStopDistance,
+                     longRate,
+                     shortRate,
+                     minimumTrailingStopDistance,
+                     minimumGuaranteedStopLossDistance,
+                     guaranteedStopLossOrderMode,
+                     guaranteedStopLossOrderExecutionPremium)
+    )
+
+  return(analysis)
+
+}
+
+get_intra_day_asset_data <- function(
+    asset_list_oanda = get_oanda_symbols() %>%
+      keep( ~ .x %in% c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
+                        "DE30_EUR",
+                        "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
+                        "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+                        "XAU_USD",
+                        "USD_CZK",  "WHEAT_USD",
+                        "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
+                        "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+                        "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
+                        "US2000_USD",
+                        "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
+                        "JP225_USD", "SPX500_USD")
+      ),
+    bid_or_ask = "ask"
+  ) {
+
+  extracted_asset_data1 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = "2016-01-01"
+    )
+
+  extracted_asset_data1 <- extracted_asset_data1 %>% map_dfr(bind_rows)
+  max_date_in_1 <- extracted_asset_data1 %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup() %>%
+    slice_min(Date) %>%
+    pull(Date) %>% pluck(1) %>% as.character()
+  min_date_in_1 <- extracted_asset_data1$Date %>% min(na.rm = T) %>% as_date() %>% as.character()
+
+  extracted_asset_data2 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = max_date_in_1
+    )
+
+  extracted_asset_data2 <- extracted_asset_data2 %>% map_dfr(bind_rows)
+  max_date_in_2 <- extracted_asset_data2 %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup() %>%
+    slice_min(Date) %>%
+    pull(Date) %>% pluck(1) %>% as.character()
+  min_date_in_2 <- extracted_asset_data2$Date %>% min(na.rm = T) %>% as_date() %>% as.character()
+
+  extracted_asset_data3 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = max_date_in_2
+    )
+
+  extracted_asset_data3 <- extracted_asset_data3 %>% map_dfr(bind_rows)
+  max_date_in_3 <- extracted_asset_data3 %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup() %>%
+    slice_min(Date) %>%
+    pull(Date) %>% pluck(1) %>% as.character()
+
+  extracted_asset_data4 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = max_date_in_3
+    )
+
+  extracted_asset_data4 <- extracted_asset_data4 %>% map_dfr(bind_rows)
+  max_date_in_4 <- extracted_asset_data4 %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup() %>%
+    slice_min(Date) %>%
+    pull(Date) %>% pluck(1) %>% as.character()
+
+  extracted_asset_data5 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = max_date_in_4
+    )
+
+  extracted_asset_data5 <- extracted_asset_data5 %>% map_dfr(bind_rows)
+  max_date_in_5 <- extracted_asset_data5 %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup() %>%
+    slice_min(Date) %>%
+    pull(Date) %>% pluck(1) %>% as.character()
+
+  extracted_asset_data6 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = max_date_in_5
+    )
+
+  extracted_asset_data6 <- extracted_asset_data6 %>% map_dfr(bind_rows)
+  max_date_in_6 <- extracted_asset_data6 %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup() %>%
+    slice_min(Date) %>%
+    pull(Date) %>% pluck(1) %>% as.character()
+
+
+  data_list <- list(extracted_asset_data1,
+                    extracted_asset_data2,
+                    extracted_asset_data3,
+                    extracted_asset_data4,
+                    extracted_asset_data5,
+                    extracted_asset_data6)
+
+  data_list_dfr <- data_list %>%
+    map_dfr(bind_rows) %>%
+    group_by(Asset, Date) %>%
+    mutate(
+      row_counts = n()
+    ) %>%
+    ungroup() %>%
+    slice_min(row_counts) %>%
+    dplyr::select(-row_counts) %>%
+    distinct()
+
+  return(data_list_dfr)
+
+}

@@ -28,7 +28,7 @@ asset_list_oanda <- get_oanda_symbols() %>%
                     # "CH20_CHF", "ESPIX_EUR",
                     # "XPT_USD",
                     "EUR_AUD", "SOYBN_USD",
-                    # "US2000_USD",
+                    "US2000_USD",
                     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD", "AUD_JPY", "AUD_SEK")
   )
 
@@ -122,7 +122,12 @@ summary_data <-
 trades_today <-
   list(markov_trades_raw$Trades[[1]] %>% mutate(Markov_Col = "Low"),
        markov_trades_raw$Trades[[2]] %>% mutate(Markov_Col = "High")
-  ) %>%
+  )
+  # map_dfr(bind_rows)  %>%
+  # left_join(summary_data) %>%
+  # slice_max(Date)
+
+trades_today <- trades_today %>%
   map(
     ~ .x %>%
       left_join(summary_data) %>%
@@ -157,11 +162,12 @@ trades_today <-
         asset_size = floor(log10(Price)),
         volume_adjustment =
           case_when(
-            str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
-            str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
-            str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
-            str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
-            str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "ZAR") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "JPY") & type == "CURRENCY" ~ 100,
+            str_detect(ending_value, "NOK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "SEK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "CZK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "HUF") & type == "CURRENCY" ~ 10,
             TRUE ~ 1
           )
       ) %>%
@@ -201,7 +207,8 @@ trades_today <-
   map_dfr(bind_rows) %>%
   filter( (trade_col == "Long" & Markov_Col == "High") |
            (trade_col == "Short" & Markov_Col == "Low"),
-          risk_weighted_return > 0.15)
+          risk_weighted_return > 0.14
+          )
 
 #---------------------------------------------
 #We use Account  number 2, 001-011-1615559-003
@@ -255,6 +262,10 @@ for (i in 1:dim(trade_list_for_today)[1]) {
     if(loss_var > 9) { loss_var <- round(loss_var)}
     if(profit_var > 9) { profit_var <- round(profit_var)}
 
+    trade_list_for_today$estimated_margin[i]
+
+    profit_var>=loss_var
+
     # if(asset == "NATGAS_USD") {
     #   loss_var <- round(loss_var, 3)
     #   profit_var <- round(profit_var, 3)
@@ -293,7 +304,7 @@ risk_dollar_value <- 30
 markov_trades_raw_bayes <-
   get_markov_tag_bayes(
     asset_data_combined = asset_data_combined,
-    training_perc = 0.99,
+    training_perc = 1,
     sd_divides = seq(0.5,2,0.5),
     quantile_divides = seq(0.1,0.9, 0.1),
     rolling_period = 400,
@@ -319,7 +330,7 @@ summary_data <-
   )
 
 trades_today <-
-  markov_trades_raw_bayes$tagged_trades %>%
+  markov_trades_raw_bayes[[1]] %>%
       slice_max(Date) %>%
       filter(!is.na(trade_col)) %>%
       left_join(summary_data) %>%
@@ -351,11 +362,12 @@ trades_today <-
         asset_size = floor(log10(Price)),
         volume_adjustment =
           case_when(
-            str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
-            str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
-            str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
-            str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
-            str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "ZAR") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "JPY") & type == "CURRENCY" ~ 100,
+            str_detect(ending_value, "NOK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "SEK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "CZK") & type == "CURRENCY" ~ 10,
+            str_detect(ending_value, "HUF") & type == "CURRENCY" ~ 10,
             TRUE ~ 1
           )
       ) %>%
@@ -443,6 +455,8 @@ for (i in 1:dim(trade_list_for_today)[1]) {
     # volume_trade <- 1000
     loss_var <- trade_list_for_today$stop_value[i] %>% as.numeric()
     profit_var <- trade_list_for_today$profit_value[i] %>% as.numeric()
+
+    trade_list_for_today$estimated_margin[i]
 
     if(loss_var > 9) { loss_var <- round(loss_var)}
     if(profit_var > 9) { profit_var <- round(profit_var)}
@@ -543,11 +557,11 @@ trades_today <-
     asset_size = floor(log10(Price)),
     volume_adjustment =
       case_when(
-        str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
-        str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "ZAR") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "JPY") & type == "CURRENCY" ~ 100,
+        str_detect(ending_value, "NOK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "SEK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "CZK") & type == "CURRENCY" ~ 10,
         TRUE ~ 1
       )
   ) %>%

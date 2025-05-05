@@ -126,11 +126,11 @@ trades_today_to_take <- trades_today %>%
     asset_size = floor(log10(Price)),
     volume_adjustment =
       case_when(
-        str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
-        str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
-        str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "ZAR") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "JPY") & type == "CURRENCY" ~ 100,
+        str_detect(ending_value, "NOK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "SEK") & type == "CURRENCY" ~ 10,
+        str_detect(ending_value, "CZK") & type == "CURRENCY" ~ 10,
         TRUE ~ 1
       )
   ) %>%

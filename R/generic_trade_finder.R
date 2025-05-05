@@ -791,123 +791,226 @@ generic_trade_finder_trailing <- function(
 
 }
 
+
+generic_trade_finder_loop <- function(
+    tagged_trades = trading_data_vol %>% filter(trade_col == "Short"),
+    asset_data_daily_raw = asset_data_daily_raw,
+    stop_factor = 1,
+    profit_factor =1,
+    trade_col = "trade_col",
+    date_col = "Date",
+    start_price_col = "Price",
+    mean_values_by_asset =
+      wrangle_asset_data(
+        asset_data_daily_raw = asset_data_daily_raw,
+        summarise_means = TRUE
+      )
+) {
+
+  long_data_with_price<-
+    asset_data_daily_raw %>%
+    left_join(
+      tagged_trades %>%
+        dplyr::distinct(Asset, !!as.name(date_col), !!as.name(trade_col))
+    ) %>%
+    dplyr::group_by(Asset) %>%
+    arrange(
+      !!as.name(date_col)
+    )
+
+
+  distinct_assets_trades <-
+    long_data_with_price %>%
+    filter(!is.na(!!as.name(trade_col))) %>%
+    distinct(Asset, Date, trade_col)
+
+  trade_directions_speed <- distinct_assets_trades$trade_col
+  trade_asset_speed <- distinct_assets_trades$Asset
+  trade_date_speed <- distinct_assets_trades$Date
+
+  distinct_assets <-
+    long_data_with_price %>%
+    filter(!is.na(!!as.name(trade_col))) %>%
+    distinct(Asset) %>%
+    pull(Asset)
+
+  stops_profs_asset <- mean_values_by_asset %>%
+    mutate(
+      stop_value = mean_daily + stop_factor*sd_daily,
+      profit_value = mean_daily + profit_factor*sd_daily
+    )
+
+  accumulating_list <- list()
+  c <- 0
+
+  for (i in 1:length(distinct_assets) ) {
+
+    asset_data_loop <- long_data_with_price %>%
+      filter(Asset == distinct_assets[i]) %>%
+      arrange(!!as.name(date_col))
+
+    distinct_trade_dates <- asset_data_loop %>%
+      filter(!is.na(!!as.name(trade_col))) %>%
+      pull(!!as.name(date_col))
+
+    distinct_trade_direction <- asset_data_loop %>%
+      filter(!is.na(!!as.name(trade_col))) %>%
+      pull(!!as.name(trade_col))
+
+    price_data_loop <- asset_data_loop %>% pull(Price)
+    date_data_loop <- asset_data_loop %>% pull(!!as.name(date_col))
+    high_loop <- asset_data_loop %>% pull(High)
+    Low_loop <- asset_data_loop %>% pull(Low)
+
+    stop_value <- stops_profs_asset  %>%
+      filter(Asset == distinct_assets[i]) %>%
+      pull(stop_value) %>% as.numeric()
+    profit_value <- stops_profs_asset  %>%
+      filter(Asset == distinct_assets[i]) %>%
+      pull(profit_value) %>% as.numeric()
+
+    if(length(distinct_trade_dates) > 0) {
+
+      trade_returns <- numeric(length(distinct_trade_dates))
+      trade_start_prices <- numeric(length(distinct_trade_dates))
+      trade_end_prices <- numeric(length(distinct_trade_dates))
+      starting_stop_price <- numeric(length(distinct_trade_dates))
+      ending_date_trade <- numeric(length(distinct_trade_dates))
+
+      for (j in 1:length(distinct_trade_dates)) {
+
+        trade_direction <-distinct_trade_direction[j]
+        starting_index <- which(date_data_loop == distinct_trade_dates[j])[1]
+        dates_for_tracking <- date_data_loop[seq(starting_index,length(date_data_loop))]
+        starting_price <- price_data_loop[starting_index]
+
+        highs_after <- high_loop[(starting_index + 1):length(high_loop)]
+        lows_after <- Low_loop[(starting_index+ 1):length(Low_loop)]
+        price_after <- price_data_loop[(starting_index + 1):length(price_data_loop)]
+
+        if(trade_direction == "Long") {
+          stop_price <- starting_price - stop_value
+          profit_price <- starting_price + profit_value
+
+          stop_point <- which(lows_after <= stop_price )[1]
+          stop_point <- ifelse(is.na(stop_point)|length(stop_point) < 1, 10000,stop_point)
+          final_profit_point <- which(highs_after >= profit_price )[1]
+          final_profit_point <- ifelse(is.na(final_profit_point)|length(final_profit_point) < 1, 10000,final_profit_point)
+        }
+
+        if(trade_direction == "Short") {
+          stop_price <- starting_price + stop_value
+          profit_price <- starting_price - profit_value
+
+          stop_point <- which(highs_after >= stop_price )[1]
+          stop_point <- ifelse(is.na(stop_point)|length(stop_point) < 1, 10000,stop_point)
+          final_profit_point <- which(lows_after <= profit_price )[1]
+          final_profit_point <- ifelse(is.na(final_profit_point)|length(final_profit_point) < 1, 10000,final_profit_point)
+        }
+
+        return_value_trade <-
+          ifelse(stop_point <= final_profit_point, -1*stop_value, profit_value)
+
+        if(trade_direction == "Long") {
+          where_were_you_stopped <-
+            ifelse(stop_point <= final_profit_point,
+                   starting_price - stop_value,
+                   profit_value + starting_price)
+        }
+
+        if(trade_direction == "Short") {
+          where_were_you_stopped <-
+            ifelse(stop_point <= final_profit_point,
+                   starting_price + stop_value,
+                   profit_value - starting_price)
+        }
+
+        trade_end_date <-
+          ifelse(stop_point <= final_profit_point,
+                 dates_for_tracking[stop_point],
+                 dates_for_tracking[final_profit_point])
+
+        trade_returns[j] <- return_value_trade
+        trade_start_prices[j] <- starting_price
+        trade_end_prices[j] <- where_were_you_stopped
+        starting_stop_price[j] <- stop_price
+        ending_date_trade[j] <- trade_end_date
+
+      }
+
+      c <- c + 1
+      accumulating_list[[c]] <-
+        tibble(
+          trade_returns = trade_returns,
+          trade_start_prices = trade_start_prices,
+          trade_end_prices = trade_end_prices,
+          asset = distinct_assets[i] %>% as.character(),
+          dates = distinct_trade_dates,
+          ending_date_trade = ending_date_trade,
+          starting_stop_value = stop_value,
+          starting_profit_value = profit_value,
+          trade_col = distinct_trade_direction
+        )
+
+    }
+
+  }
+
+  all_trade_data <- accumulating_list %>%
+    map_dfr(bind_rows)
+
+  return(all_trade_data)
+
+}
+
 analyse_trailing_trades <- function(
-  trade_data,
+  trade_data = tagged_trades_markov_1,
   asset_data_daily_raw = asset_data_daily_raw,
   asset_infor,
-  risk_dollar_value = 20
+  risk_dollar_value = 20,
+  currency_conversion = currency_conversion
   ) {
-
-  aud_usd_today <- asset_data_daily_raw %>% filter(str_detect(Asset, "AUD")) %>%
-    slice_max(Date)  %>%
-    dplyr::select(Price, Asset) %>%
-    mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")) %>%
-    mutate(
-      adjusted_conversion =
-        case_when(
-          ending_value != "AUD" ~ 1/Price,
-          TRUE ~ Price
-        )
-    )
-
-  currency_conversion <-
-    aud_usd_today %>%
-    mutate(
-      not_aud_asset = str_remove_all(Asset, "AUD") %>% str_remove_all("_")
-    ) %>%
-    dplyr::select(not_aud_asset, adjusted_conversion) %>%
-    bind_rows(
-      tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
-    )
+  # trade_data <- trade_data %>%
+  #   rename(Asset = asset)
 
   analysis <- trade_data %>%
     rename(Asset = asset) %>%
-    left_join(asset_infor %>% rename(Asset = name)) %>%
-    mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")) %>%
-    left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
-    mutate(
-      trade_returns_pip =   trade_returns/(10^pipLocation),
-      stop_points_pip = starting_stop_value/(10^pipLocation)
+    convert_stop_profit_AUD(
+      asset_infor = asset_infor,
+      asset_col = "Asset",
+      stop_col = "starting_stop_value",
+      profit_col = "starting_profit_value",
+      price_col = "trade_start_prices",
+      risk_dollar_value = risk_dollar_value,
+      returns_present = TRUE,
+      trade_return_col = "trade_returns",
+      currency_conversion = currency_conversion
     ) %>%
     mutate(
-      minimumTradeSize = abs(log10(as.numeric(minimumTradeSize))),
-      marginRate = as.numeric(marginRate),
-      pipLocation = as.numeric(pipLocation),
-      displayPrecision = as.numeric(displayPrecision)
-    ) %>%
-    ungroup() %>%
-    mutate(
-      stop_value = round(stop_value, abs(pipLocation) ),
-      trade_returns = round(trade_returns, abs(pipLocation) )
-    ) %>%
-    mutate(
-      asset_size = floor(log10(trade_start_prices)),
-      volume_adjustment =
-        case_when(
-          str_detect(Asset, "ZAR") & type == "CURRENCY" ~ 10,
-          str_detect(Asset, "JPY") & type == "CURRENCY" ~ 100,
-          str_detect(Asset, "NOK") & type == "CURRENCY" ~ 10,
-          str_detect(Asset, "SEK") & type == "CURRENCY" ~ 10,
-          str_detect(Asset, "CZK") & type == "CURRENCY" ~ 10,
-          TRUE ~ 1
-        )
-    ) %>%
-    mutate(
-      AUD_Price =
-        case_when(
-          !is.na(adjusted_conversion) ~ (trade_start_prices*adjusted_conversion)/volume_adjustment,
-          TRUE ~ trade_start_prices/volume_adjustment
-        ),
-      stop_value_AUD =
-        case_when(
-          !is.na(adjusted_conversion) ~ (stop_value*adjusted_conversion)/volume_adjustment,
-          TRUE ~ stop_value/volume_adjustment
-        ),
-      return_value_AUD =
-        case_when(
-          !is.na(adjusted_conversion) ~ (trade_returns*adjusted_conversion)/volume_adjustment,
-          TRUE ~ trade_returns/volume_adjustment
-        ),
-
-      volume_unadj =  risk_dollar_value/stop_value_AUD,
-      volume_required = volume_unadj,
-      volume_adj = round(volume_unadj, minimumTradeSize),
-      minimal_loss =  volume_adj*stop_value_AUD,
-      trade_return_dollars_AUD =  volume_adj*return_value_AUD,
-      trade_value = AUD_Price*volume_adj*marginRate,
-      estimated_margin = trade_value,
-      volume_required = volume_adj
-    )%>%
-    dplyr::select(-c(displayPrecision,
-                     tradeUnitsPrecision,
-                     maximumOrderUnits,
-                     maximumPositionSize,
-                     maximumTrailingStopDistance,
-                     longRate,
-                     shortRate,
-                     minimumTrailingStopDistance,
-                     minimumGuaranteedStopLossDistance,
-                     guaranteedStopLossOrderMode,
-                     guaranteedStopLossOrderExecutionPremium)
+      trade_returns_pip = trade_returns/(10^as.numeric(pipLocation))
     )
 
 
   return_time_series <-
     analysis %>%
-    dplyr::select(dates, Asset, trade_returns_pip, estimated_margin) %>%
+    dplyr::select(dates, Asset, trade_returns_pip, estimated_margin, trade_return_dollars_AUD) %>%
     group_by(dates) %>%
     summarise(
       Total_Margain = sum(estimated_margin, na.rm = T),
-      Total_Return = sum(trade_returns_pip, na.rm = T)
+      Total_Return_Pip = sum(trade_returns_pip, na.rm = T),
+      trade_return_dollars_AUD = sum(trade_return_dollars_AUD, na.rm = T)
     ) %>%
     mutate(
-      Total_Return = ifelse(is.infinite(Total_Return), 0, Total_Return),
-      Total_Margain = ifelse(is.infinite(Total_Margain), 0, Total_Margain)
+      Total_Return_Pip = ifelse(is.infinite(Total_Return_Pip), 0, Total_Return_Pip),
+      Total_Margain = ifelse(is.infinite(Total_Margain), 0, Total_Margain),
+      trade_return_dollars_AUD = ifelse(is.infinite(trade_return_dollars_AUD), 0, trade_return_dollars_AUD)
     ) %>%
     arrange(dates) %>%
     mutate(
-      cumulative_return = cumsum(Total_Return)
-    )
+      cumulative_return_pip = cumsum(Total_Return_Pip),
+      cumulative_return_aud = cumsum(trade_return_dollars_AUD)
+    ) %>%
+    ungroup()
 
   return(
     list(

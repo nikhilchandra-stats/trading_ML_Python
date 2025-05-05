@@ -236,7 +236,8 @@ trade_list_for_today <- trades_today %>%
 
 for (i in 1:dim(trade_list_for_today)[1]) {
 
-  account_details <- get_account_summary(account_var = 2)
+  account_details <- get_account_summary(account_var = 2) %>%
+    slice_head(n = 1)
   margain_available <- account_details$marginAvailable %>% as.numeric()
   margain_used <- account_details$marginUsed%>% as.numeric()
   total_margain <- margain_available + margain_used
@@ -247,6 +248,7 @@ for (i in 1:dim(trade_list_for_today)[1]) {
 
     asset <- trade_list_for_today$Asset[i] %>% as.character()
     volume_trade <- trade_list_for_today$volume_required[i] %>% as.numeric()
+    margain <- trade_list_for_today$estimated_margin[i] %>% as.numeric()
     # volume_trade <- 1000
     loss_var <- trade_list_for_today$stop_value[i] %>% as.numeric()
     profit_var <- trade_list_for_today$profit_value[i] %>% as.numeric()
@@ -386,3 +388,4 @@ trades_today <-
       )
   ) %>%
   map_dfr(bind_rows)
+
