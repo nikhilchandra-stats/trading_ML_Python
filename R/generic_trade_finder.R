@@ -1020,3 +1020,48 @@ analyse_trailing_trades <- function(
   )
 
 }
+
+
+get_stops_profs_volume_trades <- function(
+                                          tagged_trades = tagged_trades,
+                                          mean_values_by_asset = mean_values_by_asset,
+                                       trade_col = "trade_col",
+                                       currency_conversion = currency_conversion,
+                                       risk_dollar_value = risk_dollar_value,
+                                       stop_factor = stop_factor,
+                                       profit_factor =profit_factor,
+                                       asset_col = "Asset",
+                                       stop_col = "stop_value",
+                                       profit_col = "profit_value",
+                                       price_col = "Price",
+                                       trade_return_col = "trade_returns") {
+
+  stops_profs_asset <- mean_values_by_asset %>%
+    mutate(
+      stop_value = mean_daily + stop_factor*sd_daily,
+      profit_value = mean_daily + profit_factor*sd_daily
+    )
+
+  returned <-
+    tagged_trades %>%
+    left_join(stops_profs_asset) %>%
+    mutate(trade_returns = 0) %>%
+    convert_stop_profit_AUD(
+      asset_infor = asset_infor,
+      asset_col = asset_col,
+      stop_col = stop_col,
+      profit_col = profit_col,
+      price_col = price_col,
+      risk_dollar_value = risk_dollar_value,
+      returns_present = TRUE,
+      trade_return_col = trade_return_col,
+      currency_conversion = currency_conversion
+    ) %>%
+    mutate(
+      volume_required =
+        ifelse(!!as.name(trade_col) == "Short", -1*volume_required, volume_required)
+    )
+
+  return(returned)
+
+}

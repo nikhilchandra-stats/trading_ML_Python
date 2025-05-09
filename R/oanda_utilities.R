@@ -598,7 +598,7 @@ read_all_asset_data_intra_day <- function(
   if(read_csv_or_API == "API") {
 
     extracted_asset_data <- list()
-    Sys.sleep(0.5)
+    # Sys.sleep(0.5)
 
     for (i in 1:length(asset_list_oanda)) {
 
@@ -653,7 +653,7 @@ get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
     pull(adjusted_conversion)
 
   SEK_ZAR_HUF_NOK_conversion <- asset_data_daily_raw %>%
-    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY"))  %>%
+    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY|USD_MXN"))  %>%
     slice_max(Date)  %>%
     dplyr::select(Price, Asset) %>%
     dplyr::mutate(dummy_join = "USD") %>%
@@ -663,10 +663,32 @@ get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
       ending_value  = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")
     ) %>%
     dplyr::select(-dummy_join)
+    # mutate(
+    #   adjusted_conversion =
+    #     case_when(
+    #       ending_value == "SEK" | ending_value == "NOK" ~ 1,
+    #       TRUE ~ adjusted_conversion
+    #     )
+    # )
 
   returned_value <- aud_usd_today %>%
     bind_rows(SEK_ZAR_HUF_NOK_conversion) %>%
     filter(!str_detect(ending_value, "XAU|XAG"))
+
+  # test_calculation <-
+  #   mean_values_by_asset_for_loop %>%
+  #   mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_")) %>%
+  #   left_join(returned_value %>%
+  #               dplyr::select(-Asset, -Price) %>%
+  #               bind_rows(
+  #                 tibble(ending_value  = "AUD", adjusted_conversion = 1)
+  #               )
+  #             ) %>%
+  #   mutate(
+  #     raw_price_move = round(mean_daily + sd_daily*3, 5)*adjusted_conversion,
+  #     raw_price_move_aud = raw_price_move*adjusted_conversion
+  #   ) %>%
+  #   left_join(asset_infor %>%  rename(Asset = name))
 
   return(returned_value)
 
@@ -724,7 +746,12 @@ convert_stop_profit_AUD <- function(trade_data = trade_data,
         )
     ) %>%
     mutate(
-      volume_unadj =  risk_dollar_value/stop_value_AUD,
+      # volume_unadj =  risk_dollar_value/stop_value_AUD,
+      volume_unadj =
+        case_when(
+          str_detect(Asset,"SEK|NOK|ZAR|MXN") ~ (risk_dollar_value/stop_value)*adjusted_conversion,
+          TRUE ~ (risk_dollar_value/stop_value)/adjusted_conversion
+        ),
       volume_required = volume_unadj,
       volume_adj = round(volume_unadj, minimumTradeSize),
       minimal_loss =  volume_adj*stop_value_AUD,
@@ -780,7 +807,8 @@ get_intra_day_asset_data <- function(
                         "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
                         "JP225_USD", "SPX500_USD")
       ),
-    bid_or_ask = "ask"
+    bid_or_ask = "ask",
+    start_date = "2016-01-01"
   ) {
 
   extracted_asset_data1 <-
@@ -791,7 +819,7 @@ get_intra_day_asset_data <- function(
       time_frame = "H1",
       bid_or_ask = bid_or_ask,
       how_far_back = 5000,
-      start_date = "2016-01-01"
+      start_date = start_date
     )
 
   extracted_asset_data1 <- extracted_asset_data1 %>% map_dfr(bind_rows)
@@ -899,13 +927,25 @@ get_intra_day_asset_data <- function(
     slice_min(Date) %>%
     pull(Date) %>% pluck(1) %>% as.character()
 
+  extracted_asset_data7 <-
+    read_all_asset_data_intra_day(
+      asset_list_oanda = asset_list_oanda,
+      save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+      read_csv_or_API = "API",
+      time_frame = "H1",
+      bid_or_ask = bid_or_ask,
+      how_far_back = 5000,
+      start_date = max_date_in_6
+    )
+
 
   data_list <- list(extracted_asset_data1,
                     extracted_asset_data2,
                     extracted_asset_data3,
                     extracted_asset_data4,
                     extracted_asset_data5,
-                    extracted_asset_data6)
+                    extracted_asset_data6,
+                    extracted_asset_data7)
 
   data_list_dfr <- data_list %>%
     map_dfr(bind_rows) %>%

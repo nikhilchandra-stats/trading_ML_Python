@@ -133,7 +133,7 @@ target_assets <-
 raw_vol_results_db <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/volatility_model.db")
 results_list <- list()
 
-for (j in 159:dim(trade_params3)[1]) {
+for (j in 268:dim(trade_params3)[1]) {
 
 
   sd_facs <- trade_params3$sd_facs[j] %>% as.numeric()

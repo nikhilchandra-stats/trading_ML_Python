@@ -311,40 +311,32 @@ get_markov_cols_for_trading <- function(
 get_markov_tag_pos_neg_diff <- function(
     asset_data_combined = asset_data_combined,
     training_perc = 0.99,
-    sd_divides = seq(0.5,2,0.5),
+    sd_divides = seq(0.25,2.5,0.25),
     quantile_divides = seq(0.1,0.9, 0.1),
     rolling_period = 400,
     markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
     markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
     sum_sd_cut_off = "",
     profit_factor  = 5,
-    stop_factor  = 5,
+    stop_factor  = 3,
     asset_data_daily_raw = asset_data_combined,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
-    trade_sd_fact = 2.7
+    trade_sd_fact = 2,
+    currency_conversion = currency_conversion,
+    risk_dollar_value = 5
 ) {
 
   # Best Trades:
-  # Rolling Period = 400
-  # Profit Factor = 8
-  # Stop Factor = 4
-  # trade_sd_fact = 3
-  #Lows Direction: "Short", "Long"
-  #Highs Direction: "Long", "Short"
-  #Lows Results Risk Weighted Return: Long 0.09, Short = 0.24
-  #Highs Results Risk Weighted Return: Long 0.33, Short = -0.36
-  #Logic Pattern: Strong
-
-  # Best Trades:
-  # Rolling Period = 400
-  # Profit Factor = 8
-  # Stop Factor = 4
+  # rolling_period = 400
+  # profit_factor = 5
+  # stop_factor = 3
   # trade_sd_fact = 2
   #Lows Direction: "Short", "Long"
   #Highs Direction: "Long", "Short"
-  #Lows Results Risk Weighted Return: Long 0.15, Short = 0.026
-  #Highs Results Risk Weighted Return: Long 0.11, Short = 0.049
-  #Logic Pattern: Strong
+  #Lows Results Risk Weighted Return: Long 0.1
+  #Highs Results Risk Weighted Return: Long 0.06
+  #Trades: 30k
+
 
   markov_data <-
     get_markov_cols_for_trading(
@@ -366,44 +358,33 @@ get_markov_tag_pos_neg_diff <- function(
           Total_Avg_Prob_Diff > Total_Avg_Prob_Diff_Median +  trade_sd_fact*Total_Avg_Prob_Diff_SD ~ "Short",
           Total_Avg_Prob_Diff < Total_Avg_Prob_Diff_Median -  trade_sd_fact*Total_Avg_Prob_Diff_SD ~ "Long"
         )
-
-      # trade_col =
-      #   case_when(
-      #     Total_Avg_Prob_Diff > 0 ~ "Long",
-      #     Total_Avg_Prob_Diff < 0 ~ "Short"
-      #   )
     )
 
-  Markov_Low_Trades <-
-    generic_trade_finder_conservative(
-      tagged_trades = Lows,
-      asset_data_daily_raw = asset_data_daily_raw,
-      stop_factor = stop_factor ,
-      profit_factor = profit_factor,
+  Lows_Trades <-
+    generic_trade_finder_loop(
+      tagged_trades = Lows ,
+      asset_data_daily_raw = asset_data_combined,
+      stop_factor = stop_factor,
+      profit_factor =profit_factor,
       trade_col = "trade_col",
       date_col = "Date",
-      max_hold_period = 100,
       start_price_col = "Price",
-      mean_values_by_asset = mean_values_by_asset_for_loop,
-      return_summary = TRUE
-    ) %>%
-    map_dfr(
-      ~ .x
+      mean_values_by_asset =mean_values_by_asset_for_loop
     )
 
-  Markov_Low_Trades_Summary <-
-    Markov_Low_Trades %>%
-    group_by(trade_category, trade_direction) %>%
-    summarise(
-      Trades = sum(Trades, na.rm = T)
-    ) %>%
-    pivot_wider(names_from = trade_category, values_from = Trades) %>%
-    mutate(
-      Perc = `TRUE WIN`/ (`TRUE LOSS` + `TRUE WIN`)
-    ) %>%
-    mutate(
-      risk_weighted_return =
-        Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
+  Lows_Trades_Analysis <-
+    generic_anlyser(
+      trade_data = Lows_Trades %>% rename(Asset = asset),
+      profit_factor = profit_factor,
+      stop_factor = stop_factor,
+      asset_infor = asset_infor,
+      currency_conversion = currency_conversion,
+      asset_col = "Asset",
+      stop_col = "starting_stop_value",
+      profit_col = "starting_profit_value",
+      price_col = "trade_start_prices",
+      trade_return_col = "trade_returns",
+      risk_dollar_value = risk_dollar_value
     )
 
   #----------------------------------High
@@ -418,42 +399,38 @@ get_markov_tag_pos_neg_diff <- function(
         )
     )
 
-  Markov_High_Trades <-
-    generic_trade_finder_conservative(
+  Highs_Trades <-
+    generic_trade_finder_loop(
       tagged_trades = Highs,
-      asset_data_daily_raw = asset_data_daily_raw,
-      stop_factor = stop_factor ,
-      profit_factor = profit_factor,
+      asset_data_daily_raw = asset_data_combined,
+      stop_factor = stop_factor,
+      profit_factor =profit_factor,
       trade_col = "trade_col",
       date_col = "Date",
-      max_hold_period = 100,
       start_price_col = "Price",
-      mean_values_by_asset = mean_values_by_asset_for_loop,
-      return_summary = TRUE
-    ) %>%
-    map_dfr(
-      ~ .x
+      mean_values_by_asset =mean_values_by_asset_for_loop
     )
 
-  Markov_High_Trades_Summary <-
-    Markov_High_Trades %>%
-    group_by(trade_category, trade_direction) %>%
-    summarise(
-      Trades = sum(Trades, na.rm = T)
-    ) %>%
-    pivot_wider(names_from = trade_category, values_from = Trades) %>%
-    mutate(
-      Perc = `TRUE WIN`/ (`TRUE LOSS` + `TRUE WIN`)
-    ) %>%
-    mutate(
-      risk_weighted_return =
-        Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
+  Highs_Trades_Analysis <-
+    generic_anlyser(
+      trade_data = Highs_Trades %>% rename(Asset = asset),
+      profit_factor = profit_factor,
+      stop_factor = stop_factor,
+      asset_infor = asset_infor,
+      currency_conversion = currency_conversion,
+      asset_col = "Asset",
+      stop_col = "starting_stop_value",
+      profit_col = "starting_profit_value",
+      price_col = "trade_start_prices",
+      trade_return_col = "trade_returns",
+      risk_dollar_value = risk_dollar_value
     )
+
 
   return(
     list(
       "Trades" = list(Lows, Highs),
-      "Trade Summaries" = list(Markov_Low_Trades_Summary, Markov_High_Trades_Summary)
+      "Trade Summaries" = list(Lows_Trades_Analysis, Highs_Trades_Analysis)
     )
   )
 
@@ -475,7 +452,7 @@ get_markov_tag_bayes <- function(
     trade_sd_fact_post = 1.5,
     trade_sd_fact_post_high = 1,
     trade_sd_fact_sigma = 0.25,
-    bayes_prior = 200,
+    bayes_prior = 50,
     bayes_prior_trade = 50
 ) {
 
@@ -748,7 +725,7 @@ get_markov_tag_bayes_loop <- function(
     training_perc = 1,
     sd_divides = seq(0.25,2,0.25),
     quantile_divides = seq(0.1,0.9, 0.1),
-    rolling_period = 100,
+    rolling_period = 400,
     markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
     markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
     sum_sd_cut_off = "",
@@ -763,7 +740,9 @@ get_markov_tag_bayes_loop <- function(
     bayes_prior_trade = 100,
     asset_infor = asset_infor,
     trade_direction = "Long",
-    skip_analysis = FALSE
+    skip_analysis = FALSE,
+    risk_dollar_value = 10,
+    currency_conversion = currency_conversion
 ) {
 
   asset_data_combined_filt <- asset_data_combined
@@ -779,6 +758,8 @@ get_markov_tag_bayes_loop <- function(
       sum_sd_cut_off = sum_sd_cut_off
     )
 
+  run_of_prob_prop <- 1
+
   #-- Posterior = dnorm(mu_n, sigma_n)
   #-- sigma Prior = lag(running_sd, 50)
   #-- sigma Current = running_sd
@@ -790,6 +771,7 @@ get_markov_tag_bayes_loop <- function(
 
   Lows <- markov_data[[1]] %>%
     ungroup() %>%
+    left_join(mean_values_by_asset_for_loop) %>%
     group_by(Asset) %>%
     arrange(Date, .by_group = TRUE) %>%
     group_by(Asset) %>%
@@ -801,10 +783,13 @@ get_markov_tag_bayes_loop <- function(
       sigma_n = sigma_current*sigma_prior/(n_bayes*sigma_prior + sigma_current),
       u_n= sigma_n*( (u_prior/sigma_prior) + (n_bayes*running_mid/sigma_current)),
       expected_posterior = qnorm(p = 0.5, mean = u_n, sd = sigma_n),
-      prob_current_low = round(pnorm(Open_To_Var_lag1, mean = expected_posterior, sd = sigma_current,
+      # prob_current_low = round(pnorm(Open_To_Var_lag1, mean = expected_posterior, sd = sigma_current,
+      #                                lower.tail=FALSE), 4)
+      prob_current_low = round(pnorm(mean_daily  + run_of_prob_prop*sd_daily , mean = expected_posterior, sd = sigma_current,
                                      lower.tail=FALSE), 4)
     ) %>%
     ungroup() %>%
+    dplyr::select(-c(mean_daily, sd_daily, mean_weekly, sd_weekly)) %>%
     # filter(total >= 280) %>%
     dplyr::select(Date, Asset, Price, Open, High, Low,
                   Open_To_Low_lag1 = Open_To_Var_lag1,
@@ -817,6 +802,7 @@ get_markov_tag_bayes_loop <- function(
 
   Highs <- markov_data[[2]] %>%
     ungroup() %>%
+    left_join(mean_values_by_asset_for_loop) %>%
     group_by(Asset) %>%
     arrange(Date, .by_group = TRUE) %>%
     group_by(Asset) %>%
@@ -828,11 +814,15 @@ get_markov_tag_bayes_loop <- function(
       sigma_n = sigma_current*sigma_prior/(n_bayes*sigma_prior + sigma_current),
       u_n= sigma_n*( (u_prior/sigma_prior) + (n_bayes*running_mid/sigma_current)),
       expected_posterior = qnorm(p = 0.5, mean = u_n, sd = sigma_n),
+      # prob_current_high =
+      #   round( pnorm(Open_To_Var_lag1, mean = expected_posterior, sd = sigma_current,
+      #                lower.tail=FALSE), 4 ),
       prob_current_high =
-        round( pnorm(Open_To_Var_lag1, mean = expected_posterior, sd = sigma_current,
+        round( pnorm(mean_daily  + run_of_prob_prop*sd_daily , mean = expected_posterior, sd = sigma_current,
                      lower.tail=FALSE), 4 )
     ) %>%
     ungroup() %>%
+    dplyr::select(-c(mean_daily, sd_daily, mean_weekly, sd_weekly)) %>%
     # filter(total >= 280) %>%
     dplyr::select(Date, Asset, Price, Open, High, Low,
                   sigma_n_high = sigma_n, u_n_high = u_n ,
@@ -849,8 +839,8 @@ get_markov_tag_bayes_loop <- function(
       posterior_difference = expected_posterior_high - expected_posterior_low,
       posterior_difference_op = expected_posterior_low - expected_posterior_high,
       sigma_difference = sigma_n_high - sigma_n_low,
-      posterior_high_diff = expected_posterior_high - lag(expected_posterior_high)
-      # probability_
+      posterior_high_diff = expected_posterior_high - lag(expected_posterior_high),
+      high_low_prob_diff = prob_current_high - prob_current_low
     ) %>%
     group_by(Asset) %>%
     arrange(Date, .by_group = TRUE) %>%
@@ -864,7 +854,6 @@ get_markov_tag_bayes_loop <- function(
         slider::slide_dbl(.x = posterior_difference,
                           .f = ~ sd(.x, na.rm = T),
                           .before = bayes_prior_trade),
-
 
       posterior_difference_mean_op =
         slider::slide_dbl(.x = posterior_difference_op,
@@ -892,10 +881,39 @@ get_markov_tag_bayes_loop <- function(
         slider::slide_dbl(.x = posterior_high_diff,
                           .f = ~ sd(.x, na.rm = T),
                           .before = bayes_prior_trade)
+
+      # high_low_prob_diff_mean =
+      #   slider::slide_dbl(.x = high_low_prob_diff,
+      #                     .f = ~ mean(.x, na.rm = T),
+      #                     .before = bayes_prior_trade),
+      # high_low_prob_diff_sd =
+      #   slider::slide_dbl(.x = high_low_prob_diff,
+      #                     .f = ~ sd(.x, na.rm = T),
+      #                     .before = bayes_prior_trade),
+      #
+      # high_prob_mean =
+      #   slider::slide_dbl(.x = prob_current_high,
+      #                     .f = ~ mean(.x, na.rm = T),
+      #                     .before = bayes_prior_trade),
+      # low_prob_mean =
+      #   slider::slide_dbl(.x = prob_current_low,
+      #                     .f = ~ mean(.x, na.rm = T),
+      #                     .before = bayes_prior_trade),
+      # high_prob_mean_long =
+      #   slider::slide_dbl(.x = prob_current_high,
+      #                     .f = ~ mean(.x, na.rm = T),
+      #                     .before = bayes_prior_trade*2),
+      # low_prob_mean_long =
+      #   slider::slide_dbl(.x = prob_current_low,
+      #                     .f = ~ mean(.x, na.rm = T),
+      #                     .before = bayes_prior_trade*2)
     ) %>%
     ungroup() %>%
-    filter(total >= (rolling_period - 0.25*rolling_period) )
-
+    filter(total >= (rolling_period - 0.25*rolling_period) ) %>%
+    left_join(mean_values_by_asset_for_loop) %>%
+    mutate(
+      threshold_value_prob = mean_daily  + run_of_prob_prop*sd_daily
+    )
 
   #--- Long 57% with trade_sd_fact_sigma 2 at sigma_difference add expected_high > expected_low adds 2%
   #----- Add expected_posterior_high < expected_posterior_low adds another 1.5%
@@ -936,19 +954,16 @@ get_markov_tag_bayes_loop <- function(
       trade_col =
         case_when(
           posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd &
-            # posterior_high_diff <= posterior_high_diff_mean - trade_sd_fact_post_high*posterior_high_diff_sd &
-            sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
-            # prob_current_high < 0.2
-            sigma_n_high>sigma_n_low
-          # expected_posterior_high < expected_posterior_low
-          ~ "Long",
-          posterior_difference >= posterior_difference_mean + trade_sd_fact_post*posterior_difference_sd &
-            # posterior_high_diff >= posterior_high_diff_mean + trade_sd_fact_post_high*posterior_high_diff_sd &
-            sigma_difference >= sigma_difference_mean + trade_sd_fact_sigma*sigma_difference_sd &
-            # prob_current_low < 0.2
-            sigma_n_high < sigma_n_low
-          # expected_posterior_high > expected_posterior_low
-          ~ "Short"
+          # posterior_high_diff <= posterior_high_diff_mean - trade_sd_fact_post_high*posterior_high_diff_sd &
+          sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
+          sigma_n_high>sigma_n_low
+
+          # high_low_prob_diff >= high_low_prob_diff_mean + high_low_prob_diff_sd*trade_sd_fact_post_high
+          ~ "Long"
+          # posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd &
+          #   sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
+          #   sigma_n_high>sigma_n_low
+          # ~ "Long"
         )
     ) %>%
     filter(!is.na(trade_col))
@@ -965,7 +980,8 @@ get_markov_tag_bayes_loop <- function(
 
     long_bayes_loop_analysis <-
       generic_trade_finder_loop(
-        tagged_trades = tagged_trades %>% filter(trade_col == trade_direction),
+        # tagged_trades = tagged_trades %>% filter(trade_col == trade_direction),
+        tagged_trades = tagged_trades ,
         asset_data_daily_raw = asset_data_combined_filt,
         stop_factor = stop_factor,
         profit_factor =profit_factor,
@@ -993,6 +1009,22 @@ get_markov_tag_bayes_loop <- function(
         trade_return_col = "trade_returns",
         risk_dollar_value = risk_dollar_value,
         grouping_vars = "trade_direction"
+      )
+
+    analysis_data_asset <-
+      generic_anlyser(
+        trade_data = long_bayes_loop_analysis %>% rename(Asset = asset),
+        profit_factor = profit_factor,
+        stop_factor = stop_factor,
+        asset_infor = asset_infor,
+        currency_conversion = currency_conversion,
+        asset_col = "Asset",
+        stop_col = "starting_stop_value",
+        profit_col = "starting_profit_value",
+        price_col = "trade_start_prices",
+        trade_return_col = "trade_returns",
+        risk_dollar_value = risk_dollar_value,
+        grouping_vars = c("Asset","trade_direction")
       )
 
     return(

@@ -201,7 +201,7 @@ trade_params <-
 
 profit_factor  = 7
 stop_factor  = 4
-risk_dollar_value <- 20
+risk_dollar_value <- 10
 trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 
 new_trades_this_week <- list()
@@ -238,65 +238,29 @@ for (j in 1:dim(trade_params)[1]) {
 
   retest_long_aud <- retest_long %>%
     rename(Asset = asset) %>%
-    convert_stop_profit_AUD(
+    generic_anlyser(
+      profit_factor = profit_factor,
+      stop_factor = stop_factor,
       asset_infor = asset_infor,
+      currency_conversion = currency_conversion,
       asset_col = "Asset",
       stop_col = "starting_stop_value",
       profit_col = "starting_profit_value",
       price_col = "trade_start_prices",
-      risk_dollar_value = risk_dollar_value,
-      returns_present = TRUE,
       trade_return_col = "trade_returns",
-      currency_conversion = currency_conversion
-    )
-
-
-  retest_ts_data[[j]] <- retest_long_aud
-
-  retest_long_sum <- retest_long_aud %>%
-    filter(volume_required > 0) %>%
-    mutate(wins = ifelse(trade_return_dollars_AUD > 0, 1, 0)) %>%
-    rename(trade_direction = trade_col) %>%
-    group_by(trade_direction, dates) %>%
-    summarise(
-      Trades = n(),
-      wins = sum(wins),
-      Total_Dollars = sum(trade_return_dollars_AUD)
+      risk_dollar_value = risk_dollar_value,
+      grouping_vars = "trade_direction"
     ) %>%
     mutate(
-      Perc = wins/(Trades)
-    ) %>%
-    group_by(trade_direction) %>%
-    arrange(dates, .by_group = TRUE) %>%
-    group_by(trade_direction) %>%
-    mutate(
-      cumulative_dollars = cumsum(Total_Dollars)
-    ) %>%
-    group_by(trade_direction) %>%
-    summarise(
-      Trades = sum(Trades),
-      wins = sum(wins),
-      Final_Dollars = sum(Total_Dollars),
-      Lowest_Dollars = min(cumulative_dollars),
-      Dollars_quantile_25 = quantile(cumulative_dollars, 0.25),
-      Dollars_quantile_75 = quantile(cumulative_dollars, 0.75),
-      max_Dollars = max(cumulative_dollars)
-    ) %>%
-    mutate(
-      Perc = wins/Trades,
       sd_factor_low = sd_factor_low,
-      sd_factor_high = sd_factor_high,
-      stop_factor = stop_factor,
-      profit_factor =profit_factor,
-      risk_weighted_return =
-        Perc*(profit_factor/stop_factor) - (1- Perc)*(1)
+      sd_factor_high = sd_factor_high
     )
 
-  retest_data[[j]] <- retest_long_sum
+  retest_data[[j]] <- retest_long_aud
 
   trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 
-  chance_of_win <- retest_long_sum %>%
+  chance_of_win <- retest_long_aud %>%
     distinct(trade_direction, Perc)
 
   if( dim(chance_of_win)[1] == 0 ) { chance_of_win = 0 }
@@ -324,4 +288,113 @@ for (j in 1:dim(trade_params)[1]) {
 
 }
 
-reanalyse_results <- retest_data %>% map_dfr(bind_rows) %>% filter(trade_direction == "Long")
+reanalyse_results <-
+  retest_data %>% map_dfr(bind_rows) %>%
+  filter(risk_weighted_return > 0.05)
+
+trades_for_today <-
+  new_trades_this_week %>%
+  map_dfr(
+    ~.x %>% filter(!is.na(trade_col))
+  ) %>%
+  dplyr::select(-Perc) %>%
+  left_join(reanalyse_results %>%
+              dplyr::select(stop_factor,
+                            profit_factor,
+                            Final_Dollars,
+                            sd_factor_high,
+                            sd_factor_low,
+                            trade_col = trade_direction,
+                            risk_weighted_return)
+            ) %>%
+  filter(!is.na(risk_weighted_return))  %>%
+  get_stops_profs_volume_trades(mean_values_by_asset = mean_values_by_asset_for_loop,
+                                trade_col = "trade_col",
+                                currency_conversion = currency_conversion,
+                                risk_dollar_value = risk_dollar_value,
+                                stop_factor = stop_factor,
+                                profit_factor = profit_factor) %>%
+  filter(volume_required > 0) %>%
+  filter(!is.na(trade_col))
+
+
+#---------------------------------------------
+#We use Account  number 2, 001-011-1615559-003
+account_list <- get_list_of_accounts()
+account_name <- "mt4_hedging"
+account_number <- "001-011-1615559-003"
+get_oanda_account_number(account_name = account_name)
+current_trades <- get_list_of_positions(account_var = 2)
+current_trades <- current_trades %>%
+  mutate(direction = stringr::str_to_title(direction)) %>%
+  rename(Asset = instrument )
+
+trade_list_for_today <- trades_for_today %>%
+  filter(volume_required > 0) %>%
+  left_join(current_trades %>%
+              mutate(units  =
+                       case_when(
+                         direction == "Short" ~ -1*units,
+                         direction == "Long" ~ units
+                       ))
+  ) %>%
+  filter(
+    trade_col == direction | is.na(direction)
+  ) %>%
+  mutate(
+    volume_required =
+      case_when(
+        trade_col == "Long" ~ volume_required,
+        trade_col == "Short" ~ -1*volume_required,
+      )
+  )
+
+trade_list_for_today <- trade_list_for_today %>%
+  group_by(Asset) %>%
+  slice_max(risk_weighted_return) %>%
+  filter(risk_weighted_return > 0.1)
+
+how_many_assets <- setdiff(asset_data_combined_ask$Asset %>% unique(), trade_list_for_today$Asset)
+
+
+for (i in 18:dim(trade_list_for_today)[1]) {
+
+  account_details <- get_account_summary(account_var = 2)
+  margain_available <- account_details$marginAvailable %>% as.numeric()
+  margain_used <- account_details$marginUsed%>% as.numeric()
+  total_margain <- margain_available + margain_used
+  percentage_margain_available <- margain_available/total_margain
+  Sys.sleep(2)
+
+  if(percentage_margain_available > 0.05) {
+
+    asset <- trade_list_for_today$Asset[i] %>% as.character()
+    volume_trade <- trade_list_for_today$volume_required[i] %>% as.numeric()
+
+    loss_var <- trade_list_for_today$stop_value[i] %>% as.numeric()
+    profit_var <- trade_list_for_today$profit_value[i] %>% as.numeric()
+
+    # if(loss_var > 9) { loss_var <- round(loss_var)}
+    # if(profit_var > 9) { profit_var <- round(profit_var)}
+
+    trade_list_for_today$estimated_margin[i]
+
+    profit_var>=loss_var
+
+    # This is misleading because it is price distance and not pip distance
+    http_return <- oanda_place_order_pip_stop(
+      asset = asset,
+      volume = volume_trade,
+      stopLoss = loss_var,
+      takeProfit = profit_var,
+      type = "MARKET",
+      timeinForce = "FOK",
+      acc_name = account_name,
+      position_fill = "OPEN_ONLY" ,
+      price
+    )
+
+  }
+
+}
+
