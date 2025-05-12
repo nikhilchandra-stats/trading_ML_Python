@@ -207,6 +207,7 @@ trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 new_trades_this_week <- list()
 retest_data <- list()
 retest_ts_data <- list()
+store_tagged_trades <- list()
 
 for (j in 1:dim(trade_params)[1]) {
 
@@ -223,6 +224,8 @@ for (j in 1:dim(trade_params)[1]) {
 
         )
     )
+
+  store_tagged_trades[[j]] <- temp_for_trade
 
   retest_long <-
     generic_trade_finder_loop(
@@ -290,7 +293,7 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return > 0.05)
+  filter(risk_weighted_return > 0.1)
 
 trades_for_today <-
   new_trades_this_week %>%
@@ -352,12 +355,13 @@ trade_list_for_today <- trades_for_today %>%
 trade_list_for_today <- trade_list_for_today %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return) %>%
-  filter(risk_weighted_return > 0.1)
+  filter(risk_weighted_return > 0.1) %>%
+  arrange(estimated_margin)
 
 how_many_assets <- setdiff(asset_data_combined_ask$Asset %>% unique(), trade_list_for_today$Asset)
 
 
-for (i in 18:dim(trade_list_for_today)[1]) {
+for (i in 1:dim(trade_list_for_today)[1]) {
 
   account_details <- get_account_summary(account_var = 2)
   margain_available <- account_details$marginAvailable %>% as.numeric()
@@ -366,7 +370,7 @@ for (i in 18:dim(trade_list_for_today)[1]) {
   percentage_margain_available <- margain_available/total_margain
   Sys.sleep(2)
 
-  if(percentage_margain_available > 0.05) {
+  if(percentage_margain_available > 0.1) {
 
     asset <- trade_list_for_today$Asset[i] %>% as.character()
     volume_trade <- trade_list_for_today$volume_required[i] %>% as.numeric()

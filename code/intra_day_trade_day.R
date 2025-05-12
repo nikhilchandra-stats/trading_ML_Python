@@ -2,12 +2,12 @@
 helperfunctions35South::load_custom_functions()
 one_drive_path <- helperfunctions35South::create_one_drive_path(
   path_extension = "raw data")
-library(neuralnet)
 
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD"))
-all_aud_symbols <- get_oanda_symbols() %>%
-  keep( ~ .x %in% c(all_aud_symbols, "USD_SEK", "USD_ZAR", "USD_NOK", "USD_MXN", "USD_HUF"))
+  keep( ~
+          (.x %in% c( "USD_SEK", "USD_ZAR", "USD_NOK", "USD_MXN", "USD_HUF")) |
+          str_detect(.x, "AUD")
+           )
 
 asset_infor <- get_instrument_info()
 
@@ -326,7 +326,7 @@ while(current_time < end_time) {
               takeProfit = profit_var,
               type = "MARKET",
               timeinForce = "FOK",
-              acc_name = account_name,
+              acc_name = account_name_long,
               position_fill = "OPEN_ONLY" ,
               price
             )
@@ -339,6 +339,9 @@ while(current_time < end_time) {
     }
 
     trade_taken_this_hour <- 1
+    current_time <- now() %>% as_datetime()
+    current_minute <- lubridate::minute(current_time)
+    current_hour <- lubridate::hour(current_time)
 
     rm(account_details)
     rm(asset)

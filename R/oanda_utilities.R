@@ -628,7 +628,9 @@ read_all_asset_data_intra_day <- function(
 get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
 
   aud_usd_today <- asset_data_daily_raw %>% filter(str_detect(Asset, "AUD")) %>%
+    group_by(Asset) %>%
     slice_max(Date)  %>%
+    ungroup() %>%
     dplyr::select(Price, Asset) %>%
     mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]") %>% str_remove_all("_"),
            starting_value = str_extract(Asset, "[A-Z][A-Z][A-Z]_") %>% str_remove_all("_")) %>%
@@ -654,7 +656,9 @@ get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
 
   SEK_ZAR_HUF_NOK_conversion <- asset_data_daily_raw %>%
     filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY|USD_MXN"))  %>%
+    group_by(Asset) %>%
     slice_max(Date)  %>%
+    ungroup() %>%
     dplyr::select(Price, Asset) %>%
     dplyr::mutate(dummy_join = "USD") %>%
     mutate(
@@ -754,8 +758,16 @@ convert_stop_profit_AUD <- function(trade_data = trade_data,
         ),
       volume_required = volume_unadj,
       volume_adj = round(volume_unadj, minimumTradeSize),
-      minimal_loss =  volume_adj*stop_value_AUD,
-      maximum_win =  volume_adj*profit_value_AUD,
+      minimal_loss =
+        case_when(
+          str_detect(Asset,"SEK|NOK|ZAR|MXN") ~ ((risk_dollar_value/stop_value)/adjusted_conversion)*stop_value_AUD,
+          TRUE ~ volume_adj*stop_value_AUD
+        ),
+      maximum_win =
+        case_when(
+          str_detect(Asset,"SEK|NOK|ZAR|MXN") ~ ((risk_dollar_value/stop_value)/adjusted_conversion)*profit_value_AUD,
+          TRUE ~ volume_adj*profit_value_AUD
+        ),
       trade_value = AUD_Price*volume_adj*marginRate,
       estimated_margin = trade_value,
       volume_required = volume_adj

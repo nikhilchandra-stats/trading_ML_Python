@@ -1681,6 +1681,7 @@ run_reg_daily_variant <- function(
     dplyr::select(-month_date)
 
   testing_data <- trading_dat %>%
+    mutate(Date = as_date(Date)) %>%
     left_join(macro_us, by = c("Date" = "week_date") ) %>%
     left_join(macro_eur, by = c("Date" = "week_date"))%>%
     left_join(macro_jpy, by = c("Date" = "week_date"))%>%
