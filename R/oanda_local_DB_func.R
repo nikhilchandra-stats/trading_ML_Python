@@ -165,7 +165,7 @@ update_local_db_file <- function(
         "US2000_USD",
         "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
         "JP225_USD", "SPX500_USD"),
-    time_frame = "D",
+    time_frame = "H1",
     bid_or_ask = "ask"
 ) {
 
@@ -185,6 +185,12 @@ update_local_db_file <- function(
     pull(Date) %>%
     min(na.rm = T)
 
+  current_latest_date <- current_latest_date - days(3)
+
+  current_latest_date <-
+    current_latest_date %>%
+    str_remove_all("[A-Z]+") %>%
+    str_trim()
 
   data_to_Update <-
     read_all_asset_data_intra_day(
@@ -194,7 +200,7 @@ update_local_db_file <- function(
       time_frame = time_frame,
       bid_or_ask = bid_or_ask,
       how_far_back = 5000,
-      start_date = current_latest_date %>% as_date() %>% as.character()
+      start_date = current_latest_date
     )
 
   data_to_Update <-

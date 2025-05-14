@@ -488,7 +488,6 @@ update_local_db_file <- function(
     pull(Date) %>%
     min(na.rm = T)
 
-
   data_to_Update <-
     read_all_asset_data_intra_day(
       asset_list_oanda = asset_list_oanda,
@@ -497,7 +496,7 @@ update_local_db_file <- function(
       time_frame = time_frame,
       bid_or_ask = bid_or_ask,
       how_far_back = 5000,
-      start_date = current_latest_date %>% as_date() %>% as.character()
+      start_date = (current_latest_date %>% as_date() - days(3)) %>% as.character()
     )
 
   data_to_Update <-
@@ -526,13 +525,10 @@ update_local_db_file <- function(
 
     message(glue::glue("Latest Date in DB {current_latest_date}"))
     print(for_upload)
-
     db_con <- connect_db(db_location)
-
     append_table_sql_lite(.data = for_upload,
                           conn = db_con,
                           table_name = table_name)
-
     DBI::dbDisconnect(db_con)
 
   }

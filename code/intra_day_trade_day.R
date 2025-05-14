@@ -137,7 +137,7 @@ stop_factor1  = 6
 profit_factor2  = 6
 stop_factor2  = 8
 risk_dollar_value <- 5
-margain_threshold <- 0.10
+margain_threshold <- 0.05
 long_account_num <- 1
 account_number_long <- "001-011-1615559-001"
 account_name_long <- "primary"
@@ -228,6 +228,7 @@ while(current_time < end_time) {
 
     tagged_trades_long1 <-
       trade_data_long$tagged_trades %>%
+      group_by(Asset) %>%
       slice_max(Date) %>%
       filter(!is.na(trade_col)) %>%
       dplyr::select(Date, Asset, Price, Open, High, trade_col) %>%

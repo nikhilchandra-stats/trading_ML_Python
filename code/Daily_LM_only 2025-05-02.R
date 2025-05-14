@@ -91,29 +91,26 @@ asset_data_combined_ask <- asset_data_combined_ask %>%
   mutate(Date = as_date(Date))
 asset_data_daily_raw_ask <-asset_data_combined_ask
 
-extracted_asset_data_bid <-
-  read_all_asset_data_intra_day(
-    asset_list_oanda = asset_list_oanda,
-    save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
-    read_csv_or_API = "API",
-    time_frame = "D",
-    bid_or_ask = "bid",
-    how_far_back = 5000,
-    start_date = "2011-01-01"
-  )
-
-asset_data_combined_bid <- extracted_asset_data_bid %>% map_dfr(bind_rows)
-asset_data_combined_bid <- asset_data_combined_bid %>%
-  mutate(Date = as_date(Date))
-asset_data_daily_raw_bid <-asset_data_combined_bid
-
 mean_values_by_asset_for_loop =
   wrangle_asset_data(
-    asset_data_daily_raw = asset_data_daily_raw_bid,
+    asset_data_daily_raw = asset_data_combined_ask,
     summarise_means = TRUE
   )
 
-aud_usd_today <- get_aud_conversion(asset_data_daily_raw = asset_data_daily_raw_bid)
+all_aud_symbols <- get_oanda_symbols() %>%
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+asset_infor <- get_instrument_info()
+aud_assets <- read_all_asset_data_intra_day(
+  asset_list_oanda = all_aud_symbols,
+  save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+  read_csv_or_API = "API",
+  time_frame = "D",
+  bid_or_ask = "bid",
+  how_far_back = 10,
+  start_date = (today() - days(2)) %>% as.character()
+)
+aud_assets <- aud_assets %>% map_dfr(bind_rows)
+aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
 
 currency_conversion <-
   aud_usd_today %>%
@@ -356,7 +353,12 @@ trade_list_for_today <- trade_list_for_today %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return) %>%
   filter(risk_weighted_return > 0.1) %>%
-  arrange(estimated_margin)
+  arrange(estimated_margin)  %>%
+  mutate(
+    units = as.numeric(units),
+    units = ifelse(is.na(units), 0, units)
+  ) %>%
+  arrange(units)
 
 how_many_assets <- setdiff(asset_data_combined_ask$Asset %>% unique(), trade_list_for_today$Asset)
 
@@ -370,7 +372,7 @@ for (i in 1:dim(trade_list_for_today)[1]) {
   percentage_margain_available <- margain_available/total_margain
   Sys.sleep(2)
 
-  if(percentage_margain_available > 0.1) {
+  if(percentage_margain_available > 0.05) {
 
     asset <- trade_list_for_today$Asset[i] %>% as.character()
     volume_trade <- trade_list_for_today$volume_required[i] %>% as.numeric()
