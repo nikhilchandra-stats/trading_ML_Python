@@ -394,14 +394,18 @@ get_NN_trade_from_params <-
         mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
         filter(!is.na(trade_col))
 
-      tagged_trades2 <-
-        get_stops_profs_volume_trades(mean_values_by_asset = mean_values_by_asset_for_loop_H1,
-                                      tagged_trades = tagged_trades,
-                                      trade_col = "trade_col",
-                                      currency_conversion = currency_conversion,
-                                      risk_dollar_value = risk_dollar_value,
-                                      stop_factor = stop_factor,
-                                      profit_factor = profit_factor)
+      if(dim(tagged_trades)[1] > 1) {
+        tagged_trades2 <-
+          get_stops_profs_volume_trades(mean_values_by_asset = mean_values_by_asset_for_loop_H1,
+                                        tagged_trades = tagged_trades,
+                                        trade_col = "trade_col",
+                                        currency_conversion = currency_conversion,
+                                        risk_dollar_value = risk_dollar_value,
+                                        stop_factor = stop_factor,
+                                        profit_factor = profit_factor)
+      } else {
+        tagged_trades2 <- NULL
+      }
 
       return(tagged_trades2)
 
