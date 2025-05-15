@@ -205,7 +205,7 @@ current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
 
-margain_threshold <- 0.10
+margain_threshold <- 0.05
 long_account_num <- 1
 account_number_long <- "001-011-1615559-001"
 account_name_long <- "primary"
@@ -371,7 +371,7 @@ while (current_time < end_time) {
         percentage_margain_available_long <- margain_available_long/total_margain_long
         Sys.sleep(1)
 
-        if(percentage_margain_available_long > margain_threshold) {
+        if(percentage_margain_available_long[1] > margain_threshold) {
 
           asset <- total_trades$Asset[i] %>% as.character()
           volume_trade <- total_trades$volume_required[i] %>% as.numeric()

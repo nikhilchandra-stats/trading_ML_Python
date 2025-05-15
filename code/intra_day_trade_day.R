@@ -380,11 +380,23 @@ while(current_time < end_time) {
 #-trade_sd_fact_sigma = 0.5
 #-sigma_n_high>sigma_n_low
 
-data_list_dfr_long <- read_csv(paste0(save_path, "/extracted_asset_data_h1_ts_ask_2.csv"))
-data_list_dfr_short <- read_csv(paste0(save_path, "/extracted_asset_data_h1_ts_bid_2.csv"))
-mean_values_by_asset_for_loop =
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+start_date_day = "2011-01-01"
+end_date_day = today() %>% as.character()
+
+
+starting_asset_data_ask_H1 <-
+  get_db_price(
+    db_location = db_location,
+    start_date = start_date_day,
+    end_date = end_date_day,
+    bid_or_ask = "ask",
+    time_frame = "H1"
+  )
+
+mean_values_by_asset_for_loop_H1 =
   wrangle_asset_data(
-    asset_data_daily_raw = data_list_dfr_long,
+    asset_data_daily_raw = starting_asset_data_ask_H1,
     summarise_means = TRUE
   )
 
@@ -392,7 +404,7 @@ profit_factor  = 10
 stop_factor  = 6
 trade_data_long <-
   get_markov_tag_bayes_loop(
-    asset_data_combined = data_list_dfr_long,
+    asset_data_combined = starting_asset_data_ask_H1,
     training_perc = 1,
     sd_divides = seq(0.5,2,0.5),
     quantile_divides = seq(0.1,0.9, 0.1),
@@ -402,8 +414,8 @@ trade_data_long <-
     sum_sd_cut_off = "",
     profit_factor  = profit_factor,
     stop_factor  = stop_factor,
-    asset_data_daily_raw = data_list_dfr_long,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    asset_data_daily_raw = starting_asset_data_ask_H1,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_H1,
     trade_sd_fact_post = 1.5,
     trade_sd_fact_post_high = 1,
     trade_sd_fact_sigma = 0.5,

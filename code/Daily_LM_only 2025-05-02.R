@@ -352,6 +352,7 @@ trade_list_for_today <- trades_for_today %>%
 trade_list_for_today <- trade_list_for_today %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return) %>%
+  ungroup() %>%
   filter(risk_weighted_return > 0.1) %>%
   arrange(estimated_margin)  %>%
   mutate(
@@ -372,7 +373,7 @@ for (i in 1:dim(trade_list_for_today)[1]) {
   percentage_margain_available <- margain_available/total_margain
   Sys.sleep(2)
 
-  if(percentage_margain_available > 0.05) {
+  if(percentage_margain_available[1] > 0.01) {
 
     asset <- trade_list_for_today$Asset[i] %>% as.character()
     volume_trade <- trade_list_for_today$volume_required[i] %>% as.numeric()

@@ -736,8 +736,8 @@ get_markov_tag_bayes_loop <- function(
     trade_sd_fact_post = 1,
     trade_sd_fact_post_high = 1,
     trade_sd_fact_sigma = 0,
-    bayes_prior = 200,
-    bayes_prior_trade = 100,
+    bayes_prior = 300,
+    bayes_prior_trade = 270,
     asset_infor = asset_infor,
     trade_direction = "Long",
     skip_analysis = FALSE,
@@ -953,10 +953,16 @@ get_markov_tag_bayes_loop <- function(
     mutate(
       trade_col =
         case_when(
-          posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd &
-          # posterior_high_diff <= posterior_high_diff_mean - trade_sd_fact_post_high*posterior_high_diff_sd &
-          sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
-          sigma_n_high>sigma_n_low
+
+          # posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd &
+          # # posterior_high_diff <= posterior_high_diff_mean - trade_sd_fact_post_high*posterior_high_diff_sd &
+          # sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
+          # sigma_n_high>sigma_n_low
+
+          posterior_difference >= posterior_difference_mean + trade_sd_fact_post*posterior_difference_sd &
+            # posterior_high_diff >= posterior_high_diff_mean + trade_sd_fact_post_high*posterior_high_diff_sd
+            sigma_difference >= sigma_difference_mean + trade_sd_fact_sigma*sigma_difference_sd
+            # sigma_n_high<sigma_n_low
 
           # high_low_prob_diff >= high_low_prob_diff_mean + high_low_prob_diff_sd*trade_sd_fact_post_high
           ~ "Long"
