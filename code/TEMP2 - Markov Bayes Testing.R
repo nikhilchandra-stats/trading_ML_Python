@@ -437,23 +437,23 @@ get_markov_tag_pos_neg_diff <- function(
 }
 
 get_markov_tag_bayes <- function(
-    asset_data_combined = asset_data_combined,
+    asset_data_combined = starting_asset_data_ask_H1,
     training_perc = 1,
     sd_divides = seq(0.5,2,0.5),
     quantile_divides = seq(0.1,0.9, 0.1),
-    rolling_period = 100,
+    rolling_period = 400,
     markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
     markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
     sum_sd_cut_off = "",
     profit_factor  = 4,
     stop_factor  = 2,
-    asset_data_daily_raw = asset_data_combined,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    asset_data_daily_raw = starting_asset_data_ask_H1,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_H1,
     trade_sd_fact_post = 1.5,
     trade_sd_fact_post_high = 1,
     trade_sd_fact_sigma = 0.25,
-    bayes_prior = 50,
-    bayes_prior_trade = 50,
+    bayes_prior = 200,
+    bayes_prior_trade = 100,
     saved_LM = NULL
 ) {
 
@@ -722,7 +722,7 @@ get_markov_tag_bayes <- function(
 }
 
 get_markov_tag_bayes_loop_LM_ML <- function(
-    asset_data_combined = asset_data_combined,
+    asset_data_combined = starting_asset_data_ask_H1,
     training_perc = 1,
     sd_divides = seq(0.25,2,0.25),
     quantile_divides = seq(0.1,0.9, 0.1),
@@ -730,10 +730,10 @@ get_markov_tag_bayes_loop_LM_ML <- function(
     markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
     markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
     sum_sd_cut_off = "",
-    profit_factor  = 5,
-    stop_factor  = 2,
-    asset_data_daily_raw = asset_data_combined,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    profit_factor  = 8,
+    stop_factor  = 8,
+    asset_data_daily_raw = starting_asset_data_ask_H1,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_H1,
     trade_sd_fact_post = 1,
     bayes_prior = 300,
     bayes_prior_trade = 270,
@@ -743,7 +743,8 @@ get_markov_tag_bayes_loop_LM_ML <- function(
     risk_dollar_value = 10,
     currency_conversion = currency_conversion,
     LM_model = NULL,
-    LM_mean_preds = NULL
+    LM_mean_preds = NULL,
+    raw_macro_data = raw_macro_data
 ) {
 
   asset_data_combined_filt <- asset_data_combined
@@ -797,7 +798,11 @@ get_markov_tag_bayes_loop_LM_ML <- function(
                   sigma_n_low = sigma_n,
                   u_n_low = u_n,
                   expected_posterior_low = expected_posterior,
-                  prob_current_low)
+                  prob_current_low,
+                  `Low_Markov_Point_Neg_roll_sum_-2` = `Markov_Point_Neg_roll_sum_-2`,
+                  `Low_Markov_Point_Pos_roll_sum_2` = `Markov_Point_Pos_roll_sum_2`,
+                  `Low_Markov_Point_Neg_roll_sum_-0.75` = `Markov_Point_Neg_roll_sum_-0.75`,
+                  `Low_Markov_Point_Pos_roll_sum_0.75` = `Markov_Point_Pos_roll_sum_0.75`)
 
   Lows$Date %>% max() - Lows$Date %>% min()
 
@@ -829,7 +834,11 @@ get_markov_tag_bayes_loop_LM_ML <- function(
                   sigma_n_high = sigma_n, u_n_high = u_n ,
                   Open_To_High_lag1 = Open_To_Var_lag1,
                   expected_posterior_high = expected_posterior,
-                  prob_current_high, total)
+                  prob_current_high, total,
+                  `High_Markov_Point_Neg_roll_sum_-2` = `Markov_Point_Neg_roll_sum_-2`,
+                  `High_Markov_Point_Pos_roll_sum_2` = `Markov_Point_Pos_roll_sum_2`,
+                  `High_Markov_Point_Neg_roll_sum_-0.75` = `Markov_Point_Neg_roll_sum_-0.75`,
+                  `High_Markov_Point_Pos_roll_sum_0.75` = `Markov_Point_Pos_roll_sum_0.75`)
 
   full_trading_data <- Lows %>%
     left_join(Highs) %>%
@@ -882,32 +891,6 @@ get_markov_tag_bayes_loop_LM_ML <- function(
         slider::slide_dbl(.x = posterior_high_diff,
                           .f = ~ sd(.x, na.rm = T),
                           .before = bayes_prior_trade)
-
-      # high_low_prob_diff_mean =
-      #   slider::slide_dbl(.x = high_low_prob_diff,
-      #                     .f = ~ mean(.x, na.rm = T),
-      #                     .before = bayes_prior_trade),
-      # high_low_prob_diff_sd =
-      #   slider::slide_dbl(.x = high_low_prob_diff,
-      #                     .f = ~ sd(.x, na.rm = T),
-      #                     .before = bayes_prior_trade),
-      #
-      # high_prob_mean =
-      #   slider::slide_dbl(.x = prob_current_high,
-      #                     .f = ~ mean(.x, na.rm = T),
-      #                     .before = bayes_prior_trade),
-      # low_prob_mean =
-      #   slider::slide_dbl(.x = prob_current_low,
-      #                     .f = ~ mean(.x, na.rm = T),
-      #                     .before = bayes_prior_trade),
-      # high_prob_mean_long =
-      #   slider::slide_dbl(.x = prob_current_high,
-      #                     .f = ~ mean(.x, na.rm = T),
-      #                     .before = bayes_prior_trade*2),
-      # low_prob_mean_long =
-      #   slider::slide_dbl(.x = prob_current_low,
-      #                     .f = ~ mean(.x, na.rm = T),
-      #                     .before = bayes_prior_trade*2)
     ) %>%
     ungroup() %>%
     filter(total >= (rolling_period - 0.25*rolling_period) ) %>%
@@ -921,13 +904,31 @@ get_markov_tag_bayes_loop_LM_ML <- function(
     full_trading_data_train <-
       full_trading_data %>%
       group_by(Asset) %>%
-      slice_head(prop = 0.5) %>%
+      slice_head(prop = 0.4) %>%
       group_by(Asset) %>%
       mutate(
-        lead_close_to_close = log(Price/lag(Price))
+        # lead_close_to_close = lead(log(Price/Open)),
+        # lead_Open_to_High = lead(log(High/Open)),
+        # lead_Open_to_Low = lead(log(Open/Low)),
+        # ratio_of_low_high = lead_Open_to_High/lead_Open_to_Low,
+        # lag_high_to_open = lag(log(High/Open)),
+        # lag_open_to_low = lag(log(Open/Low)),
+        #
+        lead_close_to_close = lead((lead(Price, 4)-Open)),
+        lead_Open_to_High = lead((High-Open)),
+        lead_Open_to_Low = lead((Open-Low)),
+        ratio_of_low_high = lead_Open_to_High/lead_Open_to_Low,
+        lag_high_to_open = lag((High-Open)),
+        lag_open_to_low = lag((Open-Low)),
+
+        lag_high_to_open2 = lag(lag_high_to_open, 2),
+        lag_open_to_low2 = lag(lag_open_to_low, 2),
+
+        lag_high_to_open3 = lag(lag_high_to_open, 3),
+        lag_open_to_low3 = lag(lag_open_to_low, 3)
       ) %>%
       ungroup() %>%
-      filter(!is.na(lead_close_to_close)) %>%
+      filter(!is.na(lead_close_to_close), !is.infinite(ratio_of_low_high)) %>%
       filter(!is.na(expected_posterior_low), !is.na(expected_posterior_high), !is.na(prob_current_low),
              !is.na(prob_current_low), !is.na(sigma_n_high), !is.na(sigma_n_low), !is.na(posterior_difference_mean),
              !is.na(posterior_difference_sd), !is.na(posterior_high_diff_mean))
@@ -937,13 +938,45 @@ get_markov_tag_bayes_loop_LM_ML <- function(
                      prob_current_low + prob_current_low +
                      sigma_n_high + sigma_n_low +
                      posterior_difference_mean  + posterior_difference_sd +
-                     posterior_high_diff_mean , data=full_trading_data_train)
+                     posterior_high_diff_mean +
+                     lag_high_to_open + lag_open_to_low +
+                     lag_high_to_open2 + lag_open_to_low2 +
+                     lag_high_to_open3 + lag_open_to_low3 +
+                     `High_Markov_Point_Neg_roll_sum_-2`+
+                   `High_Markov_Point_Pos_roll_sum_2`+
+                   `High_Markov_Point_Neg_roll_sum_-0.75` +
+                   `High_Markov_Point_Pos_roll_sum_0.75`
+                   ,data=full_trading_data_train)
+
+    summary(LM_model)
 
     full_trading_data_test <-
       full_trading_data %>%
       group_by(Asset) %>%
-      slice_tail(prop = 0.45) %>%
+      slice_tail(prop = 0.55) %>%
       group_by(Asset) %>%
+      ungroup() %>%
+      mutate(
+        # lead_close_to_close = lead(log(Price/Open)),
+        # lead_Open_to_High = lead(log(High/Open)),
+        # lead_Open_to_Low = lead(log(Open/Low)),
+        # ratio_of_low_high = lead_Open_to_High/lead_Open_to_Low,
+        # lag_high_to_open = lag(log(High/Open)),
+        # lag_open_to_low = lag(log(Open/Low)),
+        #
+        lead_close_to_close = lead((Price-Open)),
+        lead_Open_to_High = lead((High-Open)),
+        lead_Open_to_Low = lead((Open-Low)),
+        ratio_of_low_high = lead_Open_to_High/lead_Open_to_Low,
+        lag_high_to_open = lag((High-Open)),
+        lag_open_to_low = lag((Open-Low)),
+
+        lag_high_to_open2 = lag(lag_high_to_open, 2),
+        lag_open_to_low2 = lag(lag_open_to_low, 2),
+
+        lag_high_to_open3 = lag(lag_high_to_open, 3),
+        lag_open_to_low3 = lag(lag_open_to_low, 3)
+      ) %>%
       ungroup()
 
     prediction_nn_train <- predict(object = LM_model, newdata = full_trading_data_train)
@@ -952,7 +985,7 @@ get_markov_tag_bayes_loop_LM_ML <- function(
       full_trading_data_train %>%
       mutate(pred = prediction_nn_train) %>%
       group_by(Asset) %>%
-      summarise(mean_pred = median(pred, na.rm = T),
+      summarise(mean_pred = mean(pred, na.rm = T),
                 sd_pred = sd(pred, na.rm = T)) %>%
       ungroup()
 
@@ -965,12 +998,16 @@ get_markov_tag_bayes_loop_LM_ML <- function(
   }
 
   if(!is.null(LM_model) & !is.null(LM_mean_preds)) {
-    full_trading_data_test <- full_trading_data
+    full_trading_data_test <-
+      full_trading_data %>%
+      mutate(
+
+      ) %>%
+      ungroup()
     prediction_nn_train_means <-LM_mean_preds
   }
 
   prediction_nn <- predict(object = LM_model, newdata = full_trading_data_test)
-
 
   full_trading_data_test <- full_trading_data_test %>%
     mutate(
@@ -978,65 +1015,20 @@ get_markov_tag_bayes_loop_LM_ML <- function(
     ) %>%
     left_join(prediction_nn_train_means)
 
-  #--- Long 57% with trade_sd_fact_sigma 2 at sigma_difference add expected_high > expected_low adds 2%
-  #----- Add expected_posterior_high < expected_posterior_low adds another 1.5%
-  #------Reduce trade_sd_fact_sigma to 1 increases trades to 2000
-  #------ Add posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd to add 2%
-  #-------Long: Trades = 5000, Perc = 0.6, prof = 6, stop = 6, rolling = 400, bayes_prior_trade = 100,bayes_prior = 200
-  #-posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd
-  #-trade_sd_fact_post: = 1
-  #-sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd
-  #-trade_sd_fact_sigma: = 0.75
-  #-sigma_n_high>sigma_n_low
-
-  #-------Long: Trades = 8000, Perc = 0.64, prof = 12, stop = 12, rolling = 400, bayes_prior_trade = 120,bayes_prior = 240
-  #-posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd
-  #-trade_sd_fact_post = 0.5
-  #-sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd
-  #-trade_sd_fact_sigma = 0.25
-  #-sigma_n_high>sigma_n_low
-
-  #-------Long H1: Trades = 10k+, Perc = 0.411, profit_factor = 10, stop_factor = 6,
-  #----------rolling = 400, bayes_prior_trade = 120,bayes_prior = 240
-  #-posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd
-  #-trade_sd_fact_post = 1.5
-  #-sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd
-  #-trade_sd_fact_sigma = 0.5
-  #-sigma_n_high>sigma_n_low
-
-  #-------Long H1 fast variant: Trades = 8000, Perc = 0.61, profit_factor = 6, stop_factor = 8,
-  #----------rolling = 400, bayes_prior_trade = 120,bayes_prior = 240
-  #-posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd
-  #-trade_sd_fact_post = 2
-  #-sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd
-  #-trade_sd_fact_sigma = 1
-  #-sigma_n_high>sigma_n_low
-
   tagged_trades <- full_trading_data_test %>%
     mutate(
       trade_col =
         case_when(
-
-          # posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd &
-          # # posterior_high_diff <= posterior_high_diff_mean - trade_sd_fact_post_high*posterior_high_diff_sd &
-          # sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
-          # sigma_n_high>sigma_n_low
-
-          Pred >= mean_pred + trade_sd_fact_post*sd_pred
-
-          # high_low_prob_diff >= high_low_prob_diff_mean + high_low_prob_diff_sd*trade_sd_fact_post_high
-          ~ "Long"
-          # posterior_difference <= posterior_difference_mean - trade_sd_fact_post*posterior_difference_sd &
-          #   sigma_difference <= sigma_difference_mean - trade_sd_fact_sigma*sigma_difference_sd &
-          #   sigma_n_high>sigma_n_low
-          # ~ "Long"
+          # Pred >= mean_pred + 3.2*sd_pred
+          # Pred <= mean_pred - 5*sd_pred
+          Pred > mean_pred + 0*sd_pred
+          ~ trade_direction
         )
     ) %>%
     filter(!is.na(trade_col)) %>%
     dplyr::select(-mean_pred, -sd_pred, -Pred)
 
   distinct_assets <- tagged_trades %>% distinct(Asset)
-  distinct_assets <- full_trading_data_test %>% distinct(Asset)
 
   #--------Key Variables for H1:
 
@@ -1064,6 +1056,21 @@ get_markov_tag_bayes_loop_LM_ML <- function(
             summarise_means = TRUE
           )
       )
+
+    trade_timings <-
+      long_bayes_loop_analysis %>%
+      mutate(
+        ending_date_trade = as_datetime(ending_date_trade)
+      ) %>%
+      mutate(Time_Required = (ending_date_trade - dates)/dhours(1) )
+
+    trade_timings_by_asset <- trade_timings %>%
+      mutate(win_loss = ifelse(trade_returns < 0, "loss", "wins") ) %>%
+      group_by(asset, win_loss) %>%
+      summarise(
+        Time_Required = median(Time_Required, na.rm = T)
+      ) %>%
+      pivot_wider(names_from = win_loss, values_from = Time_Required)
 
     distinct_assets <- long_bayes_loop_analysis %>% distinct(asset)
 

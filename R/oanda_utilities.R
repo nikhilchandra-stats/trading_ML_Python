@@ -731,7 +731,7 @@ convert_stop_profit_AUD <- function(trade_data = trade_data,
       profit_value = round(!!as.name(profit_col), abs(pipLocation) )
     ) %>%
     mutate(
-      asset_size = floor(log10(!!as.name(price_col))),
+      # asset_size = floor(log10(!!as.name(price_col))),
       volume_adjustment = 1,
       AUD_Price =
         case_when(

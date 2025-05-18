@@ -305,20 +305,16 @@ while (current_time < end_time) {
       )
 
     trades_1 <-
-      get_NN_trade_from_params(
+      get_NN_best_trades_from_mult_anaysis(
+        db_path = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
+        network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
+        NN_model = H1_model_High,
         Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-        sd_value_xx = 2.5,
-        direction = "negative",
-        train_prop = 0.4,
-        test_prop = 0.55,
-        nn_model_for_trades = H1_model_High_SD_2_65_neg,
-        get_risk_analysis = FALSE,
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-        profit_factor  = 14,
-        stop_factor  = 14,
-        risk_dollar_value = 3.5,
         currency_conversion = currency_conversion,
-        asset_infor = asset_infor
+        asset_infor = asset_infor,
+        risk_dollar_value = 5,
+        win_threshold = 0.6
       )
 
     trades_2 <-
@@ -355,12 +351,38 @@ while (current_time < end_time) {
         asset_infor = asset_infor
       )
 
+
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      bind_rows(trades_3) %>%
-      filter(volume_required > 1)
+      bind_rows(trades_3)
 
     if(dim(total_trades)[1] > 0) {
+
+      get_oanda_account_number(account_name = account_name_long)
+      current_trades <- get_list_of_positions(account_var = long_account_num)
+      current_trades <- current_trades %>%
+        mutate(direction = stringr::str_to_title(direction)) %>%
+        rename(Asset = instrument )
+
+      total_trades <- total_trades %>%
+                      filter(volume_required > 1)
+
+        if(dim(total_trades)[1] > 1) {
+
+          total_trades <-
+            total_trades %>%
+            left_join(current_trades) %>%
+            mutate(
+              std_units = case_when(
+                type == "CURRENCY" ~ units/10,
+                TRUE ~ units
+              )
+            ) %>%
+            arrange(std_units) %>%
+            dplyr::select(-std_units, -direction, -units)
+
+        }
+
 
       for (i in 1:dim(total_trades)[1]) {
 
@@ -550,12 +572,15 @@ mean_values_by_asset_for_loop_H1 =
     summarise_means = TRUE
   )
 
-H1_model_High <- neuralnet::neuralnet(formula = Price_to_High_lead ~
+H1_model_High <- neuralnet::neuralnet(formula = Price_to_Price_lead ~
                                         Pred_trade + mean_value + mean_value +
                                         sd_value + Total_Avg_Prob_Diff_Low +
                                         Total_Avg_Prob_Diff_High + Total_Avg_Prob_Diff_SD_Low +
-                                        Total_Avg_Prob_Diff_SD_High,
-                                      hidden = 20,
+                                        Total_Avg_Prob_Diff_SD_High +
+                                        Price_to_High_lag + Price_to_Low_lag +
+                                        Price_to_High_lag2 + Price_to_Low_lag2 +
+                                        Price_to_High_lag3 + Price_to_Low_lag3,
+                                      hidden = 14,
                                       data = H1_Model_data_train,
                                       err.fct = "sse",
                                       linear.output = TRUE,
@@ -563,23 +588,20 @@ H1_model_High <- neuralnet::neuralnet(formula = Price_to_High_lead ~
                                       rep = 1,
                                       algorithm = "rprop+",
                                       stepmax = 20000,
-                                      threshold = 0.04)
+                                      threshold = 0.03)
 
-# saveRDS(
-#   H1_model_High,
-#   glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_{today()}.rds")
-# )
+saveRDS(
+  H1_model_High,
+  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd{today()}.rds")
+)
 
-old_model <-
-  readRDS(
-    "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_2_SD_65Perc - Copy.rds"
-  )
+# H1_model_High_SD_2_65_neg <-
+#   readRDS(
+#     "C:/Users/Nikhil Chandra/Documents/trade_data/Holy_GRAIL_MODEL_H1_LM_Markov_NN_2_SD_65Perc.rds"
+#   )
 
 prediction_nn <- predict(object = H1_model_High, newdata = H1_Model_data_test)
 prediction_nn_train <- predict(object = H1_model_High, newdata = H1_Model_data_train)
-
-prediction_nn <- predict(object = old_model, newdata = H1_Model_data_test)
-prediction_nn_train <- predict(object = old_model, newdata = H1_Model_data_train)
 
 average_train_predictions <-
   H1_Model_data_train %>%
@@ -604,16 +626,20 @@ tagged_trades <-
   mutate(
     trade_col =
       case_when(
-        predicted < Average_NN_Pred - SD_NN_Pred*2.5 ~ "Long"
+        # predicted >=  Average_NN_Pred + SD_NN_Pred*3 &
+        #   predicted <=  Average_NN_Pred + SD_NN_Pred*500~ "Long"
+
+        predicted >=  Average_NN_Pred - SD_NN_Pred*500 &
+          predicted <=  Average_NN_Pred - SD_NN_Pred*4~ "Long"
       )
   ) %>%
   filter(!is.na(trade_col))
 
-profit_factor  = 14
-stop_factor  = 14
-# profit_factor  = 9
-# stop_factor  = 9
-risk_dollar_value <- 3.5
+profit_factor  = 10
+stop_factor  = 10
+risk_dollar_value <- 10
+
+tagged_trades$Asset %>% unique()
 
 long_bayes_loop_analysis <-
   generic_trade_finder_loop(
@@ -626,6 +652,23 @@ long_bayes_loop_analysis <-
     start_price_col = "Price",
     mean_values_by_asset = mean_values_by_asset_for_loop_H1
   )
+
+trade_timings <-
+  long_bayes_loop_analysis %>%
+  mutate(
+    ending_date_trade = as_datetime(ending_date_trade),
+    dates = as_datetime(dates)
+  ) %>%
+  mutate(Time_Required = (ending_date_trade - dates)/ddays(1) )
+
+trade_timings_by_asset <- trade_timings %>%
+  mutate(win_loss = ifelse(trade_returns < 0, "loss", "wins") ) %>%
+  group_by(asset, win_loss) %>%
+  summarise(
+    Time_Required = median(Time_Required, na.rm = T),
+    Totals = n()
+  ) %>%
+  pivot_wider(names_from = win_loss, values_from = Time_Required)
 
 analysis_data <-
   generic_anlyser(
@@ -641,6 +684,22 @@ analysis_data <-
     trade_return_col = "trade_returns",
     risk_dollar_value = risk_dollar_value,
     grouping_vars = "trade_col"
+  )
+
+analysis_data_asset <-
+  generic_anlyser(
+    trade_data = long_bayes_loop_analysis %>% rename(Asset = asset),
+    profit_factor = profit_factor,
+    stop_factor = stop_factor,
+    asset_infor = asset_infor,
+    currency_conversion = currency_conversion,
+    asset_col = "Asset",
+    stop_col = "starting_stop_value",
+    profit_col = "starting_profit_value",
+    price_col = "trade_start_prices",
+    trade_return_col = "trade_returns",
+    risk_dollar_value = risk_dollar_value,
+    grouping_vars = "Asset"
   )
 
 #---------------------------------Winning Condiditions:

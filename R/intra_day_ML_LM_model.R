@@ -83,8 +83,20 @@ extract_required_markov_data <-
       group_by(Asset) %>%
       mutate(
         Price_to_High_lead = log(lead(High)/Price),
-        Price_to_Low_lead =  log(Price/lead(Low))
-      )
+        Price_to_Low_lead =  log(Price/lead(Low)),
+
+        Price_to_High_lag = log(lag(High)/lag(Open)),
+        Price_to_Low_lag =  log(lag(Open)/lag(Low)),
+
+        Price_to_High_lag2 = log(lag(High, 2)/lag(Open, 2)),
+        Price_to_Low_lag2 =  log(lag(Open, 2)/lag(Low, 2)),
+
+        Price_to_High_lag3 = log(lag(High, 3)/lag(Open, 3)),
+        Price_to_Low_lag3 =  log(lag(Open, 3)/lag(Low, 3)),
+
+        Price_to_Price_lead =lead(log(Price/Open))
+      ) %>%
+      filter(!is.na(Price_to_Low_lag3), !is.na(Price_to_Low_lead), !is.na(Price_to_High_lag2))
 
     return(Hour_data_with_LM_markov)
 
@@ -330,7 +342,7 @@ get_NN_trade_from_params <-
         mutate(
           trade_col =
             case_when(
-              predicted < (Average_NN_Pred - (SD_NN_Pred*sd_value_xx) ) ~ "Long"
+              predicted <= (Average_NN_Pred - (SD_NN_Pred*sd_value_xx) ) ~ "Long"
             )
         )
     }
@@ -346,7 +358,7 @@ get_NN_trade_from_params <-
         mutate(
           trade_col =
             case_when(
-              predicted > (Average_NN_Pred + (SD_NN_Pred*sd_value_xx) ) ~ "Long"
+              predicted >= (Average_NN_Pred + (SD_NN_Pred*sd_value_xx) ) ~ "Long"
             )
         )
     }
@@ -410,5 +422,104 @@ get_NN_trade_from_params <-
       return(tagged_trades2)
 
     }
+
+  }
+
+
+#' get_NN_best_trades_from_mult_anaysis
+#'
+#' @param db_path
+#' @param network_name
+#' @param NN_model
+#' @param Hour_data_with_LM_markov
+#' @param mean_values_by_asset_for_loop_H1
+#' @param currency_conversion
+#' @param asset_infor
+#' @param risk_dollar_value
+#' @param win_threshold
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_NN_best_trades_from_mult_anaysis <-
+  function(
+    db_path = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
+    network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
+    NN_model = H1_model_High,
+    Hour_data_with_LM_markov = Hour_data_with_LM_markov,
+    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    risk_dollar_value = 5,
+    win_threshold = 0.6
+  ) {
+
+    db_con <- connect_db(db_path)
+    analysis_data_db <-
+      DBI::dbGetQuery(conn = db_con,
+                      statement =  "SELECT * FROM Simulation_Results")
+
+    analysis_data_Asset_db <-
+      DBI::dbGetQuery(conn = db_con,
+                      statement =  "SELECT * FROM Simulation_Results_Asset")%>%
+      mutate(Assets_Above_50 = ifelse(Trades >= 50, 50, 1)) %>%
+      group_by(Assets_Above_50, trade_direction, sd_fac, Network_Name, stop_factor, profit_factor, direction_sd_1) %>%
+      summarise(
+        Assets = n_distinct(Asset)
+      ) %>%
+      group_by(trade_direction, sd_fac, Network_Name, stop_factor, profit_factor, direction_sd_1) %>%
+      slice_max(Assets_Above_50) %>%
+      ungroup() %>%
+      mutate(
+        Assets_Above_50 = ifelse(Assets_Above_50 ==50 , TRUE, FALSE)
+      )
+
+    analysis_data_db <-
+      DBI::dbGetQuery(conn = db_con,
+                      statement =  "SELECT * FROM Simulation_Results") %>%
+      left_join(analysis_data_Asset_db) %>%
+      filter(Perc > win_threshold) %>%
+      group_by(sd_fac, direction_sd_1, Network_Name) %>%
+      slice_min(stop_factor) %>%
+      ungroup() %>%
+      distinct(sd_fac, direction_sd_1, stop_factor, profit_factor, Network_Name, Trades, Assets) %>%
+      filter(Network_Name == network_name)
+
+    trades_1 <- list()
+
+    for (i in 1:dim(analysis_data_db)[1] ) {
+
+      sd_value_xx <- analysis_data_db$sd_fac[i] %>% as.numeric()
+      stop_factor <- analysis_data_db$stop_factor[i] %>% as.numeric()
+      profit_factor <- analysis_data_db$profit_factor[i] %>% as.numeric()
+      direction <- analysis_data_db$direction_sd_1[i] %>% as.character()
+
+      trades_1[[i]] <-
+        get_NN_trade_from_params(
+          Hour_data_with_LM_markov = Hour_data_with_LM_markov,
+          sd_value_xx = sd_value_xx,
+          direction = direction,
+          train_prop = 0.4,
+          test_prop = 0.55,
+          nn_model_for_trades = NN_model,
+          get_risk_analysis = FALSE,
+          mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
+          profit_factor  = profit_factor,
+          stop_factor  = stop_factor,
+          risk_dollar_value = risk_dollar_value,
+          currency_conversion = currency_conversion,
+          asset_infor = asset_infor
+        )
+
+    }
+
+    all_trades <- trades_1 %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_min(stop_factor) %>%
+      ungroup()
+
+    return(all_trades)
 
   }
