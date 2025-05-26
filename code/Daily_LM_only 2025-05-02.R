@@ -290,7 +290,10 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return > 0.1)
+  filter(risk_weighted_return > 0.1) %>%
+  mutate(redont_risk_weighted_return =
+           1000*( (Perc*maximum_win) - (minimal_loss*(1 - Perc)) )
+         )
 
 trades_for_today <-
   new_trades_this_week %>%
@@ -314,8 +317,16 @@ trades_for_today <-
                                 risk_dollar_value = risk_dollar_value,
                                 stop_factor = stop_factor,
                                 profit_factor = profit_factor) %>%
-  filter(volume_required > 0) %>%
-  filter(!is.na(trade_col))
+  filter( (abs(volume_required) >= 0.1 &
+             Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+                          "NAS100_USD", "DE30_EUR", "HK33_HKD")) |
+            (abs(volume_required) >= 1 &
+               !(Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+                              "NAS100_USD", "DE30_EUR", "HK33_HKD"))
+            )
+  ) %>%
+  filter(!is.na(trade_col)) %>%
+  filter(trade_col == "Long")
 
 
 #---------------------------------------------

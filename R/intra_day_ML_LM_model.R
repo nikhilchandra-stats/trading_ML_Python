@@ -81,6 +81,8 @@ extract_required_markov_data <-
       ) %>%
       filter(!is.na(Pred_Filled)) %>%
       group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
       mutate(
         Price_to_High_lead = log(lead(High)/Price),
         Price_to_Low_lead =  log(Price/lead(Low)),
@@ -96,7 +98,7 @@ extract_required_markov_data <-
 
         Price_to_Price_lead =lead(log(Price/Open))
       ) %>%
-      filter(!is.na(Price_to_Low_lag3), !is.na(Price_to_Low_lead), !is.na(Price_to_High_lag2))
+      ungroup()
 
     return(Hour_data_with_LM_markov)
 
@@ -302,7 +304,9 @@ get_NN_trade_from_params <-
     stop_factor  = 14,
     risk_dollar_value = 3.5,
     currency_conversion = currency_conversion,
-    asset_infor = asset_infor
+    asset_infor = asset_infor,
+    trade_direction = "Long",
+    slice_max = TRUE
     ) {
 
     H1_Model_data_train <-
@@ -342,7 +346,7 @@ get_NN_trade_from_params <-
         mutate(
           trade_col =
             case_when(
-              predicted <= (Average_NN_Pred - (SD_NN_Pred*sd_value_xx) ) ~ "Long"
+              predicted <= (Average_NN_Pred - (SD_NN_Pred*sd_value_xx) ) ~ trade_direction
             )
         )
     }
@@ -358,7 +362,7 @@ get_NN_trade_from_params <-
         mutate(
           trade_col =
             case_when(
-              predicted >= (Average_NN_Pred + (SD_NN_Pred*sd_value_xx) ) ~ "Long"
+              predicted >= (Average_NN_Pred + (SD_NN_Pred*sd_value_xx) ) ~ trade_direction
             )
         )
     }
@@ -399,24 +403,38 @@ get_NN_trade_from_params <-
 
     if(get_risk_analysis == FALSE) {
 
-      tagged_trades <-
-        tagged_trades %>%
-        ungroup() %>%
-        filter(Date == max(Date)) %>%
-        mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
-        filter(!is.na(trade_col))
+      if(slice_max == TRUE) {
+        tagged_trades <-
+          tagged_trades %>%
+          ungroup() %>%
+          filter(Date == max(Date)) %>%
+          mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+          filter(!is.na(trade_col))
 
-      if(dim(tagged_trades)[1] > 1) {
-        tagged_trades2 <-
-          get_stops_profs_volume_trades(mean_values_by_asset = mean_values_by_asset_for_loop_H1,
-                                        tagged_trades = tagged_trades,
-                                        trade_col = "trade_col",
-                                        currency_conversion = currency_conversion,
-                                        risk_dollar_value = risk_dollar_value,
-                                        stop_factor = stop_factor,
-                                        profit_factor = profit_factor)
-      } else {
-        tagged_trades2 <- NULL
+        if(dim(tagged_trades)[1] > 0) {
+          tagged_trades2 <-
+            get_stops_profs_volume_trades(mean_values_by_asset = mean_values_by_asset_for_loop_H1,
+                                          tagged_trades = tagged_trades,
+                                          trade_col = "trade_col",
+                                          currency_conversion = currency_conversion,
+                                          risk_dollar_value = risk_dollar_value,
+                                          stop_factor = stop_factor,
+                                          profit_factor = profit_factor)
+        } else {
+          tagged_trades2 <- NULL
+        }
+
+      }
+
+      if(slice_max == FALSE) {
+        tagged_trades <-
+          tagged_trades %>%
+          ungroup() %>%
+          # filter(Date == max(Date)) %>%
+          # mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+          filter(!is.na(trade_col))
+
+        tagged_trades2 <- tagged_trades
       }
 
       return(tagged_trades2)
@@ -452,13 +470,11 @@ get_NN_best_trades_from_mult_anaysis <-
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
     risk_dollar_value = 5,
-    win_threshold = 0.6
+    win_threshold = 0.55,
+    slice_max = TRUE
   ) {
 
     db_con <- connect_db(db_path)
-    analysis_data_db <-
-      DBI::dbGetQuery(conn = db_con,
-                      statement =  "SELECT * FROM Simulation_Results")
 
     analysis_data_Asset_db <-
       DBI::dbGetQuery(conn = db_con,
@@ -479,14 +495,16 @@ get_NN_best_trades_from_mult_anaysis <-
       DBI::dbGetQuery(conn = db_con,
                       statement =  "SELECT * FROM Simulation_Results") %>%
       left_join(analysis_data_Asset_db) %>%
-      filter(Perc > win_threshold) %>%
-      group_by(sd_fac, direction_sd_1, Network_Name) %>%
+      filter(Perc > win_threshold)  %>%
+      filter(Network_Name == network_name) %>%
+      group_by(sd_fac, direction_sd_1, Network_Name, trade_direction) %>%
       slice_min(stop_factor) %>%
       ungroup() %>%
-      distinct(sd_fac, direction_sd_1, stop_factor, profit_factor, Network_Name, Trades, Assets) %>%
-      filter(Network_Name == network_name)
+      distinct(sd_fac, direction_sd_1, stop_factor, profit_factor, Network_Name, Trades, Assets, trade_direction)
 
     trades_1 <- list()
+
+    DBI::dbDisconnect(db_con)
 
     for (i in 1:dim(analysis_data_db)[1] ) {
 
@@ -494,6 +512,7 @@ get_NN_best_trades_from_mult_anaysis <-
       stop_factor <- analysis_data_db$stop_factor[i] %>% as.numeric()
       profit_factor <- analysis_data_db$profit_factor[i] %>% as.numeric()
       direction <- analysis_data_db$direction_sd_1[i] %>% as.character()
+      trade_direction <- analysis_data_db$trade_direction[i] %>% as.character()
 
       trades_1[[i]] <-
         get_NN_trade_from_params(
@@ -509,17 +528,642 @@ get_NN_best_trades_from_mult_anaysis <-
           stop_factor  = stop_factor,
           risk_dollar_value = risk_dollar_value,
           currency_conversion = currency_conversion,
-          asset_infor = asset_infor
+          asset_infor = asset_infor,
+          trade_direction = trade_direction,
+          slice_max = slice_max
         )
 
     }
 
-    all_trades <- trades_1 %>%
-      map_dfr(bind_rows) %>%
-      group_by(Asset) %>%
-      slice_min(stop_factor) %>%
-      ungroup()
+    trades_1 <- trades_1 %>%
+      keep(~ !is.null(.x))
+
+    if(length(trades_1) > 0) {
+      all_trades <- trades_1 %>%
+        map_dfr(bind_rows)
+        # group_by(Asset) %>%
+        # slice_min(stop_factor) %>%
+        # ungroup()
+    } else {
+      all_trades <- NULL
+    }
 
     return(all_trades)
 
   }
+
+#' combine_NN_predictions
+#'
+#' @param training_data
+#' @param testing_data
+#' @param stop_factor
+#' @param profit_factor
+#' @param mean_values_by_asset_for_loop_H1_bid
+#' @param mean_values_by_asset_for_loop_H1_ask
+#' @param sd_fac
+#' @param currency_conversion
+#' @param risk_dollar_value
+#' @param asset_list_temp
+#' @param trade_direction
+#'
+#' @return
+#' @export
+#'
+#' @examples
+combine_NN_predictions <- function(
+    training_data = H1_Model_data_train,
+    testing_data = H1_Model_data_test,
+    stop_factor = 6,
+    profit_factor = 6,
+    mean_values_by_asset_for_loop_H1_bid = mean_values_by_asset_for_loop_H1_bid,
+    mean_values_by_asset_for_loop_H1_ask = mean_values_by_asset_for_loop_H1_ask,
+    sd_fac = 3,
+    currency_conversion = currency_conversion,
+    risk_dollar_value = risk_dollar_value,
+    asset_list_temp =
+      c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK", "USD_CHF", "USD_SEK", "XCU_USD",
+        "USD_MXN", "GBP_USD", "WTICO_USD", "SUGAR_USD", "USD_NOK", "USD_CZK", "WHEAT_USD",
+        "EUR_USD", "XAG_USD", "EUR_GBP", "USD_CNH", "USD_CAD", "SOYBN_USD", "AUD_USD", "NZD_USD",
+        "NZD_CHF", "WHEAT_USD", "USD_NOK"),
+    trade_direction = "Short",
+    test_results = FALSE
+
+) {
+
+  Network_Name1 <- "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13"
+  NN1 <-
+    readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds"))
+  prediction_nn_train_NN1 <- predict(object = NN1, newdata = training_data)
+  prediction_nn_test_NN1 <- predict(object = NN1, newdata = testing_data)
+  rm(NN1)
+
+  Network_Name2 <- "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17"
+  NN2 <-
+    readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds"))
+  prediction_nn_train_NN2 <- predict(object = NN2, newdata = training_data)
+  prediction_nn_test_NN2 <- predict(object = NN2, newdata = testing_data)
+  rm(NN2)
+
+  Network_Name3 <- "LM_ML_Lead_5_21_21_5_layer"
+  NN3 <-
+    readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_5_21_21_5_layer_2025-05-20.rds"))
+  prediction_nn_train_NN3 <- predict(object = NN3, newdata = training_data)
+  prediction_nn_test_NN3 <- predict(object = NN3, newdata = testing_data)
+  rm(NN3)
+
+  Network_Name4 <- "H1_LM_Markov_NN_Hidden35_withLag"
+  NN4 <-
+    readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Hidden35_withLag_2025-05-17.rds"))
+  prediction_nn_train_NN4 <- predict(object = NN4, newdata = training_data)
+  prediction_nn_test_NN4 <- predict(object = NN4, newdata = testing_data)
+  rm(NN4)
+
+  Network_Name5 <- "LM_ML_HighLead_14_14_layer_"
+  NN5 <-
+    readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_HighLead_14_14_layer_2025-05-19.rds"))
+  prediction_nn_train_NN5 <- predict(object = NN5, newdata = training_data)
+  prediction_nn_test_NN5 <- predict(object = NN5, newdata = testing_data)
+  rm(NN5)
+
+  Network_Name6 <- "H1_LM_Markov_NN_Hidden35"
+  NN6 <-
+    readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Hidden35_withLag_2025-05-17.rds"))
+  prediction_nn_train_NN6 <- predict(object = NN6, newdata = training_data)
+  prediction_nn_test_NN6 <- predict(object = NN6, newdata = testing_data)
+  rm(NN6)
+
+
+  training_data_with_preds <-
+    training_data %>%
+    ungroup() %>%
+    mutate(
+      NN1 = prediction_nn_train_NN1 %>% as.numeric(),
+      NN2 = prediction_nn_train_NN2%>% as.numeric(),
+      NN3 = prediction_nn_train_NN3%>% as.numeric(),
+      NN4 = prediction_nn_train_NN4%>% as.numeric(),
+      NN5 = prediction_nn_train_NN5%>% as.numeric(),
+      NN6 = prediction_nn_train_NN6%>% as.numeric()
+    ) %>%
+    # left_join(all_trades_for_logit %>% ungroup()) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    ungroup() %>%
+    mutate(
+      win_loss = case_when(
+        abs(Price_to_Low_lead) > abs(Price_to_High_lead)  ~ 1, TRUE ~ 0
+      )
+    ) %>%
+    filter(!is.na(NN1), !is.na(NN2), !is.na(NN3), !is.na(NN4), !is.na(win_loss))
+
+  glm_1 <-
+    glm(formula = win_loss ~ NN1 + NN2 + NN3 + NN4 +  NN5 + NN6 + Asset +
+          NN1*Asset + NN2*Asset +
+          Total_Avg_Prob_Diff_Low + Total_Avg_Prob_Diff_Median_Low +
+          Total_Avg_Prob_Diff_SD_High + Total_Avg_Prob_Diff_Median_High,
+        data = training_data_with_preds)
+
+  testing_data_with_preds <-
+    testing_data %>%
+    ungroup() %>%
+    mutate(
+      NN1 = prediction_nn_test_NN1 %>% as.numeric(),
+      NN2 = prediction_nn_test_NN2%>% as.numeric(),
+      NN3 = prediction_nn_test_NN3%>% as.numeric(),
+      NN4 = prediction_nn_test_NN4%>% as.numeric(),
+      NN5 = prediction_nn_test_NN5%>% as.numeric(),
+      NN6 = prediction_nn_test_NN6%>% as.numeric()
+    )
+
+  glm_preds <-
+    predict.glm(glm_1,
+                testing_data_with_preds,
+                type = "response")  %>% as.numeric()
+  glm_preds_train <-
+    predict.glm(glm_1,
+                training_data_with_preds,
+                type = "response")  %>% as.numeric()
+
+  mean_values_predictions_per_asset <-
+    training_data_with_preds %>%
+    dplyr::select(Asset) %>%
+    mutate(glm_preds_train = glm_preds_train) %>%
+    group_by(Asset) %>%
+    summarise(
+      mean_pred = mean(glm_preds_train, na.rm = T),
+      sd_pred = sd(glm_preds_train, na.rm = T)
+    ) %>%
+    ungroup()
+
+
+  testing_data_with_preds_GLM <-
+    testing_data_with_preds %>%
+    ungroup() %>%
+    mutate(
+      pred = glm_preds
+    ) %>%
+    left_join(mean_values_predictions_per_asset)
+
+
+  tagged_trades_test_neg <- testing_data_with_preds_GLM %>%
+    mutate(
+      trade_col =
+        case_when(
+          pred <= mean_pred  - sd_pred*sd_fac ~ trade_direction
+        )
+    ) %>%
+    filter(!is.na(trade_col)) %>%
+    mutate(direction_sd_1= "negative")
+
+  tagged_trades_test_pos <- testing_data_with_preds_GLM %>%
+    mutate(
+      trade_col =
+        case_when(
+          pred >= mean_pred  + sd_pred*sd_fac ~ trade_direction
+        )
+    ) %>%
+    filter(!is.na(trade_col)) %>%
+    mutate(direction_sd_1= "positive")
+
+  dim(tagged_trades_test_neg)
+  dim(tagged_trades_test_pos)
+
+  returned_data  <-
+    tagged_trades_test_neg %>%
+    bind_rows(tagged_trades_test_pos) %>%
+    filter(Asset %in% asset_list_temp)
+
+  if(test_results == TRUE) {
+    all_trades_in_testing_data_neg <-
+      generic_trade_finder_loop(
+        tagged_trades = tagged_trades_test_neg %>% filter(Asset %in% asset_list_temp) ,
+        asset_data_daily_raw = testing_data_with_preds_GLM %>% filter(Asset %in% asset_list_temp),
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset_for_loop_H1_bid %>% filter(Asset %in% asset_list_temp)
+      )
+
+    analysis_data_logit_neg <-
+      generic_anlyser(
+        trade_data = all_trades_in_testing_data_neg %>% rename(Asset = asset),
+        profit_factor = profit_factor,
+        stop_factor = stop_factor,
+        asset_infor = asset_infor,
+        currency_conversion = currency_conversion,
+        asset_col = "Asset",
+        stop_col = "starting_stop_value",
+        profit_col = "starting_profit_value",
+        price_col = "trade_start_prices",
+        trade_return_col = "trade_returns",
+        risk_dollar_value = risk_dollar_value,
+        grouping_vars = "trade_col"
+      )
+
+    all_trades_in_testing_data_pos <-
+      generic_trade_finder_loop(
+        tagged_trades = tagged_trades_test_pos %>% filter(Asset %in% asset_list_temp) ,
+        asset_data_daily_raw = testing_data_with_preds_GLM %>% filter(Asset %in% asset_list_temp),
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset_for_loop_H1_bid %>% filter(Asset %in% asset_list_temp)
+      )
+
+    analysis_data_logit_pos <-
+      generic_anlyser(
+        trade_data = all_trades_in_testing_data_pos %>% rename(Asset = asset),
+        profit_factor = profit_factor,
+        stop_factor = stop_factor,
+        asset_infor = asset_infor,
+        currency_conversion = currency_conversion,
+        asset_col = "Asset",
+        stop_col = "starting_stop_value",
+        profit_col = "starting_profit_value",
+        price_col = "trade_start_prices",
+        trade_return_col = "trade_returns",
+        risk_dollar_value = risk_dollar_value,
+        grouping_vars = "trade_col"
+      )
+
+    return(list(returned_data,
+                analysis_data_logit_neg,
+                analysis_data_logit_pos)
+           )
+
+
+  }
+
+  if(test_results == FALSE) {
+    return(returned_data)
+  }
+
+}
+
+
+#' simulate_trade_results_multi_param
+#'
+#' @param H1_Model_data_train
+#' @param H1_Model_data_test
+#' @param NN_results_DB
+#' @param Network_Name
+#' @param risk_dollar_value
+#' @param conditions_Params
+#'
+#' @return
+#' @export
+#'
+#' @examples
+simulate_trade_results_multi_param <-
+  function(
+    H1_Model_data_train = H1_Model_data_train_ask,
+    H1_Model_data_test = H1_Model_data_test_ask,
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results.db",
+    Network_Name = "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13",
+    NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds",
+    risk_dollar_value = 10,
+    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+    conditions_Params = NULL,
+    trade_direction = "Long",
+    write_required = FALSE,
+    profit_factor_mult = 1
+  ) {
+
+    H1_model_High <- readRDS(NN_Model_path)
+
+    prediction_nn <- predict(object = H1_model_High, newdata = H1_Model_data_test)
+    prediction_nn_train <- predict(object = H1_model_High, newdata = H1_Model_data_train)
+
+    average_train_predictions <-
+      H1_Model_data_train %>%
+      ungroup() %>%
+      mutate(
+        train_predictions = prediction_nn_train %>% as.numeric()
+      ) %>%
+      group_by(Asset) %>%
+      summarise(
+        Average_NN_Pred = mean(train_predictions, na.rm = T),
+        SD_NN_Pred = sd(train_predictions, na.rm = T)
+      ) %>%
+      ungroup()
+
+
+    db_con <- connect_db(path = NN_results_DB)
+
+    if(is.null(conditions_Params)) {
+
+      conditions_Params <-
+        tibble(
+          sd_fac = c(0, 1, 2, 3, 4, 5, 6, 7,8,9)
+        )
+      conditions_Params <-
+        seq(3, 15, 1) %>%
+        map_dfr(
+          ~ conditions_Params %>%
+            mutate(
+              stop_factor = .x
+            ) %>%
+            mutate(
+              profit_factor = profit_factor_mult*.x
+            )
+        )
+
+    }
+
+    trade_summaries <-
+      list()
+
+    trade_summaries_asset <-
+      list()
+
+    for (i in 1:dim(conditions_Params)[1] ) {
+
+      stop_factor <-
+        conditions_Params$stop_factor[i] %>% as.numeric()
+      profit_factor <-
+        conditions_Params$profit_factor[i] %>% as.numeric()
+      sd_fac <-
+        conditions_Params$sd_fac[i] %>% as.numeric()
+
+      tagged_trades_neg <-
+        H1_Model_data_test %>%
+        ungroup() %>%
+        mutate(
+          predicted = prediction_nn %>% as.numeric()
+        ) %>%
+        left_join(average_train_predictions) %>%
+        mutate(
+          trade_col =
+            case_when(
+              predicted <=  Average_NN_Pred - SD_NN_Pred*sd_fac~ trade_direction
+            )
+        ) %>%
+        filter(!is.na(trade_col))
+
+      tagged_trades_pos <-
+        H1_Model_data_test %>%
+        ungroup() %>%
+        mutate(
+          predicted = prediction_nn %>% as.numeric()
+        ) %>%
+        left_join(average_train_predictions) %>%
+        mutate(
+          trade_col =
+            case_when(
+              predicted >=  Average_NN_Pred + SD_NN_Pred*sd_fac ~ trade_direction
+            )
+        ) %>%
+        filter(!is.na(trade_col))
+
+      #-------------------------------------------------------------Negative
+
+      if(dim(tagged_trades_neg)[1] > 1) {
+        long_bayes_loop_analysis_neg <-
+          generic_trade_finder_loop(
+            tagged_trades = tagged_trades_neg ,
+            asset_data_daily_raw = H1_Model_data_test,
+            stop_factor = stop_factor,
+            profit_factor =profit_factor,
+            trade_col = "trade_col",
+            date_col = "Date",
+            start_price_col = "Price",
+            mean_values_by_asset = mean_values_by_asset_for_loop_H1
+          )
+
+        trade_timings_neg <-
+          long_bayes_loop_analysis_neg %>%
+          mutate(
+            ending_date_trade = as_datetime(ending_date_trade),
+            dates = as_datetime(dates)
+          ) %>%
+          mutate(Time_Required = (ending_date_trade - dates)/dhours(1) )
+
+        trade_timings_by_asset_neg <- trade_timings_neg %>%
+          mutate(win_loss = ifelse(trade_returns < 0, "loss", "wins") ) %>%
+          group_by(win_loss) %>%
+          summarise(
+            Time_Required = median(Time_Required, na.rm = T)
+          ) %>%
+          pivot_wider(names_from = win_loss, values_from = Time_Required) %>%
+          rename(loss_time_hours = loss,
+                 win_time_hours = wins)
+
+        analysis_data_neg <-
+          generic_anlyser(
+            trade_data = long_bayes_loop_analysis_neg %>% rename(Asset = asset),
+            profit_factor = profit_factor,
+            stop_factor = stop_factor,
+            asset_infor = asset_infor,
+            currency_conversion = currency_conversion,
+            asset_col = "Asset",
+            stop_col = "starting_stop_value",
+            profit_col = "starting_profit_value",
+            price_col = "trade_start_prices",
+            trade_return_col = "trade_returns",
+            risk_dollar_value = risk_dollar_value,
+            grouping_vars = "trade_col"
+          ) %>%
+          mutate(
+            sd_fac = sd_fac,
+            Network_Name = Network_Name,
+            direction_sd = "negative"
+          ) %>%
+          bind_cols(trade_timings_by_asset_neg)
+
+        analysis_data_asset_neg <-
+          generic_anlyser(
+            trade_data = long_bayes_loop_analysis_neg %>% rename(Asset = asset),
+            profit_factor = profit_factor,
+            stop_factor = stop_factor,
+            asset_infor = asset_infor,
+            currency_conversion = currency_conversion,
+            asset_col = "Asset",
+            stop_col = "starting_stop_value",
+            profit_col = "starting_profit_value",
+            price_col = "trade_start_prices",
+            trade_return_col = "trade_returns",
+            risk_dollar_value = risk_dollar_value,
+            grouping_vars = "Asset"
+          ) %>%
+          mutate(
+            sd_fac = sd_fac,
+            Network_Name = Network_Name,
+            direction_sd = "negative"
+          ) %>%
+          bind_cols(trade_timings_by_asset_neg)
+      }
+
+
+
+      #-----------------------------------------------------------Positive
+
+      if(dim(tagged_trades_pos)[1] > 1) {
+        long_bayes_loop_analysis_pos <-
+          generic_trade_finder_loop(
+            tagged_trades = tagged_trades_pos ,
+            asset_data_daily_raw = H1_Model_data_test,
+            stop_factor = stop_factor,
+            profit_factor =profit_factor,
+            trade_col = "trade_col",
+            date_col = "Date",
+            start_price_col = "Price",
+            mean_values_by_asset = mean_values_by_asset_for_loop_H1
+          )
+
+        trade_timings_pos <-
+          long_bayes_loop_analysis_pos %>%
+          mutate(
+            ending_date_trade = as_datetime(ending_date_trade),
+            dates = as_datetime(dates)
+          ) %>%
+          mutate(Time_Required = (ending_date_trade - dates)/dhours(1) )
+
+        trade_timings_by_asset_pos <- trade_timings_pos %>%
+          mutate(win_loss = ifelse(trade_returns < 0, "loss", "wins") ) %>%
+          group_by(win_loss) %>%
+          summarise(
+            Time_Required = median(Time_Required, na.rm = T)
+          ) %>%
+          pivot_wider(names_from = win_loss, values_from = Time_Required) %>%
+          rename(loss_time_hours = loss,
+                 win_time_hours = wins)
+
+        analysis_data_pos <-
+          generic_anlyser(
+            trade_data = long_bayes_loop_analysis_pos %>% rename(Asset = asset),
+            profit_factor = profit_factor,
+            stop_factor = stop_factor,
+            asset_infor = asset_infor,
+            currency_conversion = currency_conversion,
+            asset_col = "Asset",
+            stop_col = "starting_stop_value",
+            profit_col = "starting_profit_value",
+            price_col = "trade_start_prices",
+            trade_return_col = "trade_returns",
+            risk_dollar_value = risk_dollar_value,
+            grouping_vars = "trade_col"
+          ) %>%
+          mutate(
+            sd_fac = sd_fac,
+            Network_Name = Network_Name,
+            direction_sd = "positive"
+          ) %>%
+          bind_cols(trade_timings_by_asset_pos)
+
+        analysis_data_asset_pos <-
+          generic_anlyser(
+            trade_data = long_bayes_loop_analysis_pos %>% rename(Asset = asset),
+            profit_factor = profit_factor,
+            stop_factor = stop_factor,
+            asset_infor = asset_infor,
+            currency_conversion = currency_conversion,
+            asset_col = "Asset",
+            stop_col = "starting_stop_value",
+            profit_col = "starting_profit_value",
+            price_col = "trade_start_prices",
+            trade_return_col = "trade_returns",
+            risk_dollar_value = risk_dollar_value,
+            grouping_vars = "Asset"
+          ) %>%
+          mutate(
+            sd_fac = sd_fac,
+            Network_Name = Network_Name,
+            direction_sd = "positive"
+          ) %>%
+          bind_cols(trade_timings_by_asset_pos)
+      }
+
+      if(dim(tagged_trades_pos)[1] >= 1 &  dim(tagged_trades_neg)[1] >= 1) {
+        trade_summaries[[i]] <- analysis_data_pos %>%
+          bind_rows(analysis_data_neg)
+        trade_summaries_asset[[i]] <- analysis_data_asset_pos %>%
+          bind_rows(analysis_data_asset_neg)
+      }
+
+      if(dim(tagged_trades_pos)[1] >= 1 &  dim(tagged_trades_neg)[1] <= 1) {
+        trade_summaries[[i]] <- analysis_data_pos
+        trade_summaries_asset[[i]] <- analysis_data_asset_pos
+      }
+
+      if(dim(tagged_trades_pos)[1] <= 1 &  dim(tagged_trades_neg)[1] >= 1) {
+        trade_summaries[[i]] <- analysis_data_neg
+        trade_summaries_asset[[i]] <- analysis_data_asset_neg
+      }
+
+      trade_summaries_upload <- trade_summaries[[i]]
+      trade_summaries_asset_upload <- trade_summaries_asset[[i]]
+
+      names(trade_summaries_upload) <- c("trade_direction", "Trades", "wins", "Final_Dollars", "Lowest_Dollars",
+                                         "Dollars_quantile_25", "Dollars_quantile_75", "max_Dollars", "minimal_loss",
+                                         "maximum_win", "Perc", "stop_factor", "profit_factor", "risk_weighted_return",
+                                         "sd_fac", "Network_Name", "direction_sd_1", "loss_time_hours", "win_time_hours")
+
+      names(trade_summaries_asset_upload) <-
+        c("Asset", "trade_direction", "Trades", "wins", "Final_Dollars", "Lowest_Dollars",
+          "Dollars_quantile_25", "Dollars_quantile_75", "max_Dollars", "minimal_loss",
+          "maximum_win", "Perc", "stop_factor", "profit_factor", "risk_weighted_return",
+          "sd_fac", "Network_Name", "direction_sd_1", "loss_time_hours", "win_time_hours")
+
+      if(write_required == FALSE) {
+        if(i == 1) {
+          append_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_upload,
+                                table_name = "Simulation_Results" )
+
+          append_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_asset_upload,
+                                table_name = "Simulation_Results_Asset" )
+        } else {
+
+          append_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_upload,
+                                table_name = "Simulation_Results" )
+
+          append_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_asset_upload,
+                                table_name = "Simulation_Results_Asset" )
+
+        }
+      }
+
+      if(write_required == TRUE) {
+        if(i == 1) {
+          write_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_upload,
+                                table_name = "Simulation_Results" )
+
+          write_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_asset_upload,
+                                table_name = "Simulation_Results_Asset" )
+        } else {
+
+          append_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_upload,
+                                table_name = "Simulation_Results" )
+
+          append_table_sql_lite(conn = db_con,
+                                .data = trade_summaries_asset_upload,
+                                table_name = "Simulation_Results_Asset" )
+
+        }
+      }
+
+      rm(tagged_trades_neg)
+      rm(tagged_trades_pos)
+      rm(analysis_data_asset_neg)
+      rm(analysis_data_asset_pos)
+
+    }
+
+    DBI::dbDisconnect(db_con)
+
+    return(
+      list(trade_summaries, trade_summaries_asset)
+    )
+
+}
+
+

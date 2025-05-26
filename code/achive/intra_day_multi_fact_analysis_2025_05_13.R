@@ -124,8 +124,8 @@ H1_model_High_SD_25_71_neg <- readRDS(
   glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds")
 )
 
-H1_model_High_SD_TEN_56_pos <- readRDS(
-  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_TEN_SD_POSITIVE_2025-05-14.rds")
+H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17 <- readRDS(
+  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds")
 )
 
 H1_model_High_SD_2_65_neg <-
@@ -133,56 +133,6 @@ H1_model_High_SD_2_65_neg <-
     "C:/Users/Nikhil Chandra/Documents/trade_data/Holy_GRAIL_MODEL_H1_LM_Markov_NN_2_SD_65Perc.rds"
   )
 
-initial_results <-
-  get_NN_trade_from_params(
-    Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-    sd_value_xx = 2.5,
-    direction = "negative",
-    train_prop = 0.4,
-    test_prop = 0.55,
-    nn_model_for_trades = H1_model_High_SD_2_65_neg,
-    get_risk_analysis = TRUE,
-    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-    profit_factor  = 14,
-    stop_factor  = 14,
-    risk_dollar_value = 3.5,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor
-  )
-
-initial_results2 <-
-  get_NN_trade_from_params(
-    Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-    sd_value_xx = 10,
-    direction = "positive",
-    train_prop = 0.4,
-    test_prop = 0.55,
-    nn_model_for_trades = H1_model_High_SD_TEN_56_pos,
-    get_risk_analysis = TRUE,
-    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-    profit_factor  = 20,
-    stop_factor  = 20,
-    risk_dollar_value = 5,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor
-  )
-
-initial_results3 <-
-  get_NN_trade_from_params(
-    Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-    sd_value_xx = 8,
-    direction = "positive",
-    train_prop = 0.4,
-    test_prop = 0.55,
-    nn_model_for_trades = H1_model_High_SD_25_71_neg,
-    get_risk_analysis = TRUE,
-    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-    profit_factor  = 16,
-    stop_factor  = 16,
-    risk_dollar_value = 3.5,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor
-  )
 
 
 #-------------------------------Trade Loop
@@ -308,7 +258,7 @@ while (current_time < end_time) {
       get_NN_best_trades_from_mult_anaysis(
         db_path = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
         network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
-        NN_model = H1_model_High,
+        NN_model = H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17,
         Hour_data_with_LM_markov = Hour_data_with_LM_markov,
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
         currency_conversion = currency_conversion,
@@ -318,43 +268,20 @@ while (current_time < end_time) {
       )
 
     trades_2 <-
-      get_NN_trade_from_params(
+      get_NN_best_trades_from_mult_anaysis(
+        db_path = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
+        network_name = "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13",
+        NN_model = H1_model_High_SD_25_71_neg,
         Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-        sd_value_xx = 10,
-        direction = "positive",
-        train_prop = 0.4,
-        test_prop = 0.55,
-        nn_model_for_trades = H1_model_High_SD_TEN_56_pos,
-        get_risk_analysis = FALSE,
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-        profit_factor  = 20,
-        stop_factor  = 20,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
         risk_dollar_value = 5,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor
+        win_threshold = 0.6
       )
-
-    trades_3 <-
-      get_NN_trade_from_params(
-        Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-        sd_value_xx = 8,
-        direction = "positive",
-        train_prop = 0.4,
-        test_prop = 0.55,
-        nn_model_for_trades = H1_model_High_SD_25_71_neg,
-        get_risk_analysis = FALSE,
-        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-        profit_factor  = 16,
-        stop_factor  = 16,
-        risk_dollar_value = 3.5,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor
-      )
-
 
     total_trades <- trades_1 %>%
-      bind_rows(trades_2) %>%
-      bind_rows(trades_3)
+      bind_rows(trades_2)
 
     if(dim(total_trades)[1] > 0) {
 
@@ -430,54 +357,7 @@ while (current_time < end_time) {
 
 }
 
-#---------------------------------Winning Condiditions:
-#----------Results 56% Win Rate, 13% Risk Weighted Return, final = 16404.63
-#----------Lowest: -7735.936
-#----------Trades = 16k
 
-# H1_Model_data_train <-
-#   Hour_data_with_LM_markov %>%
-#   group_by(Asset) %>%
-#   slice_head(prop = 0.4)
-#
-# H1_Model_data_test <-
-#   Hour_data_with_LM_markov %>%
-#   group_by(Asset) %>%
-#   slice_tail(prop = 0.55)
-
-# formula = Price_to_High_lead ~
-#   Pred_trade + mean_value + mean_value +
-#   sd_value + Total_Avg_Prob_Diff_Low +
-#   Total_Avg_Prob_Diff_High + Total_Avg_Prob_Diff_SD_Low +
-#   Total_Avg_Prob_Diff_SD_High,
-# hidden = 20,
-# data = H1_Model_data_train,
-# err.fct = "sse",
-# linear.output = TRUE,
-# lifesign = 'full',
-# rep = 1,
-# algorithm = "rprop+",
-# stepmax = 4000,
-# threshold = 0.1
-
-# tagged_trades <-
-#   H1_Model_data_test %>%
-#   ungroup() %>%
-#   mutate(
-#     predicted = prediction_nn %>% as.numeric()
-#   ) %>%
-#   left_join(average_train_predictions) %>%
-#   mutate(
-#     trade_col =
-#       case_when(
-#         predicted > Average_NN_Pred + SD_NN_Pred*7 ~ "Long"
-#       )
-#   ) %>%
-#   filter(!is.na(trade_col))
-#
-# profit_factor  = 5
-# stop_factor  = 5
-# risk_dollar_value <- 5
 
 #----------------------------------------------------------------BEST CONDITION
 #----------------------------------------------------------------BEST CONDITION
@@ -548,7 +428,8 @@ Hour_data_with_LM_markov <-
     stop_factor  = 3,
     risk_dollar_value = 5,
     trade_sd_fact = 2
-  )
+  ) %>%
+  filter(!is.na(Price_to_Low_lag3), !is.na(Price_to_Low_lead), !is.na(Price_to_High_lag2))
 
 H1_Model_data_train <-
   Hour_data_with_LM_markov %>%
@@ -580,7 +461,7 @@ H1_model_High <- neuralnet::neuralnet(formula = Price_to_Price_lead ~
                                         Price_to_High_lag + Price_to_Low_lag +
                                         Price_to_High_lag2 + Price_to_Low_lag2 +
                                         Price_to_High_lag3 + Price_to_Low_lag3,
-                                      hidden = 14,
+                                      hidden = c(21, 21, 21),
                                       data = H1_Model_data_train,
                                       err.fct = "sse",
                                       linear.output = TRUE,
@@ -592,7 +473,7 @@ H1_model_High <- neuralnet::neuralnet(formula = Price_to_Price_lead ~
 
 saveRDS(
   H1_model_High,
-  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd{today()}.rds")
+  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_21_21_21_layer_{today()}.rds")
 )
 
 # H1_model_High_SD_2_65_neg <-
@@ -700,130 +581,4 @@ analysis_data_asset <-
     trade_return_col = "trade_returns",
     risk_dollar_value = risk_dollar_value,
     grouping_vars = "Asset"
-  )
-
-#---------------------------------Winning Condiditions:
-#----------Results 56% Win Rate, 10% Risk Weighted Return, final = 11790.83
-#----------Lowest: -622
-#----------Trades = 18167
-    # Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-    # sd_value_xx = 10,
-    # direction = "positive",
-    # train_prop = 0.4,
-    # test_prop = 0.55,
-    # nn_model_for_trades = H1_model_High,
-    # get_risk_analysis = TRUE,
-    # mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-    # profit_factor  = 20,
-    # stop_factor  = 20,
-    # risk_dollar_value = 5
-#------------Positive
-#This Trading route does the opposite of the model and succeeds. It has more
-#trades and taken in conjunction with the first model we can get a continuous
-#trading model.
-
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2011-01-01"
-end_date_day = today() %>% as.character()
-
-starting_asset_data_ask_daily <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "D"
-  )
-
-starting_asset_data_ask_H1 <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "H1"
-  )
-
-mean_values_by_asset_for_loop_D =
-  wrangle_asset_data(
-    asset_data_daily_raw = starting_asset_data_ask_daily,
-    summarise_means = TRUE
-  )
-
-mean_values_by_asset_for_loop_H1 =
-  wrangle_asset_data(
-    asset_data_daily_raw = starting_asset_data_ask_H1,
-    summarise_means = TRUE
-  )
-
-Hour_data_with_LM <-
-  run_LM_join_to_H1(
-    daily_data_internal = starting_asset_data_ask_daily,
-    H1_data_internal = starting_asset_data_ask_H1,
-    raw_macro_data = raw_macro_data,
-    AUD_exports_total = AUD_exports_total,
-    USD_exports_total = USD_exports_total,
-    eur_data = eur_data
-  )
-
-Hour_data_with_LM_markov <-
-  extract_required_markov_data(
-    Hour_data_with_LM = Hour_data_with_LM,
-    new_daily_data_ask = starting_asset_data_ask_daily,
-    currency_conversion = currency_conversion,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_D,
-    profit_factor  = 5,
-    stop_factor  = 3,
-    risk_dollar_value = 5,
-    trade_sd_fact = 2
-  )
-
-H1_Model_data_train <-
-  Hour_data_with_LM_markov %>%
-  group_by(Asset) %>%
-  slice_head(prop = 0.4)
-
-H1_Model_data_test <-
-  Hour_data_with_LM_markov %>%
-  group_by(Asset) %>%
-  slice_tail(prop = 0.55)
-
-
-H1_model_High <- neuralnet::neuralnet(formula = Price_to_High_lead ~
-                                        Pred_trade + mean_value + mean_value +
-                                        sd_value + Total_Avg_Prob_Diff_Low +
-                                        Total_Avg_Prob_Diff_High + Total_Avg_Prob_Diff_SD_Low +
-                                        Total_Avg_Prob_Diff_SD_High,
-                                      hidden = c(20,20,20),
-                                      data = H1_Model_data_train,
-                                      err.fct = "sse",
-                                      linear.output = TRUE,
-                                      lifesign = 'full',
-                                      rep = 1,
-                                      algorithm = "rprop+",
-                                      stepmax = 20000,
-                                      threshold = 0.04)
-
-
-saveRDS(
-  H1_model_High,
-  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_TEN_SD_POSITIVE_{today()}.rds")
-)
-
-
-initial_results <-
-  get_NN_trade_from_params(
-    Hour_data_with_LM_markov = Hour_data_with_LM_markov,
-    sd_value_xx = 10,
-    direction = "positive",
-    train_prop = 0.4,
-    test_prop = 0.55,
-    nn_model_for_trades = H1_model_High,
-    get_risk_analysis = TRUE,
-    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1,
-    profit_factor  = 20,
-    stop_factor  = 20,
-    risk_dollar_value = 5,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor
   )

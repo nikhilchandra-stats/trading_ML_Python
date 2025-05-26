@@ -1,376 +1,585 @@
-data_list_dfr_long <- read_csv(paste0(save_path, "/extracted_asset_data_h1_ts_ask_2.csv"))
-data_list_dfr_short <- read_csv(paste0(save_path, "/extracted_asset_data_h1_ts_bid_2.csv"))
-mean_values_by_asset_for_loop =
-  wrangle_asset_data(
-    asset_data_daily_raw = data_list_dfr_long,
-    summarise_means = TRUE
+helperfunctions35South::load_custom_functions()
+one_drive_path <- helperfunctions35South::create_one_drive_path(
+  path_extension = "raw data")
+library(neuralnet)
+raw_macro_data <- get_macro_event_data()
+eur_data <- get_EUR_exports()
+AUD_exports_total <- get_AUS_exports()  %>%
+  pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
+  rename(date = TIME_PERIOD) %>%
+  group_by(date) %>%
+  summarise(Aus_Export = sum(Aus_Export, na.rm = T))
+USD_exports_total <- get_US_exports()  %>%
+  pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
+  group_by(date) %>%
+  summarise(US_Export = sum(US_Export, na.rm = T)) %>%
+  left_join(AUD_exports_total) %>%
+  ungroup()
+USD_exports_total <- USD_exports_total %>%
+  mutate(
+    month_date = lubridate::floor_date(date, "month")
+  )
+AUD_exports_total <- AUD_exports_total %>%
+  mutate(
+    month_date = lubridate::floor_date(date, "month")
+  )
+all_aud_symbols <- get_oanda_symbols() %>%
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+asset_infor <- get_instrument_info()
+aud_assets <- read_all_asset_data_intra_day(
+  asset_list_oanda = all_aud_symbols,
+  save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+  read_csv_or_API = "API",
+  time_frame = "D",
+  bid_or_ask = "bid",
+  how_far_back = 10,
+  start_date = (today() - days(2)) %>% as.character()
+)
+aud_assets <- aud_assets %>% map_dfr(bind_rows)
+aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
+
+currency_conversion <-
+  aud_usd_today %>%
+  mutate(
+    not_aud_asset = ending_value
+  ) %>%
+  dplyr::select(not_aud_asset, adjusted_conversion) %>%
+  bind_rows(
+    tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
   )
 
-get_markov_tag_bayes_loop <- function(
-    asset_data_combined = data_list_dfr_long,
-    training_perc = 1,
-    sd_divides = seq(0.25,2,0.25),
-    quantile_divides = seq(0.1,0.9, 0.1),
-    rolling_period = 400,
-    markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
-    markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
-    sum_sd_cut_off = "",
-    profit_factor  = 10,
-    stop_factor  = 10,
-    asset_data_daily_raw = data_list_dfr_long,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
-    bayes_prior = 200,
-    bayes_prior_trade = 100,
-    lm_train_perc = 0.65,
-    run_of_prob_prop = 1,
-    spread_lead_test = 8,
+#' generic_trade_finder_trail_asset
+#'
+#' @param tagged_trades
+#' @param asset_data_daily_raw
+#' @param stop_factor
+#' @param profit_factor
+#' @param trade_col
+#' @param date_col
+#' @param start_price_col
+#' @param mean_values_by_asset
+#' @param asset_under_analysis
+#' @param trailing_amount
+#' @param currency_conversion
+#' @param asset_infor
+#' @param risk_dollar_value
+#'
+#' @return
+#' @export
+#'
+#' @examples
+generic_trade_finder_trail_asset <-
+  function(
+    tagged_trades = tagged_trades,
+    asset_data_daily_raw = new_H1_data_ask,
+    stop_factor = 3,
+    profit_factor =3,
+    trade_col = "trade_col",
+    date_col = "Date",
+    start_price_col = "Price",
+    mean_values_by_asset =
+      wrangle_asset_data(
+        asset_data_daily_raw = new_H1_data_ask,
+        summarise_means = TRUE),
+    asset_under_analysis = "AU200_AUD",
+    trailing_amount = 0.25,
+    currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    trade_direction = "Long",
-    skip_analysis = FALSE,
-    risk_dollar_value = 10,
-    currency_conversion = currency_conversion
-) {
+    risk_dollar_value = 10
+  ) {
 
-  asset_data_combined_filt <- asset_data_combined
+    asset_data_for_analysis <-
+      asset_data_daily_raw %>%
+      filter(Asset == asset_under_analysis)
 
-  markov_data <-
-    get_markov_cols_for_trading(
-      asset_data_combined = asset_data_combined_filt,
-      training_perc = training_perc,
-      sd_divides = sd_divides,
-      rolling_period = rolling_period,
-      markov_col_on_interest_pos = markov_col_on_interest_pos,
-      markov_col_on_interest_neg = markov_col_on_interest_neg,
-      sum_sd_cut_off = sum_sd_cut_off
-    )
+    trades_under_analysis <-
+      tagged_trades %>%
+      filter(Asset == asset_under_analysis) %>%
+      filter(!is.na(!!as.name(trade_col)))
 
-  #-- Posterior = dnorm(mu_n, sigma_n)
-  #-- sigma Prior = lag(running_sd, 50)
-  #-- sigma Current = running_sd
-  #-- n = rolling period
-  #-- sigma_n = sigma*sigma_prior/(n*sigma_prior + sigma)
-  #-- mean_x = running_mid
-  #-- u_n = sigma_n*(u_prior/sigma_prior + n*running_mid)
-  #---- p(u|D) ~ N(u_n, sigma_n)
+    distinct_trade_dates <-
+      trades_under_analysis %>%
+      pull(!!as.name(date_col))
 
-  Lows <- markov_data[[1]] %>%
-    ungroup() %>%
-    left_join(mean_values_by_asset_for_loop) %>%
-    group_by(Asset) %>%
-    arrange(Date, .by_group = TRUE) %>%
-    group_by(Asset) %>%
-    mutate(
-      sigma_prior = lag(running_sd, bayes_prior),
-      sigma_current = running_sd,
-      u_prior = lag(running_mid, bayes_prior),
-      n_bayes = rolling_period,
-      sigma_n = sigma_current*sigma_prior/(n_bayes*sigma_prior + sigma_current),
-      u_n= sigma_n*( (u_prior/sigma_prior) + (n_bayes*running_mid/sigma_current)),
-      expected_posterior = qnorm(p = 0.5, mean = u_n, sd = sigma_n),
-      # prob_current_low = round(pnorm(Open_To_Var_lag1, mean = expected_posterior, sd = sigma_current,
-      #                                lower.tail=FALSE), 4)
-      prob_current_low = round(pnorm(mean_daily  + run_of_prob_prop*sd_daily , mean = expected_posterior, sd = sigma_current,
-                                     lower.tail=FALSE), 4)
-    ) %>%
-    ungroup() %>%
-    dplyr::select(-c(mean_daily, sd_daily, mean_weekly, sd_weekly)) %>%
-    # filter(total >= 280) %>%
-    dplyr::select(Date, Asset, Price, Open, High, Low,
-                  Open_To_Low_lag1 = Open_To_Var_lag1,
-                  sigma_n_low = sigma_n,
-                  u_n_low = u_n,
-                  expected_posterior_low = expected_posterior,
-                  prob_current_low,
-                  `Markov_Point_Neg_roll_sum_-0.75`,
-                  `Markov_Point_Neg_roll_sum_-1.25`,
-                  `Markov_Point_Neg_roll_sum_-2`,
-                  Total_Negative_Prob
-                  )
+    number_of_trades <- dim(trades_under_analysis)[1]
 
-  Lows$Date %>% max() - Lows$Date %>% min()
-
-  Highs <- markov_data[[2]] %>%
-    ungroup() %>%
-    left_join(mean_values_by_asset_for_loop) %>%
-    group_by(Asset) %>%
-    arrange(Date, .by_group = TRUE) %>%
-    group_by(Asset) %>%
-    mutate(
-      sigma_prior = lag(running_sd, bayes_prior),
-      sigma_current = running_sd,
-      u_prior = lag(running_mid, bayes_prior),
-      n_bayes = rolling_period,
-      sigma_n = sigma_current*sigma_prior/(n_bayes*sigma_prior + sigma_current),
-      u_n= sigma_n*( (u_prior/sigma_prior) + (n_bayes*running_mid/sigma_current)),
-      expected_posterior = qnorm(p = 0.5, mean = u_n, sd = sigma_n),
-      # prob_current_high =
-      #   round( pnorm(Open_To_Var_lag1, mean = expected_posterior, sd = sigma_current,
-      #                lower.tail=FALSE), 4 ),
-      prob_current_high =
-        round( pnorm(mean_daily  + run_of_prob_prop*sd_daily , mean = expected_posterior, sd = sigma_current,
-                     lower.tail=FALSE), 4 )
-    ) %>%
-    ungroup() %>%
-    dplyr::select(-c(mean_daily, sd_daily, mean_weekly, sd_weekly)) %>%
-    # filter(total >= 280) %>%
-    dplyr::select(Date, Asset, Price, Open, High, Low,
-                  sigma_n_high = sigma_n, u_n_high = u_n ,
-                  Open_To_High_lag1 = Open_To_Var_lag1,
-                  expected_posterior_high = expected_posterior,
-                  prob_current_high, total,
-                  `Markov_Point_Pos_roll_sum_0.75`,
-                  `Markov_Point_Pos_roll_sum_1.25`,
-                  `Markov_Point_Pos_roll_sum_2`,
-                  Total_Positive_Prob)
-
-  full_trading_data <- Lows %>%
-    left_join(Highs) %>%
-    group_by(Asset) %>%
-    arrange(Date, .by_group = TRUE) %>%
-    group_by(Asset) %>%
-    mutate(
-      posterior_difference = expected_posterior_high - expected_posterior_low,
-      posterior_difference_op = expected_posterior_low - expected_posterior_high,
-      sigma_difference = sigma_n_high - sigma_n_low,
-      posterior_high_diff = expected_posterior_high - lag(expected_posterior_high),
-      high_low_prob_diff = prob_current_high - prob_current_low
-    ) %>%
-    group_by(Asset) %>%
-    arrange(Date, .by_group = TRUE) %>%
-    group_by(Asset) %>%
-    mutate(
-      posterior_difference_mean =
-        slider::slide_dbl(.x = posterior_difference,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      posterior_difference_sd =
-        slider::slide_dbl(.x = posterior_difference,
-                          .f = ~ sd(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-
-      posterior_difference_mean_op =
-        slider::slide_dbl(.x = posterior_difference_op,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      posterior_difference_sd_op =
-        slider::slide_dbl(.x = posterior_difference_op,
-                          .f = ~ sd(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-
-      sigma_difference_mean =
-        slider::slide_dbl(.x = sigma_difference,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      sigma_difference_sd =
-        slider::slide_dbl(.x = sigma_difference,
-                          .f = ~ sd(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-
-      posterior_high_diff_mean =
-        slider::slide_dbl(.x = posterior_high_diff,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      posterior_high_diff_sd =
-        slider::slide_dbl(.x = posterior_high_diff,
-                          .f = ~ sd(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-
-      high_low_prob_diff_mean =
-        slider::slide_dbl(.x = high_low_prob_diff,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      high_low_prob_diff_sd =
-        slider::slide_dbl(.x = high_low_prob_diff,
-                          .f = ~ sd(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-
-      high_prob_mean =
-        slider::slide_dbl(.x = prob_current_high,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      low_prob_mean =
-        slider::slide_dbl(.x = prob_current_low,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade),
-      high_prob_mean_long =
-        slider::slide_dbl(.x = prob_current_high,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade*2),
-      low_prob_mean_long =
-        slider::slide_dbl(.x = prob_current_low,
-                          .f = ~ mean(.x, na.rm = T),
-                          .before = bayes_prior_trade*2)
-    ) %>%
-    ungroup() %>%
-    filter(total >= (rolling_period - 0.25*rolling_period) ) %>%
-    left_join(mean_values_by_asset_for_loop) %>%
-    mutate(
-      threshold_value_prob = mean_daily  + run_of_prob_prop*sd_daily
-    ) %>%
-    group_by(Asset) %>%
-    mutate(
-      Open_to_Low_lead = lead(Low, spread_lead_test) - Price,
-      Open_to_High_lead = lead(High, spread_lead_test) - Price,
-
-      Open_to_Low_lead_log = log(lead(Low, spread_lead_test)/ Price),
-      Open_to_High_lead_log = log(lead(High, spread_lead_test)/Price)
-    ) %>%
-    ungroup()
-
-  mean_values_3_periods_ahead_asset <- full_trading_data %>%
-    ungroup() %>%
-    mutate(
-      Open_to_Low_lead = abs(Open_to_Low_lead),
-      Open_to_High_lead = abs(Open_to_High_lead)
-    ) %>%
-    group_by(Asset) %>%
-    summarise(
-      mean_daily = mean( Open_to_Low_lead, na.rm = T),
-      sd_daily  = sd( Open_to_Low_lead, na.rm = T)
-    )
-
-  train_data <-
-    full_trading_data %>%
-    group_by(Asset) %>%
-    slice_head(prop = lm_train_perc ) %>%
-    ungroup()
-
-  lm_test_short <- lm(data = train_data,
-                formula = Open_to_Low_lead ~ high_prob_mean + low_prob_mean +
-                   high_low_prob_diff_sd + sigma_difference +
-                  prob_current_high + prob_current_low + posterior_difference +
-                  expected_posterior_low + sigma_n_high + posterior_high_diff_sd +
-                  posterior_difference_sd +
-                  `Markov_Point_Pos_roll_sum_0.75` +
-                  `Markov_Point_Pos_roll_sum_1.25` +
-                  `Markov_Point_Pos_roll_sum_2` +
-                  `Markov_Point_Neg_roll_sum_-0.75`+
-                `Markov_Point_Neg_roll_sum_-1.25`+
-                `Markov_Point_Neg_roll_sum_-2` +
-                  Total_Negative_Prob +
-                  Asset)
-  lm_test_long <- lm(data = train_data,
-                formula = Open_to_High_lead ~ high_prob_mean + low_prob_mean +
-                   high_low_prob_diff_sd + sigma_difference +
-                  prob_current_high + prob_current_low + posterior_difference +
-                  expected_posterior_low + sigma_n_high +
-                  `Markov_Point_Pos_roll_sum_0.75` +
-                  `Markov_Point_Pos_roll_sum_1.25` +
-                  `Markov_Point_Pos_roll_sum_2`  +
-                  `Markov_Point_Neg_roll_sum_-0.75`+
-                  `Markov_Point_Neg_roll_sum_-1.25`+
-                  `Markov_Point_Neg_roll_sum_-2` +
-                  Asset +
-                  Total_Positive_Prob)
-  summary(lm_test_short)
-  summary(lm_test_long)
-
-  test_data <-
-    full_trading_data %>%
-    group_by(Asset) %>%
-    slice_tail(prop = (1 - lm_train_perc - 0.01) )
-
-  LM_means_sd <- train_data %>%
-    ungroup() %>%
-    mutate(
-      LM_Short_Pred = predict.lm(lm_test_short, newdata = train_data),
-      LM_Long_Pred = predict.lm(lm_test_long, newdata = train_data)
-    ) %>%
-    group_by(Asset) %>%
-    summarise(
-      LM_Short_Pred_mean = mean(LM_Short_Pred, na.rm = T),
-      LM_Short_Pred_sd = sd(LM_Short_Pred, na.rm = T),
-
-      LM_Long_Pred_mean = mean(LM_Long_Pred, na.rm = T),
-      LM_Long_Pred_sd = sd(LM_Long_Pred, na.rm = T)
-    ) %>%
-    ungroup()
-
-  test_data_with_LM <-
-    test_data %>%
-    ungroup() %>%
-    mutate(
-      LM_Short_Pred = predict.lm(lm_test_short, newdata = test_data),
-      LM_Long_Pred = predict.lm(lm_test_long, newdata = test_data)
-    ) %>%
-    left_join(LM_means_sd)
-
-  #-------Long H1: Trades = 109670k+, Perc = 0.517, profit_factor = 10, stop_factor = 10,
-  #----------rolling_period = 400, bayes_prior_trade = 50, bayes_prior = 50, LM_SD_Fac = 0.5, spread_lead_test = 10
-  # LM_Long_Pred > LM_Long_Pred_mean + LM_Long_Pred_sd*LM_SD_Fac
-
-  tagged_trades <- test_data_with_LM %>%
-    mutate(
-      trade_col =
-        case_when(
-          (LM_Long_Pred > LM_Long_Pred_mean + LM_Long_Pred_sd*LM_SD_Fac) ~ "Long"
-        )
-    ) %>%
-    filter(!is.na(trade_col))
-
-
-  #--------Key Variables for H1:
-
-  if(skip_analysis == TRUE) {
-    return(
-      list(
-        "tagged_trades" = tagged_trades
+    stops_profs <-
+      mean_values_by_asset %>%
+      filter(Asset == asset_under_analysis) %>%
+      mutate(
+        stop_price = mean_daily + stop_factor*sd_daily,
+        profit_price = mean_daily + profit_factor*sd_daily,
+        stop_price_trail = stop_price*trailing_amount,
+        profit_price_trail = profit_price*trailing_amount
       )
-    )
-  } else {
 
-    long_bayes_loop_analysis <-
-      generic_trade_finder_loop(
-        # tagged_trades = tagged_trades %>% filter(trade_col == trade_direction),
-        tagged_trades = tagged_trades ,
-        asset_data_daily_raw = asset_data_combined_filt,
+
+    stop_distance <- stops_profs$stop_price[1] %>% as.numeric()
+    profit_distance <- stops_profs$profit_price[1] %>% as.numeric()
+
+    stop_distance_trail <- stops_profs$stop_price_trail[1] %>% as.numeric()
+    profit_distance_trail <- stops_profs$profit_price_trail[1] %>% as.numeric()
+
+    end_price_speed <- numeric(number_of_trades)
+    start_price_speed <- numeric(number_of_trades)
+    profit_price_speed <- numeric(number_of_trades)
+    trade_directions_speed <- trades_under_analysis %>% pull(!!as.name(trade_col)) %>% as.character()
+
+    plot_list<- list()
+
+    for (i in 1:number_of_trades) {
+
+      trade_date <- distinct_trade_dates[i]
+
+      pricing_data_internal_loop <-
+        asset_data_for_analysis %>%
+        filter(!!as.name(date_col) >= trade_date)
+
+      starting_price <-
+        pricing_data_internal_loop %>%
+        pull(!!as.name(start_price_col)) %>%
+        pluck(1) %>%
+        as.numeric()
+
+      pricing_data_internal_loop <-
+        pricing_data_internal_loop %>%
+        arrange(!!as.name(date_col))
+
+      Lows <- pricing_data_internal_loop$Low %>% as.numeric()
+      Highs <- pricing_data_internal_loop$High %>% as.numeric()
+      prices <- pricing_data_internal_loop$Price %>% as.numeric()
+
+      if(trade_directions_speed[i] == "Long") {
+        stop_price <- starting_price - stop_distance
+        profit_price <- starting_price + profit_distance
+
+        trade_finished <- FALSE
+        k = 0
+        current_stop_distance <- stop_distance
+
+        # track_stops <- numeric(length(Lows))
+        # track_profits <- numeric(length(Lows))
+        # track_lows <- numeric(length(Lows))
+
+        while(trade_finished == FALSE) {
+          k = k + 1
+
+          # track_stops[k] <- stop_price
+          # track_profits[k] <- profit_price
+          # track_lows[k] <- Lows[k]
+
+          if(Lows[k] <= stop_price) {
+            end_price <- stop_price
+            trade_finished <- TRUE
+          }
+
+          if(Highs[k] >= profit_price) {
+            end_price <- profit_price
+            trade_finished <- TRUE
+          }
+
+          if(Lows[k] >= stop_price + trailing_amount*profit_distance) {
+            stop_price <- stop_price + trailing_amount*profit_distance
+            profit_price <- profit_price + trailing_amount*profit_distance
+          }
+
+          if(k == length(Lows)) {
+            trade_finished <- TRUE
+            end_price <- Lows[k]
+          }
+
+        }
+
+        # track_stops <- track_stops[1:k]
+        # track_profits <- track_profits[1:k]
+        # track_lows <- track_lows[1:k]
+        #
+        # test_plot <-
+        #   tibble(
+        #     index = seq(1,k, 1),
+        #     track_stops = track_stops,
+        #     track_profits = track_profits,
+        #     track_lows = track_lows
+        #   )
+        #
+        # plot_list[[i]] <- test_plot %>%
+        #   pivot_longer(-index, names_to = "XX", values_to = "Price") %>%
+        #   ggplot(aes(x = index, color = XX, y = Price)) +
+        #   geom_line() +
+        #   geom_point() +
+        #   theme_minimal()
+
+      }
+
+      if(trade_directions_speed[i] == "Short") {
+        stop_price <- starting_price + stop_distance
+        profit_price <- starting_price - profit_distance
+
+        trade_finished <- FALSE
+        k = 0
+        current_stop_distance <- stop_distance
+
+        while(trade_finished == FALSE) {
+          k = k + 1
+
+          if(Highs[k] >= stop_price) {
+            end_price <- stop_price
+            trade_finished <- TRUE
+          }
+
+          if(Highs[k] <= stop_price - trailing_amount*profit_distance) {
+            stop_price <- stop_price - trailing_amount*profit_distance
+            profit_price <- profit_price - trailing_amount*profit_distance
+          }
+
+          if(k == length(Lows)) {
+            trade_finished <- TRUE
+            end_price <- Highs[k]
+          }
+        }
+
+      }
+
+      start_price_speed[i] <- starting_price
+      end_price_speed[i] <- end_price
+      profit_price_speed[i] <- abs(profit_price - starting_price)
+
+    }
+
+    returned_data <-
+      tibble(
+        Date = distinct_trade_dates,
+        Asset = asset_under_analysis,
+        start_price = start_price_speed,
+        end_price = end_price_speed,
+        trade_col = trade_directions_speed,
+        stop_distance = stop_distance,
+        profit_distance = profit_price_speed,
+        stop_factor = stop_factor,
+        profit_factor = profit_factor
+      ) %>%
+      left_join(asset_infor %>%
+                  dplyr::select(Asset = name,
+                                displayPrecision,
+                                pipLocation,
+                                tradeUnitsPrecision)
+                ) %>%
+      mutate(
+        displayPrecision= as.numeric(displayPrecision),
+        tradeUnitsPrecision= as.numeric(tradeUnitsPrecision),
+        pipLocation= as.numeric(pipLocation)
+      ) %>%
+      mutate(
+        trade_return =
+          case_when(
+            trade_col == "Long" ~
+            # & end_price >= start_price ~
+              end_price - start_price,
+            trade_col == "Short" ~
+            # & end_price < start_price ~
+              start_price - end_price
+            ),
+        trade_return = round(trade_return, displayPrecision)
+      ) %>%
+      dplyr::select(-displayPrecision, -tradeUnitsPrecision, -pipLocation) %>%
+      left_join(
+        asset_data_for_analysis
+      )
+
+    trades_with_volume <-
+      get_stops_profs_volume_trades(
+        tagged_trades = returned_data,
+        mean_values_by_asset = mean_values_by_asset,
+        trade_col = "trade_col",
+        currency_conversion = currency_conversion,
+        risk_dollar_value = risk_dollar_value,
         stop_factor = stop_factor,
         profit_factor =profit_factor,
-        trade_col = "trade_col",
-        date_col = "Date",
-        start_price_col = "Price",
-        mean_values_by_asset = mean_values_by_asset_for_loop
-      )
-
-    analysis_data <-
-      generic_anlyser(
-        trade_data = long_bayes_loop_analysis %>% rename(Asset = asset),
-        profit_factor = profit_factor,
-        stop_factor = stop_factor,
-        asset_infor = asset_infor,
-        currency_conversion = currency_conversion,
         asset_col = "Asset",
-        stop_col = "starting_stop_value",
-        profit_col = "starting_profit_value",
-        price_col = "trade_start_prices",
-        trade_return_col = "trade_returns",
-        risk_dollar_value = risk_dollar_value,
-        grouping_vars = "trade_direction"
+        stop_col = "stop_distance",
+        profit_col = "profit_distance",
+        price_col = "Price",
+        trade_return_col = "trade_return"
+      ) %>%
+      mutate(
+        trade_return_dollars_AUD =
+          volume_adj*trade_return
       )
 
-    analysis_data_asset <-
-      generic_anlyser(
-        trade_data = long_bayes_loop_analysis %>% rename(Asset = asset),
-        profit_factor = profit_factor,
-        stop_factor = stop_factor,
-        asset_infor = asset_infor,
-        currency_conversion = currency_conversion,
-        asset_col = "Asset",
-        stop_col = "starting_stop_value",
-        profit_col = "starting_profit_value",
-        price_col = "trade_start_prices",
-        trade_return_col = "trade_returns",
-        risk_dollar_value = risk_dollar_value,
-        grouping_vars = c("Asset","trade_direction")
-      )
-
-    return(
-      list(
-        "tagged_trades" = tagged_trades,
-        "Markov_Trades_Bayes_Summary" = analysis_data
-      )
-    )
+    return(trades_with_volume)
 
   }
 
-}
+generic_trade_finder_trail_all <-
+  function(
+    tagged_trades = tagged_trades,
+    asset_data_daily_raw = new_H1_data_ask,
+    stop_factor = 1,
+    profit_factor =1,
+    trade_col = "trade_col",
+    date_col = "Date",
+    start_price_col = "Price",
+    mean_values_by_asset =
+      wrangle_asset_data(
+        asset_data_daily_raw = new_H1_data_bid,
+        summarise_means = TRUE),
+    trailing_amount = 0.25,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    risk_dollar_value = 10
+  ) {
+
+    distinct_assets <- tagged_trades %>% distinct(Asset) %>% pull(Asset)
+
+    all_results <-
+      distinct_assets %>%
+      map(
+        ~
+          generic_trade_finder_trail_asset(
+            tagged_trades = tagged_trades %>% filter(Asset == .x),
+            asset_data_daily_raw = asset_data_daily_raw %>% filter(Asset == .x),
+            stop_factor = stop_factor,
+            profit_factor = profit_factor,
+            trade_col = trade_col,
+            date_col = date_col,
+            start_price_col = start_price_col,
+            mean_values_by_asset = mean_values_by_asset,
+            asset_under_analysis = .x,
+            trailing_amount = trailing_amount,
+            currency_conversion = currency_conversion,
+            asset_infor = asset_infor,
+            risk_dollar_value = risk_dollar_value
+          )
+      )
+
+    all_results_dfr <- all_results %>%
+      map_dfr(
+        ~ .x  %>%
+          mutate(
+            across(.cols = c(trade_return_dollars_AUD, trade_return),
+                   .fns = ~
+                        case_when(
+                          !!as.name(trade_col) == "Long" & end_price > start_price ~ abs(.),
+                          !!as.name(trade_col) == "Long" & end_price <= start_price ~ -1*abs(.),
+                          !!as.name(trade_col) == "Short" & end_price < start_price ~ abs(.),
+                          !!as.name(trade_col) == "Short" & end_price >= start_price ~ -1*abs(.)
+                        )
+                     )
+          )
+      )
+
+    return(all_results_dfr)
+
+  }
+
+#----------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
+#--------------------------------------------Short Neural Network
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+start_date_day = "2011-01-01"
+end_date_day = today() %>% as.character()
+current_date <- now() %>% as_date(tz = "Australia/Canberra")
+
+starting_asset_data_ask_daily <-
+  get_db_price(
+    db_location = db_location,
+    start_date = start_date_day,
+    end_date = end_date_day,
+    bid_or_ask = "ask",
+    time_frame = "D"
+  )
+
+starting_asset_data_ask_H1 <-
+  get_db_price(
+    db_location = db_location,
+    start_date = start_date_day,
+    end_date = end_date_day,
+    bid_or_ask = "ask",
+    time_frame = "H1"
+  )
+
+mean_values_by_asset_for_loop_D_ask =
+  wrangle_asset_data(
+    asset_data_daily_raw = starting_asset_data_ask_daily,
+    summarise_means = TRUE
+  )
+
+mean_values_by_asset_for_loop_H1_ask =
+  wrangle_asset_data(
+    asset_data_daily_raw = starting_asset_data_ask_H1,
+    summarise_means = TRUE
+  )
+
+starting_asset_data_bid_daily <-
+  get_db_price(
+    db_location = db_location,
+    start_date = start_date_day,
+    end_date = end_date_day,
+    bid_or_ask = "bid",
+    time_frame = "D"
+  )
+
+starting_asset_data_bid_H1 <-
+  get_db_price(
+    db_location = db_location,
+    start_date = start_date_day,
+    end_date = end_date_day,
+    bid_or_ask = "bid",
+    time_frame = "H1"
+  )
+
+mean_values_by_asset_for_loop_D_bid =
+  wrangle_asset_data(
+    asset_data_daily_raw = starting_asset_data_bid_daily,
+    summarise_means = TRUE
+  )
+
+mean_values_by_asset_for_loop_H1_bid =
+  wrangle_asset_data(
+    asset_data_daily_raw = starting_asset_data_bid_H1,
+    summarise_means = TRUE
+  )
+
+new_daily_data_ask <-
+  updated_data_internal(starting_asset_data = starting_asset_data_ask_daily,
+                        end_date_day = current_date,
+                        time_frame = "D", bid_or_ask = "ask") %>%
+  distinct()
+new_H1_data_ask <-
+  updated_data_internal(starting_asset_data = starting_asset_data_ask_H1,
+                        end_date_day = current_date,
+                        time_frame = "H1", bid_or_ask = "ask")%>%
+  distinct()
+
+new_daily_data_bid <-
+  updated_data_internal(starting_asset_data = starting_asset_data_bid_daily,
+                        end_date_day = current_date,
+                        time_frame = "D", bid_or_ask = "bid") %>%
+  distinct()
+new_H1_data_bid <-
+  updated_data_internal(starting_asset_data = starting_asset_data_bid_H1,
+                        end_date_day = current_date,
+                        time_frame = "H1", bid_or_ask = "bid")%>%
+  distinct()
+
+Hour_data_with_LM_ask <-
+  run_LM_join_to_H1(
+    daily_data_internal = new_daily_data_ask,
+    H1_data_internal = new_H1_data_ask,
+    raw_macro_data = raw_macro_data,
+    AUD_exports_total = AUD_exports_total,
+    USD_exports_total = USD_exports_total,
+    eur_data = eur_data
+  )
+
+Hour_data_with_LM_markov_ask <-
+  extract_required_markov_data(
+    Hour_data_with_LM = Hour_data_with_LM_ask,
+    new_daily_data_ask = new_daily_data_ask,
+    currency_conversion = currency_conversion,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_D_ask,
+    profit_factor  = 5,
+    stop_factor  = 3,
+    risk_dollar_value = 5,
+    trade_sd_fact = 2
+  )
+
+Hour_data_with_LM_bid <-
+  run_LM_join_to_H1(
+    daily_data_internal = new_daily_data_bid,
+    H1_data_internal = new_H1_data_bid,
+    raw_macro_data = raw_macro_data,
+    AUD_exports_total = AUD_exports_total,
+    USD_exports_total = USD_exports_total,
+    eur_data = eur_data
+  )
+
+Hour_data_with_LM_markov_bid <-
+  extract_required_markov_data(
+    Hour_data_with_LM = Hour_data_with_LM_bid,
+    new_daily_data_ask = new_daily_data_bid,
+    currency_conversion = currency_conversion,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_D_bid,
+    profit_factor  = 5,
+    stop_factor  = 3,
+    risk_dollar_value = 5,
+    trade_sd_fact = 2
+  )
+
+H1_Model_data_train_bid <-
+  Hour_data_with_LM_markov_bid %>%
+  group_by(Asset) %>%
+  slice_head(prop = 0.4)
+
+H1_Model_data_test_bid <-
+  Hour_data_with_LM_markov_bid %>%
+  group_by(Asset) %>%
+  slice_tail(prop = 0.55)
+
+H1_Model_data_train_ask <-
+  Hour_data_with_LM_markov_ask %>%
+  group_by(Asset) %>%
+  slice_head(prop = 0.4)
+
+H1_Model_data_test_ask <-
+  Hour_data_with_LM_markov_ask %>%
+  group_by(Asset) %>%
+  slice_tail(prop = 0.55)
+
+#---------------------------------------------Daily Regression Join
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+start_date_day = "2011-01-01"
+end_date_day = today() %>% as.character()
+
+H1_model_High_SD_25_71_neg <- readRDS(
+  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds")
+)
+
+H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17 <- readRDS(
+  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds")
+)
+
+LM_ML_HighLead_14_14_layer <-
+  readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_HighLead_14_14_layer_2025-05-19.rds"))
+
+
+trades_NN_1 <- get_NN_best_trades_from_mult_anaysis(
+  db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results.db",
+  network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
+  NN_model = H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17,
+  Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
+  mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor,
+  risk_dollar_value = 10,
+  win_threshold = 0.6,
+  slice_max = FALSE
+)
+
+trades_NN_1_stripped <- trades_NN_1 %>%
+  dplyr::select(Date, Asset, Price, Low, High, Open, trade_col)
+
+test_assets<- c("AUD_USD", "SPX_USD", "EUR_USD", "EU50_EUR", "EUR_GBP")
+
+long_trades <-
+  generic_trade_finder_trail_all(
+    tagged_trades = trades_NN_1 ,
+    asset_data_daily_raw = new_H1_data_ask,
+    stop_factor = 3,
+    profit_factor =15,
+    trade_col = "trade_col",
+    date_col = "Date",
+    start_price_col = "Price",
+    mean_values_by_asset =
+      wrangle_asset_data(
+        asset_data_daily_raw = new_H1_data_ask,
+        summarise_means = TRUE),
+    trailing_amount = 0.05,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    risk_dollar_value = 10
+  )
+
+long_trades_NN1_sum <- long_trades %>%
+  group_by(Asset) %>%
+  summarise(trade_return_dollars_AUD = sum(trade_return_dollars_AUD, na.rm = T))
