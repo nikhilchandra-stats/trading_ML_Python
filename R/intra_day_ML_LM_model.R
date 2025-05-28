@@ -245,7 +245,8 @@ updated_data_internal <-
     starting_asset_data = starting_asset_data_ask_daily,
     end_date_day = end_date_day,
     time_frame = "D",
-    bid_or_ask = "ask"
+    bid_or_ask = "ask",
+    db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
   ) {
 
     latest_data_in_start_asset <-
@@ -471,6 +472,7 @@ get_NN_best_trades_from_mult_anaysis <-
     asset_infor = asset_infor,
     risk_dollar_value = 5,
     win_threshold = 0.55,
+    risk_weighted_thresh = 0.05,
     slice_max = TRUE
   ) {
 
@@ -496,11 +498,17 @@ get_NN_best_trades_from_mult_anaysis <-
                       statement =  "SELECT * FROM Simulation_Results") %>%
       left_join(analysis_data_Asset_db) %>%
       filter(Perc > win_threshold)  %>%
+      filter(risk_weighted_return > risk_weighted_thresh)  %>%
       filter(Network_Name == network_name) %>%
       group_by(sd_fac, direction_sd_1, Network_Name, trade_direction) %>%
       slice_min(stop_factor) %>%
       ungroup() %>%
-      distinct(sd_fac, direction_sd_1, stop_factor, profit_factor, Network_Name, Trades, Assets, trade_direction)
+      distinct(sd_fac, direction_sd_1, stop_factor, profit_factor,
+               Network_Name, Trades, Assets, trade_direction, risk_weighted_return, Perc) %>%
+      ungroup() %>%
+      group_by(sd_fac, trade_direction, direction_sd_1) %>%
+      slice_max(risk_weighted_return) %>%
+      ungroup()
 
     trades_1 <- list()
 
@@ -513,8 +521,10 @@ get_NN_best_trades_from_mult_anaysis <-
       profit_factor <- analysis_data_db$profit_factor[i] %>% as.numeric()
       direction <- analysis_data_db$direction_sd_1[i] %>% as.character()
       trade_direction <- analysis_data_db$trade_direction[i] %>% as.character()
+      risk_weighted_returns_x <-analysis_data_db$risk_weighted_return[i] %>% as.numeric()
+      perc_x <-analysis_data_db$Perc[i] %>% as.numeric()
 
-      trades_1[[i]] <-
+      current_trades <-
         get_NN_trade_from_params(
           Hour_data_with_LM_markov = Hour_data_with_LM_markov,
           sd_value_xx = sd_value_xx,
@@ -532,6 +542,17 @@ get_NN_best_trades_from_mult_anaysis <-
           trade_direction = trade_direction,
           slice_max = slice_max
         )
+
+      if(!is.null(current_trades)) {
+
+        trades_1[[i]] <-
+          current_trades %>%
+          mutate(stop_factor = stop_factor,
+                 profit_factor = profit_factor,
+                 risk_weighted_returns = risk_weighted_returns_x,
+                 perc = perc_x)
+
+      }
 
     }
 
@@ -551,6 +572,23 @@ get_NN_best_trades_from_mult_anaysis <-
     return(all_trades)
 
   }
+
+get_trade_sim_analysis_db_NN_LM <- function(
+    db_path = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
+    network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17"
+  ) {
+
+  db_con <- connect_db(db_path)
+
+    dat <- DBI::dbGetQuery(conn = db_con,
+                    statement =  "SELECT * FROM Simulation_Results") %>%
+    filter(Network_Name == network_name)
+
+    DBI::dbDisconnect(db_con)
+
+    return(dat)
+
+}
 
 #' combine_NN_predictions
 #'

@@ -24,7 +24,7 @@ AUD_exports_total <- AUD_exports_total %>%
     month_date = lubridate::floor_date(date, "month")
   )
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
@@ -63,6 +63,9 @@ H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17 <- readRDS(
 
 H1_LM_Markov_NN_Hidden35 <-
   readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Hidden35_withLag_2025-05-17.rds"))
+
+LM_ML_Lead_5_21_21_5_layer =
+  readRDS("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_5_21_21_5_layer_2025-05-20.rds")
 
 
 #-------------------------------Trade Loop
@@ -293,7 +296,7 @@ while (current_time < end_time) {
 
     trades_1 <-
       get_NN_best_trades_from_mult_anaysis(
-        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
         network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
         NN_model = H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17,
         Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
@@ -305,11 +308,27 @@ while (current_time < end_time) {
         slice_max = TRUE
       )
 
+    trades_1_50 <-
+      get_NN_best_trades_from_mult_anaysis(
+        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
+        network_name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
+        NN_model = H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17,
+        Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
+        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        risk_dollar_value = 10,
+        win_threshold = 0.2,
+        risk_weighted_thresh = 0.6,
+        slice_max = TRUE
+      )
+
     if(!is.null(trades_1)) {trades_1 <- trades_1 %>% filter(trade_col == "Long")}
+    if(!is.null(trades_1_50)) {trades_1_50 <- trades_1_50 %>% filter(trade_col == "Long")}
 
     trades_2 <-
       get_NN_best_trades_from_mult_anaysis(
-        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
         network_name = "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13",
         NN_model = H1_model_High_SD_25_71_neg,
         Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
@@ -321,11 +340,27 @@ while (current_time < end_time) {
         slice_max = TRUE
       )
 
+    trades_2_50 <-
+      get_NN_best_trades_from_mult_anaysis(
+        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
+        network_name = "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13",
+        NN_model = H1_model_High_SD_25_71_neg,
+        Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
+        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        risk_dollar_value = 10,
+        win_threshold = 0.2,
+        risk_weighted_thresh = 0.6,
+        slice_max = TRUE
+      )
+
     if(!is.null(trades_2)) {trades_2 <- trades_2 %>% filter(trade_col == "Long")}
+    if(!is.null(trades_2_50)) {trades_2_50 <- trades_2_50 %>% filter(trade_col == "Long")}
 
     trades_3 <-
       get_NN_best_trades_from_mult_anaysis(
-        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
         network_name = "H1_LM_Markov_NN_Hidden35",
         NN_model = H1_LM_Markov_NN_Hidden35,
         Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
@@ -334,10 +369,28 @@ while (current_time < end_time) {
         asset_infor = asset_infor,
         risk_dollar_value = 10,
         win_threshold = 0.54,
+        risk_weighted_thresh = 0.02,
         slice_max = TRUE
       )
 
     if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
+
+    trades_4 <-
+      get_NN_best_trades_from_mult_anaysis(
+        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
+        network_name = "LM_ML_Lead_5_21_21_5_layer",
+        NN_model = LM_ML_Lead_5_21_21_5_layer,
+        Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
+        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        risk_dollar_value = 10,
+        win_threshold = 0.2,
+        risk_weighted_thresh = 0.2,
+        slice_max = TRUE
+      )
+
+    if(!is.null(trades_4)) {trades_4 <- trades_4 %>% filter(trade_col == "Long")}
 
     # H1_Model_data_train_bid <-
     #   Hour_data_with_LM_markov_bid %>%
@@ -371,7 +424,62 @@ while (current_time < end_time) {
 
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      bind_rows(trades_3)
+      bind_rows(trades_3) %>%
+      bind_rows(trades_2_50) %>%
+      bind_rows(trades_1_50) %>%
+      bind_rows(trades_4)
+
+    greater_prof_trades <-
+      total_trades %>%
+      filter(stop_factor < profit_factor)
+
+    if(dim(greater_prof_trades)[1] > 0) {
+      greater_prof_trades <- greater_prof_trades %>%
+        group_by(Asset, trade_col) %>%
+        slice_max(risk_weighted_returns) %>%
+        ungroup()
+
+      greater_prof_trades_assets <- greater_prof_trades %>% distinct(Asset) %>% pull(Asset)
+
+    } else {
+      greater_prof_trades_assets <- c("XXXXXXXXXX")
+      greater_prof_trades_assets <- NULL
+    }
+
+    equal_prof_trades <- total_trades %>%
+      filter(!(Asset %in% greater_prof_trades_assets))
+
+    if(dim(equal_prof_trades)[1] > 0) {
+
+      equal_prof_trades <-
+        equal_prof_trades %>%
+        group_by(Asset, trade_col) %>%
+        slice_min(stop_value) %>%
+        group_by(Asset, trade_col) %>%
+        slice_min(risk_weighted_returns) %>%
+        group_by(Asset, trade_col) %>%
+        mutate(
+          kk = row_number()
+        ) %>%
+        group_by(Asset, trade_col) %>%
+        slice_min(kk) %>%
+        ungroup()
+
+    } else {
+      equal_prof_trades <- NULL
+    }
+
+    if(!is.null(equal_prof_trades)) {
+      total_trades <-
+        equal_prof_trades %>%
+        bind_rows(greater_prof_trades)
+    }
+
+    if( is.null(equal_prof_trades) & !is.null(greater_prof_trades) ) {
+      total_trades <-
+        greater_prof_trades %>%
+        bind_rows(equal_prof_trades)
+    }
 
     if(dim(total_trades)[1] > 0) {
 

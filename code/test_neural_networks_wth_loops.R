@@ -208,7 +208,7 @@ H1_LM_Markov_NN_25_SD_71_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds",
     risk_dollar_value = 10,
@@ -224,7 +224,7 @@ H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds",
     risk_dollar_value = 10,
@@ -247,7 +247,7 @@ LM_ML_Lead_5_21_21_5_layer_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "LM_ML_Lead_5_21_21_5_layer",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_5_21_21_5_layer_2025-05-20.rds",
     risk_dollar_value = 10,
@@ -262,11 +262,41 @@ LM_ML_HighLead_14_14_14_layer_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "LM_ML_HighLead_14_14_14_layer",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_HighLead_14_14_14_layer_2025-05-19.rds",
     risk_dollar_value = 10,
     mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
+    conditions_Params = NULL,
+    trade_direction = "Long",
+    write_required = FALSE,
+    profit_factor_mult = 1.5
+  )
+
+H1_LM_Markov_NN_Hidden35_results <-
+  simulate_trade_results_multi_param(
+    H1_Model_data_train = H1_Model_data_train_bid,
+    H1_Model_data_test = H1_Model_data_test_bid,
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
+    Network_Name = "H1_LM_Markov_NN_Hidden35",
+    NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Hidden35_withLag_2025-05-17.rds",
+    risk_dollar_value = 10,
+    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+    conditions_Params = NULL,
+    trade_direction = "Long",
+    write_required = FALSE,
+    profit_factor_mult = 1.5
+  )
+
+LM_ML_HighLead_14_14_layer_results <-
+  simulate_trade_results_multi_param(
+    H1_Model_data_train = H1_Model_data_train_bid,
+    H1_Model_data_test = H1_Model_data_test_bid,
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
+    Network_Name = "LM_ML_HighLead_14_14_layer",
+    NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_HighLead_14_14_layer_2025-05-19.rds",
+    risk_dollar_value = 10,
+    mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
     conditions_Params = NULL,
     trade_direction = "Long",
     write_required = FALSE,
@@ -281,6 +311,9 @@ test_LM_ML_HighLead_14_14_14__<- LM_ML_HighLead_14_14_14_layer_results %>%
   pluck(1) %>%
   map_dfr(bind_rows)
 
+LM_ML_HighLead_14_14_layer <- LM_ML_HighLead_14_14_layer_results%>%
+  pluck(1) %>%
+  map_dfr(bind_rows)
 
 #------------------------------------Starting Base Model (Long)
 
@@ -288,14 +321,14 @@ H1_LM_Markov_NN_25_SD_71_results <-
   simulate_trade_results_multi_param(
   H1_Model_data_train = H1_Model_data_train_ask,
   H1_Model_data_test = H1_Model_data_test_ask,
-  NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+  NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
   Network_Name = "H1_LM_Markov_NN_25_SD_71Perc_2025-05-13",
   NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds",
   risk_dollar_value = 10,
   mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
   conditions_Params = NULL,
   trade_direction = "Long",
-  write_required = TRUE
+  write_required = FALSE
 )
 
 
@@ -303,7 +336,7 @@ H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds",
     risk_dollar_value = 10,
@@ -325,7 +358,7 @@ LM_ML_Lead_5_21_21_5_layer_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "LM_ML_Lead_5_21_21_5_layer",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_5_21_21_5_layer_2025-05-20.rds",
     risk_dollar_value = 10,
@@ -339,7 +372,7 @@ LM_ML_HighLead_14_14_14_layer_results <-
   simulate_trade_results_multi_param(
     H1_Model_data_train = H1_Model_data_train_ask,
     H1_Model_data_test = H1_Model_data_test_ask,
-    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24.db",
+    NN_results_DB = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
     Network_Name = "LM_ML_HighLead_14_14_14_layer",
     NN_Model_path = "C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_HighLead_14_14_14_layer_2025-05-19.rds",
     risk_dollar_value = 10,

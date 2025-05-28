@@ -19,10 +19,13 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
   start_date_integer <- start_date %>% as_datetime() %>% as.integer()
   end_date_integer <- (as_datetime(end_date) + days(1)) %>% as.integer()
 
+  "Oanda_Asset_Data_ask_M15"
+
   db_table <- glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
   db_table <- case_when(
     time_frame == "H1" ~ glue::glue("Oanda_Asset_Data_{bid_or_ask}"),
-    time_frame == "D" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
+    time_frame == "D" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}"),
+    time_frame == "M15" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
   )
 
   db_query <- glue::glue("SELECT * FROM {db_table}

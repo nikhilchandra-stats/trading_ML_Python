@@ -1,3 +1,4 @@
+helperfunctions35South::load_custom_functions()
 start_date <- "2011-01-01"
 while_loop_check <- as_date("2011-01-01")
 end_date <- (today() - days(1)) %>% as.character()
@@ -17,6 +18,164 @@ asset_list_oanda <-
 db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
 c = 0
 db_con <- connect_db(db_location)
+safely_get_data <- safely(read_all_asset_data_intra_day, otherwise = NULL)
+
+#--------------------------------------------------------------------------15M
+for (i in 1:length(asset_list_oanda) ) {
+
+  while(while_loop_check < (today() - days(2)) ) {
+
+    c = c + 1
+
+    extracted_asset_data1 <-
+      safely_get_data(
+        asset_list_oanda = asset_list_oanda[i],
+        save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+        read_csv_or_API = "API",
+        time_frame = "M15",
+        bid_or_ask = "ask",
+        how_far_back = 5000,
+        start_date = start_date
+      ) %>% pluck('result')
+
+    if(!is.null(extracted_asset_data1)) {
+      message("made it to upload")
+
+      extracted_asset_data1 <- extracted_asset_data1 %>% map_dfr(bind_rows)
+      max_date_in_1 <- extracted_asset_data1 %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup() %>%
+        slice_min(Date) %>%
+        pull(Date) %>% pluck(1) %>% as.character()
+      min_date_in_1 <- extracted_asset_data1$Date %>% min(na.rm = T) %>% as_date() %>% as.character()
+
+      while_loop_check <- as_date(max_date_in_1)
+
+      start_date <- max_date_in_1
+
+      if(c == 1) {
+
+        write_table_sql_lite(.data = extracted_asset_data1,
+                             conn = db_con,
+                             table_name = "Oanda_Asset_Data_ask_M15",
+                             overwrite_true = TRUE)
+
+        db_con <- connect_db(db_location)
+
+      } else {
+
+        append_table_sql_lite(.data = extracted_asset_data1,
+                              conn = db_con,
+                              table_name = "Oanda_Asset_Data_ask_M15")
+
+      }
+
+    } else {
+
+      while_loop_check <- today()
+
+    }
+
+  }
+
+  start_date <- "2011-01-01"
+  while_loop_check <- as_date("2011-01-01")
+
+}
+
+
+test_query <-
+  DBI::dbGetQuery(conn = db_con,
+                  statement = "SELECT * FROM Oanda_Asset_Data_ask_M15") %>%
+  mutate(Date = as_datetime(Date))
+
+distinct_assets <- test_query %>% distinct(Asset)
+
+DBI::dbDisconnect(db_con)
+
+gc()
+#-------------------------------------------------------------------
+
+start_date <- "2011-01-01"
+while_loop_check <- as_date("2011-01-01")
+end_date <- (today() - days(1)) %>% as.character()
+db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+c = 0
+db_con <- connect_db(db_location)
+
+for (i in 1:length(asset_list_oanda) ) {
+
+  while(while_loop_check < (today() - days(2)) ) {
+
+    c = c + 1
+
+    extracted_asset_data1 <-
+      safely_get_data(
+        asset_list_oanda = asset_list_oanda[i],
+        save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+        read_csv_or_API = "API",
+        time_frame = "M15",
+        bid_or_ask = "bid",
+        how_far_back = 5000,
+        start_date = start_date
+      ) %>% pluck('result')
+
+    if(!is.null(extracted_asset_data1)) {
+      message("made it to upload")
+
+      extracted_asset_data1 <- extracted_asset_data1 %>% map_dfr(bind_rows)
+      max_date_in_1 <- extracted_asset_data1 %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup() %>%
+        slice_min(Date) %>%
+        pull(Date) %>% pluck(1) %>% as.character()
+      min_date_in_1 <- extracted_asset_data1$Date %>% min(na.rm = T) %>% as_date() %>% as.character()
+
+      while_loop_check <- as_date(max_date_in_1)
+
+      start_date <- max_date_in_1
+
+      if(c == 1) {
+
+        write_table_sql_lite(.data = extracted_asset_data1,
+                             conn = db_con,
+                             table_name = "Oanda_Asset_Data_bid_M15",
+                             overwrite_true = TRUE)
+
+        db_con <- connect_db(db_location)
+
+      } else {
+
+        append_table_sql_lite(.data = extracted_asset_data1,
+                              conn = db_con,
+                              table_name = "Oanda_Asset_Data_bid_M15")
+
+      }
+
+    } else {
+
+      while_loop_check <- today()
+
+    }
+
+  }
+
+  start_date <- "2011-01-01"
+  while_loop_check <- as_date("2011-01-01")
+
+}
+
+test_query <-
+  DBI::dbGetQuery(conn = db_con,
+                  statement = "SELECT * FROM Oanda_Asset_Data_bid_M15
+                               WHERE Asset = 'AUD_USD'") %>%
+  mutate(Date = as_datetime(Date))
+
+DBI::dbDisconnect(db_con)
+
+#---------------------------------------------------------------------1 Hour
 
 for (i in 1:length(asset_list_oanda) ) {
 
@@ -350,6 +509,8 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
     slice_max(kk) %>%
     ungroup() %>%
     dplyr::select(-kk)
+
+  DBI::dbDisconnect(db_con)
 
   return(query_data)
 
