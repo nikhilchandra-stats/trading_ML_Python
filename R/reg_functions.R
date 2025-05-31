@@ -579,6 +579,75 @@ get_CAD_Indicators <- function(
 }
 
 
+get_NZD_Indicators <- function(
+    raw_macro_data = get_macro_event_data(),
+    lag_days = 3
+) {
+
+  NZD_INDEX <- raw_macro_data %>%
+    filter(symbol == "NZD") %>%
+    mutate(
+      Index_Type =
+        case_when(
+          str_detect(event, "Unemployment Rate")  ~ "NZD Unemployment Rate",
+          str_detect(event, "Interest Rate Decision")  ~ "NZD Interest Rate",
+          str_detect(event, "Manufacturing Sales")  ~ "NZD Manufacturing Sales",
+          str_detect(event, "GDT Price Index")  ~ "NZD Price Index",
+          str_detect(event, "Exports")  ~ "NZD Exports",
+          str_detect(event, "Imports")  ~ "NZD Current Account",
+          str_detect(event, "Trade Balance")  ~ "NZD Trade Balance",
+          str_detect(event, "Credit Card Spending")  ~ "NZD Credit Card Spending",
+          str_detect(event, "Inflation Expectations")  ~ "NZD Inflation Expectations",
+          str_detect(event, "Business NZ PSI")  ~ "NZD Business NZ PSI",
+          str_detect(event, "Producer Price Index \\- Input \\(QoQ\\)")  ~ "NZD Producer Price Index Input",
+          str_detect(event, "Producer Price Index \\- Output \\(QoQ\\)")  ~ "NZD Producer Price Index Output",
+          str_detect(event, "Food Price Index \\(MoM\\)")  ~ "NZD Food Price Index",
+          str_detect(event, "Electronic Card Retail Sales \\(MoM\\)")  ~ "NZD Electronic Card Retail Sales",
+          str_detect(event, "ANZ Commodity Price")  ~ "NZD ANZ Commodity Price",
+          str_detect(event, "Labour Cost Index \\(QoQ\\)")  ~ "NZD Labour Cost Index",
+          str_detect(event, "ANZ Activity Outlook")  ~ "NZD ANZ Activity Outlook",
+          str_detect(event, "ANZ Business Confidence")  ~ "ANZ Business Confidence",
+          str_detect(event, "Exports")  ~ "NZD Exports",
+          str_detect(event, "Imports")  ~ "NZD Imports",
+          str_detect(event, "Trade Balance NZD \\(MoM\\)")  ~ "NZD Trade Balance NZD",
+          str_detect(event, "NZIER Business Confidence \\(QoQ\\)")  ~ "NZIER Business Confidence"
+
+        )
+    ) %>%
+    filter(!is.na(Index_Type)) %>%
+    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::group_by(Index_Type,date ) %>%
+    summarise(
+      actual = median(actual, na.rm = T)
+    ) %>%
+    ungroup() %>%
+    mutate(date = date + lubridate::days(lag_days) ) %>%
+    mutate(
+      date =
+        case_when(
+          lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+          lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+          TRUE ~ date
+        )
+    ) %>%
+    pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+    arrange(date) %>%
+    fill(everything(), .direction = "down") %>%
+    filter(if_all(everything(), ~ !is.na(.) )) %>%
+    mutate(
+      across(
+        .cols = where(is.numeric),
+        .fns = ~ case_when(
+          . > 0 ~ log(.),
+          TRUE ~ .
+        )
+      )
+    )
+
+  return(NZD_INDEX)
+
+}
+
 run_reg_for_trades_with_NN <- function(
     raw_macro_data = get_macro_event_data(),
     asset_data = read_csv("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/EUR_USD Historical Data.csv"),

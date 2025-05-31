@@ -1,6 +1,4 @@
-helperfunctions35South::load_custom_functions()
-one_drive_path <- helperfunctions35South::create_one_drive_path(
-  path_extension = "raw data")
+helpeR::load_custom_functions()
 library(neuralnet)
 raw_macro_data <- get_macro_event_data()
 
@@ -201,6 +199,13 @@ get_15_min_markov_trades_markov_LM <-
       mutate(date = as_datetime(date)) %>%
       rename(Date = date)
 
+    NZD_Macro_Data <- get_NZD_Indicators(raw_macro_data = raw_macro_data,
+                                         lag_days = 4)%>%
+      mutate(date = as_datetime(date)) %>%
+      rename(Date = date)
+
+
+
     macro_indicators <- names(makov_data_combined) %>%
       keep(~str_detect(.x, "USD |CAD |JPY |AUD |EUR |GBP |CNY ")) %>%
       unlist()
@@ -237,6 +242,7 @@ get_15_min_markov_trades_markov_LM <-
       left_join(GBP_Macro_Data, by = c("Macro_Date_Col" = "Date") ) %>%
       left_join(CAD_Macro_Data, by = c("Macro_Date_Col" = "Date") ) %>%
       left_join(CNY_Macro_Data, by = c("Macro_Date_Col" = "Date") ) %>%
+      left_join(NZD_Macro_Data, by = c("Macro_Date_Col" = "Date") ) %>%
       group_by(Asset) %>%
       fill(where(is.numeric), .direction = "down") %>%
       ungroup() %>%
@@ -251,6 +257,7 @@ get_15_min_markov_trades_markov_LM <-
         SEK_check = ifelse(str_detect(Asset, "SEK"), 1, 0),
         NOK_check = ifelse(str_detect(Asset, "NOK"), 1, 0),
         CHF_check = ifelse(str_detect(Asset, "CHF"), 1, 0),
+        CHF_check = ifelse(str_detect(Asset, "NZD"), 1, 0),
         COMMOD_check = ifelse(str_detect(Asset, "XAG|XAU|WHEAT|SOY|WTICO|XCU|BCO|SUGAR|NATGAS"), 1, 0),
         INDEX_check = ifelse(str_detect(Asset, "SPX|SG30|SPX500|US2000|DE|AU200"), 1, 0)
       )
@@ -381,29 +388,6 @@ get_15_min_markov_trades_markov_LM <-
     return(testing_data)
 
   }
-
-
-testing_data <-
-  get_15_min_markov_trades_markov_LM(
-    new_15_data_ask = starting_asset_data_ask_daily,
-    profit_factor  = 18,
-    stop_factor  = 13,
-    risk_dollar_value = 10,
-    trade_sd_fact = 0,
-    rolling_period = 400,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    trade_sd_fact = trade_sd_fact,
-    currency_conversion = currency_conversion,
-    risk_dollar_value = risk_dollar_value,
-    LM_period_1 = 2,
-    LM_period_2 = 10,
-    LM_period_3 = 15,
-    LM_period_4 = 35,
-    MA_lag1 = 15,
-    MA_lag2 = 30,
-    sd_divides = seq(0.25,2,0.25),
-    quantile_divides = seq(0.1,0.9, 0.1)
-  )
 
 #' get_analysis_15min_LM
 #'
@@ -569,20 +553,50 @@ get_analysis_15min_LM <- function(
 
 }
 
+
+
+LM_period_1 = 2
+LM_period_2 = 10
+LM_period_3 = 15
+LM_period_4 = 35
+MA_lag1 = 15
+MA_lag2 = 30
+rolling_period = 400
+
+testing_data <-
+  get_15_min_markov_trades_markov_LM(
+    new_15_data_ask = starting_asset_data_ask_daily,
+    profit_factor  = 18,
+    stop_factor  = 13,
+    risk_dollar_value = 10,
+    trade_sd_fact = 0,
+    rolling_period = 400,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+    trade_sd_fact = trade_sd_fact,
+    currency_conversion = currency_conversion,
+    risk_dollar_value = risk_dollar_value,
+    LM_period_1 = LM_period_1,
+    LM_period_2 = LM_period_2,
+    LM_period_3 = LM_period_3,
+    LM_period_4 = LM_period_4,
+    MA_lag1 = MA_lag1,
+    MA_lag2 = MA_lag2,
+    sd_divides = seq(0.25,2,0.25),
+    quantile_divides = seq(0.1,0.9, 0.1)
+  )
+
 trade_params <-
   tibble(
-    trade_sd_fact1 = c(3,4,5,6)
+    trade_sd_fact1 = c(6,7,8,9)
   )
 
 trade_params <-
   c(3,4,5,6) %>%
   map_dfr(
     ~
-      tibble(
-        trade_sd_fact2 = c(4,5,6,7)
-      ) %>%
+      trade_params %>%
       mutate(
-        trade_sd_fact1 = .x
+        trade_sd_fact2 = .x
       )
   )
 
@@ -590,28 +604,72 @@ trade_params <-
   c(3,4,5,6) %>%
   map_dfr(
     ~
-      tibble(
-        trade_sd_fact2 = c(4,5,6,7)
-      ) %>%
+      trade_params %>%
       mutate(
-        trade_sd_fact1 = .x
+        trade_sd_fact3 = .x
       )
   )
 
-analysis_info <- get_analysis_15min_LM(
-  modelling_data_for_trade_tag = testing_data,
-  profit_factor  = 18,
-  stop_factor  = 13,
-  risk_dollar_value = 10,
-  trade_sd_fact1 = 5,
-  trade_sd_fact2 = 3,
-  trade_sd_fact3 = 3,
-  trade_sd_fact4 = 3,
-  sd_AVG_Prob = 0.5,
-  rolling_period = 400,
-  asset_data_daily_raw = starting_asset_data_ask_daily,
-  mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-  trade_sd_fact = trade_sd_fact,
-  currency_conversion = currency_conversion,
-  Network_Name = "15_min_macro"
-)
+trade_params <-
+  c(3,4,5,6) %>%
+  map_dfr(
+    ~
+      trade_params %>%
+      mutate(
+        trade_sd_fact4 = .x
+      )
+  )
+
+trade_params <-
+  c(8,9,10,11,12,13,14,15) %>%
+  map_dfr(
+    ~ trade_params %>%
+      mutate(
+        stop_factor = .x
+      ) %>%
+      mutate(
+        profit_factor = stop_factor*1.5
+      )
+  )
+
+trade_params <-
+  c(0,0.25,0.5,0.75,1,1.25) %>%
+  map_dfr(
+    ~ trade_params %>%
+      mutate(
+        sd_AVG_Prob = .x
+      )
+  )
+
+for (i in 1:dim(trade_params)[1]) {
+
+  trade_sd_fact1 <- trade_params$trade_sd_fact1[1] %>% as.numeric()
+  trade_sd_fact2 <- trade_params$trade_sd_fact2[1] %>% as.numeric()
+  trade_sd_fact3 <- trade_params$trade_sd_fact3[1] %>% as.numeric()
+  trade_sd_fact4 <- trade_params$trade_sd_fact4[1] %>% as.numeric()
+  sd_AVG_Prob <- trade_params$sd_AVG_Prob[1] %>% as.numeric()
+  stop_factor <- trade_params$stop_factor[1] %>% as.numeric()
+  profit_factor <- trade_params$profit_factor[1] %>% as.numeric()
+
+
+  analysis_info <- get_analysis_15min_LM(
+    modelling_data_for_trade_tag = testing_data,
+    profit_factor  = profit_factor,
+    stop_factor  = stop_factor,
+    risk_dollar_value = 10,
+    trade_sd_fact1 = trade_sd_fact1,
+    trade_sd_fact2 = trade_sd_fact2,
+    trade_sd_fact3 = trade_sd_fact3,
+    trade_sd_fact4 = trade_sd_fact4,
+    sd_AVG_Prob = sd_AVG_Prob,
+    rolling_period = 400,
+    asset_data_daily_raw = starting_asset_data_ask_daily,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+    trade_sd_fact = trade_sd_fact,
+    currency_conversion = currency_conversion,
+    Network_Name = "15_min_macro"
+  )
+
+}
+
+
