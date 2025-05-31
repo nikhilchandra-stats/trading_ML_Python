@@ -85,7 +85,8 @@ generic_trade_finder_trail_asset <-
     trailing_amount = 0.25,
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    risk_dollar_value = 10
+    risk_dollar_value = 10,
+    analysis_time_unit = 15
   ) {
 
     asset_data_for_analysis <-
@@ -124,6 +125,7 @@ generic_trade_finder_trail_asset <-
     start_price_speed <- numeric(number_of_trades)
     profit_price_speed <- numeric(number_of_trades)
     trade_directions_speed <- trades_under_analysis %>% pull(!!as.name(trade_col)) %>% as.character()
+    time_index_to_finish_speed <- numeric(number_of_trades)
 
     plot_list<- list()
 
@@ -227,6 +229,11 @@ generic_trade_finder_trail_asset <-
             trade_finished <- TRUE
           }
 
+          if(Lows[k] <= profit_price) {
+            end_price <- profit_price
+            trade_finished <- TRUE
+          }
+
           if(Highs[k] <= stop_price - trailing_amount*profit_distance) {
             stop_price <- stop_price - trailing_amount*profit_distance
             profit_price <- profit_price - trailing_amount*profit_distance
@@ -243,6 +250,7 @@ generic_trade_finder_trail_asset <-
       start_price_speed[i] <- starting_price
       end_price_speed[i] <- end_price
       profit_price_speed[i] <- abs(profit_price - starting_price)
+      time_index_to_finish_speed[i] <- k
 
     }
 
@@ -256,7 +264,8 @@ generic_trade_finder_trail_asset <-
         stop_distance = stop_distance,
         profit_distance = profit_price_speed,
         stop_factor = stop_factor,
-        profit_factor = profit_factor
+        profit_factor = profit_factor,
+        loop_index_when_trade_finished = time_index_to_finish_speed
       ) %>%
       left_join(asset_infor %>%
                   dplyr::select(Asset = name,

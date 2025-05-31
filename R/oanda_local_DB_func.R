@@ -51,6 +51,8 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
     ungroup() %>%
     dplyr::select(-kk)
 
+  DBI::dbDisconnect(db_con)
+
   return(query_data)
 
 }
