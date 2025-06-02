@@ -478,6 +478,11 @@ get_NN_best_trades_from_mult_anaysis <-
 
     db_con <- connect_db(db_path)
 
+    by_asset_data <-
+      analysis_data_Asset_db <-
+      DBI::dbGetQuery(conn = db_con,
+                      statement =  "SELECT * FROM Simulation_Results_Asset")
+
     analysis_data_Asset_db <-
       DBI::dbGetQuery(conn = db_con,
                       statement =  "SELECT * FROM Simulation_Results_Asset")%>%
@@ -512,8 +517,6 @@ get_NN_best_trades_from_mult_anaysis <-
 
     trades_1 <- list()
 
-    DBI::dbDisconnect(db_con)
-
     for (i in 1:dim(analysis_data_db)[1] ) {
 
       sd_value_xx <- analysis_data_db$sd_fac[i] %>% as.numeric()
@@ -523,6 +526,25 @@ get_NN_best_trades_from_mult_anaysis <-
       trade_direction <- analysis_data_db$trade_direction[i] %>% as.character()
       risk_weighted_returns_x <-analysis_data_db$risk_weighted_return[i] %>% as.numeric()
       perc_x <-analysis_data_db$Perc[i] %>% as.numeric()
+
+
+      stop_factor_xx <- analysis_data_db$stop_factor[i] %>% as.numeric()
+      profit_factor_xx <- analysis_data_db$profit_factor[i] %>% as.numeric()
+      direction_xx <- analysis_data_db$direction_sd_1[i] %>% as.character()
+      trade_direction_xx <- analysis_data_db$trade_direction[i] %>% as.character()
+
+      profitable_assets <-
+        by_asset_data %>%
+        ungroup() %>%
+        filter(.data$direction_sd_1 == direction_xx,
+               .data$trade_direction == trade_direction_xx,
+               .data$stop_factor == stop_factor_xx,
+               .data$profit_factor == profit_factor_xx,
+               .data$sd_fac == sd_value_xx,
+               .data$Network_Name == network_name) %>%
+        ungroup() %>%
+        filter(Final_Dollars > 0) %>%
+        pull(Asset)
 
       current_trades <-
         get_NN_trade_from_params(
@@ -544,6 +566,9 @@ get_NN_best_trades_from_mult_anaysis <-
         )
 
       if(!is.null(current_trades)) {
+
+        current_trades <- current_trades %>%
+          filter(Asset %in% profitable_assets)
 
         trades_1[[i]] <-
           current_trades %>%
@@ -568,6 +593,8 @@ get_NN_best_trades_from_mult_anaysis <-
     } else {
       all_trades <- NULL
     }
+
+    DBI::dbDisconnect(db_con)
 
     return(all_trades)
 

@@ -88,7 +88,7 @@ current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
 
-margain_threshold <- 0.025
+margain_threshold <- 0.05
 long_account_num <- 1
 account_number_long <- "001-011-1615559-001"
 account_name_long <- "primary"
