@@ -51,8 +51,8 @@ asset_list_oanda <- get_oanda_symbols() %>%
 
 asset_infor <- get_instrument_info()
 
-db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2023-03-01"
+db_location <- "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
+start_date_day = "2022-09-01"
 end_date_day = today() %>% as.character()
 
 starting_asset_data_ask_daily <-
@@ -69,7 +69,6 @@ mean_values_by_asset_for_loop_15_ask =
     asset_data_daily_raw = starting_asset_data_ask_daily,
     summarise_means = TRUE
   )
-
 
 #' get_15_min_markov_trades_markov_LM
 #'
@@ -97,9 +96,7 @@ get_15_min_markov_trades_markov_LM <-
     trade_sd_fact = 0,
     rolling_period = 400,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    trade_sd_fact = trade_sd_fact,
     currency_conversion = currency_conversion,
-    risk_dollar_value = risk_dollar_value,
     LM_period_1 = 2,
     LM_period_2 = 10,
     LM_period_3 = 15,
@@ -110,6 +107,8 @@ get_15_min_markov_trades_markov_LM <-
     quantile_divides = seq(0.1,0.9, 0.1)
     ) {
 
+    message("markov calcs")
+    # tictoc::tic()
     markov_trades_raw <-
       get_markov_tag_pos_neg_diff(
         asset_data_combined = new_15_data_ask,
@@ -126,9 +125,11 @@ get_15_min_markov_trades_markov_LM <-
         mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
         trade_sd_fact = trade_sd_fact,
         currency_conversion = currency_conversion,
-        risk_dollar_value = risk_dollar_value
+        risk_dollar_value = risk_dollar_value,
+        skip_trade_analysis = TRUE
       )
 
+    # tictoc::toc()
     markov_data_Lows <-
       markov_trades_raw$Trades %>% pluck(1)
 
@@ -170,6 +171,8 @@ get_15_min_markov_trades_markov_LM <-
 
     gc()
 
+    message("LM Calcs")
+    # tictoc::tic()
     US_Macro_Data <- get_USD_Indicators(raw_macro_data = raw_macro_data,
                                         lag_days = 4) %>%
       mutate(date = as_datetime(date)) %>%
@@ -203,12 +206,6 @@ get_15_min_markov_trades_markov_LM <-
                                          lag_days = 4)%>%
       mutate(date = as_datetime(date)) %>%
       rename(Date = date)
-
-
-
-    macro_indicators <- names(makov_data_combined) %>%
-      keep(~str_detect(.x, "USD |CAD |JPY |AUD |EUR |GBP |CNY ")) %>%
-      unlist()
 
     makov_data_combined <-
       markov_data_Lows %>%
@@ -268,7 +265,7 @@ get_15_min_markov_trades_markov_LM <-
     running_mid_sd_col_names <- names(makov_data_combined) %>% keep(~str_detect(.x, "running_")) %>% unlist()
     ma_col_names <- c("MA_fast_Price", "MA_slow_Price", "MA_fast_High", "MA_slow_High")
     macro_indicators <- names(makov_data_combined) %>%
-      keep(~str_detect(.x, "USD |CAD |JPY |AUD |EUR |GBP |CNY ")) %>%
+      keep(~str_detect(.x, "USD |CAD |JPY |AUD |EUR |GBP |CNY |NZD ")) %>%
       unlist()
     check_names <- names(makov_data_combined) %>%
       keep(~str_detect(.x, "_check")) %>%
@@ -354,6 +351,7 @@ get_15_min_markov_trades_markov_LM <-
     rm(training_data)
     gc()
 
+    # tictoc::toc()
 
     testing_data <-
       makov_data_combined %>%
@@ -430,6 +428,7 @@ get_analysis_15min_LM <- function(
     Network_Name = "15_min_macro"
   ) {
 
+  # tictoc::tic()
   long_bayes_loop_analysis_pos <-
     generic_trade_finder_loop(
       tagged_trades = modelling_data_for_trade_tag %>%
@@ -463,7 +462,7 @@ get_analysis_15min_LM <- function(
       start_price_col = "Price",
       mean_values_by_asset = mean_values_by_asset_for_loop
     )
-
+  # tictoc::toc()
 
   trade_timings_pos <-
     long_bayes_loop_analysis_pos %>%
@@ -553,7 +552,7 @@ get_analysis_15min_LM <- function(
 
 }
 
-
+tictoc::tic()
 
 LM_period_1 = 2
 LM_period_2 = 10
@@ -572,9 +571,7 @@ testing_data <-
     trade_sd_fact = 0,
     rolling_period = 400,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    trade_sd_fact = trade_sd_fact,
     currency_conversion = currency_conversion,
-    risk_dollar_value = risk_dollar_value,
     LM_period_1 = LM_period_1,
     LM_period_2 = LM_period_2,
     LM_period_3 = LM_period_3,
@@ -584,6 +581,12 @@ testing_data <-
     sd_divides = seq(0.25,2,0.25),
     quantile_divides = seq(0.1,0.9, 0.1)
   )
+
+tictoc::toc()
+
+db_path <- "C:/Users/Nikhil/Documents/trade_data/LM_15min_markov.db"
+db_con <- connect_db(db_path)
+write_table_now <- FALSE
 
 trade_params <-
   tibble(
@@ -669,6 +672,22 @@ for (i in 1:dim(trade_params)[1]) {
     currency_conversion = currency_conversion,
     Network_Name = "15_min_macro"
   )
+
+  if(i == 1 & write_table_now == TRUE) {
+    write_table_sql_lite(.data = analysis_info[[1]],
+                         table_name = "LM_15min_markov",
+                         conn = db_con )
+    write_table_sql_lite(.data = analysis_info[[2]],
+                         table_name = "LM_15min_markov_asset",
+                         conn = db_con )
+  } else {
+    append_table_sql_lite(.data = analysis_info[[1]],
+                          table_name = "LM_15min_markov",
+                          conn = db_con)
+    append_table_sql_lite(.data = analysis_info[[2]],
+                          table_name = "LM_15min_markov_asset",
+                          conn = db_con)
+  }
 
 }
 
