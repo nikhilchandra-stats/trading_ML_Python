@@ -644,7 +644,7 @@ trade_params <-
       )
   )
 
-for (i in 1:dim(trade_params)[1]) {
+for (i in 702:dim(trade_params)[1]) {
 
   trade_sd_fact1 <- trade_params$trade_sd_fact1[1] %>% as.numeric()
   trade_sd_fact2 <- trade_params$trade_sd_fact2[1] %>% as.numeric()
