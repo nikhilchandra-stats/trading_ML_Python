@@ -101,6 +101,35 @@ db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
 start_date_day = "2011-01-01"
 end_date_day = today() %>% as.character()
 
+#-----Upload new Data to DB
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "D",
+  bid_or_ask = "ask",
+  how_far_back = 15
+)
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "ask",
+  how_far_back = 15
+)
+
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "D",
+  bid_or_ask = "bid",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 15
+)
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "bid",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 15
+)
+
 starting_asset_data_ask_daily <-
   get_db_price(
     db_location = db_location,
@@ -161,30 +190,6 @@ mean_values_by_asset_for_loop_H1_bid =
     summarise_means = TRUE
   )
 
-#-----Upload new Data to DB
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "D",
-  bid_or_ask = "ask"
-)
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "ask"
-)
-
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "D",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda
-)
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda
-)
 
 #------------------------------------------------------------Loop
 #------------------------------------------------------------
@@ -202,26 +207,30 @@ while (current_time < end_time) {
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "ask",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
 
     update_local_db_file(
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "bid",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
 
     data_updated <- 1

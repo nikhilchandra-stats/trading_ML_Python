@@ -171,7 +171,8 @@ update_local_db_file <- function(
         "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
         "JP225_USD", "SPX500_USD"),
     time_frame = "H1",
-    bid_or_ask = "ask"
+    bid_or_ask = "ask",
+    how_far_back = 10
 ) {
 
   dates_by_asset <-
@@ -190,7 +191,7 @@ update_local_db_file <- function(
     pull(Date) %>%
     min(na.rm = T)
 
-  current_latest_date <- current_latest_date - days(3)
+  current_latest_date <- current_latest_date - days(how_far_back)
 
   current_latest_date <-
     current_latest_date %>%

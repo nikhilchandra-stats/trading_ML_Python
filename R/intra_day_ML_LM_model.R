@@ -567,8 +567,8 @@ get_NN_best_trades_from_mult_anaysis <-
 
       if(!is.null(current_trades)) {
 
-        current_trades <- current_trades %>%
-          filter(Asset %in% profitable_assets)
+        # current_trades <- current_trades %>%
+        #   filter(Asset %in% profitable_assets)
 
         trades_1[[i]] <-
           current_trades %>%
