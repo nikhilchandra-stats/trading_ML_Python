@@ -360,7 +360,7 @@ while (current_time < end_time) {
         asset_infor = asset_infor,
         risk_dollar_value = 10,
         win_threshold = 0.2,
-        risk_weighted_thresh = 0.6,
+        risk_weighted_thresh = 0.3,
         slice_max = TRUE
       )
 
@@ -389,8 +389,8 @@ while (current_time < end_time) {
         db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
         network_name = "LM_ML_Lead_5_21_21_5_layer",
         NN_model = LM_ML_Lead_5_21_21_5_layer,
-        Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
-        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+        Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
+        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
         risk_dollar_value = 10,

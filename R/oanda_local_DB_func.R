@@ -229,6 +229,9 @@ update_local_db_file <- function(
 
       time_frame == "H1" & bid_or_ask == "ask" ~ "Oanda_Asset_Data_ask",
       time_frame == "H1" & bid_or_ask == "bid" ~ "Oanda_Asset_Data_bid",
+
+      time_frame == "M15" & bid_or_ask == "ask" ~ "Oanda_Asset_Data_ask_M15",
+      time_frame == "M15" & bid_or_ask == "bid" ~ "Oanda_Asset_Data_bid_M15",
     )
 
   if(dim(for_upload)[1] > 0) {
