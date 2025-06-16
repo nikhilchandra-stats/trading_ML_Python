@@ -83,7 +83,7 @@ asset_list_oanda =
     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
     "JP225_USD", "SPX500_USD")
 
-end_time <- glue::glue("{floor_date(now(), 'week')} 11:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
+end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
 current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
@@ -100,6 +100,35 @@ account_name_short <- "corr_no_macro"
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
 start_date_day = "2011-01-01"
 end_date_day = today() %>% as.character()
+
+#-----Upload new Data to DB
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "D",
+  bid_or_ask = "ask",
+  how_far_back = 15
+)
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "ask",
+  how_far_back = 15
+)
+
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "D",
+  bid_or_ask = "bid",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 15
+)
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "bid",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 15
+)
 
 starting_asset_data_ask_daily <-
   get_db_price(
@@ -161,30 +190,6 @@ mean_values_by_asset_for_loop_H1_bid =
     summarise_means = TRUE
   )
 
-#-----Upload new Data to DB
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "D",
-  bid_or_ask = "ask"
-)
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "ask"
-)
-
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "D",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda
-)
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda
-)
 
 #------------------------------------------------------------Loop
 #------------------------------------------------------------
@@ -202,26 +207,30 @@ while (current_time < end_time) {
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "ask",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
 
     update_local_db_file(
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "bid",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
-      asset_list_oanda = asset_list_oanda
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 3
     )
 
     data_updated <- 1
@@ -351,7 +360,7 @@ while (current_time < end_time) {
         asset_infor = asset_infor,
         risk_dollar_value = 10,
         win_threshold = 0.2,
-        risk_weighted_thresh = 0.6,
+        risk_weighted_thresh = 0.3,
         slice_max = TRUE
       )
 
@@ -380,8 +389,8 @@ while (current_time < end_time) {
         db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db",
         network_name = "LM_ML_Lead_5_21_21_5_layer",
         NN_model = LM_ML_Lead_5_21_21_5_layer,
-        Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
-        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+        Hour_data_with_LM_markov = Hour_data_with_LM_markov_ask,
+        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
         risk_dollar_value = 10,

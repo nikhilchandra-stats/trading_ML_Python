@@ -211,22 +211,38 @@ for (j in 1:dim(trade_params)[1]) {
   sd_factor_low <- trade_params$sd_factor_low[j] %>% as.numeric()
   sd_factor_high <- trade_params$sd_factor_high[j] %>% as.numeric()
 
-  temp_for_trade <- trade_with_daily_data %>%
+  temp_for_trade_pos <- trade_with_daily_data %>%
     mutate(
       trade_col =
         case_when(
 
-          between(Pred_trade,mean_value  + sd_value*sd_factor_low,  mean_value  + sd_value*sd_factor_high) ~ "Long",
-          between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Short"
+          between(Pred_trade,mean_value  + sd_value*sd_factor_low,  mean_value  + sd_value*sd_factor_high) ~ "Long"
+          # between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Long"
 
         )
     )
 
+  temp_for_trade_neg <- trade_with_daily_data %>%
+    mutate(
+      trade_col =
+        case_when(
+
+          # between(Pred_trade,mean_value  + sd_value*sd_factor_low,  mean_value  + sd_value*sd_factor_high) ~ "Long"
+          between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Long"
+
+        )
+    )
+
+  temp_for_trade <- temp_for_trade_pos %>%
+    mutate(pos_neg = "pos")
+    bind_rows(temp_for_trade_neg %>%
+                mutate(pos_neg = "neg"))
+
   store_tagged_trades[[j]] <- temp_for_trade
 
-  retest_long <-
+  retest_long_pos <-
     generic_trade_finder_loop(
-      tagged_trades = temp_for_trade,
+      tagged_trades = temp_for_trade_pos,
       asset_data_daily_raw = asset_data_daily_raw_ask,
       stop_factor = stop_factor,
       profit_factor =profit_factor,
@@ -234,9 +250,10 @@ for (j in 1:dim(trade_params)[1]) {
       date_col = "Date",
       start_price_col = "Price",
       mean_values_by_asset = mean_values_by_asset_for_loop
-    )
+    ) %>%
+    mutate(pos_neg = "pos")
 
-  retest_long_aud <- retest_long %>%
+  retest_long_aud_pos <- retest_long_pos %>%
     rename(Asset = asset) %>%
     generic_anlyser(
       profit_factor = profit_factor,
@@ -249,12 +266,48 @@ for (j in 1:dim(trade_params)[1]) {
       price_col = "trade_start_prices",
       trade_return_col = "trade_returns",
       risk_dollar_value = risk_dollar_value,
-      grouping_vars = "trade_direction"
+      grouping_vars = c("trade_direction", "pos_neg")
     ) %>%
     mutate(
       sd_factor_low = sd_factor_low,
       sd_factor_high = sd_factor_high
     )
+
+  retest_long_neg <-
+    generic_trade_finder_loop(
+      tagged_trades = temp_for_trade_neg,
+      asset_data_daily_raw = asset_data_daily_raw_ask,
+      stop_factor = stop_factor,
+      profit_factor =profit_factor,
+      trade_col = "trade_col",
+      date_col = "Date",
+      start_price_col = "Price",
+      mean_values_by_asset = mean_values_by_asset_for_loop
+    ) %>%
+    mutate(pos_neg = "neg")
+
+  retest_long_aud_neg <- retest_long_neg %>%
+    rename(Asset = asset) %>%
+    generic_anlyser(
+      profit_factor = profit_factor,
+      stop_factor = stop_factor,
+      asset_infor = asset_infor,
+      currency_conversion = currency_conversion,
+      asset_col = "Asset",
+      stop_col = "starting_stop_value",
+      profit_col = "starting_profit_value",
+      price_col = "trade_start_prices",
+      trade_return_col = "trade_returns",
+      risk_dollar_value = risk_dollar_value,
+      grouping_vars = c("trade_direction", "pos_neg")
+    ) %>%
+    mutate(
+      sd_factor_low = sd_factor_low,
+      sd_factor_high = sd_factor_high
+    )
+
+  retest_long_aud <- retest_long_aud_pos %>%
+    bind_rows(retest_long_aud_neg)
 
   retest_data[[j]] <- retest_long_aud
 
@@ -265,12 +318,12 @@ for (j in 1:dim(trade_params)[1]) {
 
   if( dim(chance_of_win)[1] == 0 ) { chance_of_win = 0 }
 
-  new_trades_data_long <- trade_with_daily_data %>%
+  new_trades_data_long_pos <- trade_with_daily_data %>%
     mutate(
       trade_col =
         case_when(
-          between(Pred_trade,mean_value  + sd_value*sd_factor_low,  mean_value  + sd_value*sd_factor_high) ~ "Long",
-          between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Short"
+          between(Pred_trade,mean_value  + sd_value*sd_factor_low,  mean_value  + sd_value*sd_factor_high)  ~ "Long"
+          # between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Long"
         )
     ) %>%
     # mutate(Date = as_date(Date)) %>%
@@ -278,11 +331,35 @@ for (j in 1:dim(trade_params)[1]) {
     dplyr::slice_max(Date) %>%
     mutate(
       sd_factor_low = sd_factor_low,
-      sd_factor_high = sd_factor_high
+      sd_factor_high = sd_factor_high,
+      pos_neg = "pos"
     ) %>%
     left_join(
       chance_of_win, by = c("trade_col" = "trade_direction")
     )
+
+  new_trades_data_long_neg <- trade_with_daily_data %>%
+    mutate(
+      trade_col =
+        case_when(
+          # between(Pred_trade,mean_value  + sd_value*sd_factor_low,  mean_value  + sd_value*sd_factor_high)  ~ "Long"
+          between(Pred_trade,mean_value  - sd_value*sd_factor_high,  mean_value  - sd_value*sd_factor_low) ~ "Long"
+        )
+    ) %>%
+    # mutate(Date = as_date(Date)) %>%
+    # filter(Date >= today()  - days(5))
+    dplyr::slice_max(Date) %>%
+    mutate(
+      sd_factor_low = sd_factor_low,
+      sd_factor_high = sd_factor_high ,
+      pos_neg = "neg"
+    ) %>%
+    left_join(
+      chance_of_win, by = c("trade_col" = "trade_direction")
+    )
+
+  new_trades_data_long <- new_trades_data_long_pos %>%
+    bind_rows(new_trades_data_long_neg)
 
   new_trades_this_week[[j]] <- new_trades_data_long
 
@@ -290,7 +367,7 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return > 0.1) %>%
+  filter(risk_weighted_return > 0.07) %>%
   mutate(redont_risk_weighted_return =
            1000*( (Perc*maximum_win) - (minimal_loss*(1 - Perc)) )
          )
@@ -308,7 +385,8 @@ trades_for_today <-
                             sd_factor_high,
                             sd_factor_low,
                             trade_col = trade_direction,
-                            risk_weighted_return)
+                            risk_weighted_return,
+                            pos_neg)
             ) %>%
   filter(!is.na(risk_weighted_return))  %>%
   get_stops_profs_volume_trades(mean_values_by_asset = mean_values_by_asset_for_loop,
@@ -326,7 +404,11 @@ trades_for_today <-
             )
   ) %>%
   filter(!is.na(trade_col)) %>%
-  filter(trade_col == "Long")
+  filter(trade_col == "Long") %>%
+  group_by(Asset) %>%
+  slice_max(risk_weighted_return) %>%
+  dplyr::select(-pos_neg) %>%
+  distinct()
 
 
 #---------------------------------------------
@@ -364,7 +446,7 @@ trade_list_for_today <- trade_list_for_today %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return) %>%
   ungroup() %>%
-  filter(risk_weighted_return > 0.1) %>%
+  # filter(risk_weighted_return > 0.1) %>%
   arrange(estimated_margin)  %>%
   mutate(
     units = as.numeric(units),
