@@ -164,8 +164,7 @@ get_sup_res_tagged_trades <- function(sup_res_data = squeeze_detection,
           Sup_Diff_H1_XX_slow <= Sup_Diff_H1_XX_slow_run_mean - sd_fac_2*Sup_Diff_H1_XX_slow_run_sd ~ trade_direction,
           Sup_Diff_H1_XX_very_slow <= Sup_Diff_H1_XX_very_slow_run_mean - sd_fac_3*Sup_Diff_H1_XX_very_slow_run_sd ~ trade_direction
         )
-    ) %>%
-    filter(trade_col == trade_direction)
+    )
 
   return(tagged_trades)
 
@@ -375,6 +374,10 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
     profit_factor <- current_analysis$profit_factor[k]
     win_time_hours <- current_analysis$win_time_hours[k]
 
+    sd_fac_1 = current_analysis$sd_fac_1[k] %>% as.numeric()
+    sd_fac_2 = current_analysis$sd_fac_2[k] %>% as.numeric()
+    sd_fac_3 = current_analysis$sd_fac_3[k] %>% as.numeric()
+
     squeeze_detection <-
       get_res_sup_slow_fast_fractal_data(
         starting_asset_data_ask_H1 = starting_asset_data_ask_H1_smple,
@@ -386,7 +389,7 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
 
     tagged_trades <-
       get_sup_res_tagged_trades(
-        sup_res_data = sup_res_data,
+        sup_res_data = squeeze_detection,
         sd_fac_1 = sd_fac_1,
         sd_fac_2 = sd_fac_2,
         sd_fac_3 = sd_fac_3,
