@@ -3,7 +3,7 @@ library(neuralnet)
 raw_macro_data <- get_macro_event_data()
 
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
@@ -84,276 +84,6 @@ mean_values_by_asset_for_loop_15_ask =
 starting_asset_data_ask_H1 = starting_asset_data_ask_H1
 starting_asset_data_ask_15M = starting_asset_data_ask_15M
 
-#' Title
-#'
-#' @param starting_asset_data_ask_H1
-#' @param starting_asset_data_ask_15M
-#' @param XX
-#' @param rolling_slide
-#' @param pois_period
-#'
-#' @return
-#' @export
-#'
-#' @examples
-get_res_sup_slow_fast_fractal_data <-
-  function(
-    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
-    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
-    XX = 100,
-    rolling_slide = 200,
-    pois_period = 10
-    ) {
-
-    starting_asset_data_ask_H1_Tag <-
-      starting_asset_data_ask_H1 %>%
-      group_by(Asset) %>%
-      mutate(
-        High_Max_XX_H = slider::slide_dbl(High,
-                                          .f = ~ max(.x, na.rm = T),
-                                          .before = XX),
-        Low_Max_XX_H = slider::slide_dbl(Low,
-                                         .f =  ~ min(.x, na.rm = T),
-                                         .before = XX),
-
-        High_Max_XX_slow_H = slider::slide_dbl(High,
-                                               .f = ~ max(.x, na.rm = T),
-                                               .before = XX*2),
-        Low_Max_XX_slow_H = slider::slide_dbl(Low,
-                                              .f =  ~ min(.x, na.rm = T),
-                                              .before = XX*2),
-
-        High_Max_XX_very_slow_H = slider::slide_dbl(High,
-                                                    .f = ~ max(.x, na.rm = T),
-                                                    .before = XX*4),
-        Low_Max_XX_very_slow_H = slider::slide_dbl(Low,
-                                                   .f =  ~ min(.x, na.rm = T),
-                                                   .before = XX*4)
-      ) %>%
-      ungroup()
-
-    squeeze_detection <-
-      starting_asset_data_ask_15M %>%
-      group_by(Asset) %>%
-      mutate(
-        longs = ifelse(Price - Open >0 , 1, 0)
-      ) %>%
-      mutate(
-
-        High_Max_XX = slider::slide_dbl(High,
-                                        .f = ~ max(.x, na.rm = T),
-                                        .before = XX),
-        Low_Max_XX = slider::slide_dbl(Low,
-                                       .f =  ~ min(.x, na.rm = T),
-                                       .before = XX),
-
-        High_Max_XX_slow = slider::slide_dbl(High,
-                                             .f = ~ max(.x, na.rm = T),
-                                             .before = XX*2),
-        Low_Max_XX_slow = slider::slide_dbl(Low,
-                                            .f =  ~ min(.x, na.rm = T),
-                                            .before = XX*2),
-
-        High_Max_XX_very_slow = slider::slide_dbl(High,
-                                                  .f = ~ max(.x, na.rm = T),
-                                                  .before = XX*4),
-        Low_Max_XX_very_slow = slider::slide_dbl(Low,
-                                                 .f =  ~ min(.x, na.rm = T),
-                                                 .before = XX*4)
-
-      ) %>%
-      ungroup() %>%
-      left_join(
-        starting_asset_data_ask_H1_Tag %>%
-          dplyr::select(Date, Asset, High_Max_XX_H, Low_Max_XX_H,
-                        High_Max_XX_slow_H, Low_Max_XX_slow_H,High_Max_XX_very_slow_H, Low_Max_XX_very_slow_H )
-      ) %>%
-      dplyr::group_by(Asset) %>%
-      arrange(Date, .by_group = TRUE) %>%
-      dplyr::group_by(Asset) %>%
-      fill(
-        c(High_Max_XX_H, Low_Max_XX_H,
-          High_Max_XX_slow_H, Low_Max_XX_slow_H,High_Max_XX_very_slow_H, Low_Max_XX_very_slow_H),
-        .direction = "down"
-      ) %>%
-      ungroup()
-
-    squeeze_detection <- squeeze_detection %>%
-      mutate(
-        Res_Diff_H1_XX = High_Max_XX_H - High,
-        Res_Diff_H1_XX_slow = High_Max_XX_slow_H - High,
-        Res_Diff_H1_XX_very_slow = High_Max_XX_very_slow_H - High,
-
-        Sup_Diff_H1_XX = Low - Low_Max_XX_H,
-        Sup_Diff_H1_XX_slow = Low - Low_Max_XX_slow_H,
-        Sup_Diff_H1_XX_very_slow = Low - Low_Max_XX_very_slow_H
-      ) %>%
-      group_by(Asset) %>%
-      mutate(
-        Res_Diff_H1_XX_run_mean = slider::slide_dbl(Res_Diff_H1_XX, .f = ~ mean(.x, na.rm = T),
-                                                    .before = rolling_slide, .complete = FALSE),
-        Res_Diff_H1_XX_slow_run_mean =
-          slider::slide_dbl(Res_Diff_H1_XX_slow, .f = ~ mean(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Res_Diff_H1_XX_very_slow_run_mean =
-          slider::slide_dbl(Res_Diff_H1_XX_very_slow, .f = ~ mean(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-
-        Res_Diff_H1_XX_run_sd = slider::slide_dbl(Res_Diff_H1_XX, .f = ~ sd(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Res_Diff_H1_XX_slow_run_sd =
-          slider::slide_dbl(Res_Diff_H1_XX_slow, .f = ~ sd(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Res_Diff_H1_XX_very_slow_run_sd =
-          slider::slide_dbl(Res_Diff_H1_XX_very_slow, .f = ~ sd(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-
-
-        Sup_Diff_H1_XX_run_mean = slider::slide_dbl(Sup_Diff_H1_XX, .f = ~ mean(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Sup_Diff_H1_XX_slow_run_mean =
-          slider::slide_dbl(Sup_Diff_H1_XX_slow, .f = ~ mean(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Sup_Diff_H1_XX_very_slow_run_mean =
-          slider::slide_dbl(Sup_Diff_H1_XX_very_slow, .f = ~ mean(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-
-        Sup_Diff_H1_XX_run_sd = slider::slide_dbl(Sup_Diff_H1_XX, .f = ~ sd(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Sup_Diff_H1_XX_slow_run_sd =
-          slider::slide_dbl(Sup_Diff_H1_XX_slow, .f = ~ sd(.x, na.rm = T), .before = rolling_slide, .complete = FALSE),
-        Sup_Diff_H1_XX_very_slow_run_sd =
-          slider::slide_dbl(Sup_Diff_H1_XX_very_slow, .f = ~ sd(.x, na.rm = T), .before = rolling_slide, .complete = FALSE)
-      ) %>%
-      ungroup()
-
-    return(squeeze_detection)
-
-  }
-
-#' Title
-#'
-#' @param squeeze_detection
-#' @param raw_asset_data
-#' @param mean_values_by_asset_for_loop
-#' @param stop_factor
-#' @param profit_factor
-#' @param risk_dollar_value
-#' @param sd_fac_1
-#' @param sd_fac_2
-#' @param sd_fac_3
-#' @param trade_direction
-#' @param currency_conversion
-#' @param asset_infor
-#'
-#' @return
-#' @export
-#'
-#' @examples
-get_res_sup_trade_analysis <- function(
-    squeeze_detection = squeeze_detection,
-    raw_asset_data = starting_asset_data_ask_15M,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    stop_factor = 16,
-    profit_factor =16,
-    risk_dollar_value = 10,
-    sd_fac_1 = 3.5,
-    sd_fac_2 = 3.5,
-    sd_fac_3 = 3.5,
-    trade_direction = "Long",
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor
-  ) {
-
-  tagged_trades <-
-    squeeze_detection %>%
-    filter(!is.na(Sup_Diff_H1_XX_slow), !is.na(Res_Diff_H1_XX_run_mean)) %>%
-    group_by(Asset) %>%
-    mutate(
-      trade_col =
-        case_when(
-          Sup_Diff_H1_XX <= Sup_Diff_H1_XX_run_mean - sd_fac_1*Sup_Diff_H1_XX_run_sd ~ trade_direction,
-          Sup_Diff_H1_XX_slow <= Sup_Diff_H1_XX_slow_run_mean - sd_fac_2*Sup_Diff_H1_XX_slow_run_sd ~ trade_direction,
-          Sup_Diff_H1_XX_very_slow <= Sup_Diff_H1_XX_very_slow_run_mean - sd_fac_3*Sup_Diff_H1_XX_very_slow_run_sd ~ trade_direction
-        )
-    ) %>%
-    filter(trade_col == trade_direction)
-
-  long_bayes_loop_analysis_neg <-
-    generic_trade_finder_loop(
-      tagged_trades = tagged_trades ,
-      asset_data_daily_raw = raw_asset_data,
-      stop_factor = stop_factor,
-      profit_factor =profit_factor,
-      trade_col = "trade_col",
-      date_col = "Date",
-      start_price_col = "Price",
-      mean_values_by_asset = mean_values_by_asset_for_loop
-    )
-
-  trade_timings_neg <-
-    long_bayes_loop_analysis_neg %>%
-    mutate(
-      ending_date_trade = as_datetime(ending_date_trade),
-      dates = as_datetime(dates)
-    ) %>%
-    mutate(Time_Required = (ending_date_trade - dates)/dhours(1) )
-
-  trade_timings_by_asset_neg <- trade_timings_neg %>%
-    mutate(win_loss = ifelse(trade_returns < 0, "loss", "wins") ) %>%
-    group_by(win_loss) %>%
-    summarise(
-      Time_Required = median(Time_Required, na.rm = T)
-    ) %>%
-    pivot_wider(names_from = win_loss, values_from = Time_Required) %>%
-    rename(loss_time_hours = loss,
-           win_time_hours = wins)
-
-  analysis_data_neg <-
-    generic_anlyser(
-      trade_data = long_bayes_loop_analysis_neg %>% rename(Asset = asset),
-      profit_factor = profit_factor,
-      stop_factor = stop_factor,
-      asset_infor = asset_infor,
-      currency_conversion = currency_conversion,
-      asset_col = "Asset",
-      stop_col = "starting_stop_value",
-      profit_col = "starting_profit_value",
-      price_col = "trade_start_prices",
-      trade_return_col = "trade_returns",
-      risk_dollar_value = risk_dollar_value,
-      grouping_vars = "trade_col"
-    ) %>%
-    mutate(
-      sd_fac_1 = sd_fac_1,
-      sd_fac_2 = sd_fac_2,
-      sd_fac_3 = sd_fac_3
-    ) %>%
-    bind_cols(trade_timings_by_asset_neg)
-
-  analysis_data_asset_neg <-
-    generic_anlyser(
-      trade_data = long_bayes_loop_analysis_neg %>% rename(Asset = asset),
-      profit_factor = profit_factor,
-      stop_factor = stop_factor,
-      asset_infor = asset_infor,
-      currency_conversion = currency_conversion,
-      asset_col = "Asset",
-      stop_col = "starting_stop_value",
-      profit_col = "starting_profit_value",
-      price_col = "trade_start_prices",
-      trade_return_col = "trade_returns",
-      risk_dollar_value = risk_dollar_value,
-      grouping_vars = "Asset"
-    ) %>%
-    mutate(
-      sd_fac_1 = sd_fac_1,
-      sd_fac_2 = sd_fac_2,
-      sd_fac_3 = sd_fac_3
-    ) %>%
-    bind_cols(trade_timings_by_asset_neg)
-
-  return(
-    list(
-      analysis_data_asset_neg = analysis_data_asset_neg,
-      analysis_data_neg = analysis_data_neg
-    )
-  )
-
-}
-
-
 sup_res_trade_db <-
   glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/sup_res_2025-06-11.db")
 db_con <- connect_db(sup_res_trade_db)
@@ -420,13 +150,13 @@ trade_params <-
   ) %>%
   reduce(bind_rows)
 
-XX = 150
-rolling_slide = 300
-pois_period = 10
-
-# XX = 100
-# rolling_slide = 200
+# XX = 150
+# rolling_slide = 300
 # pois_period = 10
+
+XX = 25
+rolling_slide = 200
+pois_period = 10
 
 #----------------------------------------- Creating Data for Algo
 tictoc::tic()
@@ -477,7 +207,7 @@ squeeze_detection <-
 tictoc::toc()
 
 
-for (j in 292:dim(trade_params)[1]) {
+for (j in 440:dim(trade_params)[1]) {
 
   stop_factor = trade_params$stop_factor[j]
   profit_factor = trade_params$profit_factor[j]
@@ -527,11 +257,78 @@ for (j in 292:dim(trade_params)[1]) {
 
 }
 
-
-current_analysis <-
-  DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM sup_res") %>%
-  filter(win_time_hours < 100) %>%
-  filter(XX == 150)
-
 DBI::dbDisconnect(db_con)
+rm(db_con)
 gc()
+
+#----------------------------------------- Creating Data for Algo
+tictoc::tic()
+
+current_time <- now() %>% as_datetime()
+current_minute <- lubridate::minute(current_time)
+current_hour <- lubridate::hour(current_time)
+current_date <- now() %>% as_date(tz = "Australia/Canberra")
+
+starting_asset_data_ask_H1 = starting_asset_data_ask_H1
+starting_asset_data_ask_15M = starting_asset_data_ask_15M
+
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "ask",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 5
+)
+
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "M15",
+  bid_or_ask = "ask",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 5
+)
+
+new_H1_data_ask <-
+  updated_data_internal(starting_asset_data = starting_asset_data_ask_H1,
+                        end_date_day = current_date,
+                        time_frame = "H1", bid_or_ask = "ask")%>%
+  distinct()
+new_15_data_ask <-
+  updated_data_internal(starting_asset_data = starting_asset_data_ask_15M,
+                        end_date_day = current_date,
+                        time_frame = "M15", bid_or_ask = "ask")%>%
+  distinct()
+
+total_trades <-
+  get_sup_res_trades_to_take(
+  db_path = glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/sup_res_2025-06-11.db"),
+  min_risk_win = 0.12,
+  min_risk_perc = 0.1,
+  max_win_time = 150,
+  starting_asset_data_ask_H1 = new_H1_data_ask,
+  starting_asset_data_ask_15M = new_15_data_ask,
+  trade_direction = "Long",
+  samples_to_use = 2000
+)
+
+
+trades_today <-
+  total_trades %>%
+  split(.$Asset, drop = FALSE) %>%
+  map_dfr(
+    ~ .x %>%
+      get_stops_profs_volume_trades(
+        mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
+        trade_col = "trade_col",
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 10,
+        stop_factor = .x$stop_factor[1] %>% as.numeric(),
+        profit_factor = .x$profit_factor[1] %>% as.numeric(),
+        asset_col = "Asset",
+        stop_col = "stop_value",
+        profit_col = "profit_value",
+        price_col = "Price",
+        trade_return_col = "trade_returns"
+      )
+  )
+

@@ -83,7 +83,7 @@ asset_list_oanda =
     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
     "JP225_USD", "SPX500_USD")
 
-end_time <- glue::glue("{floor_date(now(), 'week')} 11:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
+end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
 current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
