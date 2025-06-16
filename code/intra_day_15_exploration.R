@@ -586,7 +586,7 @@ tictoc::toc()
 
 db_path <- "C:/Users/Nikhil/Documents/trade_data/LM_15min_markov.db"
 db_con <- connect_db(db_path)
-write_table_now <- FALSE
+write_table_now <- TRUE
 
 trade_params <-
   tibble(
@@ -644,15 +644,15 @@ trade_params <-
       )
   )
 
-for (i in 702:dim(trade_params)[1]) {
+for (i in 1:dim(trade_params)[1]) {
 
-  trade_sd_fact1 <- trade_params$trade_sd_fact1[1] %>% as.numeric()
-  trade_sd_fact2 <- trade_params$trade_sd_fact2[1] %>% as.numeric()
-  trade_sd_fact3 <- trade_params$trade_sd_fact3[1] %>% as.numeric()
-  trade_sd_fact4 <- trade_params$trade_sd_fact4[1] %>% as.numeric()
-  sd_AVG_Prob <- trade_params$sd_AVG_Prob[1] %>% as.numeric()
-  stop_factor <- trade_params$stop_factor[1] %>% as.numeric()
-  profit_factor <- trade_params$profit_factor[1] %>% as.numeric()
+  trade_sd_fact1 <- trade_params$trade_sd_fact1[i] %>% as.numeric()
+  trade_sd_fact2 <- trade_params$trade_sd_fact2[i] %>% as.numeric()
+  trade_sd_fact3 <- trade_params$trade_sd_fact3[i] %>% as.numeric()
+  trade_sd_fact4 <- trade_params$trade_sd_fact4[i] %>% as.numeric()
+  sd_AVG_Prob <- trade_params$sd_AVG_Prob[i] %>% as.numeric()
+  stop_factor <- trade_params$stop_factor[i] %>% as.numeric()
+  profit_factor <- trade_params$profit_factor[i] %>% as.numeric()
 
 
   analysis_info <- get_analysis_15min_LM(
@@ -691,4 +691,7 @@ for (i in 702:dim(trade_params)[1]) {
 
 }
 
+test <-
+  DBI::dbGetQuery(conn = db_con,
+                  "SELECT * FROM LM_15min_markov")
 
