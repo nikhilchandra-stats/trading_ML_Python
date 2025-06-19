@@ -303,6 +303,24 @@ while (current_time < end_time) {
         trade_sd_fact = 2
       )
 
+    temp_db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db")
+    assets_in_db <-
+      DBI::dbGetQuery(conn = temp_db_con,
+                      statement =  "SELECT * FROM Simulation_Results_Asset")  %>%
+      distinct(Asset)
+    DBI::dbDisconnect(temp_db_con)
+    rm(temp_db_con)
+
+    temp_db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 50% highProf.db")
+    assets_in_db2 <-
+      DBI::dbGetQuery(conn = temp_db_con,
+                      statement =  "SELECT * FROM Simulation_Results_Asset")  %>%
+      distinct(Asset)
+    DBI::dbDisconnect(temp_db_con)
+    rm(temp_db_con)
+
+    all_assets_present <- assets_in_db2 %>% bind_rows(assets_in_db) %>% distinct(Asset) %>% pull(Asset)
+
     trades_1 <-
       get_NN_best_trades_from_mult_anaysis(
         db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
@@ -314,7 +332,8 @@ while (current_time < end_time) {
         asset_infor = asset_infor,
         risk_dollar_value = 10,
         win_threshold = 0.6,
-        slice_max = TRUE
+        slice_max = TRUE,
+        filter_profitbale_assets = TRUE
       )
 
     trades_1_50 <-
@@ -329,7 +348,8 @@ while (current_time < end_time) {
         risk_dollar_value = 10,
         win_threshold = 0.2,
         risk_weighted_thresh = 0.6,
-        slice_max = TRUE
+        slice_max = TRUE,
+        filter_profitbale_assets = TRUE
       )
 
     if(!is.null(trades_1)) {trades_1 <- trades_1 %>% filter(trade_col == "Long")}
@@ -346,7 +366,8 @@ while (current_time < end_time) {
         asset_infor = asset_infor,
         risk_dollar_value = 10,
         win_threshold = 0.6,
-        slice_max = TRUE
+        slice_max = TRUE,
+        filter_profitbale_assets = TRUE
       )
 
     trades_2_50 <-
@@ -360,8 +381,9 @@ while (current_time < end_time) {
         asset_infor = asset_infor,
         risk_dollar_value = 10,
         win_threshold = 0.2,
-        risk_weighted_thresh = 0.3,
-        slice_max = TRUE
+        risk_weighted_thresh = 0.35,
+        slice_max = TRUE,
+        filter_profitbale_assets = TRUE
       )
 
     if(!is.null(trades_2)) {trades_2 <- trades_2 %>% filter(trade_col == "Long")}
@@ -379,7 +401,8 @@ while (current_time < end_time) {
         risk_dollar_value = 10,
         win_threshold = 0.54,
         risk_weighted_thresh = 0.02,
-        slice_max = TRUE
+        slice_max = TRUE,
+        filter_profitbale_assets = TRUE
       )
 
     if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
@@ -396,7 +419,8 @@ while (current_time < end_time) {
         risk_dollar_value = 10,
         win_threshold = 0.2,
         risk_weighted_thresh = 0.2,
-        slice_max = TRUE
+        slice_max = TRUE,
+        filter_profitbale_assets = TRUE
       )
 
     if(!is.null(trades_4)) {trades_4 <- trades_4 %>% filter(trade_col == "Long")}
@@ -436,7 +460,8 @@ while (current_time < end_time) {
       bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
-      bind_rows(trades_4)
+      bind_rows(trades_4) %>%
+      filter(Asset %in% all_assets_present)
 
     greater_prof_trades <-
       total_trades %>%
@@ -518,7 +543,7 @@ while (current_time < end_time) {
         bind_rows(current_trades_short) %>%
         mutate(trade_col = direction)
 
-      if(dim(total_trades)[1] > 1) {
+      if(dim(total_trades)[1] > 0) {
 
         total_trades <-
           total_trades %>%
@@ -532,8 +557,27 @@ while (current_time < end_time) {
               TRUE ~ units
             )
           ) %>%
+          mutate(
+            too_many_positions =
+              case_when(
+                !(Asset %in% c(
+                  "SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+                  "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
+                  "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
+                  "US30_USD", "WTICO_USD"
+                )) & units >= 9000 ~ TRUE,
+                Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & units >= 2 ~ TRUE,
+                Asset == "XCU_USD" & units>=400 ~ TRUE,
+                Asset == "WHEAT_USD" & units>=200 ~ TRUE,
+                Asset == "CORN_USD" & units>=200 ~ TRUE,
+                Asset %in% c("BCO_USD", "WTICO_USD") & units>=20 ~ TRUE,
+                TRUE ~ FALSE
+              )
+          ) %>%
           arrange(std_units) %>%
-          dplyr::select(-std_units, -direction, -units)
+          filter(too_many_positions == FALSE) %>%
+          dplyr::select(-std_units, -direction, -units, -too_many_positions)
 
       }
 

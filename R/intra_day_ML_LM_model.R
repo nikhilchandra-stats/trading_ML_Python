@@ -473,15 +473,22 @@ get_NN_best_trades_from_mult_anaysis <-
     risk_dollar_value = 5,
     win_threshold = 0.55,
     risk_weighted_thresh = 0.05,
-    slice_max = TRUE
+    slice_max = TRUE,
+    filter_profitbale_assets = FALSE
   ) {
 
     db_con <- connect_db(db_path)
 
     by_asset_data <-
-      analysis_data_Asset_db <-
       DBI::dbGetQuery(conn = db_con,
                       statement =  "SELECT * FROM Simulation_Results_Asset")
+
+    profitable_assets <- by_asset_data %>%
+      filter(Perc > win_threshold)  %>%
+      filter(risk_weighted_return > risk_weighted_thresh)  %>%
+      filter(Network_Name == network_name) %>%
+      pull(Asset) %>%
+      unique()
 
     analysis_data_Asset_db <-
       DBI::dbGetQuery(conn = db_con,
@@ -567,15 +574,20 @@ get_NN_best_trades_from_mult_anaysis <-
 
       if(!is.null(current_trades)) {
 
-        # current_trades <- current_trades %>%
-        #   filter(Asset %in% profitable_assets)
+        if(filter_profitbale_assets == TRUE){
+          current_trades <- current_trades %>% filter(Asset %in% profitable_assets)
+        }
 
-        trades_1[[i]] <-
-          current_trades %>%
-          mutate(stop_factor = stop_factor,
-                 profit_factor = profit_factor,
-                 risk_weighted_returns = risk_weighted_returns_x,
-                 perc = perc_x)
+        if(dim(current_trades) > 0) {
+          trades_1[[i]] <-
+            current_trades %>%
+            mutate(stop_factor = stop_factor,
+                   profit_factor = profit_factor,
+                   risk_weighted_returns = risk_weighted_returns_x,
+                   perc = perc_x)
+        } else {
+          trades_1[[i]] <- NULL
+        }
 
       }
 

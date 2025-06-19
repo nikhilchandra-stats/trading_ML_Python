@@ -156,9 +156,9 @@ get_angles_data_cols <- function(
     mutate(
       !!as.name(new_col_name) := atan(100*( lag(High) - lag(Low, round(XX)) )/lag(Low, round(XX)))*(180/pi),
       !!as.name( glue::glue("{new_col_name}_slow") ) :=
-        atan( ( (100*(lag(High) - lag(Low, round(XX*1.5)) )/round(1.5*XX)) )/round(1.5*XX) )*(180/pi),
+        atan(100*( lag(High) - lag(Low, round(1.5*XX)) )/lag(Low, round(1.5*XX)))*(180/pi),
       !!as.name( glue::glue("{new_col_name}_very_slow") ) :=
-        atan( ( (100*(lag(High) - lag(Low, round(XX*2)) )/round(2*XX)) )/round(2*XX) )*(180/pi)
+        atan(100*( lag(High) - lag(Low, round(2*XX)) )/lag(Low, round(2*XX)))*(180/pi)
     ) %>%
     ungroup() %>%
     filter(!is.na(!!as.name( glue::glue("{new_col_name}_very_slow") )))
@@ -209,7 +209,11 @@ get_res_sup_slow_fast_fractal_data <-
       )
 
     tagged_data_15 <- tagged_data_15 %>%
-      fill(contains("angle_XX_H1"), .direction = "down")
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(contains("angle_XX_H1"), .direction = "down") %>%
+      ungroup()
 
     sample_data <-
       tagged_data_15 %>%
@@ -225,6 +229,15 @@ get_res_sup_slow_fast_fractal_data <-
       col_to_prob = "angle_XX"
       )
 
+    prob_tibble_XX_slow <- get_cauchy_params_by_asset(
+      data_to_prob = sample_data %>% filter(!is.na(angle_XX_slow)),
+      col_to_prob = "angle_XX_slow"
+    ) %>%
+      rename(
+        cauchy_location_slow  = cauchy_location,
+        cauchy_scale_slow = cauchy_scale
+      )
+
     prob_tibble_XX_H1 <- get_cauchy_params_by_asset(
       data_to_prob = sample_data,
       col_to_prob = "angle_XX_H1"
@@ -232,6 +245,15 @@ get_res_sup_slow_fast_fractal_data <-
       rename(
         cauchy_location_H1  = cauchy_location,
         cauchy_scale_H1 = cauchy_scale
+      )
+
+    prob_tibble_XX_H1 <- get_cauchy_params_by_asset(
+      data_to_prob = sample_data,
+      col_to_prob = "angle_XX_H1_slow"
+    ) %>%
+      rename(
+        cauchy_location_H1_slow  = cauchy_location,
+        cauchy_scale_H1_slow = cauchy_scale
       )
 
     testing_data <-
@@ -246,7 +268,11 @@ get_res_sup_slow_fast_fractal_data <-
       mutate(
        prob_of_current = pcauchy(angle_XX, location = cauchy_location, scale = cauchy_scale),
        prob_of_current_H1 = pcauchy(angle_XX_H1, location = cauchy_location_H1, scale = cauchy_scale_H1),
-       prob_diff = prob_of_current_H1 - prob_of_current
+       prob_diff = prob_of_current_H1 - prob_of_current,
+
+       prob_of_current_slow = pcauchy(angle_XX_slow, location = cauchy_location_slow, scale = cauchy_scale_slow),
+       prob_of_current_H1_slow = pcauchy(angle_XX_H1_slow, location = cauchy_location_H1_slow, scale = cauchy_scale_H1_slow),
+       prob_diff_slow = prob_of_current_H1_slow - prob_of_current_slow
       ) %>%
       group_by(Asset) %>%
       mutate(
@@ -265,7 +291,7 @@ tag_res_sup_fast_slow_fractal_trades <-
     fractal_data = testing_data,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
     stop_factor = 20,
-    profit_factor =30,
+    profit_factor =20,
     risk_dollar_value = 10,
     sd_fac_1 = 3,
     trade_direction = "Long",
@@ -280,7 +306,8 @@ tag_res_sup_fast_slow_fractal_trades <-
           case_when(
             # running_mean_prob_diff - running_sd_prob_diff*sd_fac_1 > prob_diff ~ trade_direction,
             # prob_of_current > 0.875 &
-              prob_of_current_H1 > 0.875 ~ trade_direction
+            # prob_of_current > 0.9 ~ trade_direction
+            prob_of_current_H1 > prob_of_current ~ trade_direction
 
           )
       ) %>%
