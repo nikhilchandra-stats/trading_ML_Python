@@ -571,6 +571,7 @@ while (current_time < end_time) {
                 Asset == "XCU_USD" & units>=400 ~ TRUE,
                 Asset == "WHEAT_USD" & units>=200 ~ TRUE,
                 Asset == "CORN_USD" & units>=200 ~ TRUE,
+                Asset == "NATGAS_USD" & units>=200 ~ TRUE,
                 Asset %in% c("BCO_USD", "WTICO_USD") & units>=20 ~ TRUE,
                 TRUE ~ FALSE
               )
