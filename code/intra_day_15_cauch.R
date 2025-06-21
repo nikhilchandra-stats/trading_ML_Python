@@ -366,7 +366,7 @@ tag_res_sup_fast_slow_fractal_trades <-
   function(
     fractal_data = testing3,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    stop_factor = 20,
+    stop_factor = 17,
     profit_factor =25,
     risk_dollar_value = 10,
     sd_fac_1 = 0,
@@ -376,35 +376,29 @@ tag_res_sup_fast_slow_fractal_trades <-
     asset_infor = asset_infor
   ){
 
+    # Best options: With increasing XX, rolling perod and period ahead we see increasing results
+    # XX = 200,
+    # XX_H1 = 50,
+    # rolling_slide = 200,
+    # pois_period = 10,
+    # period_ahead = 20
+    # Case Statement: predicted_high_from_now_ma > 0 & predicted_low_from_now_ma > 0
+    # stop_factor = 18,
+    # profit_factor =27
+
+
     tagged_trades <-
       fractal_data %>%
       mutate(
         trade_col =
           case_when(
-            predicted_high_from_now_ma > 0 &
-            predicted_low_from_now_ma > 0
+            predicted_high_from_now_ma > 0 & predicted_low_from_now_ma > 0 &
+            angle_XX_H1 > 0
             # & lag(predicted_low_from_now_ma) < 0
             ~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col))
-
-    # tagged_trades <-
-    #   fractal_data %>%
-    #   mutate(
-    #     trade_col =
-    #       case_when(
-    #         predicted_high_from_now_ma > 0 &
-    #           predicted_low_from_now_ma> 0 &
-    #           predicted_high_from_now_ma_H1 > 0 &
-    #           predicted_low_from_now_ma_H1 > 0 &
-    #           predicted_low_from_now > predicted_low_from_now_ma + predicted_low_from_now_sd*sd_fac_1 &
-    #           predicted_high_from_now > predicted_high_from_now_ma + predicted_high_from_now_sd*sd_fac_1
-    #         ~ trade_direction
-    #       )
-    #   ) %>%
-    #   filter(!is.na(trade_col))
-
 
     long_bayes_loop_analysis_neg <-
       generic_trade_finder_loop(
