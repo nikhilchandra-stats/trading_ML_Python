@@ -525,8 +525,8 @@ new_15_data_ask <- starting_asset_data_ask_15M
 
 tictoc::tic()
 fractal_data <- get_res_sup_slow_fast_fractal_data(
-  starting_asset_data_ask_H1 = new_H1_data_ask %>% group_by(Asset) %>% slice_tail(n = 17000) %>% ungroup() ,
-  starting_asset_data_ask_15M = new_15_data_ask %>% group_by(Asset) %>% slice_tail(n = 17000) %>% ungroup() ,
+  starting_asset_data_ask_H1 = new_H1_data_ask %>% group_by(Asset) %>% slice_tail(n = 21000) %>% ungroup() ,
+  starting_asset_data_ask_15M = new_15_data_ask %>% group_by(Asset) %>% slice_tail(n = 21000) %>% ungroup() ,
   XX = 200,
   XX_H1 = 50,
   rolling_slide = 200,
