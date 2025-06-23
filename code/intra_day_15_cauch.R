@@ -368,8 +368,8 @@ tag_res_sup_fast_slow_fractal_trades <-
   function(
     fractal_data = testing3,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    stop_factor = 20,
-    profit_factor =40,
+    stop_factor = 25,
+    profit_factor =35,
     risk_dollar_value = 10,
     sd_fac_1 = 0,
     sd_fac_2 = 1,

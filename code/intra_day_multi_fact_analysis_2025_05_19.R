@@ -405,7 +405,7 @@ while (current_time < end_time) {
         filter_profitbale_assets = TRUE
       )
 
-    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
+    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short") %>% filter(Asset != "EUR_SEK")}
 
     trades_4 <-
       get_NN_best_trades_from_mult_anaysis(
@@ -460,8 +460,12 @@ while (current_time < end_time) {
       bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
-      bind_rows(trades_4) %>%
-      filter(Asset %in% all_assets_present)
+      bind_rows(trades_4)
+
+    if(dim(total_trades)[1] > 0) {
+      total_trades <- total_trades %>%
+        filter(Asset %in% all_assets_present)
+    }
 
     greater_prof_trades <-
       total_trades %>%
@@ -567,7 +571,7 @@ while (current_time < end_time) {
                   "US30_USD", "WTICO_USD"
                 )) & units >= 9000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & units >= 2 ~ TRUE,
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & units >= 1 ~ TRUE,
                 Asset == "XCU_USD" & units>=400 ~ TRUE,
                 Asset == "WHEAT_USD" & units>=200 ~ TRUE,
                 Asset == "CORN_USD" & units>=200 ~ TRUE,
