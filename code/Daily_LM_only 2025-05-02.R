@@ -379,8 +379,7 @@ trades_for_today <-
   ) %>%
   dplyr::select(-Perc) %>%
   left_join(reanalyse_results %>%
-              dplyr::select(stop_factor,
-                            profit_factor,
+              dplyr::select(
                             Final_Dollars,
                             sd_factor_high,
                             sd_factor_low,
