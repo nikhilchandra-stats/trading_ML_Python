@@ -1,6 +1,4 @@
 helpeR::load_custom_functions()
-library(neuralnet)
-raw_macro_data <- get_macro_event_data()
 
 all_aud_symbols <- get_oanda_symbols() %>%
   keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
@@ -52,8 +50,8 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 
 db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2023-03-01"
-start_date_day_H1 = "2022-09-01"
+start_date_day = "2020-01-01"
+start_date_day_H1 = "2019-01-01"
 end_date_day = today() %>% as.character()
 
 starting_asset_data_ask_15M <-
@@ -154,7 +152,7 @@ trade_params <-
 # rolling_slide = 300
 # pois_period = 10
 
-XX = 50
+XX = 25
 rolling_slide = 200
 pois_period = 10
 
@@ -170,37 +168,10 @@ current_date <- now() %>% as_date(tz = "Australia/Canberra")
 starting_asset_data_ask_H1 = starting_asset_data_ask_H1
 starting_asset_data_ask_15M = starting_asset_data_ask_15M
 
-# update_local_db_file(
-#   db_location = db_location,
-#   time_frame = "H1",
-#   bid_or_ask = "ask",
-#   asset_list_oanda = asset_list_oanda,
-#   how_far_back = 10
-# )
-
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "M15",
-  bid_or_ask = "ask",
-  asset_list_oanda = asset_list_oanda,
-  how_far_back = 10
-)
-
-new_H1_data_ask <-
-  updated_data_internal(starting_asset_data = starting_asset_data_ask_H1,
-                        end_date_day = current_date,
-                        time_frame = "H1", bid_or_ask = "ask")%>%
-  distinct()
-new_15_data_ask <-
-  updated_data_internal(starting_asset_data = starting_asset_data_ask_15M,
-                        end_date_day = current_date,
-                        time_frame = "M15", bid_or_ask = "ask")%>%
-  distinct()
-
 squeeze_detection <-
   get_res_sup_slow_fast_fractal_data(
-    starting_asset_data_ask_H1 = new_H1_data_ask,
-    starting_asset_data_ask_15M = new_15_data_ask,
+    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
+    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
     XX = XX,
     rolling_slide = rolling_slide,
     pois_period = pois_period
@@ -216,6 +187,12 @@ for (j in 1:dim(trade_params)[1]) {
   sd_fac_2 = trade_params$sd_fac_2[j]
   sd_fac_3 = trade_params$sd_fac_3[j]
 
+  stop_factor = 17
+  profit_factor = 25.5
+  sd_fac_1 = 4
+  sd_fac_2 = 3
+  sd_fac_3 = 3
+
 
   analysis_data <-
     get_res_sup_trade_analysis(
@@ -228,7 +205,7 @@ for (j in 1:dim(trade_params)[1]) {
       sd_fac_1 = sd_fac_1,
       sd_fac_2 = sd_fac_2,
       sd_fac_3 = sd_fac_3,
-      trade_direction = "Short",
+      trade_direction = "Long",
       currency_conversion = currency_conversion,
       asset_infor = asset_infor
     )
@@ -262,7 +239,7 @@ for (j in 1:dim(trade_params)[1]) {
 short_analysis <-
   DBI::dbGetQuery(conn = db_con,
                   statement = "SELECT * FROM sup_res") %>%
-  filter(trade_direction == "Short")
+  filter(trade_direction == "Long")
 
 DBI::dbDisconnect(db_con)
 rm(db_con)

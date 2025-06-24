@@ -405,7 +405,7 @@ while (current_time < end_time) {
         filter_profitbale_assets = TRUE
       )
 
-    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short") %>% filter(Asset != "EUR_SEK")}
+    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
 
     trades_4 <-
       get_NN_best_trades_from_mult_anaysis(
@@ -462,61 +462,63 @@ while (current_time < end_time) {
       bind_rows(trades_1_50) %>%
       bind_rows(trades_4)
 
-    if(dim(total_trades)[1] > 0) {
-      total_trades <- total_trades %>%
-        filter(Asset %in% all_assets_present)
-    }
+    if(dim(total_trades)[1] > 0 & !is.null(total_trades)) {
 
-    greater_prof_trades <-
-      total_trades %>%
-      filter(stop_factor < profit_factor)
+        total_trades <- total_trades %>%
+            filter(Asset %in% all_assets_present)
 
-    if(dim(greater_prof_trades)[1] > 0) {
-      greater_prof_trades <- greater_prof_trades %>%
-        group_by(Asset, trade_col) %>%
-        slice_max(risk_weighted_returns) %>%
-        ungroup()
+        greater_prof_trades <-
+          total_trades %>%
+          filter(stop_factor < profit_factor)
 
-      greater_prof_trades_assets <- greater_prof_trades %>% distinct(Asset) %>% pull(Asset)
+        if(dim(greater_prof_trades)[1] > 0) {
+          greater_prof_trades <- greater_prof_trades %>%
+            group_by(Asset, trade_col) %>%
+            slice_max(risk_weighted_returns) %>%
+            ungroup()
 
-    } else {
-      greater_prof_trades_assets <- c("XXXXXXXXXX")
-      greater_prof_trades_assets <- NULL
-    }
+          greater_prof_trades_assets <- greater_prof_trades %>% distinct(Asset) %>% pull(Asset)
 
-    equal_prof_trades <- total_trades %>%
-      filter(!(Asset %in% greater_prof_trades_assets))
+        } else {
+          greater_prof_trades_assets <- c("XXXXXXXXXX")
+          greater_prof_trades_assets <- NULL
+        }
 
-    if(dim(equal_prof_trades)[1] > 0) {
+        equal_prof_trades <- total_trades %>%
+          filter(!(Asset %in% greater_prof_trades_assets))
 
-      equal_prof_trades <-
-        equal_prof_trades %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(stop_value) %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(risk_weighted_returns) %>%
-        group_by(Asset, trade_col) %>%
-        mutate(
-          kk = row_number()
-        ) %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(kk) %>%
-        ungroup()
+        if(dim(equal_prof_trades)[1] > 0) {
 
-    } else {
-      equal_prof_trades <- NULL
-    }
+          equal_prof_trades <-
+            equal_prof_trades %>%
+            group_by(Asset, trade_col) %>%
+            slice_min(stop_value) %>%
+            group_by(Asset, trade_col) %>%
+            slice_min(risk_weighted_returns) %>%
+            group_by(Asset, trade_col) %>%
+            mutate(
+              kk = row_number()
+            ) %>%
+            group_by(Asset, trade_col) %>%
+            slice_min(kk) %>%
+            ungroup()
 
-    if(!is.null(equal_prof_trades)) {
-      total_trades <-
-        equal_prof_trades %>%
-        bind_rows(greater_prof_trades)
-    }
+        } else {
+          equal_prof_trades <- NULL
+        }
 
-    if( is.null(equal_prof_trades) & !is.null(greater_prof_trades) ) {
-      total_trades <-
-        greater_prof_trades %>%
-        bind_rows(equal_prof_trades)
+        if(!is.null(equal_prof_trades)) {
+          total_trades <-
+            equal_prof_trades %>%
+            bind_rows(greater_prof_trades)
+        }
+
+        if( is.null(equal_prof_trades) & !is.null(greater_prof_trades) ) {
+          total_trades <-
+            greater_prof_trades %>%
+            bind_rows(equal_prof_trades)
+        }
+
     }
 
     if(dim(total_trades)[1] > 0) {
@@ -569,14 +571,14 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & units >= 9000 ~ TRUE,
+                )) & abs(units) >= 9000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & units >= 1 ~ TRUE,
-                Asset == "XCU_USD" & units>=400 ~ TRUE,
-                Asset == "WHEAT_USD" & units>=200 ~ TRUE,
-                Asset == "CORN_USD" & units>=200 ~ TRUE,
-                Asset == "NATGAS_USD" & units>=200 ~ TRUE,
-                Asset %in% c("BCO_USD", "WTICO_USD") & units>=20 ~ TRUE,
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 1 ~ TRUE,
+                Asset == "XCU_USD" & abs(units)>=400 ~ TRUE,
+                Asset == "WHEAT_USD" & abs(units)>=200 ~ TRUE,
+                Asset == "CORN_USD" & abs(units)>=200 ~ TRUE,
+                Asset == "NATGAS_USD" & abs(units)>=200 ~ TRUE,
+                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=20 ~ TRUE,
                 TRUE ~ FALSE
               )
           ) %>%
