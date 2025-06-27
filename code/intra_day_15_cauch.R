@@ -208,6 +208,142 @@ get_angles_data_cols <- function(
 
 }
 
+#' get_fractal_angle_gaussian
+#'
+#' @param starting_asset_data_ask_H1
+#' @param starting_asset_data_ask_15M
+#' @param XX
+#' @param XX_H1
+#' @param rolling_slide
+#' @param pois_period
+#' @param period_ahead
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_fractal_angle_gaussian <- function(
+    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
+    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
+    XX = 200,
+    XX_H1 = 50,
+    rolling_slide = 200,
+    pois_period = 10,
+    period_ahead = 20,
+    training_proportion = 0.4) {
+
+  tagged_data_15 <- get_angles_data_cols(
+    data_to_angle = starting_asset_data_ask_15M,
+    XX = XX,
+    new_col_name = "angle_XX"
+  ) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    mutate(
+      angle_XX_dff = angle_XX - lag(angle_XX),
+      angle_XX_dff_ma = slider::slide_dbl(angle_XX_dff, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+      angle_XX_dff_sd = slider::slide_dbl(angle_XX_dff, .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
+    ) %>%
+    ungroup()
+
+  tagged_data_H1 <- get_angles_data_cols(
+    data_to_angle = starting_asset_data_ask_H1,
+    XX = XX_H1,
+    new_col_name = "angle_XX_H1"
+  ) %>%
+    mutate(
+      angle_XX_H1_dff = angle_XX_H1 - lag(angle_XX_H1),
+      angle_XX_H1_dff_ma = slider::slide_dbl(angle_XX_H1_dff, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+      angle_XX_H1_dff_sd = slider::slide_dbl(angle_XX_H1_dff, .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
+    ) %>%
+    ungroup()
+
+  tagged_data_15 <- tagged_data_15 %>%
+    left_join(
+      tagged_data_H1 %>% dplyr::select(Date, Asset, contains("angle_XX_H1"))
+    )
+
+  tagged_data_15 <- tagged_data_15 %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(contains("angle_XX_H1"), .direction = "down") %>%
+    ungroup()
+
+  sample_data <-
+    tagged_data_15 %>%
+    filter(!is.na(angle_XX_H1)) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    slice_head(prop = training_proportion) %>%
+    ungroup()
+
+  prob_tibble_XX <- get_gauss_params_by_asset(
+    data_to_prob = sample_data %>% filter(!is.na(angle_XX_dff)),
+    col_to_prob = "angle_XX_dff"
+  )
+
+  prob_tibble_XX_H1 <- get_gauss_params_by_asset(
+    data_to_prob = sample_data %>% filter(!is.na(angle_XX_H1_dff)),
+    col_to_prob = "angle_XX_H1_dff"
+  ) %>%
+    rename(
+      gauss_loc_H1  = gauss_loc,
+      gauss_scale_H1 = gauss_scale
+    )
+
+  return(list("prob_tibble_XX" = prob_tibble_XX, "prob_tibble_XX_H1" = prob_tibble_XX_H1))
+
+}
+
+#' get_angle_gauss_prob_by_asset
+#'
+#' @param distinct_assets
+#' @param prob_tibble_XX
+#' @param prob_tibble_XX_H1
+#' @param samples_n
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_angle_gauss_prob_by_asset <- function(
+    distinct_assets = starting_asset_data_ask_15M %>% distinct(Asset),
+    prob_tibble_XX = angle_data_gauss_probs[[1]],
+    prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
+    samples_n = 1000,
+    period_ahead = 20
+) {
+
+  probs_angle_guass_1 <-
+    distinct_assets %>%
+    left_join(prob_tibble_XX) %>%
+    left_join(prob_tibble_XX_H1)
+
+  probs_angle_guass_2 <- probs_angle_guass_1 %>%
+    ungroup() %>%
+    mutate(rownum = row_number()) %>%
+    group_by(rownum) %>%
+    mutate(
+      predicted_high_XX = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale), 0.75),
+      predicted_low_XX = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale), 0.25),
+      predicted_mid_XX = period_ahead*mean(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale)),
+
+      predicted_high_XX_H1 = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.75),
+      predicted_low_XX_H1 = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.25),
+      predicted_mid_XX_H1 = period_ahead*mean(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1))
+
+      # predicted_ma_dff_XX = quantile(rnorm(n = samples_n, mean = angle_XX_dff_ma, sd = angle_XX_dff_sd), 0.5),
+      # predicted_ma_dff_XX_H1 = quantile(rnorm(n = samples_n, mean = angle_XX_H1_dff_ma, sd = angle_XX_H1_dff_sd), 0.5)
+
+    )
+
+  return(probs_angle_guass_2)
+
+}
+
 #' Title
 #'
 #' @param starting_asset_data_ask_H1
@@ -220,50 +356,75 @@ get_angles_data_cols <- function(
 #' @export
 #'
 #' @examples
-get_res_sup_slow_fast_fractal_data <-
+get_angle_guass_data <-
   function(
     starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
     starting_asset_data_ask_15M = starting_asset_data_ask_15M,
-    XX = 200,
+    XX = 50,
     XX_H1 = 50,
     rolling_slide = 200,
     pois_period = 10,
     period_ahead = 20,
     asset_infor,
-    currency_conversion
+    currency_conversion,
+    prob_tibble_XX = angle_data_gauss_probs[[1]],
+    prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
+    testing_proportion = 0.47,
+    angle_guass_forecasts = angle_guass_forecasts,
+    samples_n = 500
   ) {
 
 
-    tagged_data_15 <- get_angles_data_cols(
-      data_to_angle = starting_asset_data_ask_15M,
-      XX = XX,
-      new_col_name = "angle_XX"
-    ) %>%
-      group_by(Asset) %>%
-      arrange(Date, .by_group = TRUE) %>%
-      group_by(Asset) %>%
-      mutate(
-        angle_XX_dff = angle_XX - lag(angle_XX),
-        angle_XX_dff_ma = slider::slide_dbl(angle_XX_dff, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        angle_XX_dff_sd = slider::slide_dbl(angle_XX_dff, .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
-      ) %>%
-      ungroup()
+    tictoc::tic()
 
-    tagged_data_H1 <- get_angles_data_cols(
-      data_to_angle = starting_asset_data_ask_H1,
-      XX = XX_H1,
-      new_col_name = "angle_XX_H1"
-    ) %>%
-      mutate(
-        angle_XX_H1_dff = angle_XX_H1 - lag(angle_XX_H1),
-        angle_XX_H1_dff_ma = slider::slide_dbl(angle_XX_H1_dff, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        angle_XX_H1_dff_sd = slider::slide_dbl(angle_XX_H1_dff, .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
-      ) %>%
-      ungroup()
+    tagged_data_15 <-
+      c(XX, round(XX*1.5), 2*XX, round(XX*2.5) ) %>%
+      map(
+        ~ get_angles_data_cols(
+          data_to_angle = starting_asset_data_ask_15M,
+          XX = .x,
+          new_col_name = paste0("angle_", .x)
+        ) %>%
+          group_by(Asset) %>%
+          arrange(Date, .by_group = TRUE) %>%
+          group_by(Asset) %>%
+          mutate(
+            !!as.name(paste0("angle_", .x, "_dff")) := !!as.name(paste0("angle_", .x)) - lag(!!as.name(paste0("angle_", .x))),
+            !!as.name(paste0("angle_", .x, "_dff", "_ma")) := slider::slide_dbl(!!as.name(paste0("angle_", .x, "_dff")), .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+            !!as.name(paste0("angle_", .x, "_dff", "_sd")) := slider::slide_dbl(!!as.name(paste0("angle_", .x, "_dff")), .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
+          ) %>%
+          ungroup()
+      )
+
+    tagged_data_15 <- tagged_data_15 %>% reduce(left_join)
+
+    gc()
+
+    tagged_data_H1 <- c(XX_H1, round(XX_H1*1.5), 2*XX_H1, round(XX_H1*2.5) ) %>%
+      map(
+        ~ get_angles_data_cols(
+          data_to_angle = starting_asset_data_ask_H1,
+          XX = .x,
+          new_col_name = paste0("angle_H1_", .x)
+        ) %>%
+          group_by(Asset) %>%
+          arrange(Date, .by_group = TRUE) %>%
+          group_by(Asset) %>%
+          mutate(
+            !!as.name(paste0("angle_H1_", .x, "_dff")) := !!as.name(paste0("angle_H1_", .x)) - lag(!!as.name(paste0("angle_H1_", .x))),
+            !!as.name(paste0("angle_H1_", .x, "_dff", "_ma")) := slider::slide_dbl(!!as.name(paste0("angle_H1_", .x, "_dff")), .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+            !!as.name(paste0("angle_H1_", .x, "_dff", "_sd")) := slider::slide_dbl(!!as.name(paste0("angle_H1_", .x, "_dff")), .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
+          ) %>%
+          ungroup()
+      )
+
+    gc()
+
+    tagged_data_H1 <- tagged_data_H1 %>% reduce(left_join)
 
     tagged_data_15 <- tagged_data_15 %>%
       left_join(
-        tagged_data_H1 %>% dplyr::select(Date, Asset, contains("angle_XX_H1"))
+        tagged_data_H1 %>% dplyr::select(Date, Asset, contains("angle_H1"))
       )
 
     tagged_data_15 <- tagged_data_15 %>%
@@ -273,22 +434,21 @@ get_res_sup_slow_fast_fractal_data <-
       fill(contains("angle_XX_H1"), .direction = "down") %>%
       ungroup()
 
-    sample_data <-
+    testing_data <-
       tagged_data_15 %>%
-      filter(!is.na(angle_XX_H1)) %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE) %>%
       group_by(Asset) %>%
-      slice_head(prop = 0.4) %>%
+      slice_tail(prop = testing_proportion) %>%
       ungroup()
 
     prob_tibble_XX <- get_gauss_params_by_asset(
-      data_to_prob = sample_data %>% filter(!is.na(angle_XX_dff)),
+      data_to_prob = testing_data %>% filter(!is.na(angle_XX_dff)),
       col_to_prob = "angle_XX_dff"
     )
 
     prob_tibble_XX_H1 <- get_gauss_params_by_asset(
-      data_to_prob = sample_data %>% filter(!is.na(angle_XX_H1_dff)),
+      data_to_prob = testing_data %>% filter(!is.na(angle_XX_H1_dff)),
       col_to_prob = "angle_XX_H1_dff"
     ) %>%
       rename(
@@ -296,35 +456,37 @@ get_res_sup_slow_fast_fractal_data <-
         gauss_scale_H1 = gauss_scale
       )
 
-
-    testing_data <-
-      tagged_data_15 %>%
-      group_by(Asset) %>%
-      arrange(Date, .by_group = TRUE) %>%
-      group_by(Asset) %>%
-      slice_tail(prop = 0.47) %>%
-      ungroup() %>%
+    testing_data <- testing_data %>%
       left_join(prob_tibble_XX) %>%
       left_join(prob_tibble_XX_H1)
 
     testing2 <- testing_data %>%
       ungroup() %>%
+      # left_join(angle_guass_forecasts) %>%
       mutate(rownum = row_number()) %>%
       group_by(rownum) %>%
       mutate(
-        predicted_high_XX = period_ahead*quantile(rnorm(n = 1000, mean = gauss_loc, sd = gauss_scale), 0.75),
-        predicted_low_XX = period_ahead*quantile(rnorm(n = 1000, mean = gauss_loc, sd = gauss_scale), 0.25),
-        predicted_mid_XX = period_ahead*mean(rnorm(n = 1000, mean = gauss_loc, sd = gauss_scale)),
+        # predicted_ma_dff_XX = angle_XX_dff_ma,
+        # predicted_ma_dff_XX_H1 = angle_XX_H1_dff_ma
 
-        predicted_high_XX_H1 = period_ahead*quantile(rnorm(n = 1000, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.75),
-        predicted_low_XX_H1 = period_ahead*quantile(rnorm(n = 1000, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.25),
-        predicted_mid_XX_H1 = period_ahead*mean(rnorm(n = 1000, mean = gauss_loc_H1, sd = gauss_scale_H1)),
+        predicted_high_XX = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale), 0.75),
+        predicted_low_XX = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale), 0.25),
+        predicted_mid_XX = period_ahead*mean(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale)),
 
-        predicted_ma_dff_XX = quantile(rnorm(n = 1000, mean = angle_XX_dff_ma, sd = angle_XX_dff_sd), 0.5),
-        predicted_ma_dff_XX_H1 = quantile(rnorm(n = 1000, mean = angle_XX_H1_dff_ma, sd = angle_XX_H1_dff_sd), 0.5)
+        predicted_high_XX_H1 = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.75),
+        predicted_low_XX_H1 = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.25),
+        predicted_mid_XX_H1 = period_ahead*mean(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1)),
 
-      )
+        predicted_ma_dff_XX = quantile(rnorm(n = samples_n, mean = angle_XX_dff_ma, sd = angle_XX_dff_sd), 0.5),
+        predicted_ma_dff_XX_H1 = quantile(rnorm(n = samples_n, mean = angle_XX_H1_dff_ma, sd = angle_XX_H1_dff_sd), 0.5)
 
+      ) %>%
+      ungroup() %>%
+      dplyr::select(-rownum)
+
+    tictoc::toc()
+
+    tictoc::tic()
     testing3 <- testing2 %>%
       ungroup() %>%
       left_join(asset_infor %>% dplyr::select(Asset = name, pipLocation)) %>%
@@ -340,46 +502,86 @@ get_res_sup_slow_fast_fractal_data <-
       ) %>%
       group_by(Asset) %>%
       mutate(
-        predicted_high_from_now_ma = slider::slide_dbl(predicted_high_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        predicted_low_from_now_ma = slider::slide_dbl(predicted_low_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+        # predicted_high_from_now_ma = slider::slide_dbl(predicted_high_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+        # predicted_low_from_now_ma = slider::slide_dbl(predicted_low_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
         predicted_mid_from_now_ma = slider::slide_dbl(predicted_mid_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
 
-        predicted_high_from_now_sd = slider::slide_dbl(predicted_high_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-        predicted_low_from_now_sd = slider::slide_dbl(predicted_low_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
+        # predicted_high_from_now_sd = slider::slide_dbl(predicted_high_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
+        # predicted_low_from_now_sd = slider::slide_dbl(predicted_low_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
         predicted_mid_from_now_sd = slider::slide_dbl(predicted_mid_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
 
-        predicted_high_from_now_ma_H1 = slider::slide_dbl(predicted_high_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        predicted_low_from_now_ma_H1 = slider::slide_dbl(predicted_low_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+        # predicted_high_from_now_ma_H1 = slider::slide_dbl(predicted_high_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+        # predicted_low_from_now_ma_H1 = slider::slide_dbl(predicted_low_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
         predicted_mid_from_now_ma_H1 = slider::slide_dbl(predicted_mid_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
 
-        predicted_high_from_now_sd_H1 = slider::slide_dbl(predicted_high_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-        predicted_low_from_now_sd_H1 = slider::slide_dbl(predicted_low_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
+        # predicted_high_from_now_sd_H1 = slider::slide_dbl(predicted_high_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
+        # predicted_low_from_now_sd_H1 = slider::slide_dbl(predicted_low_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
         predicted_mid_from_now_sd_H1 = slider::slide_dbl(predicted_mid_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
 
-        angle_XX_H1_ma = slider::slide_dbl(.x = angle_XX_H1, .f = ~mean(.x, na.rm = T), .before = rolling_slide),
-        angle_XX_H1_sd = slider::slide_dbl(.x = angle_XX_H1, .f = ~sd(.x, na.rm = T), .before = rolling_slide),
-        angle_XX_sd = slider::slide_dbl(.x = angle_XX, .f = ~sd(.x, na.rm = T), .before = rolling_slide),
-        angle_XX_ma = slider::slide_dbl(.x = angle_XX, .f = ~mean(.x, na.rm = T), .before = rolling_slide)
+        # angle_XX_H1_ma = slider::slide_dbl(.x = angle_XX_H1, .f = ~mean(.x, na.rm = T), .before = rolling_slide),
+        # angle_XX_H1_sd = slider::slide_dbl(.x = angle_XX_H1, .f = ~sd(.x, na.rm = T), .before = rolling_slide),
+        # angle_XX_sd = slider::slide_dbl(.x = angle_XX, .f = ~sd(.x, na.rm = T), .before = rolling_slide),
+        # angle_XX_ma = slider::slide_dbl(.x = angle_XX, .f = ~mean(.x, na.rm = T), .before = rolling_slide)
       ) %>%
       ungroup()
 
+    tictoc::toc()
 
     return(testing3)
 
   }
 
+#------------------------------------------Initialisation
+angle_data_gauss_probs <-
+  get_fractal_angle_gaussian(
+    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
+    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
+    XX = 200,
+    XX_H1 = 50,
+    rolling_slide = 200,
+    pois_period = 10,
+    period_ahead = 20
+  )
+
+angle_guass_forecasts <-
+   get_angle_gauss_prob_by_asset(
+     distinct_assets = starting_asset_data_ask_15M %>% distinct(Asset),
+     prob_tibble_XX = angle_data_gauss_probs[[1]],
+     prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
+     samples_n = 1000,
+     period_ahead = 20
+   )
+#------------------------------------------Initialisation
+
+fractal_data_initial <-
+  get_angle_guass_data(
+    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
+    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
+    XX = 200,
+    XX_H1 = 50,
+    rolling_slide = 200,
+    pois_period = 10,
+    period_ahead = 20,
+    asset_infor,
+    currency_conversion,
+    prob_tibble_XX = angle_data_gauss_probs[[1]],
+    prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
+    testing_proportion = 0.47,
+    angle_guass_forecasts = angle_guass_forecasts,
+    samples_n = 1000
+  )
 
 
 
-tag_res_sup_fast_slow_fractal_trades <-
+tag_angle_guass_trades <-
   function(
-    fractal_data = testing3,
+    fractal_data = fractal_data_initial,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    stop_factor = 17,
-    profit_factor =25,
+    stop_factor = 25,
+    profit_factor =35,
     risk_dollar_value = 10,
     sd_fac_1 = 2,
-    sd_fac_2 = 1,
+    sd_fac_2 = 3,
     trade_direction = "Long",
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
@@ -392,19 +594,44 @@ tag_res_sup_fast_slow_fractal_trades <-
     # rolling_slide = 200,
     # pois_period = 10,
     # period_ahead = 20
-    # Case Statement: predicted_high_from_now_ma > 0 & predicted_low_from_now_ma > 0 & angle_XX_H1 > 0
-    # stop_factor = 18,
-    # profit_factor =27
+    # sd_fac_1 = 0.5
+    # sd_fac_2 = 0
+    # Case Statement: (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_1*predicted_mid_from_now_sd)  &
+    #                   predicted_mid_from_now_H1 > 0~ trade_direction
+              # sd_fac_1 = 0.5
+    # stop_factor = 17,
+    # profit_factor = 25
+
+    # Case Statement 2: predicted_mid_from_now_ma_H1 > 0  & lag(predicted_mid_from_now_ma_H1) < 0 ~ trade_direction
+    #  sd_fac_1 = 2
+    # stop_factor = 15,
+    # profit_factor = 50
 
 
     tagged_trades <-
-      fractal_data %>%
-      # testing3 %>%
+      # fractal_data %>%
+      fractal_data_initial %>%
       mutate(
         trade_col =
           case_when(
-            (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_1*predicted_mid_from_now_sd)  &
-              predicted_mid_from_now_H1 > 0~ trade_direction
+            # (predicted_mid_from_now <= predicted_mid_from_now_ma -  sd_fac_1*predicted_mid_from_now_sd)
+            #         ~ trade_direction
+
+            # predicted_low_from_now <0 & predicted_mid_from_now <0 & predicted_mid_from_now_ma < 0 &
+            #   predicted_mid_from_now_H1 < 0 & predicted_mid_from_now_ma_H1 < 0 ~ trade_direction,
+
+            (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_2*predicted_mid_from_now_sd) &
+              predicted_mid_from_now_H1 < 0 & predicted_mid_from_now_ma <0 &  angle_XX < 0 ~ trade_direction,
+
+            predicted_mid_from_now_ma_H1 < 0  & lag(predicted_mid_from_now_ma_H1) > 0 ~ trade_direction,
+            predicted_mid_from_now_ma < 0  & lag(predicted_mid_from_now_ma) > 0 ~ trade_direction
+
+            # angle_XX_H1_dff_ma > 0 & angle_XX_dff_ma > 0 &
+            #   angle_XX > 0 & angle_XX_H1 > 0~ trade_direction
+
+            (angle_XX_dff <= angle_XX_dff_ma - sd_fac_2*angle_XX_dff_sd)  & angle_XX_H1 < 0 ~ trade_direction,
+            (angle_XX_H1_dff <= angle_XX_H1_dff_ma - sd_fac_2*angle_XX_H1_dff_sd)  & angle_XX_H1 < 0~ trade_direction
+
           )
       ) %>%
       filter(!is.na(trade_col))
@@ -414,7 +641,7 @@ tag_res_sup_fast_slow_fractal_trades <-
       long_bayes_loop_analysis_neg <-
         generic_trade_finder_loop(
           tagged_trades = tagged_trades ,
-          asset_data_daily_raw = fractal_data,
+          asset_data_daily_raw = fractal_data_initial,
           stop_factor = stop_factor,
           profit_factor =profit_factor,
           trade_col = "trade_col",
@@ -493,84 +720,136 @@ tag_res_sup_fast_slow_fractal_trades <-
 #----------------------------------------- Creating Data for Algo
 tictoc::tic()
 
-stored_anlysis <- list()
-date_vec <- c("2016-01-01", "2016-06-01", "2017-01-01", "2017-06-01",  "2018-01-01", "2018-06-01",
-              "2019-01-01", "2019-06-01", "2020-01-01", "2020-06-01",  "2021-01-01", "2021-06-01",
-              "2022-01-01")
+trade_results_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/angle_gauss_trades.db"
+db_con <- connect_db(trade_results_db)
+all_dates_in_data <- starting_asset_data_ask_15M %>% pull(Date) %>% unique()
+max_obs <- 40000
+max_date <- max(all_dates_in_data) - days( floor((30000*15)/(24*60)) )
+relavent_dates <- all_dates_in_data %>% keep( ~ .x <= max_date)
+date_sample <- relavent_dates %>% sample(100)
 
-for (j in 7:length(date_vec)) {
+trade_params <- tibble(XX = c(25, 100, 200, 300, 400))
+trade_params2 <- c(25,50,75,100) %>%
+  map_dfr(~  trade_params %>% mutate(XX_H1 = .x))
+trade_params3 <- c(50,100,150,200,250) %>%
+  map_dfr(~  trade_params2 %>% mutate(rolling_slide = .x))
+trade_params4 <- c(10,15,20,25,30,35) %>%
+  map_dfr(~  trade_params3 %>% mutate(period_ahead = .x))
+trade_params5 <- c(15,20,25,30) %>%
+  map_dfr(~  trade_params4 %>% mutate(stop_factor = .x))
+trade_params6 <- c(15,20,25,30) %>%
+  map_dfr(~  trade_params5 %>% mutate(profit_factor = .x))
+trade_params6 <- trade_params6 %>% filter(profit_factor > stop_factor)
+c = 0
+samples = 40000
+for (j in 1:1 ) {
 
-  start_date_day = date_vec[j]
-  start_date_day_H1 = (as_date(date_vec[j]) - months(6)) %>% as.character()
-  start_date_day_D = (as_date(date_vec[j]) - months(12)) %>% as.character()
-  end_date_day = (as_date(date_vec[j]) + months(6)) %>% as.character()
+  # XX <- trade_params6$XX[j] %>% as.numeric()
+  # XX_H1 <- trade_params6$XX_H1[j] %>% as.numeric()
+  # rolling_slide <- trade_params6$rolling_slide[j] %>% as.numeric()
+  # period_ahead <- trade_params6$period_ahead[j] %>% as.numeric()
+  # stop_factor <- trade_params6$stop_factor[j] %>% as.numeric()
+  # profit_factor <- trade_params6$profit_factor[j] %>% as.numeric()
 
-  starting_asset_data_ask_15M <-
-    get_db_price(
-      db_location = db_location,
-      start_date = start_date_day,
-      end_date = end_date_day,
-      bid_or_ask = "ask",
-      time_frame = "M15"
-    )
+  # Best options: With increasing XX, rolling perod and period ahead we see increasing results
+  # XX = 200,
+  # XX_H1 = 50,
+  # rolling_slide = 200,
+  # pois_period = 10,
+  # period_ahead = 20
+  # sd_fac_1 = 0.5
+  # sd_fac_2 = 0
+  # Case Statement: (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_1*predicted_mid_from_now_sd)  &
+  #                   predicted_mid_from_now_H1 > 0~ trade_direction
+  # sd_fac_1 = 0.5
+  # stop_factor = 17,
+  # profit_factor = 25
 
-  starting_asset_data_ask_H1 <-
-    get_db_price(
-      db_location = db_location,
-      start_date = start_date_day_H1,
-      end_date = end_date_day,
-      bid_or_ask = "ask",
-      time_frame = "H1"
-    )
+  # Case Statement 2: predicted_mid_from_now_ma_H1 > 0  & lag(predicted_mid_from_now_ma_H1) < 0 ~ trade_direction
+  #  sd_fac_1 = 2
+  # stop_factor = 15,
+  # profit_factor = 50
+  XX <- 200
+  XX_H1 <- 50
+  rolling_slide <- 200
+  period_ahead <- 20
+  stop_factor <- 21
+  profit_factor <- 35
 
-  fractal_data <- get_res_sup_slow_fast_fractal_data(
-    starting_asset_data_ask_H1 = starting_asset_data_ask_15M %>% group_by(Asset) %>% slice_tail(n = 21000) %>% ungroup() ,
-    starting_asset_data_ask_15M = starting_asset_data_ask_H1 %>% group_by(Asset) %>% slice_tail(n = 21000) %>% ungroup() ,
-    XX = 200,
-    XX_H1 = 50,
-    rolling_slide = 200,
-    pois_period = 10,
-    period_ahead = 20,
-    asset_infor = asset_infor,
-    currency_conversion
-  )
+  for (i in 1:length(date_sample)) {
 
-  stored_anlysis[[j]] <-
-    tag_res_sup_fast_slow_fractal_trades(
-      fractal_data = fractal_data,
-      mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-      stop_factor = 17,
-      profit_factor =27,
-      risk_dollar_value = 10,
-      sd_fac_1 = 0,
-      sd_fac_2 = 1,
-      trade_direction = "Long",
-      currency_conversion = currency_conversion,
+    c = c + 1
+
+    loop_data_15 <-
+      starting_asset_data_ask_15M %>%
+      filter(Date >= date_sample[i]) %>%
+      group_by(Asset) %>%
+      slice_head(n = samples) %>%
+      ungroup()
+
+
+    fractal_data <-
+      get_res_sup_slow_fast_fractal_data(
+      starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
+      starting_asset_data_ask_15M = loop_data_15,
+      XX = XX,
+      XX_H1 = XX_H1,
+      rolling_slide = rolling_slide,
+      pois_period = 10,
+      period_ahead = period_ahead,
       asset_infor = asset_infor,
-      return_analysis = TRUE
+      currency_conversion
     )
 
+    analysis_list <-
+      tag_res_sup_fast_slow_fractal_trades(
+        fractal_data = fractal_data,
+        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        risk_dollar_value = 10,
+        sd_fac_1 = 0,
+        sd_fac_2 = 1,
+        trade_direction = "Long",
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        return_analysis = TRUE
+      )
+
+    analysis_data <- analysis_list[[1]] %>%
+      mutate(
+        XX = XX,
+        XX_H1 = XX_H1,
+        rolling_slide = rolling_slide,
+        period_ahead = period_ahead,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        sample_date = date_sample[i],
+        samples =samples
+      )
+
+    analysis_data_asset <- analysis_list[[2]] %>%
+      mutate(
+        XX = XX,
+        XX_H1 = XX_H1,
+        rolling_slide = rolling_slide,
+        period_ahead = period_ahead,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        sample_date = date_sample[i],
+        samples =samples
+      )
+
+    if(i == 1) {
+      write_table_sql_lite(.data = analysis_data, table_name = "angle_gauss", conn = db_con, overwrite_true = TRUE)
+      write_table_sql_lite(.data = analysis_data_asset, table_name = "angle_gauss_asset", conn = db_con, overwrite_true = TRUE)
+    } else {
+      append_table_sql_lite(.data = analysis_data, table_name = "angle_gauss", conn = db_con)
+      append_table_sql_lite(.data = analysis_data_asset, table_name = "angle_gauss_asset", conn = db_con)
+    }
+
+  }
 
 }
 
-test <- stored_anlysis %>%
-  map_dfr(
-    ~.x %>% pluck(1)
-  ) %>%
-  mutate(
-    total_trades_overall = sum(Trades),
-    total_wins_overall = sum(wins),
-    estiamted_return = total_wins_overall*maximum_win - (total_trades_overall - total_wins_overall)*minimal_loss
-  )
-
-fractal_data <- get_res_sup_slow_fast_fractal_data(
-  starting_asset_data_ask_H1 = starting_asset_data_ask_15M  ,
-  starting_asset_data_ask_15M = starting_asset_data_ask_H1  ,
-  XX = 200,
-  XX_H1 = 50,
-  rolling_slide = 200,
-  pois_period = 10,
-  period_ahead = 20,
-  asset_infor = asset_infor,
-  currency_conversion
-)
+test <- DBI::dbGetQuery(conn = db_con, "SELECT * FROM angle_gauss")

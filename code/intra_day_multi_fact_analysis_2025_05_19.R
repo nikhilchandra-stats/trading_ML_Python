@@ -457,7 +457,7 @@ while (current_time < end_time) {
 
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      bind_rows(trades_3) %>%
+      # bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
       bind_rows(trades_4)
@@ -588,69 +588,73 @@ while (current_time < end_time) {
 
       }
 
-      for (i in 1:dim(total_trades)[1]) {
+      if(dim(total_trades)[1] > 0) {
 
-        account_details_long <- get_account_summary(account_var = long_account_num)
-        margain_available_long <- account_details_long$marginAvailable %>% as.numeric()
-        margain_used_long <- account_details_long$marginUsed%>% as.numeric()
-        total_margain_long <- margain_available_long + margain_used_long
-        percentage_margain_available_long <- margain_available_long/total_margain_long
+        for (i in 1:dim(total_trades)[1]) {
 
-        account_details_short <- get_account_summary(account_var = short_account_num)
-        margain_available_short <- account_details_short$marginAvailable %>% as.numeric()
-        margain_used_short <- account_details_short$marginUsed%>% as.numeric()
-        total_margain_short <- margain_available_short + margain_used_short
-        percentage_margain_available_short <- margain_available_short/total_margain_short
+          account_details_long <- get_account_summary(account_var = long_account_num)
+          margain_available_long <- account_details_long$marginAvailable %>% as.numeric()
+          margain_used_long <- account_details_long$marginUsed%>% as.numeric()
+          total_margain_long <- margain_available_long + margain_used_long
+          percentage_margain_available_long <- margain_available_long/total_margain_long
 
-        Sys.sleep(1)
+          account_details_short <- get_account_summary(account_var = short_account_num)
+          margain_available_short <- account_details_short$marginAvailable %>% as.numeric()
+          margain_used_short <- account_details_short$marginUsed%>% as.numeric()
+          total_margain_short <- margain_available_short + margain_used_short
+          percentage_margain_available_short <- margain_available_short/total_margain_short
 
-        trade_direction <- total_trades$trade_col[i] %>% as.character()
-        asset <- total_trades$Asset[i] %>% as.character()
-        volume_trade <- total_trades$volume_required[i] %>% as.numeric()
-        volume_trade <- ifelse(trade_direction == "Short" & volume_trade > 0, -1*volume_trade, volume_trade)
-        volume_trade <- ifelse(trade_direction == "Long" & volume_trade < 0, -1*volume_trade, volume_trade)
+          Sys.sleep(1)
 
-        loss_var <- total_trades$stop_value[i] %>% as.numeric()
-        profit_var <- total_trades$profit_value[i] %>% as.numeric()
+          trade_direction <- total_trades$trade_col[i] %>% as.character()
+          asset <- total_trades$Asset[i] %>% as.character()
+          volume_trade <- total_trades$volume_required[i] %>% as.numeric()
+          volume_trade <- ifelse(trade_direction == "Short" & volume_trade > 0, -1*volume_trade, volume_trade)
+          volume_trade <- ifelse(trade_direction == "Long" & volume_trade < 0, -1*volume_trade, volume_trade)
 
-        if(loss_var > 9) { loss_var <- round(loss_var)}
-        if(profit_var > 9) { profit_var <- round(profit_var)}
+          loss_var <- total_trades$stop_value[i] %>% as.numeric()
+          profit_var <- total_trades$profit_value[i] %>% as.numeric()
 
-        if(percentage_margain_available_long[1] > margain_threshold & trade_direction == "Long") {
+          if(loss_var > 9) { loss_var <- round(loss_var)}
+          if(profit_var > 9) { profit_var <- round(profit_var)}
 
-          volume_trade <- ifelse(volume_trade < 0, -1*volume_trade, volume_trade)
+          if(percentage_margain_available_long[1] > margain_threshold & trade_direction == "Long") {
 
-          # This is misleading because it is price distance and not pip distance
-          http_return <- oanda_place_order_pip_stop(
-            asset = asset,
-            volume = volume_trade,
-            stopLoss = loss_var,
-            takeProfit = profit_var,
-            type = "MARKET",
-            timeinForce = "FOK",
-            acc_name = account_name_long,
-            position_fill = "OPEN_ONLY" ,
-            price
-          )
+            volume_trade <- ifelse(volume_trade < 0, -1*volume_trade, volume_trade)
 
-        }
+            # This is misleading because it is price distance and not pip distance
+            http_return <- oanda_place_order_pip_stop(
+              asset = asset,
+              volume = volume_trade,
+              stopLoss = loss_var,
+              takeProfit = profit_var,
+              type = "MARKET",
+              timeinForce = "FOK",
+              acc_name = account_name_long,
+              position_fill = "OPEN_ONLY" ,
+              price
+            )
 
-        if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
+          }
 
-          volume_trade <- ifelse(volume_trade > 0, -1*volume_trade, volume_trade)
+          if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
 
-          # This is misleading because it is price distance and not pip distance
-          http_return <- oanda_place_order_pip_stop(
-            asset = asset,
-            volume = volume_trade,
-            stopLoss = loss_var,
-            takeProfit = profit_var,
-            type = "MARKET",
-            timeinForce = "FOK",
-            acc_name = account_name_short,
-            position_fill = "OPEN_ONLY" ,
-            price
-          )
+            volume_trade <- ifelse(volume_trade > 0, -1*volume_trade, volume_trade)
+
+            # This is misleading because it is price distance and not pip distance
+            http_return <- oanda_place_order_pip_stop(
+              asset = asset,
+              volume = volume_trade,
+              stopLoss = loss_var,
+              takeProfit = profit_var,
+              type = "MARKET",
+              timeinForce = "FOK",
+              acc_name = account_name_short,
+              position_fill = "OPEN_ONLY" ,
+              price
+            )
+
+          }
 
         }
 
