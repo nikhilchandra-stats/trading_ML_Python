@@ -50,11 +50,18 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 
 db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2020-01-01"
-start_date_day_H1 = "2021-11-01"
+start_date_day = "2021-01-01"
+start_date_day_H1 = "2020-06-01"
 start_date_day_D = "2017-01-01"
 end_date_day = today() %>% as.character()
 # end_date_day = "2023-01-01"
+
+db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+start_date_day = "2016-01-01"
+start_date_day_H1 = "2015-06-01"
+start_date_day_D = "2017-01-01"
+# end_date_day = today() %>% as.character()
+end_date_day = "2020-10-01"
 
 starting_asset_data_ask_15M <-
   get_db_price(
@@ -280,6 +287,7 @@ get_fractal_angle_gaussian <- function(
     slice_head(prop = training_proportion) %>%
     ungroup()
 
+
   prob_tibble_XX <- get_gauss_params_by_asset(
     data_to_prob = sample_data %>% filter(!is.na(angle_XX_dff)),
     col_to_prob = "angle_XX_dff"
@@ -344,7 +352,7 @@ get_angle_gauss_prob_by_asset <- function(
 
 }
 
-#' Title
+#' get_angle_guass_data_LM_Model
 #'
 #' @param starting_asset_data_ask_H1
 #' @param starting_asset_data_ask_15M
@@ -356,7 +364,7 @@ get_angle_gauss_prob_by_asset <- function(
 #' @export
 #'
 #' @examples
-get_angle_guass_data <-
+get_angle_guass_data_LM_Model <-
   function(
     starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
     starting_asset_data_ask_15M = starting_asset_data_ask_15M,
@@ -367,18 +375,19 @@ get_angle_guass_data <-
     period_ahead = 20,
     asset_infor,
     currency_conversion,
-    prob_tibble_XX = angle_data_gauss_probs[[1]],
-    prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
-    testing_proportion = 0.47,
-    angle_guass_forecasts = angle_guass_forecasts,
-    samples_n = 500
+    testing_proportion = 0.25,
+    samples_n = 500,
+    trade_direction = "Short",
+    mean_values_by_asset_for_loop  = mean_values_by_asset_for_loop_15_ask,
+    stop_factor = 15,
+    profit_factor =20
   ) {
 
 
     tictoc::tic()
 
     tagged_data_15 <-
-      c(XX, round(XX*1.5), 2*XX, round(XX*2.5) ) %>%
+      c(XX, round(XX*1.5), round(XX*1.75) ,2*XX, round(XX*2.5) ) %>%
       map(
         ~ get_angles_data_cols(
           data_to_angle = starting_asset_data_ask_15M,
@@ -394,13 +403,12 @@ get_angle_guass_data <-
             !!as.name(paste0("angle_", .x, "_dff", "_sd")) := slider::slide_dbl(!!as.name(paste0("angle_", .x, "_dff")), .f = ~ sd(.x, na.rm = T), .before = rolling_slide)
           ) %>%
           ungroup()
-      )
-
-    tagged_data_15 <- tagged_data_15 %>% reduce(left_join)
+      ) %>%
+      reduce(left_join)
 
     gc()
 
-    tagged_data_H1 <- c(XX_H1, round(XX_H1*1.5), 2*XX_H1, round(XX_H1*2.5) ) %>%
+    tagged_data_H1 <- c(XX_H1, round(XX_H1*1.75) ,round(XX_H1*1.5), 2*XX_H1, round(XX_H1*2.5) ) %>%
       map(
         ~ get_angles_data_cols(
           data_to_angle = starting_asset_data_ask_H1,
@@ -422,17 +430,75 @@ get_angle_guass_data <-
 
     tagged_data_H1 <- tagged_data_H1 %>% reduce(left_join)
 
+    gc()
+
     tagged_data_15 <- tagged_data_15 %>%
       left_join(
         tagged_data_H1 %>% dplyr::select(Date, Asset, contains("angle_H1"))
       )
 
-    tagged_data_15 <- tagged_data_15 %>%
+    gc()
+
+    tagged_data_15 <-
+      tagged_data_15 %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE) %>%
       group_by(Asset) %>%
-      fill(contains("angle_XX_H1"), .direction = "down") %>%
+      fill(contains("angle_H1"), .direction = "down") %>%
       ungroup()
+
+    training_data <-
+      tagged_data_15 %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      slice_head(prop = testing_proportion) %>%
+      ungroup() %>%
+      mutate(
+        trade_col = trade_direction
+      )
+
+    trade_results_train <-
+      generic_trade_finder_loop(
+        tagged_trades = training_data ,
+        asset_data_daily_raw = training_data,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset_for_loop
+      )
+
+    gc()
+
+    trade_results_train_bins <-
+      trade_results_train %>% distinct(
+        dates, asset, trade_returns
+      ) %>%
+      rename(Date = dates,
+             Asset = asset) %>%
+      mutate(
+        regressor_col = ifelse(trade_returns > 0, 1, 0)
+      )
+
+    training_data <- training_data %>% left_join(trade_results_train_bins)
+
+    gc()
+
+    independants <-
+      names(training_data) %>%
+      keep(~ str_detect(.x, "angle_") ) %>%
+      unlist()
+
+    lm_formula <- create_lm_formula(dependant = "regressor_col",
+                                    independant = independants)
+
+    lm_model <- lm(formula = lm_formula, data = training_data)
+    gc()
+    summary(lm_model)
+
+    gc()
 
     testing_data <-
       tagged_data_15 %>%
@@ -442,143 +508,91 @@ get_angle_guass_data <-
       slice_tail(prop = testing_proportion) %>%
       ungroup()
 
-    prob_tibble_XX <- get_gauss_params_by_asset(
-      data_to_prob = testing_data %>% filter(!is.na(angle_XX_dff)),
-      col_to_prob = "angle_XX_dff"
-    )
-
-    prob_tibble_XX_H1 <- get_gauss_params_by_asset(
-      data_to_prob = testing_data %>% filter(!is.na(angle_XX_H1_dff)),
-      col_to_prob = "angle_XX_H1_dff"
-    ) %>%
-      rename(
-        gauss_loc_H1  = gauss_loc,
-        gauss_scale_H1 = gauss_scale
-      )
+    predictions_testing <- predict.lm(object = lm_model, newdata = testing_data)
 
     testing_data <- testing_data %>%
-      left_join(prob_tibble_XX) %>%
-      left_join(prob_tibble_XX_H1)
-
-    testing2 <- testing_data %>%
-      ungroup() %>%
-      # left_join(angle_guass_forecasts) %>%
-      mutate(rownum = row_number()) %>%
-      group_by(rownum) %>%
       mutate(
-        # predicted_ma_dff_XX = angle_XX_dff_ma,
-        # predicted_ma_dff_XX_H1 = angle_XX_H1_dff_ma
+        pred = as.numeric(predictions_testing)
+      )
 
-        predicted_high_XX = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale), 0.75),
-        predicted_low_XX = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale), 0.25),
-        predicted_mid_XX = period_ahead*mean(rnorm(n = samples_n, mean = gauss_loc, sd = gauss_scale)),
-
-        predicted_high_XX_H1 = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.75),
-        predicted_low_XX_H1 = period_ahead*quantile(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1), 0.25),
-        predicted_mid_XX_H1 = period_ahead*mean(rnorm(n = samples_n, mean = gauss_loc_H1, sd = gauss_scale_H1)),
-
-        predicted_ma_dff_XX = quantile(rnorm(n = samples_n, mean = angle_XX_dff_ma, sd = angle_XX_dff_sd), 0.5),
-        predicted_ma_dff_XX_H1 = quantile(rnorm(n = samples_n, mean = angle_XX_H1_dff_ma, sd = angle_XX_H1_dff_sd), 0.5)
-
-      ) %>%
-      ungroup() %>%
-      dplyr::select(-rownum)
-
-    tictoc::toc()
-
-    tictoc::tic()
-    testing3 <- testing2 %>%
-      ungroup() %>%
-      left_join(asset_infor %>% dplyr::select(Asset = name, pipLocation)) %>%
-      mutate(pipLocation = as.numeric(pipLocation)) %>%
-      mutate(
-        predicted_high_from_now = predicted_high_XX + angle_XX + period_ahead*predicted_ma_dff_XX,
-        predicted_low_from_now = predicted_low_XX + angle_XX + period_ahead*predicted_ma_dff_XX,
-        predicted_mid_from_now = predicted_mid_XX + angle_XX + period_ahead*predicted_ma_dff_XX,
-
-        predicted_high_from_now_H1 = predicted_high_XX_H1 + angle_XX_H1 + period_ahead*predicted_ma_dff_XX_H1,
-        predicted_low_from_now_H1 = predicted_low_XX_H1 + angle_XX_H1 + period_ahead*predicted_ma_dff_XX_H1,
-        predicted_mid_from_now_H1 = predicted_mid_XX_H1 + angle_XX_H1 + period_ahead*predicted_ma_dff_XX_H1
-      ) %>%
+    mean_values_of_training <-
+      training_data %>%
+      mutate(pred = predict.lm(object = lm_model, newdata = training_data)) %>%
       group_by(Asset) %>%
-      mutate(
-        # predicted_high_from_now_ma = slider::slide_dbl(predicted_high_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        # predicted_low_from_now_ma = slider::slide_dbl(predicted_low_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        predicted_mid_from_now_ma = slider::slide_dbl(predicted_mid_from_now, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
+      summarise(
+        mean_pred = mean(pred, na.rm = T),
+        sd_pred = sd(pred, na.rm = T)
+      )
 
-        # predicted_high_from_now_sd = slider::slide_dbl(predicted_high_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-        # predicted_low_from_now_sd = slider::slide_dbl(predicted_low_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-        predicted_mid_from_now_sd = slider::slide_dbl(predicted_mid_from_now, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-
-        # predicted_high_from_now_ma_H1 = slider::slide_dbl(predicted_high_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        # predicted_low_from_now_ma_H1 = slider::slide_dbl(predicted_low_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-        predicted_mid_from_now_ma_H1 = slider::slide_dbl(predicted_mid_from_now_H1, .f = ~ mean(.x, na.rm = T), .before = rolling_slide),
-
-        # predicted_high_from_now_sd_H1 = slider::slide_dbl(predicted_high_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-        # predicted_low_from_now_sd_H1 = slider::slide_dbl(predicted_low_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-        predicted_mid_from_now_sd_H1 = slider::slide_dbl(predicted_mid_from_now_H1, .f = ~ sd(.x, na.rm = T), .before = rolling_slide),
-
-        # angle_XX_H1_ma = slider::slide_dbl(.x = angle_XX_H1, .f = ~mean(.x, na.rm = T), .before = rolling_slide),
-        # angle_XX_H1_sd = slider::slide_dbl(.x = angle_XX_H1, .f = ~sd(.x, na.rm = T), .before = rolling_slide),
-        # angle_XX_sd = slider::slide_dbl(.x = angle_XX, .f = ~sd(.x, na.rm = T), .before = rolling_slide),
-        # angle_XX_ma = slider::slide_dbl(.x = angle_XX, .f = ~mean(.x, na.rm = T), .before = rolling_slide)
-      ) %>%
-      ungroup()
 
     tictoc::toc()
 
-    return(testing3)
+    return(list("lm_model" = lm_model,
+                "testing_data" = testing_data,
+                "mean_values_of_training" = mean_values_of_training)
+           )
 
   }
 
+#' get_angle_LM_Model_add_pred
+#'
+#' @param testing_data
+#' @param lm_model
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_angle_LM_Model_add_pred <- function(
+    testing_data = testing_data,
+    lm_model = lm_model
+) {
+
+  predictions_testing <- predict.lm(object = lm_model, newdata = testing_data)
+
+  testing_data <- testing_data %>%
+    mutate(
+      pred = as.numeric(predictions_testing)
+    )
+
+  return(testing_data)
+
+}
+
 #------------------------------------------Initialisation
-angle_data_gauss_probs <-
-  get_fractal_angle_gaussian(
+
+
+angle_data_all <-
+  get_angle_guass_data_LM_Model(
     starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
     starting_asset_data_ask_15M = starting_asset_data_ask_15M,
-    XX = 200,
-    XX_H1 = 50,
-    rolling_slide = 200,
-    pois_period = 10,
-    period_ahead = 20
-  )
-
-angle_guass_forecasts <-
-   get_angle_gauss_prob_by_asset(
-     distinct_assets = starting_asset_data_ask_15M %>% distinct(Asset),
-     prob_tibble_XX = angle_data_gauss_probs[[1]],
-     prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
-     samples_n = 1000,
-     period_ahead = 20
-   )
-#------------------------------------------Initialisation
-
-fractal_data_initial <-
-  get_angle_guass_data(
-    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
-    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
-    XX = 200,
+    XX = 50,
     XX_H1 = 50,
     rolling_slide = 200,
     pois_period = 10,
     period_ahead = 20,
     asset_infor,
     currency_conversion,
-    prob_tibble_XX = angle_data_gauss_probs[[1]],
-    prob_tibble_XX_H1 = angle_data_gauss_probs[[2]],
-    testing_proportion = 0.47,
-    angle_guass_forecasts = angle_guass_forecasts,
-    samples_n = 1000
+    testing_proportion = 0.4,
+    samples_n = 500,
+    trade_direction = "Short",
+    mean_values_by_asset_for_loop  = mean_values_by_asset_for_loop_15_ask,
+    stop_factor = 17,
+    profit_factor =27
   )
 
+angle_data_all$testing_data %>%
+  pull(angle_50_very_slow) %>%
+  summary()
 
 
 tag_angle_guass_trades <-
   function(
-    fractal_data = fractal_data_initial,
+    testing_data = angle_data_all$testing_data,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    stop_factor = 25,
-    profit_factor =35,
+    mean_values_of_training = angle_data_all$mean_values_of_training,
+    stop_factor = 20,
+    profit_factor = 40,
     risk_dollar_value = 10,
     sd_fac_1 = 2,
     sd_fac_2 = 3,
@@ -589,48 +603,31 @@ tag_angle_guass_trades <-
   ){
 
     # Best options: With increasing XX, rolling perod and period ahead we see increasing results
-    # XX = 200,
-    # XX_H1 = 50,
-    # rolling_slide = 200,
-    # pois_period = 10,
-    # period_ahead = 20
-    # sd_fac_1 = 0.5
-    # sd_fac_2 = 0
-    # Case Statement: (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_1*predicted_mid_from_now_sd)  &
-    #                   predicted_mid_from_now_H1 > 0~ trade_direction
-              # sd_fac_1 = 0.5
-    # stop_factor = 17,
-    # profit_factor = 25
-
-    # Case Statement 2: predicted_mid_from_now_ma_H1 > 0  & lag(predicted_mid_from_now_ma_H1) < 0 ~ trade_direction
-    #  sd_fac_1 = 2
-    # stop_factor = 15,
-    # profit_factor = 50
+    # Long Trades:
+    # See angle_data_all() for best parameters option
+    # sd_fac_1 = 2.75
+    # pred <=  mean_pred  - sd_fac_1*sd_pred ~ trade_direction,
+    # angle_50_slow <= -70 ~ trade_direction,
+    # angle_H1_50 <= -77 ~ trade_direction,
+    # angle_100 <= -77 ~ trade_direction,
+    # angle_100_slow <=  -80 ~ trade_direction,
+    # angle_50_very_slow <= -70 ~ trade_direction
 
 
     tagged_trades <-
       # fractal_data %>%
-      fractal_data_initial %>%
+      testing_data %>%
+      left_join(mean_values_of_training) %>%
       mutate(
         trade_col =
           case_when(
-            # (predicted_mid_from_now <= predicted_mid_from_now_ma -  sd_fac_1*predicted_mid_from_now_sd)
-            #         ~ trade_direction
 
-            # predicted_low_from_now <0 & predicted_mid_from_now <0 & predicted_mid_from_now_ma < 0 &
-            #   predicted_mid_from_now_H1 < 0 & predicted_mid_from_now_ma_H1 < 0 ~ trade_direction,
-
-            (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_2*predicted_mid_from_now_sd) &
-              predicted_mid_from_now_H1 < 0 & predicted_mid_from_now_ma <0 &  angle_XX < 0 ~ trade_direction,
-
-            predicted_mid_from_now_ma_H1 < 0  & lag(predicted_mid_from_now_ma_H1) > 0 ~ trade_direction,
-            predicted_mid_from_now_ma < 0  & lag(predicted_mid_from_now_ma) > 0 ~ trade_direction
-
-            # angle_XX_H1_dff_ma > 0 & angle_XX_dff_ma > 0 &
-            #   angle_XX > 0 & angle_XX_H1 > 0~ trade_direction
-
-            (angle_XX_dff <= angle_XX_dff_ma - sd_fac_2*angle_XX_dff_sd)  & angle_XX_H1 < 0 ~ trade_direction,
-            (angle_XX_H1_dff <= angle_XX_H1_dff_ma - sd_fac_2*angle_XX_H1_dff_sd)  & angle_XX_H1 < 0~ trade_direction
+            pred <=  mean_pred  - sd_fac_1*sd_pred ~ trade_direction
+            # angle_50_slow <= -75 ~ trade_direction,
+            # angle_H1_50 <= -80 ~ trade_direction,
+            # angle_100 <= -80 ~ trade_direction,
+            # angle_100_slow <=  -80 ~ trade_direction,
+            # angle_50_very_slow <= -75 ~ trade_direction
 
           )
       ) %>%
@@ -641,7 +638,7 @@ tag_angle_guass_trades <-
       long_bayes_loop_analysis_neg <-
         generic_trade_finder_loop(
           tagged_trades = tagged_trades ,
-          asset_data_daily_raw = fractal_data_initial,
+          asset_data_daily_raw = testing_data,
           stop_factor = stop_factor,
           profit_factor =profit_factor,
           trade_col = "trade_col",
@@ -714,6 +711,38 @@ tag_angle_guass_trades <-
 
       return(tagged_trades)
     }
+
+    ts_trade_dat <- long_bayes_loop_analysis_neg %>%
+      rename(Asset = asset) %>%
+      convert_stop_profit_AUD(
+        asset_infor = asset_infor,
+        asset_col = "Asset",
+        stop_col = "starting_stop_value",
+        profit_col = "starting_profit_value",
+        price_col = "trade_start_prices",
+        risk_dollar_value = risk_dollar_value,
+        returns_present = TRUE,
+        trade_return_col = "trade_returns",
+        currency_conversion = currency_conversion
+      ) %>%
+      filter(volume_required > 0) %>%
+      mutate(wins = ifelse(trade_return_dollars_AUD > 0, 1, 0)) %>%
+      rename(trade_direction = trade_col) %>%
+      group_by(across(.cols = matches(c("trade_direction", "dates")))) %>%
+      summarise(
+        Trades = n(),
+        wins = sum(wins),
+        Total_Dollars = sum(trade_return_dollars_AUD),
+        minimal_loss = mean(minimal_loss, na.rm = T),
+        maximum_win = mean(maximum_win, na.rm = T)
+      ) %>%
+      arrange(dates) %>%
+      mutate(cumualtive_dollars = cumsum(Total_Dollars))
+
+    ts_trade_dat %>%
+      ggplot(aes(x = dates, y = cumualtive_dollars)) +
+      geom_line()
+
 
   }
 

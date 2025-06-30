@@ -54,6 +54,11 @@ start_date_day = "2020-01-01"
 start_date_day_H1 = "2019-01-01"
 end_date_day = today() %>% as.character()
 
+#Alternative Dates
+start_date_day = "2018-06-01"
+start_date_day_H1 = "2018-01-01"
+end_date_day = today() %>% as.character()
+
 starting_asset_data_ask_15M <-
   get_db_price(
     db_location = db_location,
@@ -187,11 +192,11 @@ for (j in 1:dim(trade_params)[1]) {
   sd_fac_2 = trade_params$sd_fac_2[j]
   sd_fac_3 = trade_params$sd_fac_3[j]
 
-  stop_factor = 17
-  profit_factor = 25.5
-  sd_fac_1 = 4
-  sd_fac_2 = 3
-  sd_fac_3 = 3
+  stop_factor = 20
+  profit_factor = 40
+  sd_fac_1 = 4.5
+  sd_fac_2 = 3.5
+  sd_fac_3 = 3.5
 
 
   analysis_data <-
