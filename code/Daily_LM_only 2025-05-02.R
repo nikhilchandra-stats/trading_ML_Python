@@ -367,7 +367,7 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return > 0.05) %>%
+  filter(risk_weighted_return > 0.07) %>%
   mutate(redont_risk_weighted_return =
            1000*( (Perc*maximum_win) - (minimal_loss*(1 - Perc)) )
          )
@@ -417,10 +417,10 @@ trades_for_today <-
 # account_name_long <- "primary"
 #We use Account  number 2, 001-011-1615559-003
 account_list <- get_list_of_accounts()
-account_name <- "primary"
-account_number <- "001-011-1615559-001"
+account_name <- "mt4_hedging"
+account_number <- "001-011-1615559-003"
 get_oanda_account_number(account_name = account_name)
-current_trades <- get_list_of_positions(account_var = 1)
+current_trades <- get_list_of_positions(account_var = 2)
 current_trades <- current_trades %>%
   mutate(direction = stringr::str_to_title(direction)) %>%
   rename(Asset = instrument )
