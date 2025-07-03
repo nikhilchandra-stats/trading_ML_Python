@@ -3,7 +3,7 @@ library(neuralnet)
 raw_macro_data <- get_macro_event_data()
 
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
@@ -51,8 +51,8 @@ asset_list_oanda <- get_oanda_symbols() %>%
 
 asset_infor <- get_instrument_info()
 
-db_location <- "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2022-09-01"
+db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data.db"
+start_date_day = "2017-01-01"
 end_date_day = today() %>% as.character()
 
 starting_asset_data_ask_daily <-
@@ -215,7 +215,7 @@ get_15_min_markov_trades_markov_LM <-
         Price_Change = lag(Price) - lag(Open, MA_lag1),
         MA_fast_Price = slider::slide_dbl(.x = Price_Change,.f = ~ mean(.x, na.rm = T), .before = MA_lag1),
         Price_Change = lag(Price) - lag(Open, MA_lag2),
-        MA_slow_Price = slider::slide_dbl(.x = Price_Change,.f = ~ mean(.x, na.rm = T), .before = 30),
+        MA_slow_Price = slider::slide_dbl(.x = Price_Change,.f = ~ mean(.x, na.rm = T), .before = MA_lag2),
 
         High_Open = lag(High) - lag(Open, MA_lag1),
         MA_fast_High = slider::slide_dbl(.x = High_Open,.f = ~ mean(.x, na.rm = T), .before = MA_lag1),
@@ -425,35 +425,63 @@ get_analysis_15min_LM <- function(
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
     trade_sd_fact = trade_sd_fact,
     currency_conversion = currency_conversion,
-    Network_Name = "15_min_macro"
+    Network_Name = "15_min_macro",
+    trade_samples = 5000,
+    trade_select_samples = 5000
   ) {
+
+  if(!is.null(trade_samples)) {
+    distinct_dates <-
+      modelling_data_for_trade_tag %>%
+      distinct(Date) %>%
+      filter(Date <= (max(Date) + minutes(15*trade_samples)) ) %>%
+      pull(Date)
+
+      starting_date <- distinct_dates %>% sample(1)
+      ending_date <- starting_date  + minutes(15*trade_samples)
+
+      asset_data_daily_raw <- asset_data_daily_raw %>%
+        filter(Date <= (ending_date + minutes(15*1000) ) &
+                 Date >= (starting_date - minutes(15*1000) ) )
+
+      modelling_data_for_trade_tag <-
+        modelling_data_for_trade_tag %>%
+        filter(Date <= (ending_date + minutes(15*10) ) &
+                 Date >= (starting_date - minutes(15*10) ) )
+
+  }
+
+  tagged_trades =
+    modelling_data_for_trade_tag %>%
+    # group_by(Asset) %>%
+    mutate(
+      trade_col =  case_when(
+
+        Pred3 >= mean_pred3 + sd_pred3*trade_sd_fact3 &
+          Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
+        ~ "Long",
+
+        Pred2 >= mean_pred2 + sd_pred2*trade_sd_fact2 &
+          Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
+        ~ "Long",
+
+        Pred4 >= mean_pred4 + sd_pred4*trade_sd_fact4 &
+          Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
+        ~ "Long",
+
+        Pred1 >= mean_pred1 + sd_pred1*trade_sd_fact1 &
+          Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
+        ~ "Long"
+      )
+    ) %>%
+    ungroup() %>%
+    filter(!is.na(trade_col)) %>%
+    slice_sample(n = trade_select_samples)
 
   # tictoc::tic()
   long_bayes_loop_analysis_pos <-
     generic_trade_finder_loop(
-      tagged_trades = modelling_data_for_trade_tag %>%
-        group_by(Asset) %>%
-        mutate(
-          trade_col =  case_when(
-
-            Pred3 >= mean_pred3 + sd_pred3*trade_sd_fact3 &
-              Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
-            ~ "Long",
-
-            Pred2 >= mean_pred2 + sd_pred2*trade_sd_fact2 &
-              Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
-            ~ "Long",
-
-            Pred4 >= mean_pred4 + sd_pred4*trade_sd_fact4 &
-              Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
-            ~ "Long",
-
-            Pred1 >= mean_pred1 + sd_pred1*trade_sd_fact1 &
-              Total_Avg_Prob_Diff_Low > Total_Avg_Prob_Diff_Median_Low + sd_AVG_Prob*Total_Avg_Prob_Diff_SD_Low
-            ~ "Long"
-          )
-        ) %>%
-        ungroup(),
+      tagged_trades = tagged_trades,
       asset_data_daily_raw = asset_data_daily_raw,
       stop_factor = stop_factor,
       profit_factor =profit_factor,
@@ -515,7 +543,10 @@ get_analysis_15min_LM <- function(
       trade_sd_fact3 = trade_sd_fact3,
       trade_sd_fact4 = trade_sd_fact4,
       sd_AVG_Prob = sd_AVG_Prob,
-      Network_Name = Network_Name
+      Network_Name = Network_Name,
+      starting_date = starting_date,
+      ending_date = ending_date
+
     ) %>%
     bind_cols(trade_timings_by_asset_pos)
 
@@ -540,7 +571,9 @@ get_analysis_15min_LM <- function(
       trade_sd_fact3 = trade_sd_fact3,
       trade_sd_fact4 = trade_sd_fact4,
       sd_AVG_Prob = sd_AVG_Prob,
-      Network_Name = Network_Name
+      Network_Name = Network_Name,
+      starting_date = starting_date,
+      ending_date = ending_date
     ) %>%
     bind_cols(trade_timings_by_asset_pos) %>%
     mutate(across(contains("Dollars"), ~ round(.)))
@@ -584,7 +617,7 @@ testing_data <-
 
 tictoc::toc()
 
-db_path <- "C:/Users/Nikhil/Documents/trade_data/LM_15min_markov.db"
+db_path <- "C:/Users/nikhi/Documents/trade_data/LM_15min_markov_sampled.db"
 db_con <- connect_db(db_path)
 write_table_now <- TRUE
 
@@ -644,49 +677,89 @@ trade_params <-
       )
   )
 
+samples_over_all <- 10
+c = 0
+safely_analyse <- safely(get_analysis_15min_LM, otherwise = NULL)
+
 for (i in 1:dim(trade_params)[1]) {
 
-  trade_sd_fact1 <- trade_params$trade_sd_fact1[i] %>% as.numeric()
-  trade_sd_fact2 <- trade_params$trade_sd_fact2[i] %>% as.numeric()
-  trade_sd_fact3 <- trade_params$trade_sd_fact3[i] %>% as.numeric()
-  trade_sd_fact4 <- trade_params$trade_sd_fact4[i] %>% as.numeric()
-  sd_AVG_Prob <- trade_params$sd_AVG_Prob[i] %>% as.numeric()
-  stop_factor <- trade_params$stop_factor[i] %>% as.numeric()
-  profit_factor <- trade_params$profit_factor[i] %>% as.numeric()
+  for (k in 1:samples_over_all) {
 
+    trade_sd_fact1 <- trade_params$trade_sd_fact1[i] %>% as.numeric()
+    trade_sd_fact2 <- trade_params$trade_sd_fact2[i] %>% as.numeric()
+    trade_sd_fact3 <- trade_params$trade_sd_fact3[i] %>% as.numeric()
+    trade_sd_fact4 <- trade_params$trade_sd_fact4[i] %>% as.numeric()
+    sd_AVG_Prob <- trade_params$sd_AVG_Prob[i] %>% as.numeric()
+    stop_factor <- trade_params$stop_factor[i] %>% as.numeric()
+    profit_factor <- trade_params$profit_factor[i] %>% as.numeric()
 
-  analysis_info <- get_analysis_15min_LM(
-    modelling_data_for_trade_tag = testing_data,
-    profit_factor  = profit_factor,
-    stop_factor  = stop_factor,
-    risk_dollar_value = 10,
-    trade_sd_fact1 = trade_sd_fact1,
-    trade_sd_fact2 = trade_sd_fact2,
-    trade_sd_fact3 = trade_sd_fact3,
-    trade_sd_fact4 = trade_sd_fact4,
-    sd_AVG_Prob = sd_AVG_Prob,
-    rolling_period = 400,
-    asset_data_daily_raw = starting_asset_data_ask_daily,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-    trade_sd_fact = trade_sd_fact,
-    currency_conversion = currency_conversion,
-    Network_Name = "15_min_macro"
-  )
+    tictoc::tic()
 
-  if(i == 1 & write_table_now == TRUE) {
-    write_table_sql_lite(.data = analysis_info[[1]],
-                         table_name = "LM_15min_markov",
-                         conn = db_con )
-    write_table_sql_lite(.data = analysis_info[[2]],
-                         table_name = "LM_15min_markov_asset",
-                         conn = db_con )
-  } else {
-    append_table_sql_lite(.data = analysis_info[[1]],
-                          table_name = "LM_15min_markov",
-                          conn = db_con)
-    append_table_sql_lite(.data = analysis_info[[2]],
-                          table_name = "LM_15min_markov_asset",
-                          conn = db_con)
+    analysis_info <- safely_analyse(
+      modelling_data_for_trade_tag = testing_data,
+      profit_factor  = profit_factor,
+      stop_factor  = stop_factor,
+      risk_dollar_value = 10,
+      trade_sd_fact1 = trade_sd_fact1,
+      trade_sd_fact2 = trade_sd_fact2,
+      trade_sd_fact3 = trade_sd_fact3,
+      trade_sd_fact4 = trade_sd_fact4,
+      sd_AVG_Prob = sd_AVG_Prob,
+      rolling_period = 400,
+      asset_data_daily_raw = starting_asset_data_ask_daily,
+      mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+      trade_sd_fact = trade_sd_fact,
+      currency_conversion = currency_conversion,
+      Network_Name = "15_min_macro",
+      trade_samples = 5000,
+      trade_select_samples = 5000
+    ) %>%
+      pluck('result')
+    tictoc::toc()
+
+    if(!is.null(analysis_info)) {
+      c = c + 1
+      analysis_data <-
+        analysis_info[[1]] %>%
+        mutate(
+          trade_sd_fact1 = trade_params$trade_sd_fact1[i] %>% as.numeric(),
+          trade_sd_fact2 = trade_params$trade_sd_fact2[i] %>% as.numeric(),
+          trade_sd_fact3 = trade_params$trade_sd_fact3[i] %>% as.numeric(),
+          trade_sd_fact4 = trade_params$trade_sd_fact4[i] %>% as.numeric(),
+          sd_AVG_Prob = trade_params$sd_AVG_Prob[i] %>% as.numeric(),
+          stop_factor = trade_params$stop_factor[i] %>% as.numeric(),
+          profit_factor = trade_params$profit_factor[i] %>% as.numeric()
+        )
+
+      analysis_data_asset <-
+        analysis_info[[2]] %>%
+        mutate(
+          trade_sd_fact1 = trade_params$trade_sd_fact1[i] %>% as.numeric(),
+          trade_sd_fact2 = trade_params$trade_sd_fact2[i] %>% as.numeric(),
+          trade_sd_fact3 = trade_params$trade_sd_fact3[i] %>% as.numeric(),
+          trade_sd_fact4 = trade_params$trade_sd_fact4[i] %>% as.numeric(),
+          sd_AVG_Prob = trade_params$sd_AVG_Prob[i] %>% as.numeric(),
+          stop_factor = trade_params$stop_factor[i] %>% as.numeric(),
+          profit_factor = trade_params$profit_factor[i] %>% as.numeric()
+        )
+
+      if(c == 1 & write_table_now == TRUE) {
+        write_table_sql_lite(.data = analysis_data,
+                             table_name = "LM_15min_markov",
+                             conn = db_con )
+        write_table_sql_lite(.data = analysis_data_asset,
+                             table_name = "LM_15min_markov_asset",
+                             conn = db_con )
+      } else {
+        append_table_sql_lite(.data = analysis_data,
+                              table_name = "LM_15min_markov",
+                              conn = db_con)
+        append_table_sql_lite(.data = analysis_data_asset,
+                              table_name = "LM_15min_markov_asset",
+                              conn = db_con)
+      }
+    }
+
   }
 
 }
@@ -694,4 +767,156 @@ for (i in 1:dim(trade_params)[1]) {
 test <-
   DBI::dbGetQuery(conn = db_con,
                   "SELECT * FROM LM_15min_markov")
+
+# ------------------------------------------------
+
+dates_to_check <- starting_asset_data_ask_daily %>%
+  pull(Date) %>% unique() %>% keep( ~ .x <= "2025-01-20") %>% unlist()
+dates_to_check_sample <- dates_to_check %>% sample(size = 1000)
+dates_to_check_sample_cond <-
+  dates_to_check %>% keep( ~ .x <= "2021-01-20") %>% unlist() %>% sample(5)
+c = 0
+
+for (i in 10737:dim(trade_params)[1]) {
+  for (j in 1:length(dates_to_check)) {
+
+    c = c + 1
+
+    loop_data <- starting_asset_data_ask_daily  %>%
+      filter(Date >= dates_to_check_sample[j]) %>%
+      group_by(Asset) %>%
+      slice_head(n = 15000) %>%
+      ungroup()
+
+    testing_data <-
+      get_15_min_markov_trades_markov_LM(
+        new_15_data_ask = loop_data,
+        profit_factor  = 18,
+        stop_factor  = 13,
+        risk_dollar_value = 10,
+        trade_sd_fact = 0,
+        rolling_period = 400,
+        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+        currency_conversion = currency_conversion,
+        LM_period_1 = LM_period_1,
+        LM_period_2 = LM_period_2,
+        LM_period_3 = LM_period_3,
+        LM_period_4 = LM_period_4,
+        MA_lag1 = MA_lag1,
+        MA_lag2 = MA_lag2,
+        sd_divides = seq(0.25,2,0.25),
+        quantile_divides = seq(0.1,0.9, 0.1)
+      )
+
+    trade_sd_fact1 <- trade_params$trade_sd_fact1[i] %>% as.numeric()
+    trade_sd_fact2 <- trade_params$trade_sd_fact2[i] %>% as.numeric()
+    trade_sd_fact3 <- trade_params$trade_sd_fact3[i] %>% as.numeric()
+    trade_sd_fact4 <- trade_params$trade_sd_fact4[i] %>% as.numeric()
+    sd_AVG_Prob <- trade_params$sd_AVG_Prob[i] %>% as.numeric()
+    stop_factor <- trade_params$stop_factor[i] %>% as.numeric()
+    profit_factor <- trade_params$profit_factor[i] %>% as.numeric()
+
+
+    analysis_info <- get_analysis_15min_LM(
+      modelling_data_for_trade_tag = testing_data,
+      profit_factor  = profit_factor,
+      stop_factor  = stop_factor,
+      risk_dollar_value = 10,
+      trade_sd_fact1 = trade_sd_fact1,
+      trade_sd_fact2 = trade_sd_fact2,
+      trade_sd_fact3 = trade_sd_fact3,
+      trade_sd_fact4 = trade_sd_fact4,
+      sd_AVG_Prob = sd_AVG_Prob,
+      rolling_period = 400,
+      asset_data_daily_raw = loop_data,
+      mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+      trade_sd_fact = trade_sd_fact,
+      currency_conversion = currency_conversion,
+      Network_Name = "15_min_macro"
+    )
+
+    analysis_data <-
+      analysis_info[[1]] %>%
+      mutate(
+        trade_sd_fact1 = trade_params$trade_sd_fact1[i] %>% as.numeric(),
+        trade_sd_fact2 = trade_params$trade_sd_fact2[i] %>% as.numeric(),
+        trade_sd_fact3 = trade_params$trade_sd_fact3[i] %>% as.numeric(),
+        trade_sd_fact4 = trade_params$trade_sd_fact4[i] %>% as.numeric(),
+        sd_AVG_Prob = trade_params$sd_AVG_Prob[i] %>% as.numeric(),
+        stop_factor = trade_params$stop_factor[i] %>% as.numeric(),
+        profit_factor = trade_params$profit_factor[i] %>% as.numeric(),
+        sim_date = dates_to_check_sample[j]
+      )
+
+    analysis_data_asset <-
+      analysis_info[[2]] %>%
+      mutate(
+        trade_sd_fact1 = trade_params$trade_sd_fact1[i] %>% as.numeric(),
+        trade_sd_fact2 = trade_params$trade_sd_fact2[i] %>% as.numeric(),
+        trade_sd_fact3 = trade_params$trade_sd_fact3[i] %>% as.numeric(),
+        trade_sd_fact4 = trade_params$trade_sd_fact4[i] %>% as.numeric(),
+        sd_AVG_Prob = trade_params$sd_AVG_Prob[i] %>% as.numeric(),
+        stop_factor = trade_params$stop_factor[i] %>% as.numeric(),
+        profit_factor = trade_params$profit_factor[i] %>% as.numeric(),
+        sim_date = dates_to_check_sample[j]
+      )
+
+    if(c == 1 & write_table_now == TRUE) {
+      write_table_sql_lite(.data = analysis_data,
+                           table_name = "LM_15min_markov",
+                           conn = db_con )
+      write_table_sql_lite(.data = analysis_data_asset,
+                           table_name = "LM_15min_markov_asset",
+                           conn = db_con )
+    } else {
+      append_table_sql_lite(.data = analysis_data,
+                            table_name = "LM_15min_markov",
+                            conn = db_con)
+      append_table_sql_lite(.data = analysis_data_asset,
+                            table_name = "LM_15min_markov_asset",
+                            conn = db_con)
+    }
+
+  }
+
+
+}
+
+test <-
+  DBI::dbGetQuery(conn = db_con,
+                  "SELECT * FROM LM_15min_markov") %>%
+  filter(Trades >= 500)
+
+names(test)
+
+summary_strat <-
+  test %>%
+  group_by(
+    across(matches(c("trade_sd_fact1", "trade_sd_fact2", "trade_sd_fact3",
+                     "trade_sd_fact4", "stop_factor", "profit_factor"), ignore.case = FALSE))
+  ) %>%
+  summarise(
+    risk_return_mid = mean(risk_weighted_return),
+    risk_return_upper = quantile(risk_weighted_return, 0.75),
+    risk_return_lower = quantile(risk_weighted_return, 0.25),
+    average_trades = mean(Trades),
+    low_trades = quantile(Trades, 0.25),
+    upper_trades = quantile(Trades, 0.75)
+  )
+
+lm_strat_form <- create_lm_formula(dependant = "risk_weighted_return",
+                                   independant = c("trade_sd_fact1", "trade_sd_fact2", "trade_sd_fact3",
+                                                   "trade_sd_fact4", "stop_factor", "profit_factor") )
+lm_strat <-
+  lm(data = test, formula = lm_strat_form)
+summary(lm_strat)
+
+pred = predict(object = lm_strat, newdata = trade_params, interval = "prediction")
+
+pred_data_strat <- trade_params %>%
+  mutate(
+    pred_lower = pred[,2] %>% as.vector() %>% as.numeric(),
+    pred_mid = pred[,1]%>% as.vector() %>% as.numeric(),
+    pred_high = pred[,3]%>% as.vector() %>% as.numeric()
+  )
 
