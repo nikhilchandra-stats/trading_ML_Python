@@ -156,7 +156,7 @@ get_sup_res_tagged_trades <- function(sup_res_data = squeeze_detection,
   tagged_trades <-
     sup_res_data %>%
     filter(!is.na(Sup_Diff_H1_XX_slow), !is.na(Res_Diff_H1_XX_run_mean)) %>%
-    group_by(Asset) %>%
+    # group_by(Asset) %>%
     mutate(
       trade_col =
         case_when(
@@ -190,7 +190,7 @@ get_sup_res_tagged_trades <- function(sup_res_data = squeeze_detection,
 #'
 #' @examples
 get_res_sup_trade_analysis <- function(
-    squeeze_detection = squeeze_detection,
+    sup_res_data = squeeze_detection,
     raw_asset_data = starting_asset_data_ask_15M,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
     stop_factor = 16,
@@ -201,32 +201,36 @@ get_res_sup_trade_analysis <- function(
     sd_fac_3 = 3.5,
     trade_direction = "Long",
     currency_conversion = currency_conversion,
-    asset_infor = asset_infor
+    asset_infor = asset_infor,
+    trade_samples = 1000000
 ) {
 
 
   tagged_trades <-
     get_sup_res_tagged_trades(
-      squeeze_detection = squeeze_detection,
+      sup_res_data = squeeze_detection,
       sd_fac_1 = sd_fac_1,
       sd_fac_2 = sd_fac_2,
       sd_fac_3 = sd_fac_3,
       trade_direction = trade_direction
-    )
+    )%>%
+    filter(trade_col == trade_direction) %>%
+    ungroup() %>%
+    slice_sample(n = trade_samples, replace = FALSE)
 
-  tagged_trades <-
-    squeeze_detection %>%
-    filter(!is.na(Sup_Diff_H1_XX_slow), !is.na(Res_Diff_H1_XX_run_mean)) %>%
-    group_by(Asset) %>%
-    mutate(
-      trade_col =
-        case_when(
-          Sup_Diff_H1_XX <= Sup_Diff_H1_XX_run_mean - sd_fac_1*Sup_Diff_H1_XX_run_sd ~ trade_direction,
-          Sup_Diff_H1_XX_slow <= Sup_Diff_H1_XX_slow_run_mean - sd_fac_2*Sup_Diff_H1_XX_slow_run_sd ~ trade_direction,
-          Sup_Diff_H1_XX_very_slow <= Sup_Diff_H1_XX_very_slow_run_mean - sd_fac_3*Sup_Diff_H1_XX_very_slow_run_sd ~ trade_direction
-        )
-    ) %>%
-    filter(trade_col == trade_direction)
+  # tagged_trades <-
+  #   squeeze_detection %>%
+  #   filter(!is.na(Sup_Diff_H1_XX_slow), !is.na(Res_Diff_H1_XX_run_mean)) %>%
+  #   group_by(Asset) %>%
+  #   mutate(
+  #     trade_col =
+  #       case_when(
+  #         Sup_Diff_H1_XX <= Sup_Diff_H1_XX_run_mean - sd_fac_1*Sup_Diff_H1_XX_run_sd ~ trade_direction,
+  #         Sup_Diff_H1_XX_slow <= Sup_Diff_H1_XX_slow_run_mean - sd_fac_2*Sup_Diff_H1_XX_slow_run_sd ~ trade_direction,
+  #         Sup_Diff_H1_XX_very_slow <= Sup_Diff_H1_XX_very_slow_run_mean - sd_fac_3*Sup_Diff_H1_XX_very_slow_run_sd ~ trade_direction
+  #       )
+  #   ) %>%
+  #   filter(trade_col == trade_direction)
 
   long_bayes_loop_analysis_neg <-
     generic_trade_finder_loop(
@@ -330,7 +334,7 @@ get_res_sup_trade_analysis <- function(
 get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/sup_res_2025-06-11.db"),
                                        min_risk_win = 0.12,
                                        min_risk_perc = 0.1,
-                                       max_win_time = 150,
+                                       max_win_time = 200,
                                        starting_asset_data_ask_H1 = new_H1_data_ask,
                                        starting_asset_data_ask_15M = new_15_data_ask,
                                        mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,

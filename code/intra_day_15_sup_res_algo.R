@@ -1,6 +1,5 @@
 helpeR::load_custom_functions()
 library(neuralnet)
-raw_macro_data <- get_macro_event_data()
 
 all_aud_symbols <- get_oanda_symbols() %>%
   keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
@@ -187,9 +186,9 @@ while(current_time < end_time) {
     total_trades_long <-
       get_sup_res_trades_to_take(
         db_path = sup_res_trade_db,
-        min_risk_win = 0.10,
-        min_risk_perc = 0.1,
-        max_win_time = 150,
+        min_risk_win = 0.1,
+        min_risk_perc = 0.01,
+        max_win_time = 200,
         starting_asset_data_ask_H1 = new_H1_data_ask,
         starting_asset_data_ask_15M = new_15_data_ask,
         trade_direction = "Long",
