@@ -457,7 +457,7 @@ while (current_time < end_time) {
 
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      bind_rows(trades_3) %>%
+      # bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
       bind_rows(trades_4)
