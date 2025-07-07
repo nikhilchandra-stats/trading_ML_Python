@@ -99,7 +99,7 @@ trade_params2 <-
       )
   )
 
-for (i in 1:dim(trade_params2)[1] ) {
+for (i in 6:dim(trade_params2)[1] ) {
 
   stop_factor <- trade_params2$stop_factor[i] %>% as.numeric()
   profit_factor <- trade_params2$profit_factor[i] %>% as.numeric()
@@ -224,7 +224,7 @@ test <- raw_results %>%
   mutate(
     risk_weighted_return = round(risk_weighted_return, 5)
   ) %>%
-  group_by(sd_fac1, profit_factor, stop_factor) %>%
+  group_by(sd_fac1, profit_factor, stop_factor, sd_fac2) %>%
   summarise(
 
     min_return = quantile(risk_weighted_return, 0.01),

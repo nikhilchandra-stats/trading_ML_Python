@@ -420,18 +420,20 @@ get_cor_trade_results <-
         filter(!is.na(trade_col))
     }
 
-    asset_in_trades <- tagged_trades %>%
-      ungroup() %>%
-      distinct(Asset) %>%
-      pull(Asset) %>%
-      unique()
-
-    raw_asset_data <-
-      raw_asset_data %>%
-      ungroup() %>%
-      filter(Asset %in% asset_in_trades)
 
     if(return_analysis == TRUE) {
+
+      asset_in_trades <- tagged_trades %>%
+        ungroup() %>%
+        distinct(Asset) %>%
+        pull(Asset) %>%
+        unique()
+
+      raw_asset_data <-
+        raw_asset_data %>%
+        ungroup() %>%
+        filter(Asset %in% asset_in_trades)
+
       long_bayes_loop_analysis_neg <-
         generic_trade_finder_loop(
           tagged_trades = tagged_trades ,
@@ -525,4 +527,236 @@ get_cor_trade_results <-
     }
 
   }
+
+
+#' get_pairs_cor_reg_trades_to_take
+#'
+#' @param db_path
+#' @param min_risk_win
+#' @param return_filter_col
+#' @param max_win_time
+#' @param starting_asset_data_ask_15M
+#' @param starting_asset_data_bid_15M
+#' @param mean_values_by_asset
+#' @param trade_direction
+#' @param risk_dollar_value
+#' @param currency_conversion
+#' @param asset_infor
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_pairs_cor_reg_trades_to_take <- function(
+    db_path = glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/pairs_2025-07-03.db"),
+    min_risk_win = 0.01,
+    return_filter_col = "median_return",
+    max_win_time = 150,
+    starting_asset_data_ask_15M = new_15_data_ask,
+    starting_asset_data_bid_15M = new_15_data_bid,
+    mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
+    trade_direction = "Long",
+    risk_dollar_value = 10,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor) {
+
+  db_con <- connect_db(db_path)
+
+  current_analysis <-
+    DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM pairs_lm") %>%
+    group_by(sd_fac1, sd_fac2, pos_or_neg, profit_factor, stop_factor, trade_direction) %>%
+    summarise(
+
+      min_return = quantile(risk_weighted_return, 0.01),
+      low_return = quantile(risk_weighted_return, 0.25),
+      mean_return = mean(risk_weighted_return, na.rm = T),
+      median_return = median(risk_weighted_return, na.rm = T),
+      high_return = quantile(risk_weighted_return, 0.75),
+      max_return = quantile(risk_weighted_return, 0.99),
+
+      win_time_hours = median(win_time_hours, na.rm = T)
+
+    ) %>%
+    mutate(
+      low_to_high_ratio = abs(high_return)/abs(low_return)
+    ) %>%
+    filter(win_time_hours < max_win_time) %>%
+    filter(!!as.name(return_filter_col) >= min_risk_win) %>%
+    group_by(sd_fac1, sd_fac2, pos_or_neg, profit_factor, stop_factor, trade_direction) %>%
+    slice_min(win_time_hours)
+
+  all_trades_for_today <- list()
+
+  tictoc::tic()
+
+  for (k in 1:dim(current_analysis)[1] ) {
+
+    samples_for_MLE = 0.5
+    test_samples = 0.4
+    regression_train_prop = 0.5
+    dependant_period = 10
+
+    stop_factor <- current_analysis$stop_factor[k] %>% as.numeric()
+    profit_factor <- current_analysis$profit_factor[k] %>% as.numeric()
+    win_time_hours <- current_analysis$win_time_hours[k] %>% as.numeric()
+    sd_fac1 <- current_analysis$sd_fac1[k] %>% as.numeric()
+    sd_fac2 <- current_analysis$sd_fac2[k] %>% as.numeric()
+    pos_or_neg <- current_analysis$pos_or_neg[k] %>% as.character()
+    trade_direction <- current_analysis$trade_direction[k] %>% as.character()
+
+    cor_data_list <-
+      get_correlation_reg_dat(
+        asset_data_to_use = starting_asset_data_bid_15M,
+        # asset_data_to_use = sim_data_bid,
+        samples_for_MLE = samples_for_MLE,
+        test_samples = test_samples,
+        regression_train_prop = regression_train_prop,
+        dependant_period = dependant_period,
+        assets_to_filter = c(
+          c("AUD_USD", "NZD_USD"),
+          c("EUR_USD", "GBP_USD"),
+          c("EUR_JPY", "EUR_USD"),
+          c("GBP_USD", "EUR_GBP"),
+          c("AU200_AUD", "SPX500_USD"),
+          c("US2000_USD", "SPX500_USD"),
+          c("WTICO_USD", "BCO_USD"),
+          c("XAG_USD", "XAU_USD"),
+          c("USD_CAD", "USD_JPY")
+        )
+      )
+
+    testing_data <- cor_data_list[[1]]
+    testing_ramapped <-
+      testing_data %>% dplyr::select(-c(Price, Open, High, Low))
+
+    mean_values_by_asset_for_loop_15_bid =
+      wrangle_asset_data(
+        asset_data_daily_raw = starting_asset_data_bid_15M,
+        summarise_means = TRUE
+      )
+    mean_values_by_asset_for_loop_15_ask =
+      wrangle_asset_data(
+        asset_data_daily_raw = starting_asset_data_ask_15M,
+        summarise_means = TRUE
+      )
+
+    # get_cor_trade_results
+    #safely_get_trades
+    trade_results <-
+      get_cor_trade_results(
+        testing_data = testing_ramapped,
+        raw_asset_data = starting_asset_data_ask_15M,
+        # raw_asset_data = sim_data_ask,
+        sd_fac1 = sd_fac1,
+        sd_fac2 = sd_fac2,
+        stop_factor = stop_factor,
+        profit_factor = profit_factor,
+        trade_direction = trade_direction,
+        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        risk_dollar_value = risk_dollar_value,
+        return_analysis = FALSE,
+        pos_or_neg = pos_or_neg
+      )
+
+    tagged_trades <- trade_results[[1]]
+
+    if(dim(tagged_trades)[1] > 0) {
+
+      temp_trades <- tagged_trades %>%
+        ungroup() %>%
+        slice_max(Date)
+
+      if(dim(temp_trades)[1] > 0) {
+        temp_trades2 <- temp_trades %>%
+          filter(!is.na(trade_col), trade_col == trade_direction) %>%
+          mutate(
+            win_time_hours = win_time_hours,
+            sd_fac1 = sd_fac1,
+            sd_fac2 = sd_fac2,
+            trade_direction = trade_direction,
+            stop_factor = stop_factor,
+            profit_factor = profit_factor
+          )
+      }
+
+      if( dim(temp_trades2)[1] > 0) {
+        all_trades_for_today[[k]] <- temp_trades2
+      } else {
+        all_trades_for_today[[k]] <- NULL
+      }
+
+    }
+
+  }
+
+  tictoc::toc()
+
+  all_trades_for_today_dfr <- all_trades_for_today %>%
+    keep(~ !is.null(.x)) %>%
+    map_dfr(bind_rows) %>%
+    dplyr::select(Date, Asset, trade_col, trade_direction, win_time_hours,
+                  sd_fac1, sd_fac2, stop_factor, profit_factor)
+
+  if(dim(all_trades_for_today_dfr)[1] > 0) {
+
+    returned_data <-
+      all_trades_for_today_dfr %>%
+      ungroup() %>%
+      left_join(starting_asset_data_ask_15M %>%
+                  dplyr::select(Date, Asset, Price, Open, High, Low)) %>%
+      left_join(current_analysis  ) %>%
+      group_by(Asset) %>%
+      slice_min(win_time_hours) %>%
+      ungroup() %>%
+      dplyr::group_by(Date, Asset,  Price, Low, High, Open, trade_col) %>%
+      slice_max(profit_factor) %>%
+      ungroup()
+
+    stops_profs <- returned_data %>%
+      distinct(Date, Asset, stop_factor, profit_factor, Price, Low, High, Open)
+
+    stops_profs_distinct <- stops_profs %>% distinct(stop_factor, profit_factor)
+
+    returned_data2 <- list()
+
+    for (o in 1:dim(stops_profs_distinct)[1] ) {
+
+      stop_factor <- stops_profs$stop_factor[o] %>% as.numeric()
+      profit_factor <- stops_profs$profit_factor[o] %>% as.numeric()
+
+      returned_data2[[o]] <- generic_trade_finder_loop(
+        tagged_trades = returned_data ,
+        asset_data_daily_raw = starting_asset_data_ask_15M,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset_for_loop_15_ask
+      ) %>%
+        rename(Date = dates, Asset = asset) %>%
+        mutate(stop_factor = stop_factor,
+               profit_factor = profit_factor)
+
+    }
+
+    returned_data3 <-
+      returned_data2 %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_min(profit_factor) %>%
+      ungroup()
+
+  } else {
+    returned_data3 <- NULL
+  }
+
+  DBI::dbDisconnect(db_con)
+  rm(db_con)
+
+  return(returned_data3)
+
+}
 
