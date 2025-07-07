@@ -186,7 +186,7 @@ while(current_time < end_time) {
     total_trades_long <-
       get_sup_res_trades_to_take(
         db_path = sup_res_trade_db,
-        min_risk_win = 0.1,
+        min_risk_win = 0.09,
         min_risk_perc = 0.01,
         max_win_time = 200,
         starting_asset_data_ask_H1 = new_H1_data_ask,

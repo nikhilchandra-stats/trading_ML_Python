@@ -440,18 +440,41 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
     stops_profs <- returned_data %>%
       distinct(Date, Asset, stop_factor, profit_factor, Price, Low, High, Open)
 
-    returned_data2 <- generic_trade_finder_loop(
-      tagged_trades = returned_data ,
-      asset_data_daily_raw = starting_asset_data_ask_15M,
-      stop_factor = stop_factor,
-      profit_factor =profit_factor,
-      trade_col = "trade_col",
-      date_col = "Date",
-      start_price_col = "Price",
-      mean_values_by_asset = mean_values_by_asset
-    ) %>%
-      rename(Date = dates, Asset = asset) %>%
-      left_join(stops_profs)
+    stops_profs_distinct <- stops_profs %>% distinct(stop_factor, profit_factor)
+
+    returned_data2 <- list()
+
+    for (o in 1:dim(stops_profs_distinct)[1] ) {
+
+      stop_factor <- stops_profs$stop_factor[o] %>% as.numeric()
+      profit_factor <- stops_profs$profit_factor[o] %>% as.numeric()
+
+      temp_data <- returned_data %>%
+        filter(stop_factor == stop_factor,
+               profit_factor == profit_factor)
+
+      returned_data2[[o]] <-generic_trade_finder_loop(
+        tagged_trades = temp_data ,
+        asset_data_daily_raw = starting_asset_data_ask_15M,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset
+      ) %>%
+        rename(Date = dates, Asset = asset) %>%
+        mutate(stop_factor = stop_factor,
+               profit_factor = profit_factor)
+
+    }
+
+    returned_data3 <-
+      returned_data2 %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_min(profit_factor) %>%
+      ungroup()
 
 
   } else {

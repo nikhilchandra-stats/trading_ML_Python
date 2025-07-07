@@ -109,19 +109,19 @@ trade_params <- c(2,3,4,5,6) %>%
   )
 
 trade_params_p1 <-
-  seq(17,22, 1) %>%
+  seq(12,15, 1) %>%
   map_dfr(
     ~ trade_params %>%
       mutate(
         stop_factor = .x
       ) %>%
       mutate(
-        profit_factor = .x
+        profit_factor = 1.25*.x
       )
   )
 
 trade_params_p2 <-
-  seq(17,22, 1) %>%
+  seq(12,15, 1) %>%
   map_dfr(
     ~ trade_params %>%
       mutate(
@@ -132,29 +132,38 @@ trade_params_p2 <-
       )
   )
 
-# trade_params_p3 <-
-#   seq(12,20, 1) %>%
-#   map_dfr(
-#     ~ trade_params %>%
-#       mutate(
-#         stop_factor = .x
-#       ) %>%
-#       mutate(
-#         profit_factor = 2*.x
-#       )
-#   )
+trade_params_p3 <-
+  seq(12,20, 1) %>%
+  map_dfr(
+    ~ trade_params %>%
+      mutate(
+        stop_factor = .x
+      ) %>%
+      mutate(
+        profit_factor = 2*.x
+      )
+  )
 
 trade_params <-
   list(
     trade_params_p1,
-    trade_params_p2
-    # trade_params_p3
+    trade_params_p2,
+    trade_params_p3
   ) %>%
   reduce(bind_rows)
 
-XX = 150
-rolling_slide = 300
+XX = 400
+rolling_slide = 250
 pois_period = 10
+
+
+# XX = 250
+# rolling_slide = 100
+# pois_period = 10
+
+# XX = 150
+# rolling_slide = 300
+# pois_period = 10
 gc()
 
 # XX = 25
@@ -215,11 +224,13 @@ for (j in 1:dim(trade_params)[1]) {
       pois_period = pois_period
     )
 
+  gc()
+
   tictoc::toc()
 
   if(create_new_table == TRUE & j == 1) {
-    write_table_sql_lite(conn = db_con, .data = analysis_data_total, table_name = "sup_res")
-    write_table_sql_lite(conn = db_con, .data = analysis_data_asset, table_name = "sup_res_asset")
+    # write_table_sql_lite(conn = db_con, .data = analysis_data_total, table_name = "sup_res")
+    # write_table_sql_lite(conn = db_con, .data = analysis_data_asset, table_name = "sup_res_asset")
     create_new_table <- FALSE
   }
 
@@ -257,9 +268,11 @@ current_results <- current_results %>%
     Dollars_quantile_75 = round(mean(Dollars_quantile_75, na.rm = T)),
     max_Dollars = round(mean(max_Dollars, na.rm = T))
   ) %>%
+  filter(Trades > 8000) %>%
   mutate(
     risk_weighted_return = (maximum_win/minimal_loss)*(Perc) - (1 - Perc)
-  )
+  ) %>%
+  filter(risk_weighted_return > 0.05, profit_factor > stop_factor)
 
 setdiff(names(previous_results), names(current_results))
 
