@@ -140,7 +140,6 @@ account_number_short <- "001-011-1615559-004"
 account_name_short <- "corr_no_macro"
 
 gc()
-safely_get_trades <- safely(get_cor_trade_results, otherwise = NULL)
 
 while(current_time < end_time) {
 
@@ -148,6 +147,8 @@ while(current_time < end_time) {
   current_minute <- lubridate::minute(current_time)
   current_hour <- lubridate::hour(current_time)
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
+
+  start_date = (lubridate::add_with_rollback(current_date, -years(2)))
 
   if( (current_minute > 0 & current_minute < 3 & data_updated == 0)|
       (current_minute > 15 & current_minute < 18 & data_updated == 0)|
@@ -181,14 +182,16 @@ tictoc::tic()
                             end_date_day = current_date,
                             time_frame = "M15", bid_or_ask = "ask",
                             db_location = db_location)%>%
-      distinct()
+      distinct() %>%
+      filter(Date >= start_date)
 
     new_15_data_bid <-
       updated_data_internal(starting_asset_data = starting_asset_data_bid_15M,
                             end_date_day = current_date,
                             time_frame = "M15", bid_or_ask = "bid",
                             db_location = db_location)%>%
-      distinct()
+      distinct() %>%
+      filter(Date >= start_date)
 
     data_updated <- 1
 
@@ -231,14 +234,16 @@ tictoc::tic()
         asset_infor = asset_infor
       )
 
-    total_trades <-
-      total_trades_long %>%
-      slice_max(Date) %>%
-      filter(!is.na(trade_col))
+    if(!is.null(total_trades_long)) {
+      total_trades <-
+        total_trades_long %>%
+        slice_max(Date) %>%
+        filter(!is.na(trade_col))
 
-    if(dim(total_trades)[1] > 0) {
-      check_timing <- difftime(current_time, total_trades$Date[1], units = "mins") %>% as.numeric()
-      if( check_timing > 25) {total_trades = NULL}
+      if(dim(total_trades)[1] > 0) {
+        check_timing <- difftime(current_time, total_trades$Date[1], units = "mins") %>% as.numeric()
+        if( check_timing > 25) {total_trades = NULL}
+      }
     }
 
     tictoc::toc()
