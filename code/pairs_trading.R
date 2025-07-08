@@ -258,3 +258,382 @@ testing <- test %>%
 
 DBI::dbDisconnect(db_con)
 
+#------------------------------------------Investigate Different Methods
+
+
+#' get_correlation_reg_dat_v2
+#'
+#' @param asset_data_to_use
+#' @param samples_for_MLE
+#' @param test_samples
+#' @param regression_train_prop
+#' @param dependant_period
+#' @param assets_to_filter
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_correlation_reg_dat_v2 <- function(
+    asset_data_to_use = starting_asset_data_bid_15,
+    samples_for_MLE = 0.5,
+    test_samples = 0.4,
+    regression_train_prop = 0.5,
+    dependant_period = 10,
+    assets_to_filter = c(c("AUD_USD", "NZD_USD"),
+                         c("EUR_USD", "GBP_USD"),
+                         c("EUR_JPY", "EUR_USD"),
+                         c("GBP_USD", "EUR_GBP"),
+                         c("AU200_AUD", "SPX500_USD"),
+                         c("US2000_USD", "SPX500_USD"),
+                         c("WTICO_USD", "BCO_USD"),
+                         c("XAG_USD", "XAU_USD"),
+                         c("USD_CAD", "USD_JPY"),
+                         c("SG30_SGD", "SPX500_USD"),
+                         c("NZD_CHF", "NZD_USD"),
+                         c("SPX500_USD", "XAU_USD"),
+                         c("NZD_CHF", "USD_CHF"),
+                         c("EU50_EUR", "DE30_EUR"),
+                         c("EU50_EUR", "SPX500_USD"),
+                         c("DE30_EUR", "SPX500_USD"),
+                         c("USD_SEK", "EUR_SEK"))
+) {
+
+  asset_joined_copulas <-
+    get_correlation_data_set_v2(
+      asset_data_to_use = asset_data_to_use,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples,
+      assets_to_filter = assets_to_filter
+    ) %>%
+    group_by(Asset) %>%
+    mutate(
+      dependant_var = log(lead(Price, dependant_period)/Price)
+    ) %>%
+    ungroup()
+
+  regressors <- names(asset_joined_copulas) %>%
+    keep(~ str_detect(.x, "quantiles|_cor|tangent|log"))
+  lm_formula <- create_lm_formula(dependant = "dependant_var",
+                                  independant = regressors)
+
+  train_data <- asset_joined_copulas %>%
+    filter(!is.na(dependant_var)) %>%
+    group_by(Asset) %>%
+    slice_head(prop = regression_train_prop) %>%
+    ungroup() %>%
+    filter(Asset %in% assets_to_filter)
+
+  lm_model <- lm(formula = lm_formula, data = train_data)
+  summary(lm_model)
+
+  training_predictions <-
+    predict.lm(object = lm_model, newdata = train_data) %>% as.numeric()
+
+  mean_sd_predictons <-train_data%>%
+    mutate(
+      pred = training_predictions
+    ) %>%
+    group_by(Asset) %>%
+    summarise(
+      mean_pred = mean(pred, na.rm = T),
+      sd_pred = sd(pred, na.rm = T)
+    )
+
+  testing_data <- asset_joined_copulas %>%
+    group_by(Asset) %>%
+    slice_tail(prop = (1 - regression_train_prop) ) %>%
+    ungroup() %>%
+    filter(Asset %in% assets_to_filter)
+
+  predictions <- predict.lm(object = lm_model, newdata = testing_data) %>% as.numeric()
+
+  testing_data <- testing_data %>%
+    mutate(
+      pred =predictions
+    ) %>%
+    left_join(mean_sd_predictons)
+
+  cor_summs_mean <-
+    train_data %>%
+    dplyr::select(contains("_cor"))
+
+  new_names_cor_summs <-
+    names(cor_summs_mean) %>%
+    map(
+      ~
+        paste0(.x, "_mean")
+    ) %>%
+    unlist()
+
+  names(cor_summs_mean) <- new_names_cor_summs
+
+  cor_summs_mean <- cor_summs_mean %>%
+    summarise(
+      across(
+        .cols = everything(),
+        .fns = ~ mean(., na.rm = T)
+      )
+    )
+
+  cor_summs_sd <-
+    train_data %>%
+    dplyr::select(contains("_cor"))
+
+  new_names_cor_summs <-
+    names(cor_summs_sd) %>%
+    map(
+      ~
+        paste0(.x, "_sd")
+    ) %>%
+    unlist()
+
+  names(cor_summs_sd) <- new_names_cor_summs
+
+  cor_summs_sd <- cor_summs_sd %>%
+    summarise(
+      across(
+        .cols = everything(),
+        .fns = ~ sd(., na.rm = T)
+      )
+    )
+
+  testing_data2 <-
+    testing_data %>%
+    bind_cols(cor_summs_mean)%>%
+    bind_cols(cor_summs_sd)
+
+  return(list(testing_data2, lm_model))
+
+}
+
+cor_data_list <-
+  get_correlation_reg_dat_v2(
+    asset_data_to_use = starting_asset_data_bid_15,
+    samples_for_MLE = 0.5,
+    test_samples = 0.4,
+    regression_train_prop = 0.5,
+    dependant_period = 10,
+    assets_to_filter = c(c("AUD_USD", "NZD_USD"),
+                         c("EUR_USD", "GBP_USD"),
+                         c("EUR_JPY", "EUR_USD"),
+                         c("GBP_USD", "EUR_GBP"),
+                         c("AU200_AUD", "SPX500_USD"),
+                         c("US2000_USD", "SPX500_USD"),
+                         c("WTICO_USD", "BCO_USD"),
+                         c("XAG_USD", "XAU_USD"),
+                         c("USD_CAD", "USD_JPY"),
+                         c("SG30_SGD", "SPX500_USD"),
+                         c("NZD_CHF", "NZD_USD"),
+                         c("SPX500_USD", "XAU_USD"),
+                         c("NZD_CHF", "USD_CHF"),
+                         c("EU50_EUR", "DE30_EUR"),
+                         c("EU50_EUR", "SPX500_USD"),
+                         c("DE30_EUR", "SPX500_USD"),
+                         c("USD_SEK", "EUR_SEK"))
+  )
+testing_data <- cor_data_list[[1]]
+testing_ramapped <-
+  testing_data2 %>% dplyr::select(-c(Price, Open, High, Low))
+mean_values_by_asset_for_loop_15_ask =
+  wrangle_asset_data(
+    asset_data_daily_raw = starting_asset_data_ask_15,
+    summarise_means = TRUE
+  )
+
+#' get_cor_trade_results
+#'
+#' @param testing_data
+#' @param raw_asset_data
+#' @param sd_fac1
+#' @param sd_fac2
+#' @param stop_factor
+#' @param profit_factor
+#' @param trade_direction
+#' @param mean_values_by_asset_for_loop
+#' @param currency_conversion
+#' @param asset_infor
+#' @param risk_dollar_value
+#' @param return_analysis
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_cor_trade_results_v2 <-
+  function(
+    testing_data = testing_ramapped,
+    raw_asset_data = starting_asset_data_ask_15,
+    sd_fac1 = 2,
+    sd_fac2 = 2,
+    AUD_USD_sd = 0,
+    NZD_USD_sd = 0,
+    EUR_JPY_SD = 0,
+    GBP_JPY_SD = 0,
+    stop_factor = 17,
+    profit_factor = 25,
+    trade_direction = "Long",
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    risk_dollar_value = 10,
+    return_analysis = TRUE,
+    pos_or_neg = "neg"
+  ) {
+
+    if(pos_or_neg == "pos") {
+      tagged_trades <-
+        testing_data %>%
+        mutate(
+          trade_col =
+            case_when(
+              pred >= mean_pred + sd_pred*sd_fac1 ~ trade_direction
+              # pred <= mean_pred - sd_pred*sd_fac2 ~ trade_direction
+
+              # pred >= mean_pred + sd_pred*sd_fac1 &
+              #   pred <= mean_pred - sd_pred*sd_fac2 ~ trade_direction
+
+            )
+        ) %>%
+        filter(!is.na(trade_col))
+    }
+
+    # param_tracking
+    # NZD_USD sd: 0, NZD_USD_tangent_angle2 < 0, (AUD_USD_NZD_USD_cor <= AUD_USD_NZD_USD_cor_mean - AUD_USD_NZD_USD_cor_sd*0)
+    # AUD_USD sd: 0, AUD_USD_tangent_angle1 < 0, (AUD_USD_NZD_USD_cor >= AUD_USD_NZD_USD_cor_mean + AUD_USD_NZD_USD_cor_sd*0)
+    # pred <= mean_pred - sd_pred*sd_fac1 ~ trade_direction
+    # EUR_JPY: EUR_JPY_SD= 0, (EUR_JPY_GBP_JPY_cor >= EUR_JPY_GBP_JPY_cor_mean + EUR_JPY_GBP_JPY_cor_sd*EUR_JPY_SD) &
+    #   Asset == "EUR_JPY" & EUR_JPY_tangent_angle1 < 0
+
+    names(testing_data) %>%
+      keep(~ str_detect(.x, "tangent"))
+
+    if(pos_or_neg == "neg") {
+      tagged_trades <-
+        testing_data %>%
+        mutate(
+          trade_col =
+            case_when(
+              # pred <= mean_pred - sd_pred*sd_fac1 ~ trade_direction,
+              # (AUD_USD_NZD_USD_cor <= AUD_USD_NZD_USD_cor_mean - AUD_USD_NZD_USD_cor_sd*NZD_USD_sd) &
+              #   Asset == "NZD_USD" & NZD_USD_tangent_angle2 < 0~ trade_direction,
+              # (AUD_USD_NZD_USD_cor >= AUD_USD_NZD_USD_cor_mean + AUD_USD_NZD_USD_cor_sd*AUD_USD_sd) &
+              #   Asset == "AUD_USD" & AUD_USD_tangent_angle1 < 0~ trade_direction,
+              # (EUR_JPY_GBP_JPY_cor >= EUR_JPY_GBP_JPY_cor_mean + EUR_JPY_GBP_JPY_cor_sd*EUR_JPY_SD) &
+              #   Asset == "EUR_JPY" & EUR_JPY_tangent_angle1 < 0~ trade_direction,
+
+              (EUR_JPY_GBP_JPY_cor <= EUR_JPY_GBP_JPY_cor_mean - EUR_JPY_GBP_JPY_cor_sd*EUR_JPY_SD) &
+                Asset == "GBP_JPY" & EUR_JPY_tangent_angle1 > 0~ trade_direction
+
+            )
+        ) %>%
+        filter(!is.na(trade_col))
+    }
+
+
+    if(return_analysis == TRUE) {
+
+      asset_in_trades <- tagged_trades %>%
+        ungroup() %>%
+        distinct(Asset) %>%
+        pull(Asset) %>%
+        unique()
+
+      raw_asset_data_trade <-
+        raw_asset_data %>%
+        ungroup() %>%
+        filter(Asset %in% asset_in_trades)
+
+      long_bayes_loop_analysis_neg <-
+        generic_trade_finder_loop(
+          tagged_trades = tagged_trades ,
+          asset_data_daily_raw = raw_asset_data_trade,
+          stop_factor = stop_factor,
+          profit_factor =profit_factor,
+          trade_col = "trade_col",
+          date_col = "Date",
+          start_price_col = "Price",
+          mean_values_by_asset = mean_values_by_asset_for_loop
+        )
+
+      trade_timings_neg <-
+        long_bayes_loop_analysis_neg %>%
+        mutate(
+          ending_date_trade = as_datetime(ending_date_trade),
+          dates = as_datetime(dates)
+        ) %>%
+        mutate(Time_Required = (ending_date_trade - dates)/dhours(1) )
+
+      trade_timings_by_asset_neg <- trade_timings_neg %>%
+        mutate(win_loss = ifelse(trade_returns < 0, "loss", "wins") ) %>%
+        group_by(win_loss) %>%
+        summarise(
+          Time_Required = median(Time_Required, na.rm = T)
+        ) %>%
+        pivot_wider(names_from = win_loss, values_from = Time_Required) %>%
+        rename(loss_time_hours = loss,
+               win_time_hours = wins)
+
+      analysis_data_neg <-
+        generic_anlyser(
+          trade_data = long_bayes_loop_analysis_neg %>% rename(Asset = asset),
+          profit_factor = profit_factor,
+          stop_factor = stop_factor,
+          asset_infor = asset_infor,
+          currency_conversion = currency_conversion,
+          asset_col = "Asset",
+          stop_col = "starting_stop_value",
+          profit_col = "starting_profit_value",
+          price_col = "trade_start_prices",
+          trade_return_col = "trade_returns",
+          risk_dollar_value = risk_dollar_value,
+          grouping_vars = "trade_col"
+        ) %>%
+        mutate(
+          sd_fac1 = sd_fac1,
+          pos_or_neg = pos_or_neg,
+          sd_fac2 = sd_fac2
+        ) %>%
+        bind_cols(trade_timings_by_asset_neg)
+
+      analysis_data_asset_neg <-
+        generic_anlyser(
+          trade_data = long_bayes_loop_analysis_neg %>% rename(Asset = asset),
+          profit_factor = profit_factor,
+          stop_factor = stop_factor,
+          asset_infor = asset_infor,
+          currency_conversion = currency_conversion,
+          asset_col = "Asset",
+          stop_col = "starting_stop_value",
+          profit_col = "starting_profit_value",
+          price_col = "trade_start_prices",
+          trade_return_col = "trade_returns",
+          risk_dollar_value = risk_dollar_value,
+          grouping_vars = "Asset"
+        ) %>%
+        mutate(
+          sd_fac1 = sd_fac1,
+          pos_or_neg = pos_or_neg,
+          sd_fac2= sd_fac2
+        ) %>%
+        bind_cols(trade_timings_by_asset_neg)
+
+      # return(
+      #   list(
+      #     analysis_data_neg,
+      #     analysis_data_asset_neg,
+      #     tagged_trades
+      #   )
+      # )
+
+    } else {
+
+      return(
+        list(
+          tagged_trades
+        )
+      )
+
+    }
+
+  }

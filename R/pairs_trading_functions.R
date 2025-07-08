@@ -264,6 +264,260 @@ get_correlation_data_set <- function(
 
 }
 
+#' get_correlation_data_set
+#'
+#' @param asset_data_to_use
+#' @param samples_for_MLE
+#' @param test_samples
+#' @param assets_to_filter
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_correlation_data_set_v2 <- function(
+    asset_data_to_use = starting_asset_data_bid_15,
+    samples_for_MLE = 0.5,
+    test_samples = 0.4,
+    assets_to_filter = c(c("AUD_USD", "NZD_USD"),
+                         c("EUR_USD", "GBP_USD"),
+                         c("EUR_JPY", "EUR_USD"),
+                         c("GBP_USD", "EUR_GBP"),
+                         c("AU200_AUD", "SPX500_USD"),
+                         c("US2000_USD", "SPX500_USD"),
+                         c("WTICO_USD", "BCO_USD"),
+                         c("XAG_USD", "XAU_USD"),
+                         c("USD_CAD", "USD_JPY"),
+                         c("SG30_SGD", "SPX500_USD"),
+                         c("NZD_CHF", "NZD_USD"),
+                         c("SPX500_USD", "XAU_USD"),
+                         c("NZD_CHF", "USD_CHF"),
+                         c("EU50_EUR", "DE30_EUR"),
+                         c("EU50_EUR", "SPX500_USD"),
+                         c("DE30_EUR", "SPX500_USD"),
+                         c("USD_SEK", "EUR_SEK")
+
+    )
+) {
+
+  AUD_NZD_USD <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("AUD_USD", "NZD_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+  EUR_SEK_USD <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("USD_SEK", "EUR_SEK"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+  EU50_DE30 <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("EU50_EUR", "DE30_EUR"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+  EU50_SPX <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("EU50_EUR", "SPX500_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, EU50_EUR_SPX500_USD_cor)
+
+  DE30_SPX <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("DE30_EUR", "SPX500_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, DE30_EUR_SPX500_USD_cor)
+
+  CHF_NZD_USD <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("NZD_CHF", "NZD_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )%>%
+    dplyr::select(Date, contains("NZD_CHF"), NZD_CHF_NZD_USD_cor)
+
+  USD_CHF_NZD <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("NZD_CHF", "USD_CHF"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )%>%
+    dplyr::select(Date, contains("USD_CHF"), NZD_CHF_USD_CHF_cor)
+
+  AU_200_SPX <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("AU200_AUD", "SPX500_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+  SPX_US200 <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("US2000_USD", "SPX500_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, contains("US2000"), US2000_USD_SPX500_USD_cor)
+
+  SPX_XAU <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("XAU_USD", "SPX500_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, XAU_USD_SPX500_USD_cor)
+
+  SG30_SPX <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("SG30_SGD", "SPX500_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, contains("SG30_SGD"), SG30_SGD_SPX500_USD_cor)
+
+  EUR_USD_GBP <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("EUR_USD", "GBP_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+  EUR_USD_JPY <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("EUR_JPY", "EUR_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, contains("EUR_JPY"), EUR_JPY_EUR_USD_cor)
+
+  EUR_GBP <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("GBP_USD", "EUR_GBP"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, contains("EUR_GBP"), GBP_USD_EUR_GBP_cor)
+
+  EUR_JPY_GBP <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("EUR_JPY", "GBP_JPY"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, EUR_JPY_GBP_JPY_cor, contains("GBP_JPY"))
+
+  CAD_USD_JPY <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("USD_CAD", "USD_JPY"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    ) %>%
+    dplyr::select(Date, USD_CAD_USD_JPY_cor, contains("USD_CAD"))
+
+  XAG_XAU_USD <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("XAG_USD", "XAU_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+  BCO_WTI_USD <-
+    estimating_dual_copula(
+      asset_data_to_use = asset_data_to_use,
+      asset_to_use = c("WTICO_USD", "BCO_USD"),
+      price_col = "Open",
+      rolling_period = 100,
+      samples_for_MLE = samples_for_MLE,
+      test_samples = test_samples
+    )
+
+
+  asset_joined_copulas <-
+    asset_data_to_use %>%
+    left_join(AUD_NZD_USD) %>%
+    left_join(EUR_USD_GBP) %>%
+    left_join(EUR_USD_JPY) %>%
+    left_join(EUR_GBP) %>%
+    left_join(SPX_US200) %>%
+    left_join(AU_200_SPX) %>%
+    left_join(EUR_JPY_GBP) %>%
+    left_join(CAD_USD_JPY) %>%
+    left_join(XAG_XAU_USD) %>%
+    left_join(BCO_WTI_USD) %>%
+    left_join(SG30_SPX) %>%
+    left_join(SPX_XAU) %>%
+    left_join(CHF_NZD_USD) %>%
+    left_join(USD_CHF_NZD) %>%
+    left_join(EU50_DE30) %>%
+    left_join(EU50_SPX) %>%
+    left_join(DE30_SPX) %>%
+    left_join(EUR_SEK_USD) %>%
+    filter(if_all(contains("_cor"), ~ !is.na(.)))
+
+  return(asset_joined_copulas)
+
+}
+
 
 #' get_correlation_reg_dat
 #'
