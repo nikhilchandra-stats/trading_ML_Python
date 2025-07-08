@@ -96,7 +96,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "bid",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 30
+  how_far_back = 5
 )
 
 gc()
@@ -106,7 +106,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "ask",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 30
+  how_far_back = 5
 )
 
 gc()
@@ -150,7 +150,8 @@ while(current_time < end_time) {
 
   start_date = (lubridate::add_with_rollback(current_date, -years(2)))
 
-  if( (current_minute > 0 & current_minute < 3 & data_updated == 0)|
+  if(
+      # (current_minute > 0 & current_minute < 3 & data_updated == 0)|
       (current_minute > 15 & current_minute < 18 & data_updated == 0)|
       (current_minute > 30 & current_minute < 33 & data_updated == 0)|
       (current_minute > 45 & current_minute < 48 & data_updated == 0)  ) {
@@ -162,7 +163,7 @@ tictoc::tic()
       time_frame = "M15",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 2
     )
 
     gc()
@@ -172,7 +173,7 @@ tictoc::tic()
       time_frame = "M15",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 2
     )
 
     gc()
@@ -195,34 +196,10 @@ tictoc::tic()
 
     data_updated <- 1
 
-    cor_data_list <-
-      get_correlation_reg_dat(
-        asset_data_to_use = new_15_data_bid,
-        samples_for_MLE = 0.5,
-        test_samples = 0.4,
-        regression_train_prop = 0.5,
-        dependant_period = 10,
-        assets_to_filter = c(
-          c("AUD_USD", "NZD_USD"),
-          c("EUR_USD", "GBP_USD"),
-          c("EUR_JPY", "EUR_USD"),
-          c("GBP_USD", "EUR_GBP"),
-          c("AU200_AUD", "SPX500_USD"),
-          c("US2000_USD", "SPX500_USD"),
-          c("WTICO_USD", "BCO_USD"),
-          c("XAG_USD", "XAU_USD"),
-          c("USD_CAD", "USD_JPY")
-        )
-      )
-
-    testing_data <- cor_data_list[[1]]
-    testing_ramapped <-
-      testing_data %>% dplyr::select(-c(Price, Open, High, Low))
-
     total_trades_long <-
       get_pairs_cor_reg_trades_to_take(
         db_path = glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/pairs_2025-07-03.db"),
-        min_risk_win = 0.05,
+        min_risk_win = 0.02,
         return_filter_col = "median_return",
         max_win_time = 150,
         starting_asset_data_ask_15M = new_15_data_ask,
@@ -234,23 +211,56 @@ tictoc::tic()
         asset_infor = asset_infor
       )
 
-    if(!is.null(total_trades_long)) {
+    message(glue::glue("Trades Found all times {dim(total_trades_long)[1]}"))
+
+    if(!is.null(total_trades_long) & dim(total_trades_long)[1] > 0 ) {
+
+      max_date_in_data <-
+        total_trades_long %>%
+        slice_max(Date) %>%
+        filter(!is.na(trade_col)) %>%
+        pull(Date) %>%
+        pluck(1) %>%
+        as.character()
+
+      message(glue::glue("Max Date in Data {max_date_in_data}"))
+
       total_trades <-
         total_trades_long %>%
         slice_max(Date) %>%
-        filter(!is.na(trade_col))
+        filter(!is.na(trade_col)) %>%
+        filter(Date >= (current_date - lubridate::minutes(20)) )
+
+      message(glue::glue("Trades Found in current Time {dim(total_trades)[1]}"))
 
       if(dim(total_trades)[1] > 0) {
         check_timing <- difftime(current_time, total_trades$Date[1], units = "mins") %>% as.numeric()
         if( check_timing > 25) {total_trades = NULL}
       }
+
+    } else {
+      total_trades <- NULL
     }
 
     tictoc::toc()
 
     message("Made it to end of trade estimation code")
 
-    if(!is.null(total_trades) & dim(total_trades)[1] > 0 ) {
+    trade_to_procceed_check1 <-
+      ifelse(!is.null(total_trades),
+             dim(total_trades)[1] > 0,
+             FALSE)
+    trade_to_procceed_check2 <-
+      ifelse(
+        !is.null(total_trades),
+        !is.null(total_trades),
+        FALSE
+      )
+
+    trade_to_procceed <-
+      trade_to_procceed_check1 & trade_to_procceed_check2
+
+    if(trade_to_procceed == TRUE) {
 
       total_trades <-
         total_trades %>%
@@ -399,7 +409,8 @@ tictoc::tic()
   if((current_minute > 12 & current_minute < 14 & data_updated == 1)|
      (current_minute > 27 & current_minute < 29 & data_updated == 1)|
      (current_minute > 42 & current_minute < 44 & data_updated == 1)|
-     (current_minute > 55 & current_minute < 58 & data_updated == 1) ) {data_updated <- 0}
+     (current_minute > 55 & current_minute < 58 & data_updated == 1)
+     ) {data_updated <- 0}
 
 
 }

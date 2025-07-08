@@ -455,9 +455,22 @@ while (current_time < end_time) {
     #             test_results = FALSE
     #             )
 
+
+    trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
+    trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
+    trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
+    trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
+    trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
+
+    all_trades_string <-
+      glue::glue("Trades 1: {trades1_dim}, Trades 2: {trades2_dim}, Trades 4: {trades4_dim}, Trades 1_50: {trades1_50_dim}") %>%
+      as.character()
+
+    message(all_trades_string)
+
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      # bind_rows(trades_3) %>%
+      bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
       bind_rows(trades_4)
@@ -571,14 +584,14 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 9000 ~ TRUE,
+                )) & abs(units) >= 11000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 1 ~ TRUE,
-                Asset == "XCU_USD" & abs(units)>=400 ~ TRUE,
-                Asset == "WHEAT_USD" & abs(units)>=200 ~ TRUE,
-                Asset == "CORN_USD" & abs(units)>=200 ~ TRUE,
-                Asset == "NATGAS_USD" & abs(units)>=200 ~ TRUE,
-                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=20 ~ TRUE,
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 2.3 ~ TRUE,
+                Asset == "XCU_USD" & abs(units)>=500 ~ TRUE,
+                Asset == "WHEAT_USD" & abs(units)>=300 ~ TRUE,
+                Asset == "CORN_USD" & abs(units)>=300 ~ TRUE,
+                Asset == "NATGAS_USD" & abs(units)>=300 ~ TRUE,
+                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=25 ~ TRUE,
                 TRUE ~ FALSE
               )
           ) %>%

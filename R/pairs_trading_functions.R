@@ -279,7 +279,7 @@ get_correlation_data_set <- function(
 #'
 #' @examples
 get_correlation_reg_dat <- function(
-    asset_data_to_use = starting_asset_data_bid_15,
+    asset_data_to_use = new_15_data_bid,
     samples_for_MLE = 0.5,
     test_samples = 0.4,
     regression_train_prop = 0.5,
@@ -306,8 +306,7 @@ get_correlation_reg_dat <- function(
     mutate(
       dependant_var = log(lead(Price, dependant_period)/Price)
     ) %>%
-    ungroup() %>%
-    filter(!is.na(dependant_var))
+    ungroup()
 
   regressors <- names(asset_joined_copulas) %>%
     keep(~ str_detect(.x, "quantiles|_cor|tangent|log"))
@@ -315,6 +314,7 @@ get_correlation_reg_dat <- function(
                                   independant = regressors)
 
   train_data <- asset_joined_copulas %>%
+    filter(!is.na(dependant_var)) %>%
     group_by(Asset) %>%
     slice_head(prop = regression_train_prop) %>%
     ungroup() %>%
@@ -629,6 +629,15 @@ get_pairs_cor_reg_trades_to_take <- function(
     testing_ramapped <-
       testing_data %>% dplyr::select(-c(Price, Open, High, Low))
 
+    date_in_testing_data <-
+      testing_ramapped %>%
+      pull(Date) %>%
+      max(na.rm = T) %>%
+      pluck(1) %>%
+      as.character()
+
+    message(glue::glue("Max date in testing Data {date_in_testing_data}"))
+
     mean_values_by_asset_for_loop_15_bid =
       wrangle_asset_data(
         asset_data_daily_raw = starting_asset_data_bid_15M,
@@ -661,6 +670,15 @@ get_pairs_cor_reg_trades_to_take <- function(
       )
 
     tagged_trades <- trade_results[[1]]
+
+    date_in_tagged_trades <-
+      tagged_trades %>%
+      pull(Date) %>%
+      max(na.rm = T) %>%
+      pluck(1) %>%
+      as.character()
+
+    message(glue::glue("Max date in Tagged Trades {date_in_tagged_trades}"))
 
     if(dim(tagged_trades)[1] > 0) {
 
@@ -738,7 +756,10 @@ get_pairs_cor_reg_trades_to_take <- function(
       ) %>%
         rename(Date = dates, Asset = asset) %>%
         mutate(stop_factor = stop_factor,
-               profit_factor = profit_factor)
+               profit_factor = profit_factor) %>%
+        left_join(
+          stops_profs
+        )
 
     }
 
