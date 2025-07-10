@@ -619,7 +619,7 @@ tictoc::toc()
 
 db_path <- "C:/Users/nikhi/Documents/trade_data/LM_15min_markov_sampled.db"
 db_con <- connect_db(db_path)
-write_table_now <- TRUE
+write_table_now <- FALSE
 
 trade_params <-
   tibble(
@@ -657,7 +657,7 @@ trade_params <-
   )
 
 trade_params <-
-  c(8,9,10,11,12,13,14,15) %>%
+  c(8,12,16,17,18,19,20) %>%
   map_dfr(
     ~ trade_params %>%
       mutate(
@@ -678,7 +678,8 @@ trade_params <-
   )
 
 samples_over_all <- 10
-c = 0
+c = 10
+
 safely_analyse <- safely(get_analysis_15min_LM, otherwise = NULL)
 
 for (i in 1:dim(trade_params)[1]) {
@@ -744,12 +745,12 @@ for (i in 1:dim(trade_params)[1]) {
         )
 
       if(c == 1 & write_table_now == TRUE) {
-        write_table_sql_lite(.data = analysis_data,
-                             table_name = "LM_15min_markov",
-                             conn = db_con )
-        write_table_sql_lite(.data = analysis_data_asset,
-                             table_name = "LM_15min_markov_asset",
-                             conn = db_con )
+        # write_table_sql_lite(.data = analysis_data,
+        #                      table_name = "LM_15min_markov",
+        #                      conn = db_con )
+        # write_table_sql_lite(.data = analysis_data_asset,
+        #                      table_name = "LM_15min_markov_asset",
+        #                      conn = db_con )
       } else {
         append_table_sql_lite(.data = analysis_data,
                               table_name = "LM_15min_markov",
@@ -761,124 +762,6 @@ for (i in 1:dim(trade_params)[1]) {
     }
 
   }
-
-}
-
-test <-
-  DBI::dbGetQuery(conn = db_con,
-                  "SELECT * FROM LM_15min_markov")
-
-# ------------------------------------------------
-
-dates_to_check <- starting_asset_data_ask_daily %>%
-  pull(Date) %>% unique() %>% keep( ~ .x <= "2025-01-20") %>% unlist()
-dates_to_check_sample <- dates_to_check %>% sample(size = 1000)
-dates_to_check_sample_cond <-
-  dates_to_check %>% keep( ~ .x <= "2021-01-20") %>% unlist() %>% sample(5)
-c = 0
-
-for (i in 10737:dim(trade_params)[1]) {
-  for (j in 1:length(dates_to_check)) {
-
-    c = c + 1
-
-    loop_data <- starting_asset_data_ask_daily  %>%
-      filter(Date >= dates_to_check_sample[j]) %>%
-      group_by(Asset) %>%
-      slice_head(n = 15000) %>%
-      ungroup()
-
-    testing_data <-
-      get_15_min_markov_trades_markov_LM(
-        new_15_data_ask = loop_data,
-        profit_factor  = 18,
-        stop_factor  = 13,
-        risk_dollar_value = 10,
-        trade_sd_fact = 0,
-        rolling_period = 400,
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-        currency_conversion = currency_conversion,
-        LM_period_1 = LM_period_1,
-        LM_period_2 = LM_period_2,
-        LM_period_3 = LM_period_3,
-        LM_period_4 = LM_period_4,
-        MA_lag1 = MA_lag1,
-        MA_lag2 = MA_lag2,
-        sd_divides = seq(0.25,2,0.25),
-        quantile_divides = seq(0.1,0.9, 0.1)
-      )
-
-    trade_sd_fact1 <- trade_params$trade_sd_fact1[i] %>% as.numeric()
-    trade_sd_fact2 <- trade_params$trade_sd_fact2[i] %>% as.numeric()
-    trade_sd_fact3 <- trade_params$trade_sd_fact3[i] %>% as.numeric()
-    trade_sd_fact4 <- trade_params$trade_sd_fact4[i] %>% as.numeric()
-    sd_AVG_Prob <- trade_params$sd_AVG_Prob[i] %>% as.numeric()
-    stop_factor <- trade_params$stop_factor[i] %>% as.numeric()
-    profit_factor <- trade_params$profit_factor[i] %>% as.numeric()
-
-
-    analysis_info <- get_analysis_15min_LM(
-      modelling_data_for_trade_tag = testing_data,
-      profit_factor  = profit_factor,
-      stop_factor  = stop_factor,
-      risk_dollar_value = 10,
-      trade_sd_fact1 = trade_sd_fact1,
-      trade_sd_fact2 = trade_sd_fact2,
-      trade_sd_fact3 = trade_sd_fact3,
-      trade_sd_fact4 = trade_sd_fact4,
-      sd_AVG_Prob = sd_AVG_Prob,
-      rolling_period = 400,
-      asset_data_daily_raw = loop_data,
-      mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-      trade_sd_fact = trade_sd_fact,
-      currency_conversion = currency_conversion,
-      Network_Name = "15_min_macro"
-    )
-
-    analysis_data <-
-      analysis_info[[1]] %>%
-      mutate(
-        trade_sd_fact1 = trade_params$trade_sd_fact1[i] %>% as.numeric(),
-        trade_sd_fact2 = trade_params$trade_sd_fact2[i] %>% as.numeric(),
-        trade_sd_fact3 = trade_params$trade_sd_fact3[i] %>% as.numeric(),
-        trade_sd_fact4 = trade_params$trade_sd_fact4[i] %>% as.numeric(),
-        sd_AVG_Prob = trade_params$sd_AVG_Prob[i] %>% as.numeric(),
-        stop_factor = trade_params$stop_factor[i] %>% as.numeric(),
-        profit_factor = trade_params$profit_factor[i] %>% as.numeric(),
-        sim_date = dates_to_check_sample[j]
-      )
-
-    analysis_data_asset <-
-      analysis_info[[2]] %>%
-      mutate(
-        trade_sd_fact1 = trade_params$trade_sd_fact1[i] %>% as.numeric(),
-        trade_sd_fact2 = trade_params$trade_sd_fact2[i] %>% as.numeric(),
-        trade_sd_fact3 = trade_params$trade_sd_fact3[i] %>% as.numeric(),
-        trade_sd_fact4 = trade_params$trade_sd_fact4[i] %>% as.numeric(),
-        sd_AVG_Prob = trade_params$sd_AVG_Prob[i] %>% as.numeric(),
-        stop_factor = trade_params$stop_factor[i] %>% as.numeric(),
-        profit_factor = trade_params$profit_factor[i] %>% as.numeric(),
-        sim_date = dates_to_check_sample[j]
-      )
-
-    if(c == 1 & write_table_now == TRUE) {
-      write_table_sql_lite(.data = analysis_data,
-                           table_name = "LM_15min_markov",
-                           conn = db_con )
-      write_table_sql_lite(.data = analysis_data_asset,
-                           table_name = "LM_15min_markov_asset",
-                           conn = db_con )
-    } else {
-      append_table_sql_lite(.data = analysis_data,
-                            table_name = "LM_15min_markov",
-                            conn = db_con)
-      append_table_sql_lite(.data = analysis_data_asset,
-                            table_name = "LM_15min_markov_asset",
-                            conn = db_con)
-    }
-
-  }
-
 
 }
 
