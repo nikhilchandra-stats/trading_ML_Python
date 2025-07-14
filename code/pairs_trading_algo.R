@@ -52,7 +52,7 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 
 db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date = (lubridate::add_with_rollback(today(), -years(2))) %>% as.character()
+start_date = (lubridate::add_with_rollback(today(), -years(3))) %>% as.character()
 end_date_day = today() %>% as.character()
 
 db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
@@ -149,6 +149,7 @@ while(current_time < end_time) {
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
 
   start_date = (lubridate::add_with_rollback(current_date, -years(2)))
+  start_date_2 = (lubridate::add_with_rollback(current_date, -years(3)))
 
   if(
       # (current_minute > 0 & current_minute < 3 & data_updated == 0)|
@@ -184,7 +185,7 @@ tictoc::tic()
                             time_frame = "M15", bid_or_ask = "ask",
                             db_location = db_location)%>%
       distinct() %>%
-      filter(Date >= start_date)
+      filter(Date >= start_date_2)
 
     new_15_data_bid <-
       updated_data_internal(starting_asset_data = starting_asset_data_bid_15M,
@@ -192,31 +193,89 @@ tictoc::tic()
                             time_frame = "M15", bid_or_ask = "bid",
                             db_location = db_location)%>%
       distinct() %>%
-      filter(Date >= start_date)
+      filter(Date >= start_date_2)
 
     data_updated <- 1
 
-    total_trades_long <-
+    raw_macro_data <- get_macro_event_data()
+
+    tictoc::tic()
+
+    AUD_USD_NZD_USD_all_data <-
+      get_all_AUD_USD_specific_data(
+        db_location = db_location,
+        start_date = "2016-01-01",
+        end_date = today() %>% as.character()
+      )
+
+    AUD_NZD_Trades_long <-
+      get_AUD_USD_NZD_Specific_Trades(
+        AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[1]],
+        start_date = "2016-01-01",
+        raw_macro_data = raw_macro_data,
+        lag_days = 4,
+        lm_period = 300,
+        lm_train_prop = 0.75,
+        lm_test_prop = 0.24,
+        sd_fac_lm_trade = 1,
+        sd_fac_lm_trade2 = 3,
+        trade_direction = "Long",
+        stop_factor = 15,
+        profit_factor = 20
+      ) %>%
+      map_dfr(bind_rows) %>%
+      filter(Date >= (current_time - lubridate::minutes(20)) )
+
+    AUD_NZD_Trades_short <-
+      get_AUD_USD_NZD_Specific_Trades(
+        AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[2]],
+        start_date = "2016-01-01",
+        raw_macro_data = raw_macro_data,
+        lag_days = 4,
+        lm_period = 300,
+        lm_train_prop = 0.74,
+        lm_test_prop = 0.24,
+        sd_fac_lm_trade = 3,
+        sd_fac_lm_trade2 = 1,
+        trade_direction = "Short",
+        stop_factor = 15,
+        profit_factor = 20
+      ) %>%
+      map_dfr(bind_rows) %>%
+      filter(Date >= (current_time - lubridate::minutes(20)) )
+
+    tictoc::toc()
+
+    total_trades_long_1 <-
       get_pairs_cor_reg_trades_to_take(
         db_path = glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/pairs_2025-07-03.db"),
         min_risk_win = 0.02,
         return_filter_col = "median_return",
         max_win_time = 150,
-        starting_asset_data_ask_15M = new_15_data_ask,
-        starting_asset_data_bid_15M = new_15_data_bid,
+        starting_asset_data_ask_15M = new_15_data_ask %>%
+          filter(Date >= start_date),
+        starting_asset_data_bid_15M = new_15_data_bid%>%
+          filter(Date >= start_date),
         mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
         trade_direction = "Long",
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor
       )
 
-    message(glue::glue("Trades Found all times {dim(total_trades_long)[1]}"))
+    total_trades_All <-
+      list(total_trades_long_1,
+           AUD_NZD_Trades_long,
+           AUD_NZD_Trades_short
+           ) %>%
+      map_dfr(bind_rows)
 
-    if(!is.null(total_trades_long) & dim(total_trades_long)[1] > 0 ) {
+    message(glue::glue("Trades Found all times {dim(total_trades_All)[1]}"))
+
+    if(!is.null(total_trades_All) & dim(total_trades_All)[1] > 0 ) {
 
       max_date_in_data <-
-        total_trades_long %>%
+        total_trades_All %>%
         slice_max(Date) %>%
         filter(!is.na(trade_col)) %>%
         pull(Date) %>%
@@ -226,10 +285,10 @@ tictoc::tic()
       message(glue::glue("Max Date in Data {max_date_in_data}"))
 
       total_trades <-
-        total_trades_long %>%
+        total_trades_All %>%
         slice_max(Date) %>%
         filter(!is.na(trade_col)) %>%
-        filter(Date >= (current_date - lubridate::minutes(20)) )
+        filter(Date >= (current_time - lubridate::minutes(20)) )
 
       message(glue::glue("Trades Found in current Time {dim(total_trades)[1]}"))
 
@@ -271,7 +330,7 @@ tictoc::tic()
               mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 10,
+              risk_dollar_value = 5,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",
@@ -409,7 +468,7 @@ tictoc::tic()
   if((current_minute > 12 & current_minute < 14 & data_updated == 1)|
      (current_minute > 27 & current_minute < 29 & data_updated == 1)|
      (current_minute > 42 & current_minute < 44 & data_updated == 1)|
-     (current_minute > 55 & current_minute < 58 & data_updated == 1)
+     (current_minute > 55 & current_minute < 59 & data_updated == 1)
      ) {data_updated <- 0}
 
 

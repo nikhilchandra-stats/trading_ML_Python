@@ -198,6 +198,8 @@ trade_params <-
 
 profit_factor  = 7
 stop_factor  = 4
+profit_factor  = 5
+stop_factor  = 2.5
 risk_dollar_value <- 10
 trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 
@@ -367,7 +369,7 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return >= 0.07) %>%
+  filter(risk_weighted_return >= 0.1) %>%
   mutate(redont_risk_weighted_return =
            1000*( (Perc*maximum_win) - (minimal_loss*(1 - Perc)) )
          )

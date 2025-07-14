@@ -389,23 +389,23 @@ while (current_time < end_time) {
     if(!is.null(trades_2)) {trades_2 <- trades_2 %>% filter(trade_col == "Long")}
     if(!is.null(trades_2_50)) {trades_2_50 <- trades_2_50 %>% filter(trade_col == "Long")}
 
-    trades_3 <-
-      get_NN_best_trades_from_mult_anaysis(
-        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
-        network_name = "H1_LM_Markov_NN_Hidden35",
-        NN_model = H1_LM_Markov_NN_Hidden35,
-        Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
-        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        risk_dollar_value = 10,
-        win_threshold = 0.54,
-        risk_weighted_thresh = 0.02,
-        slice_max = TRUE,
-        filter_profitbale_assets = TRUE
-      )
-
-    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
+    # trades_3 <-
+    #   get_NN_best_trades_from_mult_anaysis(
+    #     db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
+    #     network_name = "H1_LM_Markov_NN_Hidden35",
+    #     NN_model = H1_LM_Markov_NN_Hidden35,
+    #     Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
+    #     mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+    #     currency_conversion = currency_conversion,
+    #     asset_infor = asset_infor,
+    #     risk_dollar_value = 10,
+    #     win_threshold = 0.54,
+    #     risk_weighted_thresh = 0.02,
+    #     slice_max = TRUE,
+    #     filter_profitbale_assets = TRUE
+    #   )
+    #
+    # if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
 
     trades_4 <-
       get_NN_best_trades_from_mult_anaysis(
@@ -458,7 +458,7 @@ while (current_time < end_time) {
 
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
-    trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
+    # trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
     trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
     trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
 
@@ -470,7 +470,7 @@ while (current_time < end_time) {
 
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      bind_rows(trades_3) %>%
+      # bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
       bind_rows(trades_4)
