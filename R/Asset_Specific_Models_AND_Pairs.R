@@ -572,7 +572,8 @@ get_EUR_GBP_Specific_Trades <-
     sd_fac_lm_trade_eur_gbp = 1,
     trade_direction = "Long",
     stop_factor = 10,
-    profit_factor = 15
+    profit_factor = 15,
+    assets_to_filter = c("EUR_USD", "GBP_USD", "EUR_GBP")
   ) {
 
     eur_macro_data <-
@@ -677,9 +678,9 @@ get_EUR_GBP_Specific_Trades <-
         trade_col =
           case_when(
             lm_pred_EUR_USD >= mean_pred_EUR_USD + sd_fac_lm_trade_eur_usd*sd_pred_EUR_USD &
-              trade_direction == "Long" ~trade_direction,
+              trade_direction == "Short" ~trade_direction,
             lm_pred_EUR_USD <= mean_pred_EUR_USD - sd_fac_lm_trade_eur_usd*sd_pred_EUR_USD &
-              trade_direction == "Short" ~ trade_direction
+              trade_direction == "Long" ~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -706,10 +707,16 @@ get_EUR_GBP_Specific_Trades <-
       mutate(
         trade_col =
           case_when(
+            # lm_pred_GBP_USD >= mean_pred_GBP_USD + sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
+            #   trade_direction == "Long" ~ trade_direction,
+            # lm_pred_GBP_USD <= mean_pred_GBP_USD - sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
+            #   trade_direction == "Short" ~ trade_direction
+
             lm_pred_GBP_USD >= mean_pred_GBP_USD + sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
-              trade_direction == "Long" ~ trade_direction,
+              trade_direction == "Long" &  GBP_USD_tangent_angle2 < 0 ~ trade_direction,
             lm_pred_GBP_USD <= mean_pred_GBP_USD - sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
-              trade_direction == "Short" ~ trade_direction
+              trade_direction == "Short" &  GBP_USD_tangent_angle2 >0 ~ trade_direction
+
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -750,16 +757,126 @@ get_EUR_GBP_Specific_Trades <-
 
     return(list(tagged_trades_EUR_USD %>%
                   mutate( stop_factor = stop_factor,
-                          profit_factor = profit_factor),
+                          profit_factor = profit_factor) %>%
+                  filter(Asset %in% assets_to_filter),
                 tagged_trades_GBP_USD %>%
                   mutate( stop_factor = stop_factor,
-                          profit_factor = profit_factor),
+                          profit_factor = profit_factor)  %>%
+                  filter(Asset %in% assets_to_filter),
                 tagged_trades_EUR_GBP %>%
                   mutate( stop_factor = stop_factor,
-                          profit_factor = profit_factor))
+                          profit_factor = profit_factor)  %>%
+                  filter(Asset %in% assets_to_filter))
            )
 
-  }
+}
+
+
+#' get_SPX_US2000_XAG_XAU
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_SPX_US2000_XAG_XAU <- function() {
+
+  SPX <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "SPX500_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  US2000 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "US2000_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "XAG_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "XAU_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG_SPX_US2000_USD <- SPX %>% bind_rows(US2000) %>% bind_rows(XAG)%>% bind_rows(XAU)
+  rm(SPX, US2000, XAG, XAU)
+  gc()
+
+  SPX <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "SPX500_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  US2000 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "US2000_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "XAG_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "XAU_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG_SPX_US2000_USD_short <- SPX %>% bind_rows(US2000) %>% bind_rows(XAG) %>% bind_rows(XAU)
+  rm(SPX, US2000, XAG, XAU)
+  gc()
+
+  return(
+    list(
+      XAG_SPX_US2000_USD,
+      XAG_SPX_US2000_USD_short
+    )
+  )
+
+}
+
 
 
 #' mean_values_by_asset_for_loop
@@ -855,5 +972,54 @@ run_pairs_analysis <- function(
 
 }
 
+#' get_stops_profs_asset_specific
+#'
+#' @param trades_to_convert
+#' @param raw_asset_data
+#' @param currency_conversion
+#' @param risk_dollar_value
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_stops_profs_asset_specific <-
+  function(
+    trades_to_convert = EUR_GBP_USD_Trades_long,
+    raw_asset_data = EUR_USD_GBP_USD,
+    currency_conversion = currency_conversion,
+    risk_dollar_value = 5
+  ) {
+
+    mean_values_by_asset_for_loop =
+      wrangle_asset_data(raw_asset_data, summarise_means = TRUE)
+
+    trades_with_stops_profs <-
+      trades_to_convert %>%
+      left_join(raw_asset_data %>% dplyr::select(Date, Asset, Price, Open, High, Low)) %>%
+      slice_max(Date) %>%
+      mutate(kk = row_number()) %>%
+      split(.$kk) %>%
+      map_dfr(
+        ~
+          get_stops_profs_volume_trades(
+            tagged_trades = .x,
+            mean_values_by_asset = mean_values_by_asset_for_loop,
+            trade_col = "trade_col",
+            currency_conversion = currency_conversion,
+            risk_dollar_value = risk_dollar_value,
+            stop_factor = .x$stop_factor[1] %>% as.numeric(),
+            profit_factor = .x$profit_factor[1] %>% as.numeric(),
+            asset_col = "Asset",
+            stop_col = "stop_value",
+            profit_col = "profit_value",
+            price_col = "Price",
+            trade_return_col = "trade_returns"
+          )
+      )
+
+    return(trades_with_stops_profs)
+
+}
 
 
