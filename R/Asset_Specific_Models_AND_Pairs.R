@@ -187,9 +187,11 @@ get_AUD_USD_NZD_Specific_Trades <-
     lm_test_prop = 0.75,
     sd_fac_lm_trade = 1,
     sd_fac_lm_trade2 = 4,
+    sd_fac_lm_trade3 = 1,
     trade_direction = "Long",
     stop_factor = 5,
-    profit_factor = 10
+    profit_factor = 10,
+    assets_to_return = c("AUD_USD", "NZD_USD")
   ) {
 
     aus_macro_data <-
@@ -202,10 +204,15 @@ get_AUD_USD_NZD_Specific_Trades <-
       get_USD_Indicators(raw_macro_data,
                          lag_days = lag_days)
 
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days)
+
     aud_macro_vars <- names(aus_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
-    all_macro_vars <- c(aud_macro_vars, nzd_macro_vars, usd_macro_vars)
+    cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(aud_macro_vars, nzd_macro_vars, usd_macro_vars, cny_macro_vars)
 
     copula_data <-
       estimating_dual_copula(
@@ -230,6 +237,10 @@ get_AUD_USD_NZD_Specific_Trades <-
       ) %>%
       left_join(
         usd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        cny_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
       fill(!contains("AUD_USD|Date"), .direction = "down") %>%
@@ -259,10 +270,12 @@ get_AUD_USD_NZD_Specific_Trades <-
       max(na.rm = T) %>%
       as.character()
 
-    message(glue::glue("Max Date in Copula Data AUD NZD: {max_data_in_testing_data}"))
+    message(glue::glue("Max Date in Testing Data AUD NZD: {max_data_in_testing_data}"))
 
     lm_formula_AUD_USD <- create_lm_formula(dependant = "dependant_var_aud_usd", independant = lm_vars1)
+    lm_formula_AUD_USD_quant <- create_lm_formula(dependant = "dependant_var_aud_usd", independant = lm_quant_vars)
     lm_model_AUD_USD <- lm(formula = lm_formula_AUD_USD, data = training_data)
+    lm_model_AUD_USD_quant <- lm(formula = lm_formula_AUD_USD_quant, data = training_data)
 
     predicted_train_AUD_USD <- predict.lm(lm_model_AUD_USD, newdata = training_data)
     mean_pred_AUD_USD <- mean(predicted_train_AUD_USD, na.rm = T)
@@ -271,28 +284,63 @@ get_AUD_USD_NZD_Specific_Trades <-
     mean_pred_test_AUD_USD <- mean(predicted_test_AUD_USD, na.rm = T)
     sd_pred_test_AUD_USD <- sd(predicted_test_AUD_USD, na.rm = T)
 
+    predicted_train_AUD_USD_quant <- predict.lm(lm_model_AUD_USD_quant, newdata = training_data)
+    mean_pred_AUD_USD_quant <- mean(predicted_train_AUD_USD_quant, na.rm = T)
+    sd_pred_AUD_USD_quant <- sd(predicted_train_AUD_USD_quant, na.rm = T)
+    predicted_test_AUD_USD_quant <- predict.lm(lm_model_AUD_USD_quant, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_AUD_USD_quant <- mean(predicted_test_AUD_USD_quant, na.rm = T)
+    sd_pred_test_AUD_USD_quant <- sd(predicted_test_AUD_USD_quant, na.rm = T)
+
     tagged_trades_AUD_USD <-
       testing_data %>%
       mutate(
-        lm_pred_AUD_USD = predicted_test_AUD_USD
+        lm_pred_AUD_USD = predicted_test_AUD_USD,
+        lm_pred_AUD_USD_quant = predicted_test_AUD_USD_quant
       ) %>%
       mutate(
         trade_col =
           case_when(
+            # lm_pred_AUD_USD >= mean_pred_AUD_USD + sd_fac_lm_trade*sd_pred_AUD_USD ~ trade_direction
+            # lm_pred_AUD_USD <= mean_pred_AUD_USD - sd_fac_lm_trade*sd_pred_AUD_USD ~ trade_direction,
+
             lm_pred_AUD_USD >= mean_pred_AUD_USD + sd_fac_lm_trade*sd_pred_AUD_USD &
-              # lm_pred_AUD_USD <=  mean_pred_AUD_USD + sd_fac_lm_trade2*sd_pred_AUD_USD &
               trade_direction == "Short" ~trade_direction,
-
-            # lm_pred_AUD_USD >= mean_pred_AUD_USD + sd_fac_lm_trade2*sd_pred_AUD_USD &
-            #   trade_direction == "Long" ~trade_direction,
-
             lm_pred_AUD_USD <= mean_pred_AUD_USD - sd_fac_lm_trade*sd_pred_AUD_USD &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Long" ~ trade_direction,
 
-            # lm_pred_AUD_USD >= mean_pred_AUD_USD + sd_fac_lm_trade*sd_pred_AUD_USD &
-            #   trade_direction == "Long" ~trade_direction,
-            # lm_pred_AUD_USD <= mean_pred_AUD_USD - sd_fac_lm_trade*sd_pred_AUD_USD &
-            #   trade_direction == "Short" ~ trade_direction
+            lm_pred_AUD_USD_quant >= mean_pred_AUD_USD_quant + sd_fac_lm_trade*sd_pred_AUD_USD_quant &
+              trade_direction == "Long" ~trade_direction,
+            # lm_pred_AUD_USD_quant <= mean_pred_AUD_USD_quant - sd_fac_lm_trade*sd_pred_AUD_USD_quant &
+            #   trade_direction == "Short" ~ trade_direction,
+
+
+            AUD_USD_NZD_USD_quant_lm <= AUD_USD_NZD_USD_quant_lm_mean - AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+            AUD_USD_NZD_USD_quant_lm <= AUD_USD_NZD_USD_quant_lm_mean - AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+            AUD_USD_NZD_USD_quant_lm >= AUD_USD_NZD_USD_quant_lm_mean + AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+            AUD_USD_NZD_USD_quant_lm >= AUD_USD_NZD_USD_quant_lm_mean + AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+
+
+            AUD_USD_NZD_USD_cor <= AUD_USD_NZD_USD_cor_mean - AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+            AUD_USD_NZD_USD_cor <= AUD_USD_NZD_USD_cor_mean - AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+            AUD_USD_NZD_USD_cor >= AUD_USD_NZD_USD_cor_mean + AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+            AUD_USD_NZD_USD_cor >= AUD_USD_NZD_USD_cor_mean + AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction
+
+
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -315,6 +363,8 @@ get_AUD_USD_NZD_Specific_Trades <-
 
     lm_formula_NZD_USD <- create_lm_formula(dependant = "dependant_var_nzd_usd", independant = lm_vars1)
     lm_model_NZD_USD <- lm(formula = lm_formula_NZD_USD, data = training_data)
+    lm_formula_NZD_USD_quant <- create_lm_formula(dependant = "dependant_var_nzd_usd", independant = lm_quant_vars)
+    lm_model_NZD_USD_quant <- lm(formula = lm_formula_NZD_USD_quant, data = training_data)
 
     predicted_train_NZD_USD <- predict.lm(lm_model_NZD_USD, newdata = training_data)
     mean_pred_NZD_USD <- mean(predicted_train_NZD_USD, na.rm = T)
@@ -323,28 +373,56 @@ get_AUD_USD_NZD_Specific_Trades <-
     mean_pred_test_NZD_USD <- mean(predicted_test_NZD_USD, na.rm = T)
     sd_pred_test_NZD_USD <- sd(predicted_test_NZD_USD, na.rm = T)
 
+    predicted_train_NZD_USD_quant <- predict.lm(lm_model_NZD_USD_quant, newdata = training_data)
+    mean_pred_NZD_USD_quant <- mean(predicted_train_NZD_USD_quant, na.rm = T)
+    sd_pred_NZD_USD_quant <- sd(predicted_train_NZD_USD_quant, na.rm = T)
+    predicted_test_NZD_USD_quant <- predict.lm(lm_model_NZD_USD_quant, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_NZD_USD_quant <- mean(predicted_test_NZD_USD_quant, na.rm = T)
+    sd_pred_test_NZD_USD_quant <- sd(predicted_test_NZD_USD_quant, na.rm = T)
+
     tagged_trades_NZD_USD <-
       testing_data %>%
       mutate(
-        lm_pred_NZD_USD = predicted_test_NZD_USD
+        lm_pred_NZD_USD = predicted_test_NZD_USD,
+        lm_pred_NZD_USD_quant = predicted_test_NZD_USD_quant
       ) %>%
       mutate(
         trade_col =
           case_when(
             lm_pred_NZD_USD >= mean_pred_NZD_USD + sd_fac_lm_trade*sd_pred_NZD_USD &
-              # lm_pred_NZD_USD <= mean_pred_NZD_USD + sd_fac_lm_trade2*sd_pred_NZD_USD &
               trade_direction == "Short" ~ trade_direction,
 
-            # lm_pred_NZD_USD >= mean_pred_NZD_USD + sd_fac_lm_trade2*sd_pred_NZD_USD &
-            #   trade_direction == "Long" ~ trade_direction,
-
             lm_pred_NZD_USD <= mean_pred_NZD_USD - sd_fac_lm_trade*sd_pred_NZD_USD &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Long" ~ trade_direction,
 
-            # lm_pred_NZD_USD >= mean_pred_NZD_USD + sd_fac_lm_trade*sd_pred_NZD_USD &
+            # lm_pred_NZD_USD_quant <= mean_pred_NZD_USD_quant - sd_fac_lm_trade*sd_pred_NZD_USD_quant &
             #   trade_direction == "Long" ~ trade_direction,
-            # lm_pred_NZD_USD <= mean_pred_NZD_USD - sd_fac_lm_trade*sd_pred_NZD_USD &
-            #   trade_direction == "Short" ~ trade_direction
+
+            AUD_USD_NZD_USD_quant_lm <= AUD_USD_NZD_USD_quant_lm_mean - AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+            AUD_USD_NZD_USD_quant_lm <= AUD_USD_NZD_USD_quant_lm_mean - AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+            AUD_USD_NZD_USD_quant_lm >= AUD_USD_NZD_USD_quant_lm_mean + AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+            AUD_USD_NZD_USD_quant_lm >= AUD_USD_NZD_USD_quant_lm_mean + AUD_USD_NZD_USD_quant_lm_sd*sd_fac_lm_trade2 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+
+            AUD_USD_NZD_USD_cor <= AUD_USD_NZD_USD_cor_mean - AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+            AUD_USD_NZD_USD_cor <= AUD_USD_NZD_USD_cor_mean - AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction,
+
+            AUD_USD_NZD_USD_cor >= AUD_USD_NZD_USD_cor_mean + AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Long" &  AUD_USD_tangent_angle1 > 0 & NZD_USD_tangent_angle2 < 0~trade_direction,
+
+            AUD_USD_NZD_USD_cor >= AUD_USD_NZD_USD_cor_mean + AUD_USD_NZD_USD_cor_sd*sd_fac_lm_trade3 &
+              trade_direction == "Short" &  AUD_USD_tangent_angle1 < 0 & NZD_USD_tangent_angle2 > 0~trade_direction
+
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -365,7 +443,8 @@ get_AUD_USD_NZD_Specific_Trades <-
 
     message(glue::glue("Max Date in Tagged Data NZD_USD: {max_trades_AUD_USD}"))
 
-    return(list(tagged_trades_NZD_USD, tagged_trades_AUD_USD))
+    return(list(tagged_trades_NZD_USD %>% filter(Asset %in% assets_to_return),
+                tagged_trades_AUD_USD %>% filter(Asset %in% assets_to_return) ))
 
   }
 

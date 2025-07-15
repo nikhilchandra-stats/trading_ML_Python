@@ -584,14 +584,14 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 11000 ~ TRUE,
+                )) & abs(units) >= 18000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 2.3 ~ TRUE,
-                Asset == "XCU_USD" & abs(units)>=500 ~ TRUE,
-                Asset == "WHEAT_USD" & abs(units)>=300 ~ TRUE,
-                Asset == "CORN_USD" & abs(units)>=300 ~ TRUE,
-                Asset == "NATGAS_USD" & abs(units)>=300 ~ TRUE,
-                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=25 ~ TRUE,
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
+                Asset == "XCU_USD" & abs(units)>=800 ~ TRUE,
+                Asset == "WHEAT_USD" & abs(units)>=600 ~ TRUE,
+                Asset == "CORN_USD" & abs(units)>=600 ~ TRUE,
+                Asset == "NATGAS_USD" & abs(units)>=600 ~ TRUE,
+                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=45 ~ TRUE,
                 TRUE ~ FALSE
               )
           ) %>%

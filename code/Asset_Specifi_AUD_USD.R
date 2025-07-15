@@ -63,52 +63,87 @@ AUD_USD_NZD_USD_all_data <-
 
 #------------------------------------------------------Test with big LM Prop
 
-AUD_NZD_Trades_long <-
+AUD_USD_Trades_long <-
   get_AUD_USD_NZD_Specific_Trades(
     AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[1]],
     start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
-    lag_days = 4,
-    lm_period = 300,
-    lm_train_prop = 0.75,
+    lag_days = 1,
+    lm_period = 700,
+    lm_train_prop = 0.74,
     lm_test_prop = 0.24,
-    sd_fac_lm_trade = 1,
-    sd_fac_lm_trade2 = 3,
+    sd_fac_lm_trade = 1.5,
+    sd_fac_lm_trade2 = 1,
+    sd_fac_lm_trade3 = 1,
     trade_direction = "Long",
-    stop_factor = 15,
-    profit_factor = 20
+    stop_factor = 20,
+    profit_factor = 30, assets_to_return = c("AUD_USD")
   )
 
-AUD_NZD_Trades_long <-
-  AUD_NZD_Trades_long %>%
+AUD_USD_Trades_long <-
+  AUD_USD_Trades_long %>%
   map_dfr(bind_rows)
 
-AUD_NZD_Long_Data <-
+AUD_USD_Long_Data <-
   run_pairs_analysis(
-    tagged_trades = AUD_NZD_Trades_long,
+    tagged_trades = AUD_USD_Trades_long,
     stop_factor = 15,
     profit_factor = 20,
     raw_asset_data = AUD_USD_NZD_USD_all_data[[1]],
     risk_dollar_value = 10
   )
 
-results_long <- AUD_NZD_Long_Data[[1]]
-results_long_asset <- AUD_NZD_Long_Data[[2]]
+results_long <- AUD_USD_Long_Data[[1]]
+
+NZD_USD_Trades_long <-
+  get_AUD_USD_NZD_Specific_Trades(
+    AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[1]],
+    start_date = "2016-01-01",
+    raw_macro_data = raw_macro_data,
+    lag_days = 1,
+    lm_period = 50,
+    lm_train_prop = 0.74,
+    lm_test_prop = 0.24,
+    sd_fac_lm_trade = 0.5,
+    sd_fac_lm_trade2 = 0.5,
+    sd_fac_lm_trade3 = 0.5,
+    trade_direction = "Long",
+    stop_factor = 20,
+    profit_factor = 30, assets_to_return = c("NZD_USD")
+  )
+
+NZD_USD_Trades_long <-
+  NZD_USD_Trades_long %>%
+  map_dfr(bind_rows)
+
+NZD_USD_Long_Data <-
+  run_pairs_analysis(
+    tagged_trades = NZD_USD_Trades_long,
+    stop_factor = 15,
+    profit_factor = 20,
+    raw_asset_data = AUD_USD_NZD_USD_all_data[[1]],
+    risk_dollar_value = 10
+  )
+
+results_long_NZD_USD <- NZD_USD_Long_Data[[1]]
+
+#-------------------------------------------------------
 
 AUD_NZD_Trades_short <-
   get_AUD_USD_NZD_Specific_Trades(
     AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[2]],
     start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
-    lag_days = 4,
-    lm_period = 300,
+    lag_days = 1,
+    lm_period = 700,
     lm_train_prop = 0.74,
     lm_test_prop = 0.24,
-    sd_fac_lm_trade = 3,
-    sd_fac_lm_trade2 = 1,
+    sd_fac_lm_trade = 0.75,
+    sd_fac_lm_trade2 = 1.25,
+    sd_fac_lm_trade3 = 1.25,
     trade_direction = "Short",
-    stop_factor = 15,
-    profit_factor = 20
+    stop_factor = 17,
+    profit_factor = 27
   )
 
 AUD_NZD_Trades_short <- AUD_NZD_Trades_short %>%

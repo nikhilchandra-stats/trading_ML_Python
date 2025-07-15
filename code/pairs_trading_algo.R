@@ -213,15 +213,17 @@ tictoc::tic()
         AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[1]],
         start_date = "2016-01-01",
         raw_macro_data = raw_macro_data,
-        lag_days = 4,
-        lm_period = 300,
-        lm_train_prop = 0.75,
+        lag_days = 1,
+        lm_period = 700,
+        lm_train_prop = 0.74,
         lm_test_prop = 0.24,
-        sd_fac_lm_trade = 1,
-        sd_fac_lm_trade2 = 3,
+        sd_fac_lm_trade = 1.5,
+        sd_fac_lm_trade2 = 1,
+        sd_fac_lm_trade3 = 1,
         trade_direction = "Long",
-        stop_factor = 15,
-        profit_factor = 20
+        stop_factor = 20,
+        profit_factor = 30,
+        assets_to_return = c("AUD_USD")
       ) %>%
       map_dfr(bind_rows) %>%
       filter(Date >= (current_time - lubridate::minutes(20)) )
@@ -231,15 +233,17 @@ tictoc::tic()
         AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[2]],
         start_date = "2016-01-01",
         raw_macro_data = raw_macro_data,
-        lag_days = 4,
-        lm_period = 300,
+        lag_days = 1,
+        lm_period = 700,
         lm_train_prop = 0.74,
         lm_test_prop = 0.24,
-        sd_fac_lm_trade = 3,
-        sd_fac_lm_trade2 = 1,
+        sd_fac_lm_trade = 0.75,
+        sd_fac_lm_trade2 = 1.25,
+        sd_fac_lm_trade3 = 1.25,
         trade_direction = "Short",
-        stop_factor = 15,
-        profit_factor = 20
+        stop_factor = 17,
+        profit_factor = 27,
+        assets_to_return = c("AUD_USD", "NZD_USD")
       ) %>%
       map_dfr(bind_rows) %>%
       filter(Date >= (current_time - lubridate::minutes(20)) )
@@ -258,7 +262,7 @@ tictoc::tic()
           filter(Date >= start_date),
         mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
         trade_direction = "Long",
-        risk_dollar_value = 5,
+        risk_dollar_value = 3,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor
       )
@@ -330,7 +334,7 @@ tictoc::tic()
               mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 5,
+              risk_dollar_value = 3,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",
