@@ -49,56 +49,6 @@ asset_list_oanda <- get_oanda_symbols() %>%
 
 asset_infor <- get_instrument_info()
 
-db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2021-01-01"
-start_date_day_H1 = "2020-06-01"
-start_date_day_D = "2017-01-01"
-end_date_day = today() %>% as.character()
-# end_date_day = "2023-01-01"
-
-db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2016-01-01"
-start_date_day_H1 = "2015-06-01"
-start_date_day_D = "2017-01-01"
-# end_date_day = today() %>% as.character()
-end_date_day = "2020-10-01"
-
-starting_asset_data_ask_15M <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "M15"
-  )
-
-starting_asset_data_ask_H1 <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day_H1,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "H1"
-  )
-
-starting_asset_data_ask_D <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day_D,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "D"
-  )
-
-mean_values_by_asset_for_loop_15_ask =
-  wrangle_asset_data(
-    asset_data_daily_raw = starting_asset_data_ask_15M,
-    summarise_means = TRUE
-  )
-
-starting_asset_data_ask_H1 = starting_asset_data_ask_H1
-starting_asset_data_ask_H1 = starting_asset_data_ask_H1
-starting_asset_data_ask_15M = starting_asset_data_ask_15M
 
 #' get_cauchy_params_by_asset
 #'
@@ -530,7 +480,7 @@ get_angle_guass_data_LM_Model <-
     return(list("lm_model" = lm_model,
                 "testing_data" = testing_data,
                 "mean_values_of_training" = mean_values_of_training)
-           )
+    )
 
   }
 
@@ -573,9 +523,9 @@ angle_data_all <-
     period_ahead = 20,
     asset_infor,
     currency_conversion,
-    testing_proportion = 0.4,
+    testing_proportion = 0.35,
     samples_n = 500,
-    trade_direction = "Short",
+    trade_direction = "Long",
     mean_values_by_asset_for_loop  = mean_values_by_asset_for_loop_15_ask,
     stop_factor = 17,
     profit_factor =27
@@ -591,47 +541,49 @@ tag_angle_guass_trades <-
     testing_data = angle_data_all$testing_data,
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
     mean_values_of_training = angle_data_all$mean_values_of_training,
-    stop_factor = 20,
-    profit_factor = 40,
+    stop_factor = 17,
+    profit_factor = 27,
     risk_dollar_value = 10,
     sd_fac_1 = 2,
     sd_fac_2 = 3,
-    trade_direction = "Long",
+    trade_direction = "Short",
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    return_analysis = TRUE
+    return_analysis = TRUE,
+    pos_or_neg = "pos"
   ){
 
     # Best options: With increasing XX, rolling perod and period ahead we see increasing results
-    # Long Trades:
-    # See angle_data_all() for best parameters option
-    # sd_fac_1 = 2.75
-    # pred <=  mean_pred  - sd_fac_1*sd_pred ~ trade_direction,
-    # angle_50_slow <= -70 ~ trade_direction,
-    # angle_H1_50 <= -77 ~ trade_direction,
-    # angle_100 <= -77 ~ trade_direction,
-    # angle_100_slow <=  -80 ~ trade_direction,
-    # angle_50_very_slow <= -70 ~ trade_direction
+
+    if(pos_or_neg == "pos") {
+      tagged_trades <-
+        # fractal_data %>%
+        testing_data %>%
+        left_join(mean_values_of_training) %>%
+        mutate(
+          trade_col =
+            case_when(
+              pred >=  mean_pred  + sd_fac_1*sd_pred ~ trade_direction
+            )
+        ) %>%
+        filter(!is.na(trade_col))
+    }
+
+    if(pos_or_neg == "neg") {
+      tagged_trades <-
+        # fractal_data %>%
+        testing_data %>%
+        left_join(mean_values_of_training) %>%
+        mutate(
+          trade_col =
+            case_when(
+              pred <=  mean_pred  - sd_fac_1*sd_pred ~ trade_direction
+            )
+        ) %>%
+        filter(!is.na(trade_col))
+    }
 
 
-    tagged_trades <-
-      # fractal_data %>%
-      testing_data %>%
-      left_join(mean_values_of_training) %>%
-      mutate(
-        trade_col =
-          case_when(
-
-            pred <=  mean_pred  - sd_fac_1*sd_pred ~ trade_direction
-            # angle_50_slow <= -75 ~ trade_direction,
-            # angle_H1_50 <= -80 ~ trade_direction,
-            # angle_100 <= -80 ~ trade_direction,
-            # angle_100_slow <=  -80 ~ trade_direction,
-            # angle_50_very_slow <= -75 ~ trade_direction
-
-          )
-      ) %>%
-      filter(!is.na(trade_col))
 
     if(return_analysis == TRUE) {
 
@@ -712,173 +664,179 @@ tag_angle_guass_trades <-
       return(tagged_trades)
     }
 
-    ts_trade_dat <- long_bayes_loop_analysis_neg %>%
-      rename(Asset = asset) %>%
-      convert_stop_profit_AUD(
-        asset_infor = asset_infor,
-        asset_col = "Asset",
-        stop_col = "starting_stop_value",
-        profit_col = "starting_profit_value",
-        price_col = "trade_start_prices",
-        risk_dollar_value = risk_dollar_value,
-        returns_present = TRUE,
-        trade_return_col = "trade_returns",
-        currency_conversion = currency_conversion
-      ) %>%
-      filter(volume_required > 0) %>%
-      mutate(wins = ifelse(trade_return_dollars_AUD > 0, 1, 0)) %>%
-      rename(trade_direction = trade_col) %>%
-      group_by(across(.cols = matches(c("trade_direction", "dates")))) %>%
-      summarise(
-        Trades = n(),
-        wins = sum(wins),
-        Total_Dollars = sum(trade_return_dollars_AUD),
-        minimal_loss = mean(minimal_loss, na.rm = T),
-        maximum_win = mean(maximum_win, na.rm = T)
-      ) %>%
-      arrange(dates) %>%
-      mutate(cumualtive_dollars = cumsum(Total_Dollars))
-
-    ts_trade_dat %>%
-      ggplot(aes(x = dates, y = cumualtive_dollars)) +
-      geom_line()
-
-
   }
 
 #----------------------------------------- Creating Data for Algo
-tictoc::tic()
 
 trade_results_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/angle_gauss_trades.db"
 db_con <- connect_db(trade_results_db)
-all_dates_in_data <- starting_asset_data_ask_15M %>% pull(Date) %>% unique()
-max_obs <- 40000
-max_date <- max(all_dates_in_data) - days( floor((30000*15)/(24*60)) )
-relavent_dates <- all_dates_in_data %>% keep( ~ .x <= max_date)
-date_sample <- relavent_dates %>% sample(100)
+db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+starting_asset_data_ask_H1 <-
+  get_db_price(
+    db_location = db_location,
+    start_date = "2017-01-01",
+    end_date = "2025-02-01",
+    bid_or_ask = "ask",
+    time_frame = "H1"
+  )
 
-trade_params <- tibble(XX = c(25, 100, 200, 300, 400))
-trade_params2 <- c(25,50,75,100) %>%
+dates_to_choose_from <- seq(as_datetime("2018-01-01"), as_datetime("2025-02-01"), "day")
+loop_dates <- dates_to_choose_from %>% sample(10)
+
+
+trade_params <- tibble(XX = c(50, 100, 200))
+trade_params2 <- c(25,50) %>%
   map_dfr(~  trade_params %>% mutate(XX_H1 = .x))
-trade_params3 <- c(50,100,150,200,250) %>%
+trade_params3 <- c(50,100,200) %>%
   map_dfr(~  trade_params2 %>% mutate(rolling_slide = .x))
-trade_params4 <- c(10,15,20,25,30,35) %>%
-  map_dfr(~  trade_params3 %>% mutate(period_ahead = .x))
-trade_params5 <- c(15,20,25,30) %>%
-  map_dfr(~  trade_params4 %>% mutate(stop_factor = .x))
-trade_params6 <- c(15,20,25,30) %>%
+# trade_params4 <- c(10,15,20,25,30,35) %>%
+#   map_dfr(~  trade_params3 %>% mutate(period_ahead = .x))
+trade_params5 <- c(20,25,30) %>%
+  map_dfr(~  trade_params3 %>% mutate(stop_factor = .x))
+trade_params6 <- c(20,25,30) %>%
   map_dfr(~  trade_params5 %>% mutate(profit_factor = .x))
 trade_params6 <- trade_params6 %>% filter(profit_factor > stop_factor)
 c = 0
-samples = 40000
-for (j in 1:1 ) {
+samples = 2500
+create_new_table <- TRUE
 
-  # XX <- trade_params6$XX[j] %>% as.numeric()
-  # XX_H1 <- trade_params6$XX_H1[j] %>% as.numeric()
-  # rolling_slide <- trade_params6$rolling_slide[j] %>% as.numeric()
-  # period_ahead <- trade_params6$period_ahead[j] %>% as.numeric()
-  # stop_factor <- trade_params6$stop_factor[j] %>% as.numeric()
-  # profit_factor <- trade_params6$profit_factor[j] %>% as.numeric()
+safely_angle_data <- safely(get_angle_guass_data_LM_Model, otherwise = NULL)
 
-  # Best options: With increasing XX, rolling perod and period ahead we see increasing results
-  # XX = 200,
-  # XX_H1 = 50,
-  # rolling_slide = 200,
-  # pois_period = 10,
-  # period_ahead = 20
-  # sd_fac_1 = 0.5
-  # sd_fac_2 = 0
-  # Case Statement: (predicted_mid_from_now >= predicted_mid_from_now_ma +  sd_fac_1*predicted_mid_from_now_sd)  &
-  #                   predicted_mid_from_now_H1 > 0~ trade_direction
-  # sd_fac_1 = 0.5
-  # stop_factor = 17,
-  # profit_factor = 25
+for (i in 1:dim(trade_params6)[1] ) {
 
-  # Case Statement 2: predicted_mid_from_now_ma_H1 > 0  & lag(predicted_mid_from_now_ma_H1) < 0 ~ trade_direction
-  #  sd_fac_1 = 2
-  # stop_factor = 15,
-  # profit_factor = 50
-  XX <- 200
-  XX_H1 <- 50
-  rolling_slide <- 200
-  period_ahead <- 20
-  stop_factor <- 21
-  profit_factor <- 35
+  XX <- trade_params6$XX[i]
+  XX_H1 <- trade_params6$XX_H1[i]
+  rolling_slide <- trade_params6$rolling_slide[i]
+  period_ahead <- trade_params6$period_ahead[i]
+  stop_factor <- trade_params6$stop_factor[i]
+  profit_factor <- trade_params6$profit_factor[i]
 
-  for (i in 1:length(date_sample)) {
+  for (j in 1:length(loop_dates)) {
 
-    c = c + 1
+    tictoc::tic()
 
-    loop_data_15 <-
-      starting_asset_data_ask_15M %>%
-      filter(Date >= date_sample[i]) %>%
-      group_by(Asset) %>%
-      slice_head(n = samples) %>%
-      ungroup()
+    start_date_day = loop_dates[j]
+    start_date_day_H1 = start_date_day - days(100)
+    end_date_day = start_date_day + minutes(15*samples)
 
+    hour_data_to_use <- starting_asset_data_ask_H1 %>%
+      filter(Date >=start_date_day_H1 & Date <= end_date_day)
 
-    fractal_data <-
-      get_res_sup_slow_fast_fractal_data(
-      starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
-      starting_asset_data_ask_15M = loop_data_15,
-      XX = XX,
-      XX_H1 = XX_H1,
-      rolling_slide = rolling_slide,
-      pois_period = 10,
-      period_ahead = period_ahead,
-      asset_infor = asset_infor,
-      currency_conversion
-    )
+    starting_asset_data_ask_15M <-
+      get_db_price(
+        db_location = db_location,
+        start_date = start_date_day,
+        end_date = end_date_day,
+        bid_or_ask = "bid",
+        time_frame = "M15"
+      )
 
-    analysis_list <-
-      tag_res_sup_fast_slow_fractal_trades(
-        fractal_data = fractal_data,
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-        stop_factor = stop_factor,
-        profit_factor =profit_factor,
-        risk_dollar_value = 10,
-        sd_fac_1 = 0,
-        sd_fac_2 = 1,
+    mean_values_by_asset_for_loop_15_ask =
+      wrangle_asset_data(
+        asset_data_daily_raw = starting_asset_data_ask_15M,
+        summarise_means = TRUE
+      )
+
+    starting_asset_data_ask_15M = starting_asset_data_ask_15M
+
+    angle_data_all <-
+      safely_angle_data(
+        starting_asset_data_ask_H1 = hour_data_to_use,
+        starting_asset_data_ask_15M = starting_asset_data_ask_15M,
+        XX = XX,
+        XX_H1 = XX_H1,
+        rolling_slide = rolling_slide,
+        pois_period = 10,
+        period_ahead = period_ahead,
+        asset_infor,
+        currency_conversion,
+        testing_proportion = 0.35,
         trade_direction = "Long",
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        return_analysis = TRUE
-      )
-
-    analysis_data <- analysis_list[[1]] %>%
-      mutate(
-        XX = XX,
-        XX_H1 = XX_H1,
-        rolling_slide = rolling_slide,
-        period_ahead = period_ahead,
+        mean_values_by_asset_for_loop  = mean_values_by_asset_for_loop_15_ask,
         stop_factor = stop_factor,
-        profit_factor =profit_factor,
-        sample_date = date_sample[i],
-        samples =samples
-      )
+        profit_factor =profit_factor
+      ) %>%
+      pluck('result')
 
-    analysis_data_asset <- analysis_list[[2]] %>%
-      mutate(
-        XX = XX,
-        XX_H1 = XX_H1,
-        rolling_slide = rolling_slide,
-        period_ahead = period_ahead,
-        stop_factor = stop_factor,
-        profit_factor =profit_factor,
-        sample_date = date_sample[i],
-        samples =samples
-      )
+    if(!is.null(angle_data_all)) {
 
-    if(i == 1) {
-      write_table_sql_lite(.data = analysis_data, table_name = "angle_gauss", conn = db_con, overwrite_true = TRUE)
-      write_table_sql_lite(.data = analysis_data_asset, table_name = "angle_gauss_asset", conn = db_con, overwrite_true = TRUE)
-    } else {
-      append_table_sql_lite(.data = analysis_data, table_name = "angle_gauss", conn = db_con)
-      append_table_sql_lite(.data = analysis_data_asset, table_name = "angle_gauss_asset", conn = db_con)
+      analysis_results_pos <-
+        tag_angle_guass_trades(
+          testing_data = angle_data_all$testing_data,
+          mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+          mean_values_of_training = angle_data_all$mean_values_of_training,
+          stop_factor = stop_factor,
+          profit_factor = profit_factor,
+          risk_dollar_value = 10,
+          sd_fac_1 = 2,
+          sd_fac_2 = 3,
+          trade_direction = "Short",
+          currency_conversion = currency_conversion,
+          asset_infor = asset_infor,
+          return_analysis = TRUE,
+          pos_or_neg = "pos"
+        )
+
+      analysis_results_pos_total <-
+        analysis_results_pos[[1]] %>%
+        mutate(
+          XX = trade_params6$XX[i],
+          XX_H1 = trade_params6$XX_H1[i],
+          rolling_slide = trade_params6$rolling_slide[i],
+          period_ahead = trade_params6$period_ahead[i],
+          stop_factor = trade_params6$stop_factor[i],
+          profit_factor = trade_params6$profit_factor[i],
+          pos_or_neg = "pos"
+        )
+
+      analysis_results_neg <-
+        tag_angle_guass_trades(
+          testing_data = angle_data_all$testing_data,
+          mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+          mean_values_of_training = angle_data_all$mean_values_of_training,
+          stop_factor = stop_factor,
+          profit_factor = profit_factor,
+          risk_dollar_value = 10,
+          sd_fac_1 = 2,
+          sd_fac_2 = 3,
+          trade_direction = "Short",
+          currency_conversion = currency_conversion,
+          asset_infor = asset_infor,
+          return_analysis = TRUE,
+          pos_or_neg = "neg"
+        )
+
+      analysis_results_neg_total <-
+        analysis_results_neg[[1]] %>%
+        mutate(
+          XX = trade_params6$XX[i],
+          XX_H1 = trade_params6$XX_H1[i],
+          rolling_slide = trade_params6$rolling_slide[i],
+          period_ahead = trade_params6$period_ahead[i],
+          stop_factor = trade_params6$stop_factor[i],
+          profit_factor = trade_params6$profit_factor[i],
+          pos_or_neg = "neg"
+        )
+
+      tictoc::toc()
+
+      c = c + 1
+
+      if(create_new_table == TRUE & c == 1) {
+        write_table_sql_lite(conn = db_con, .data = analysis_results_pos_total, table_name = "angle_guass_sample")
+        append_table_sql_lite(conn = db_con, .data = analysis_results_neg_total, table_name = "angle_guass_sample")
+        create_new_table <- FALSE
+      }
+
+      if(create_new_table == FALSE) {
+        append_table_sql_lite(conn = db_con, .data = analysis_results_pos_total, table_name = "angle_guass_sample")
+        append_table_sql_lite(conn = db_con, .data = analysis_results_neg_total, table_name = "angle_guass_sample")
+      }
+
     }
 
   }
 
 }
 
-test <- DBI::dbGetQuery(conn = db_con, "SELECT * FROM angle_gauss")
+test <- DBI::dbGetQuery(conn = db_con, "SELECT * FROM angle_guass_sample")

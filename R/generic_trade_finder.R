@@ -1023,8 +1023,8 @@ analyse_trailing_trades <- function(
 
 
 get_stops_profs_volume_trades <- function(
-                                          tagged_trades = tagged_trades,
-                                          mean_values_by_asset = mean_values_by_asset,
+                                       tagged_trades = tagged_trades,
+                                       mean_values_by_asset = mean_values_by_asset,
                                        trade_col = "trade_col",
                                        currency_conversion = currency_conversion,
                                        risk_dollar_value = risk_dollar_value,

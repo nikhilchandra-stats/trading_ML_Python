@@ -207,7 +207,7 @@ get_res_sup_trade_analysis <- function(
 
   tagged_trades <-
     get_sup_res_tagged_trades(
-      squeeze_detection = squeeze_detection,
+      sup_res_data = squeeze_detection,
       sd_fac_1 = sd_fac_1,
       sd_fac_2 = sd_fac_2,
       sd_fac_3 = sd_fac_3,

@@ -48,49 +48,7 @@ asset_list_oanda <- get_oanda_symbols() %>%
   )
 
 asset_infor <- get_instrument_info()
-
 db_location <- "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2020-01-01"
-start_date_day_H1 = "2019-01-01"
-end_date_day = today() %>% as.character()
-
-#Alternative Dates
-start_date_day = "2018-06-01"
-start_date_day_H1 = "2018-01-01"
-end_date_day = today() %>% as.character()
-
-starting_asset_data_ask_15M <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "M15"
-  )
-
-starting_asset_data_ask_H1 <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day_H1,
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "H1"
-  )
-
-mean_values_by_asset_for_loop_15_ask =
-  wrangle_asset_data(
-    asset_data_daily_raw = starting_asset_data_ask_15M,
-    summarise_means = TRUE
-  )
-
-
-starting_asset_data_ask_H1 = starting_asset_data_ask_H1
-starting_asset_data_ask_15M = starting_asset_data_ask_15M
-
-sup_res_trade_db <-
-  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/sup_res_2025-06-11.db")
-db_con <- connect_db(sup_res_trade_db)
-create_new_table = TRUE
 
 trade_params <-
   c(3,4,5) %>%
@@ -163,40 +121,70 @@ pois_period = 10
 
 
 #----------------------------------------- Creating Data for Algo
-tictoc::tic()
-
-current_time <- now() %>% as_datetime()
-current_minute <- lubridate::minute(current_time)
-current_hour <- lubridate::hour(current_time)
-current_date <- now() %>% as_date(tz = "Australia/Canberra")
-
-starting_asset_data_ask_H1 = starting_asset_data_ask_H1
-starting_asset_data_ask_15M = starting_asset_data_ask_15M
-
-squeeze_detection <-
-  get_res_sup_slow_fast_fractal_data(
-    starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
-    starting_asset_data_ask_15M = starting_asset_data_ask_15M,
-    XX = XX,
-    rolling_slide = rolling_slide,
-    pois_period = pois_period
+starting_asset_data_ask_H1 <-
+  get_db_price(
+    db_location = db_location,
+    start_date = "2014-01-01",
+    end_date = "2025-02-01",
+    bid_or_ask = "ask",
+    time_frame = "H1"
   )
-tictoc::toc()
 
+dates_to_choose_from <- seq(as_datetime("2015-01-01"), as_datetime("2025-02-01"), "day")
+sup_res_trade_db <-
+  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/sup_res_date_sim_2025-06-11.db")
+db_con <- connect_db(sup_res_trade_db)
+create_new_table = TRUE
+loop_dates <- dates_to_choose_from %>% sample(2000)
 
-for (j in 1:dim(trade_params)[1]) {
+for (j in 1114:length(loop_dates)) {
 
-  stop_factor = trade_params$stop_factor[j]
-  profit_factor = trade_params$profit_factor[j]
-  sd_fac_1 = trade_params$sd_fac_1[j]
-  sd_fac_2 = trade_params$sd_fac_2[j]
-  sd_fac_3 = trade_params$sd_fac_3[j]
+  # stop_factor = trade_params$stop_factor[j]
+  # profit_factor = trade_params$profit_factor[j]
+  # sd_fac_1 = trade_params$sd_fac_1[j]
+  # sd_fac_2 = trade_params$sd_fac_2[j]
+  # sd_fac_3 = trade_params$sd_fac_3[j]
 
-  stop_factor = 20
-  profit_factor = 40
+  #Alternative Dates
+  start_date_day = loop_dates[j]
+  start_date_day_H1 = start_date_day - days(100)
+  end_date_day = start_date_day + minutes(15*5000)
+
+  hour_data_to_use <- starting_asset_data_ask_H1 %>%
+    filter(Date >=start_date_day_H1 & Date <= end_date_day)
+
+  starting_asset_data_ask_15M <-
+    get_db_price(
+      db_location = db_location,
+      start_date = start_date_day %>% as.character(),
+      end_date = end_date_day %>% as.character(),
+      bid_or_ask = "ask",
+      time_frame = "M15"
+    )
+
+  mean_values_by_asset_for_loop_15_ask =
+    wrangle_asset_data(
+      asset_data_daily_raw = starting_asset_data_ask_15M,
+      summarise_means = TRUE
+    )
+
+  XX = 25
+  rolling_slide = 200
+  pois_period = 10
+  stop_factor = 17
+  profit_factor = 27
   sd_fac_1 = 4.5
   sd_fac_2 = 3.5
   sd_fac_3 = 3.5
+
+  squeeze_detection <-
+    get_res_sup_slow_fast_fractal_data(
+      starting_asset_data_ask_H1 = hour_data_to_use,
+      starting_asset_data_ask_15M = starting_asset_data_ask_15M,
+      XX = XX,
+      rolling_slide = rolling_slide,
+      pois_period = pois_period
+    )
 
 
   analysis_data <-
@@ -241,10 +229,17 @@ for (j in 1:dim(trade_params)[1]) {
 
 }
 
-short_analysis <-
+analysis <-
   DBI::dbGetQuery(conn = db_con,
                   statement = "SELECT * FROM sup_res") %>%
   filter(trade_direction == "Long")
+
+analysis %>%
+  ggplot(aes(x = risk_weighted_return)) +
+  geom_density(fill = "darkorange", alpha = 0.3) +
+  theme_minimal()
+
+analysis$risk_weighted_return %>% summary()
 
 DBI::dbDisconnect(db_con)
 rm(db_con)

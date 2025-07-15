@@ -389,23 +389,23 @@ while (current_time < end_time) {
     if(!is.null(trades_2)) {trades_2 <- trades_2 %>% filter(trade_col == "Long")}
     if(!is.null(trades_2_50)) {trades_2_50 <- trades_2_50 %>% filter(trade_col == "Long")}
 
-    trades_3 <-
-      get_NN_best_trades_from_mult_anaysis(
-        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
-        network_name = "H1_LM_Markov_NN_Hidden35",
-        NN_model = H1_LM_Markov_NN_Hidden35,
-        Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
-        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        risk_dollar_value = 10,
-        win_threshold = 0.54,
-        risk_weighted_thresh = 0.02,
-        slice_max = TRUE,
-        filter_profitbale_assets = TRUE
-      )
-
-    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
+    # trades_3 <-
+    #   get_NN_best_trades_from_mult_anaysis(
+    #     db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
+    #     network_name = "H1_LM_Markov_NN_Hidden35",
+    #     NN_model = H1_LM_Markov_NN_Hidden35,
+    #     Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
+    #     mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+    #     currency_conversion = currency_conversion,
+    #     asset_infor = asset_infor,
+    #     risk_dollar_value = 10,
+    #     win_threshold = 0.54,
+    #     risk_weighted_thresh = 0.02,
+    #     slice_max = TRUE,
+    #     filter_profitbale_assets = TRUE
+    #   )
+    #
+    # if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
 
     trades_4 <-
       get_NN_best_trades_from_mult_anaysis(
@@ -455,64 +455,83 @@ while (current_time < end_time) {
     #             test_results = FALSE
     #             )
 
+
+    trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
+    trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
+    # trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
+    trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
+    trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
+
+    all_trades_string <-
+      glue::glue("Trades 1: {trades1_dim}, Trades 2: {trades2_dim}, Trades 4: {trades4_dim}, Trades 1_50: {trades1_50_dim}") %>%
+      as.character()
+
+    message(all_trades_string)
+
     total_trades <- trades_1 %>%
       bind_rows(trades_2) %>%
-      bind_rows(trades_3) %>%
+      # bind_rows(trades_3) %>%
       bind_rows(trades_2_50) %>%
       bind_rows(trades_1_50) %>%
-      bind_rows(trades_4) %>%
-      filter(Asset %in% all_assets_present)
+      bind_rows(trades_4)
 
-    greater_prof_trades <-
-      total_trades %>%
-      filter(stop_factor < profit_factor)
+    if(dim(total_trades)[1] > 0 & !is.null(total_trades)) {
 
-    if(dim(greater_prof_trades)[1] > 0) {
-      greater_prof_trades <- greater_prof_trades %>%
-        group_by(Asset, trade_col) %>%
-        slice_max(risk_weighted_returns) %>%
-        ungroup()
+        total_trades <- total_trades %>%
+            filter(Asset %in% all_assets_present)
 
-      greater_prof_trades_assets <- greater_prof_trades %>% distinct(Asset) %>% pull(Asset)
+        greater_prof_trades <-
+          total_trades %>%
+          filter(stop_factor < profit_factor)
 
-    } else {
-      greater_prof_trades_assets <- c("XXXXXXXXXX")
-      greater_prof_trades_assets <- NULL
-    }
+        if(dim(greater_prof_trades)[1] > 0) {
+          greater_prof_trades <- greater_prof_trades %>%
+            group_by(Asset, trade_col) %>%
+            slice_max(risk_weighted_returns) %>%
+            ungroup()
 
-    equal_prof_trades <- total_trades %>%
-      filter(!(Asset %in% greater_prof_trades_assets))
+          greater_prof_trades_assets <- greater_prof_trades %>% distinct(Asset) %>% pull(Asset)
 
-    if(dim(equal_prof_trades)[1] > 0) {
+        } else {
+          greater_prof_trades_assets <- c("XXXXXXXXXX")
+          greater_prof_trades_assets <- NULL
+        }
 
-      equal_prof_trades <-
-        equal_prof_trades %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(stop_value) %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(risk_weighted_returns) %>%
-        group_by(Asset, trade_col) %>%
-        mutate(
-          kk = row_number()
-        ) %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(kk) %>%
-        ungroup()
+        equal_prof_trades <- total_trades %>%
+          filter(!(Asset %in% greater_prof_trades_assets))
 
-    } else {
-      equal_prof_trades <- NULL
-    }
+        if(dim(equal_prof_trades)[1] > 0) {
 
-    if(!is.null(equal_prof_trades)) {
-      total_trades <-
-        equal_prof_trades %>%
-        bind_rows(greater_prof_trades)
-    }
+          equal_prof_trades <-
+            equal_prof_trades %>%
+            group_by(Asset, trade_col) %>%
+            slice_min(stop_value) %>%
+            group_by(Asset, trade_col) %>%
+            slice_min(risk_weighted_returns) %>%
+            group_by(Asset, trade_col) %>%
+            mutate(
+              kk = row_number()
+            ) %>%
+            group_by(Asset, trade_col) %>%
+            slice_min(kk) %>%
+            ungroup()
 
-    if( is.null(equal_prof_trades) & !is.null(greater_prof_trades) ) {
-      total_trades <-
-        greater_prof_trades %>%
-        bind_rows(equal_prof_trades)
+        } else {
+          equal_prof_trades <- NULL
+        }
+
+        if(!is.null(equal_prof_trades)) {
+          total_trades <-
+            equal_prof_trades %>%
+            bind_rows(greater_prof_trades)
+        }
+
+        if( is.null(equal_prof_trades) & !is.null(greater_prof_trades) ) {
+          total_trades <-
+            greater_prof_trades %>%
+            bind_rows(equal_prof_trades)
+        }
+
     }
 
     if(dim(total_trades)[1] > 0) {
@@ -565,14 +584,14 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & units >= 9000 ~ TRUE,
+                )) & abs(units) >= 18000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & units >= 2 ~ TRUE,
-                Asset == "XCU_USD" & units>=400 ~ TRUE,
-                Asset == "WHEAT_USD" & units>=200 ~ TRUE,
-                Asset == "CORN_USD" & units>=200 ~ TRUE,
-                Asset == "NATGAS_USD" & units>=200 ~ TRUE,
-                Asset %in% c("BCO_USD", "WTICO_USD") & units>=20 ~ TRUE,
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
+                Asset == "XCU_USD" & abs(units)>=800 ~ TRUE,
+                Asset == "WHEAT_USD" & abs(units)>=600 ~ TRUE,
+                Asset == "CORN_USD" & abs(units)>=600 ~ TRUE,
+                Asset == "NATGAS_USD" & abs(units)>=600 ~ TRUE,
+                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=45 ~ TRUE,
                 TRUE ~ FALSE
               )
           ) %>%
@@ -582,69 +601,73 @@ while (current_time < end_time) {
 
       }
 
-      for (i in 1:dim(total_trades)[1]) {
+      if(dim(total_trades)[1] > 0) {
 
-        account_details_long <- get_account_summary(account_var = long_account_num)
-        margain_available_long <- account_details_long$marginAvailable %>% as.numeric()
-        margain_used_long <- account_details_long$marginUsed%>% as.numeric()
-        total_margain_long <- margain_available_long + margain_used_long
-        percentage_margain_available_long <- margain_available_long/total_margain_long
+        for (i in 1:dim(total_trades)[1]) {
 
-        account_details_short <- get_account_summary(account_var = short_account_num)
-        margain_available_short <- account_details_short$marginAvailable %>% as.numeric()
-        margain_used_short <- account_details_short$marginUsed%>% as.numeric()
-        total_margain_short <- margain_available_short + margain_used_short
-        percentage_margain_available_short <- margain_available_short/total_margain_short
+          account_details_long <- get_account_summary(account_var = long_account_num)
+          margain_available_long <- account_details_long$marginAvailable %>% as.numeric()
+          margain_used_long <- account_details_long$marginUsed%>% as.numeric()
+          total_margain_long <- margain_available_long + margain_used_long
+          percentage_margain_available_long <- margain_available_long/total_margain_long
 
-        Sys.sleep(1)
+          account_details_short <- get_account_summary(account_var = short_account_num)
+          margain_available_short <- account_details_short$marginAvailable %>% as.numeric()
+          margain_used_short <- account_details_short$marginUsed%>% as.numeric()
+          total_margain_short <- margain_available_short + margain_used_short
+          percentage_margain_available_short <- margain_available_short/total_margain_short
 
-        trade_direction <- total_trades$trade_col[i] %>% as.character()
-        asset <- total_trades$Asset[i] %>% as.character()
-        volume_trade <- total_trades$volume_required[i] %>% as.numeric()
-        volume_trade <- ifelse(trade_direction == "Short" & volume_trade > 0, -1*volume_trade, volume_trade)
-        volume_trade <- ifelse(trade_direction == "Long" & volume_trade < 0, -1*volume_trade, volume_trade)
+          Sys.sleep(1)
 
-        loss_var <- total_trades$stop_value[i] %>% as.numeric()
-        profit_var <- total_trades$profit_value[i] %>% as.numeric()
+          trade_direction <- total_trades$trade_col[i] %>% as.character()
+          asset <- total_trades$Asset[i] %>% as.character()
+          volume_trade <- total_trades$volume_required[i] %>% as.numeric()
+          volume_trade <- ifelse(trade_direction == "Short" & volume_trade > 0, -1*volume_trade, volume_trade)
+          volume_trade <- ifelse(trade_direction == "Long" & volume_trade < 0, -1*volume_trade, volume_trade)
 
-        if(loss_var > 9) { loss_var <- round(loss_var)}
-        if(profit_var > 9) { profit_var <- round(profit_var)}
+          loss_var <- total_trades$stop_value[i] %>% as.numeric()
+          profit_var <- total_trades$profit_value[i] %>% as.numeric()
 
-        if(percentage_margain_available_long[1] > margain_threshold & trade_direction == "Long") {
+          if(loss_var > 9) { loss_var <- round(loss_var)}
+          if(profit_var > 9) { profit_var <- round(profit_var)}
 
-          volume_trade <- ifelse(volume_trade < 0, -1*volume_trade, volume_trade)
+          if(percentage_margain_available_long[1] > margain_threshold & trade_direction == "Long") {
 
-          # This is misleading because it is price distance and not pip distance
-          http_return <- oanda_place_order_pip_stop(
-            asset = asset,
-            volume = volume_trade,
-            stopLoss = loss_var,
-            takeProfit = profit_var,
-            type = "MARKET",
-            timeinForce = "FOK",
-            acc_name = account_name_long,
-            position_fill = "OPEN_ONLY" ,
-            price
-          )
+            volume_trade <- ifelse(volume_trade < 0, -1*volume_trade, volume_trade)
 
-        }
+            # This is misleading because it is price distance and not pip distance
+            http_return <- oanda_place_order_pip_stop(
+              asset = asset,
+              volume = volume_trade,
+              stopLoss = loss_var,
+              takeProfit = profit_var,
+              type = "MARKET",
+              timeinForce = "FOK",
+              acc_name = account_name_long,
+              position_fill = "OPEN_ONLY" ,
+              price
+            )
 
-        if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
+          }
 
-          volume_trade <- ifelse(volume_trade > 0, -1*volume_trade, volume_trade)
+          if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
 
-          # This is misleading because it is price distance and not pip distance
-          http_return <- oanda_place_order_pip_stop(
-            asset = asset,
-            volume = volume_trade,
-            stopLoss = loss_var,
-            takeProfit = profit_var,
-            type = "MARKET",
-            timeinForce = "FOK",
-            acc_name = account_name_short,
-            position_fill = "OPEN_ONLY" ,
-            price
-          )
+            volume_trade <- ifelse(volume_trade > 0, -1*volume_trade, volume_trade)
+
+            # This is misleading because it is price distance and not pip distance
+            http_return <- oanda_place_order_pip_stop(
+              asset = asset,
+              volume = volume_trade,
+              stopLoss = loss_var,
+              takeProfit = profit_var,
+              type = "MARKET",
+              timeinForce = "FOK",
+              acc_name = account_name_short,
+              position_fill = "OPEN_ONLY" ,
+              price
+            )
+
+          }
 
         }
 
