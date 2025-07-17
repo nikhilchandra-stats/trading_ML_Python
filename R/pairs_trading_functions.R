@@ -1,3 +1,143 @@
+#' bivariate_normal_density
+#'
+#' @param x1
+#' @param x2
+#' @param mean_vec
+#' @param sigma
+#'
+#' @return
+#' @export
+#'
+#' @examples
+bivariate_normal_density <- function(x1 = 0.2,
+                                     x2 = 0.1,
+                                     mean_vec = c(0.05, 0.06),
+                                     sigma = sigma_matrix) {
+
+  x_var = c(x1, x2)
+  a1 <- (1/(2*pi))^(length(x_var)/2)
+  sigma <- as.matrix(sigma)
+  det_sigma <- det(sigma)
+  det_sigma_sqrt <- det_sigma^(-1/2)
+
+  a2 <- as.matrix((x_var - mean_vec))
+  a2_T <- t(a2)
+  sigma_inv <- MASS::ginv(sigma)
+
+  p_x_1 <- a1*det_sigma_sqrt
+  p_x_2 <- (-0.5)*( a2_T%*%sigma_inv%*%a2 )
+  p_x_2_exp <- exp(p_x_2)
+  px <- p_x_1*p_x_2_exp
+
+  px <- px %>% as.numeric()
+
+  return(px)
+
+}
+
+#' estimating_dual_copula
+#'
+#' @param asset_data_to_use
+#' @param asset_to_use
+#' @param price_col
+#' @param rolling_period
+#' @param samples_for_MLE
+#' @param test_samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+cauchy_dual_copula_generic <-  function(
+    asset_data_to_use = major_indices_cumulative_pca %>% filter(Asset == "SPX500_USD"),
+    cols_to_use = c("Return_Index", "Average_PCA"),
+    rolling_period = 100,
+    samples_for_MLE = 0.5,
+    test_samples = 0.4
+) {
+
+  combined_data <- asset_data_to_use %>%
+    dplyr::select(Date, !!as.name(cols_to_use[1]), !!as.name(cols_to_use[2]) ) %>%
+    filter(if_all(.cols = everything(), ~ !is.na(.)))
+
+  asset1_modeling <-combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    pull(!!as.name(cols_to_use[1]))
+
+  asset2_modeling <-combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    pull(!!as.name(cols_to_use[2]))
+
+  mle1 <- fitdistrplus::fitdist(asset1_modeling %>% keep(~ !is.na(.x) & !is.nan(.x)) , distr = "cauchy")
+  mle1_1 <- mle1$estimate[1] %>% as.numeric()
+  mle1_2 <- mle1$estimate[2] %>% as.numeric()
+  mle2 <- fitdistrplus::fitdist(asset2_modeling %>% keep(~ !is.na(.x) & !is.nan(.x)) , distr = "cauchy")
+  mle2_1 <- mle2$estimate[1] %>% as.numeric()
+  mle2_2 <- mle2$estimate[2] %>% as.numeric()
+
+  mle_training_cdf_1 <-
+    pcauchy(asset1_modeling, location = mle1_1, scale = mle1_2)
+  mle_training_cdf_2 <-
+    pcauchy(asset2_modeling, location = mle2_1, scale = mle2_2)
+
+  static_metrics <-
+    combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    mutate(
+      FX1 = pcauchy(!!as.name(cols_to_use[1]), location = mle1_1, scale = mle1_2),
+      FX2 = pcauchy(!!as.name(cols_to_use[2]), location = mle2_1, scale = mle2_2),
+      CDF_INV_FX1_ZNORM = pnorm(FX1),
+      CDF_INV_FX2_ZNORM = pnorm(FX2)
+    )
+
+
+  rho <- cor(static_metrics$FX1, static_metrics$FX2)
+
+  sigma_matrix =  matrix(
+    c(
+      1, rho,
+      rho, 1
+    ),
+    nrow = 2
+  )
+
+  mean_values <- c(mean(mle_training_cdf_1, na.rm  = T),
+                   mean(mle_training_cdf_2, na.rm  = T)
+                   )
+
+  combined_data2 <-
+    combined_data %>%
+    ungroup() %>%
+    slice_tail(prop = test_samples) %>%
+    mutate(
+      #-------Probability Integral Transform
+      FX1 = pcauchy(!!as.name(cols_to_use[1]), location = mle1_1, scale = mle1_2),
+      FX2 = pcauchy(!!as.name(cols_to_use[2]), location = mle2_1, scale = mle2_2),
+      CDF_INV_FX1_ZNORM = pnorm(FX1),
+      CDF_INV_FX2_ZNORM = pnorm(FX2),
+      #Estimate the Probability of FX with a standard normal
+      joint_density_copula =
+        slider::slide2_dbl(
+          .x = CDF_INV_FX1_ZNORM,
+          .y = CDF_INV_FX2_ZNORM,
+          .f =
+            ~
+            bivariate_normal_density(x1 = .x,
+                                     x2 = .y,
+                                     mean_vec = mean_values,
+                                     sigma = sigma_matrix
+            ),
+          .before = 0
+        ),
+
+      joint_density = CDF_INV_FX1_ZNORM*CDF_INV_FX2_ZNORM*joint_density_copula
+    )
+
+  return(combined_data2)
+
+}
+
+
 #' estimating_dual_copula
 #'
 #' @param asset_data_to_use
@@ -1829,3 +1969,234 @@ get_rolling_correlation_estimates <-
     return(asset_joined_copulas)
 
   }
+
+
+#' get_all_major_indices
+#'
+#' @param db_location
+#' @param start_date
+#' @param end_date
+#' @param bid_or_ask
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_all_major_indices <- function(
+    db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db",
+    start_date = "2016-01-01",
+    end_date = today() %>% as.character(),
+    bid_or_ask = "ask"
+) {
+
+  starting_asset_data_ask_daily <-
+    get_db_price(
+      db_location = db_location,
+      start_date = "2025-07-01",
+      end_date = "2025-08-01",
+      bid_or_ask = bid_or_ask,
+      time_frame = "D"
+    )
+
+  distinct_assets <-
+    starting_asset_data_ask_daily %>% distinct(Asset)%>% pull(Asset)
+
+  SPX500_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "SPX500_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  US2000_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "US2000_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  DE30_EUR <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "DE30_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  EU50_EUR <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "EU50_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  AU200_AUD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "AU200_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
+  NAS100_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "NAS100_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  SG30_SGD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = "M15",
+    asset = "SG30_SGD",
+    keep_bid_to_ask = TRUE
+  )
+
+  all_dat <-
+    SPX500_USD %>%
+    bind_rows(US2000_USD) %>%
+    bind_rows(SG30_SGD) %>%
+    bind_rows(NAS100_USD) %>%
+    bind_rows(AU200_AUD) %>%
+    bind_rows(EU50_EUR) %>%
+    bind_rows(DE30_EUR)%>%
+    bind_rows(US2000_USD)
+
+  return(all_dat)
+
+}
+
+#' create_log_cumulative_returns
+#'
+#' @param asset_data_to_use
+#' @param asset_to_use
+#' @param price_col
+#' @param rolling_period
+#' @param samples_for_MLE
+#' @param test_samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_log_cumulative_returns <- function(
+    asset_data_to_use = SPX500_USD,
+    asset_to_use = c("SPX500_USD"),
+    price_col = "Open",
+    return_long_format = FALSE
+) {
+
+  asset1 <- asset_data_to_use %>%
+    filter(Asset == asset_to_use[1]) %>% distinct(Date, !!as.name(price_col)) %>%
+    rename(
+      !!as.name(asset_to_use[1]) := !!as.name(price_col)
+    )
+
+  combined_data <-
+    asset1 %>%
+    mutate(
+      log1_price = !!as.name(asset_to_use[1]),
+      log1_return = log(log1_price/lag(log1_price))
+    ) %>%
+    filter(!is.na(log1_return))
+
+  combined_data <-
+    combined_data %>%
+    arrange(Date) %>%
+    mutate(
+      !!as.name(glue::glue("{asset_to_use[1]}_Return_Index")) :=
+        cumsum(log1_return)
+    )
+
+  if(return_long_format == TRUE) {
+
+    combined_data <-
+      combined_data %>%
+      arrange(Date) %>%
+      dplyr::select(Date,
+                    Return_Index = !!as.name(glue::glue("{asset_to_use[1]}_Return_Index"))
+                    ) %>%
+      mutate(
+        Asset = asset_to_use[1]
+      )
+
+  } else {
+
+    combined_data <-
+      combined_data %>%
+      dplyr::select(
+        Date, !!as.name(glue::glue("{asset_to_use[1]}_Return_Index"))
+      )
+  }
+
+  return(combined_data)
+
+}
+
+#' create_log_cumulative_returns
+#'
+#' @param asset_data_to_use
+#' @param asset_to_use
+#' @param price_col
+#' @param rolling_period
+#' @param samples_for_MLE
+#' @param test_samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_PCA_Asset_Index <- function(
+    asset_data_to_use = major_indices_log_cumulative,
+    asset_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD"),
+    price_col = "Return_Index"
+) {
+
+  pca_data <-
+    asset_data_to_use %>%
+    dplyr::select(Date, Asset, !!as.name(price_col)) %>%
+    filter(Asset %in% asset_to_use) %>%
+    rename(pivot_data = !!as.name(price_col)) %>%
+    pivot_wider(names_from = Asset, values_from = pivot_data) %>%
+    arrange(Date) %>%
+    fill(everything(), .direction = "down") %>%
+    filter(if_all(.cols = everything(), .fns = ~ !is.na(.)))
+
+  pca_index_dat <- pca_data %>% dplyr::select(-Date)
+
+  pca_calc <- prcomp(pca_index_dat)
+  pca_calc1 <- pca_calc$x %>%
+    as_tibble() %>%
+    mutate(
+      Average_PCA = (PC1 + PC2)/2
+    )
+
+  returned_data <-
+    pca_data %>%
+    dplyr::select(Date) %>%
+    mutate(
+      Average_PCA = pca_calc1$Average_PCA %>% as.numeric()
+    )
+
+  return(returned_data)
+
+}

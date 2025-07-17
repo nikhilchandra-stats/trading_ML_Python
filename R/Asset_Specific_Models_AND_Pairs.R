@@ -300,8 +300,6 @@ get_AUD_USD_NZD_Specific_Trades <-
       mutate(
         trade_col =
           case_when(
-            # lm_pred_AUD_USD >= mean_pred_AUD_USD + sd_fac_lm_trade*sd_pred_AUD_USD ~ trade_direction
-            # lm_pred_AUD_USD <= mean_pred_AUD_USD - sd_fac_lm_trade*sd_pred_AUD_USD ~ trade_direction,
 
             lm_pred_AUD_USD >= mean_pred_AUD_USD + sd_fac_lm_trade*sd_pred_AUD_USD &
               trade_direction == "Short" ~trade_direction,
