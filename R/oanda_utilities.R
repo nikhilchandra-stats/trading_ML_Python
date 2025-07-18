@@ -385,7 +385,8 @@ get_oanda_data_position_book <- function(assets = assets_x){
 
 
 get_closed_positions <- function(save_csv = FALSE,
-                                 account_var = 2){
+                                 account_var = 2,
+                                 asset = "AUD_USD"){
 
     headers = c(
       `Content-Type` = 'application/json',
@@ -395,7 +396,8 @@ get_closed_positions <- function(save_csv = FALSE,
     params <-
       list(
         `state` = "CLOSED",
-        `count` = 500L
+        `count` = 500L,
+        instrument = asset
       )
 
     res <- httr::GET(url =

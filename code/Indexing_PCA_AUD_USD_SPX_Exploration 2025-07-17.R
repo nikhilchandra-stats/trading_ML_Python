@@ -29,15 +29,17 @@ currency_conversion <-
 
 
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db"
-start_date = "2016-01-01"
+start_date = "2011-01-01"
 end_date = today() %>% as.character()
+time_frame = "H1"
 
 major_indices <-
   get_all_major_indices(
     db_location = db_location,
     start_date = start_date,
     end_date = end_date,
-    bid_or_ask = "ask"
+    bid_or_ask = "ask",
+    time_frame = time_frame
   )
 
 major_indices$Asset %>% unique()
@@ -97,21 +99,6 @@ create_Index_PCA_copula <-
       ) %>%
       ungroup() %>%
       filter(!is.na(Average_PCA_Returns))
-
-    PCA_minus_Price_Index_distribution <-
-      function(major_indices_cumulative_pca = major_indices_cumulative_pca,
-               asset = "SPX500_USD",
-               rolling_diff_) {
-
-        returned <-
-          major_indices_cumulative_pca %>%
-          filter(Asset == asset) %>%
-          mutate(
-            Price_Index_minus_PCA_Index = Average_PCA_Index - Return_Index
-          )
-
-
-      }
 
     SPX500_USD_Index_copula_retun <-
       cauchy_dual_copula_generic(
@@ -239,6 +226,9 @@ create_Index_PCA_copula <-
           slider::slide_dbl(.x = SPX_joint_density_INDEX_PCA, .f = ~ sd(.x, na.rm = T), .before = rolling_period),
         SPX_joint_density_INDEX_PCA_DIFF_sd =
           slider::slide_dbl(.x = SPX_joint_density_INDEX_PCA_DIFF, .f = ~ sd(.x, na.rm = T), .before = rolling_period)
+      ) %>%
+      mutate(
+        Price_Index_minus_PCA_Index = Average_PCA_Index - Return_Index
       )
 
     return(major_indices_cumulative_pca)

@@ -1986,27 +1986,16 @@ get_all_major_indices <- function(
     db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db",
     start_date = "2016-01-01",
     end_date = today() %>% as.character(),
-    bid_or_ask = "ask"
+    bid_or_ask = "ask",
+    time_frame = "M15"
 ) {
-
-  starting_asset_data_ask_daily <-
-    get_db_price(
-      db_location = db_location,
-      start_date = "2025-07-01",
-      end_date = "2025-08-01",
-      bid_or_ask = bid_or_ask,
-      time_frame = "D"
-    )
-
-  distinct_assets <-
-    starting_asset_data_ask_daily %>% distinct(Asset)%>% pull(Asset)
 
   SPX500_USD <- create_asset_high_freq_data(
     db_location = db_location,
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "SPX500_USD",
     keep_bid_to_ask = TRUE
   )
@@ -2016,7 +2005,7 @@ get_all_major_indices <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "US2000_USD",
     keep_bid_to_ask = TRUE
   )
@@ -2026,7 +2015,7 @@ get_all_major_indices <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "DE30_EUR",
     keep_bid_to_ask = TRUE
   )
@@ -2036,7 +2025,7 @@ get_all_major_indices <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EU50_EUR",
     keep_bid_to_ask = TRUE
   )
@@ -2046,7 +2035,7 @@ get_all_major_indices <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "AU200_AUD",
     keep_bid_to_ask = TRUE
   )
@@ -2056,7 +2045,7 @@ get_all_major_indices <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "NAS100_USD",
     keep_bid_to_ask = TRUE
   )
@@ -2066,7 +2055,7 @@ get_all_major_indices <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = bid_or_ask,
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "SG30_SGD",
     keep_bid_to_ask = TRUE
   )
