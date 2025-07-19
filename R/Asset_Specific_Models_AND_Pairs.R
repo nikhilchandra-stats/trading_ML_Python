@@ -494,8 +494,44 @@ get_EUR_GBP_USD_pairs_data <- function(
     keep_bid_to_ask = TRUE
   )
 
-  EUR_USD_GBP_USD <- EUR_USD %>% bind_rows(GBP_USD) %>% bind_rows(EUR_GBP)
-  rm(EUR_USD, GBP_USD, EUR_GBP)
+  EUR_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "EUR_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  GBP_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "GBP_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  USD_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "USD_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR_USD_GBP_USD <-
+    EUR_USD %>%
+    bind_rows(GBP_USD) %>%
+    bind_rows(EUR_GBP) %>%
+    bind_rows(EUR_JPY)%>%
+    bind_rows(GBP_JPY)%>%
+    bind_rows(USD_JPY)
+  rm(EUR_USD, GBP_USD, EUR_GBP, EUR_JPY, USD_JPY, GBP_JPY)
   gc()
 
   EUR_USD <- create_asset_high_freq_data(
@@ -528,8 +564,45 @@ get_EUR_GBP_USD_pairs_data <- function(
     keep_bid_to_ask = TRUE
   )
 
-  EUR_USD_GBP_USD_short <- EUR_USD %>% bind_rows(GBP_USD) %>% bind_rows(EUR_GBP)
-  rm(EUR_USD, GBP_USD, EUR_GBP)
+  EUR_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "EUR_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  GBP_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "GBP_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  USD_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "USD_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR_USD_GBP_USD_short <-
+    EUR_USD %>%
+    bind_rows(GBP_USD) %>%
+    bind_rows(EUR_GBP)%>%
+    bind_rows(EUR_JPY)%>%
+    bind_rows(GBP_JPY)%>%
+    bind_rows(USD_JPY)
+
+  rm(EUR_USD, GBP_USD, EUR_GBP, EUR_JPY, USD_JPY, GBP_JPY)
   gc()
 
   return(
@@ -560,20 +633,22 @@ get_EUR_GBP_USD_pairs_data <- function(
 #' @examples
 get_EUR_GBP_Specific_Trades <-
   function(
-    EUR_USD_GBP_USD = EUR_USD_GBP_USD,
+    EUR_USD_GBP_USD = EUR_USD_GBP_USD_ALL[[1]],
     start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
     lag_days = 4,
-    lm_period = 80,
-    lm_train_prop = 0.25,
-    lm_test_prop = 0.75,
+    lm_period = 2,
+    lm_train_prop = 0.85,
+    lm_test_prop = 0.14,
     sd_fac_lm_trade_eur_usd = 1,
     sd_fac_lm_trade_gbp_usd = 1,
     sd_fac_lm_trade_eur_gbp = 1,
+    sd_fac_lm_trade_eur_jpy = 1,
+    sd_fac_lm_trade_gbp_jpy = 1,
+    sd_fac_lm_trade_usd_jpy = 1,
     trade_direction = "Long",
     stop_factor = 10,
-    profit_factor = 15,
-    assets_to_filter = c("EUR_USD", "GBP_USD", "EUR_GBP")
+    profit_factor = 15
   ) {
 
     eur_macro_data <-
@@ -585,11 +660,15 @@ get_EUR_GBP_Specific_Trades <-
     usd_macro_data <-
       get_USD_Indicators(raw_macro_data,
                          lag_days = lag_days)
+    jpy_macro_data <-
+      get_JPY_Indicators(raw_macro_data,
+                         lag_days = lag_days)
 
     eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     gbp_macro_vars <- names(gbp_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
-    all_macro_vars <- c(eur_macro_vars, gbp_macro_vars, usd_macro_vars)
+    jpy_macro_vars <- names(jpy_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(eur_macro_vars, gbp_macro_vars, usd_macro_vars, jpy_macro_vars)
 
     copula_data <-
       estimating_dual_copula(
@@ -626,10 +705,76 @@ get_EUR_GBP_Specific_Trades <-
                     -GBP_USD_quantiles_1,
                     -GBP_USD_tangent_angle1, -EUR_GBP_log2_price, -EUR_GBP , -EUR_GBP_quantiles_2, -EUR_GBP_tangent_angle2)
 
+    copula_data_EUR_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_GBP_USD,
+        asset_to_use = c("EUR_USD", "EUR_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EUR_USD,
+                    -EUR_USD_log1_price,
+                    -EUR_USD_quantiles_1,
+                    -EUR_USD_tangent_angle1)
+
+    copula_data_GBP_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_GBP_USD,
+        asset_to_use = c("GBP_USD", "GBP_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-GBP_USD,
+                    -GBP_USD_log1_price,
+                    -GBP_USD_quantiles_1,
+                    -GBP_USD_tangent_angle1)
+
+    copula_data_EUR_JPY_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_GBP_USD,
+        asset_to_use = c("EUR_JPY", "USD_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EUR_JPY,
+                    -EUR_JPY_log1_price,
+                    -EUR_JPY_quantiles_1,
+                    -EUR_JPY_tangent_angle1)
+
+    copula_data_GBP_USD_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_GBP_USD,
+        asset_to_use = c("GBP_JPY", "USD_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-GBP_JPY,
+                    -GBP_JPY_log1_price,
+                    -GBP_JPY_quantiles_1,
+                    -GBP_JPY_tangent_angle1,
+                    -USD_JPY,
+                    -USD_JPY_log2_price,
+                    -USD_JPY_quantiles_2,
+                    -USD_JPY_tangent_angle2)
+
+
+
     copula_data_macro <-
       copula_data %>%
       left_join(copula_data_EUR_EUR_GBP) %>%
       left_join(copula_data_GBP_EUR_GBP) %>%
+      left_join(copula_data_EUR_USD_JPY) %>%
+      left_join(copula_data_GBP_USD_JPY) %>%
+      left_join(copula_data_EUR_JPY_USD_JPY) %>%
+      left_join(copula_data_GBP_USD_USD_JPY) %>%
       mutate(Date_for_join = as_date(Date)) %>%
       left_join(
         eur_macro_data %>%
@@ -643,12 +788,19 @@ get_EUR_GBP_Specific_Trades <-
         usd_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
+      left_join(
+          jpy_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
       fill(!contains("AUD_USD|Date"), .direction = "down") %>%
       filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
       mutate(
-        dependant_var_eur_usd = log(lead(EUR_USD, lm_period)/EUR_USD),
-        dependant_var_gbp_usd = log(lead(GBP_USD, lm_period)/GBP_USD),
-        dependant_var_eur_gbp = log(lead(EUR_GBP, lm_period)/EUR_GBP)
+        dependant_var_EUR_USD = log(lead(EUR_USD, lm_period)/EUR_USD),
+        dependant_var_GBP_USD = log(lead(GBP_USD, lm_period)/GBP_USD),
+        dependant_var_EUR_GBP = log(lead(EUR_GBP, lm_period)/EUR_GBP),
+        dependant_var_EUR_JPY = log(lead(EUR_JPY, lm_period)/EUR_JPY),
+        dependant_var_GBP_JPY = log(lead(GBP_JPY, lm_period)/GBP_JPY),
+        dependant_var_USD_JPY = log(lead(USD_JPY, lm_period)/USD_JPY)
       )
 
     lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
@@ -659,7 +811,7 @@ get_EUR_GBP_Specific_Trades <-
     testing_data <- copula_data_macro %>%
       slice_tail(prop = lm_test_prop)
 
-    lm_formula_EUR_USD <- create_lm_formula(dependant = "dependant_var_eur_usd", independant = lm_vars1)
+    lm_formula_EUR_USD <- create_lm_formula(dependant = "dependant_var_EUR_USD", independant = lm_vars1)
     lm_model_EUR_USD <- lm(formula = lm_formula_EUR_USD, data = training_data)
 
     predicted_train_EUR_USD <- predict.lm(lm_model_EUR_USD, newdata = training_data)
@@ -689,7 +841,7 @@ get_EUR_GBP_Specific_Trades <-
         Asset = "EUR_USD"
       )
 
-    lm_formula_GBP_USD <- create_lm_formula(dependant = "dependant_var_gbp_usd", independant = lm_vars1)
+    lm_formula_GBP_USD <- create_lm_formula(dependant = "dependant_var_GBP_USD", independant = lm_vars1)
     lm_model_GBP_USD <- lm(formula = lm_formula_GBP_USD, data = training_data)
 
     predicted_train_GBP_USD <- predict.lm(lm_model_GBP_USD, newdata = training_data)
@@ -713,9 +865,9 @@ get_EUR_GBP_Specific_Trades <-
             #   trade_direction == "Short" ~ trade_direction
 
             lm_pred_GBP_USD >= mean_pred_GBP_USD + sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
-              trade_direction == "Long" &  GBP_USD_tangent_angle2 < 0 ~ trade_direction,
+              trade_direction == "Short" &  GBP_USD_tangent_angle2 < 0 ~ trade_direction,
             lm_pred_GBP_USD <= mean_pred_GBP_USD - sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
-              trade_direction == "Short" &  GBP_USD_tangent_angle2 >0 ~ trade_direction
+              trade_direction == "Long" &  GBP_USD_tangent_angle2 >0 ~ trade_direction
 
           )
       ) %>%
@@ -725,7 +877,7 @@ get_EUR_GBP_Specific_Trades <-
         Asset = "GBP_USD"
       )
 
-    lm_formula_EUR_GBP <- create_lm_formula(dependant = "dependant_var_eur_gbp", independant = lm_vars1)
+    lm_formula_EUR_GBP <- create_lm_formula(dependant = "dependant_var_EUR_GBP", independant = lm_vars1)
     lm_model_EUR_GBP <- lm(formula = lm_formula_EUR_GBP, data = training_data)
 
     predicted_train_EUR_GBP <- predict.lm(lm_model_EUR_GBP, newdata = training_data)
@@ -755,18 +907,116 @@ get_EUR_GBP_Specific_Trades <-
         Asset = "EUR_GBP"
       )
 
+
+    lm_formula_EUR_JPY <- create_lm_formula(dependant = "dependant_var_EUR_JPY", independant = lm_vars1)
+    lm_model_EUR_JPY <- lm(formula = lm_formula_EUR_JPY, data = training_data)
+
+    predicted_train_EUR_JPY <- predict.lm(lm_model_EUR_JPY, newdata = training_data)
+    mean_pred_EUR_JPY <- mean(predicted_train_EUR_JPY, na.rm = T)
+    sd_pred_EUR_JPY <- sd(predicted_train_EUR_JPY, na.rm = T)
+    predicted_test_EUR_JPY <- predict.lm(lm_model_EUR_JPY, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_EUR_JPY <- mean(predicted_test_EUR_JPY, na.rm = T)
+    sd_pred_test_EUR_JPY <- sd(predicted_test_EUR_JPY, na.rm = T)
+
+    tagged_trades_EUR_JPY <-
+      testing_data %>%
+      mutate(
+        lm_pred_EUR_JPY = predicted_test_EUR_JPY
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_EUR_JPY >= mean_pred_EUR_JPY + sd_fac_lm_trade_eur_jpy*sd_pred_EUR_JPY &
+              trade_direction == "Short" ~ trade_direction,
+            lm_pred_EUR_JPY <= mean_pred_EUR_JPY - sd_fac_lm_trade_eur_jpy*sd_pred_EUR_JPY &
+              trade_direction == "Long" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "EUR_JPY"
+      )
+
+    lm_formula_GBP_JPY <- create_lm_formula(dependant = "dependant_var_GBP_JPY", independant = lm_vars1)
+    lm_model_GBP_JPY <- lm(formula = lm_formula_GBP_JPY, data = training_data)
+
+    predicted_train_GBP_JPY <- predict.lm(lm_model_GBP_JPY, newdata = training_data)
+    mean_pred_GBP_JPY <- mean(predicted_train_GBP_JPY, na.rm = T)
+    sd_pred_GBP_JPY <- sd(predicted_train_GBP_JPY, na.rm = T)
+    predicted_test_GBP_JPY <- predict.lm(lm_model_GBP_JPY, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_GBP_JPY <- mean(predicted_test_GBP_JPY, na.rm = T)
+    sd_pred_test_GBP_JPY <- sd(predicted_test_GBP_JPY, na.rm = T)
+
+    tagged_trades_GBP_JPY <-
+      testing_data %>%
+      mutate(
+        lm_pred_GBP_JPY = predicted_test_GBP_JPY
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_GBP_JPY >= mean_pred_GBP_JPY + sd_fac_lm_trade_gbp_jpy*sd_pred_GBP_JPY &
+              trade_direction == "Short" ~ trade_direction,
+            lm_pred_GBP_JPY <= mean_pred_GBP_JPY - sd_fac_lm_trade_gbp_jpy*sd_pred_GBP_JPY &
+              trade_direction == "Long" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "GBP_JPY"
+      )
+
+    lm_formula_USD_JPY <- create_lm_formula(dependant = "dependant_var_USD_JPY", independant = lm_vars1)
+    lm_model_USD_JPY <- lm(formula = lm_formula_USD_JPY, data = training_data)
+
+    predicted_train_USD_JPY <- predict.lm(lm_model_USD_JPY, newdata = training_data)
+    mean_pred_USD_JPY <- mean(predicted_train_USD_JPY, na.rm = T)
+    sd_pred_USD_JPY <- sd(predicted_train_USD_JPY, na.rm = T)
+    predicted_test_USD_JPY <- predict.lm(lm_model_USD_JPY, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_USD_JPY <- mean(predicted_test_USD_JPY, na.rm = T)
+    sd_pred_test_USD_JPY <- sd(predicted_test_USD_JPY, na.rm = T)
+
+    tagged_trades_USD_JPY <-
+      testing_data %>%
+      mutate(
+        lm_pred_USD_JPY = predicted_test_USD_JPY
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_USD_JPY >= mean_pred_USD_JPY + sd_fac_lm_trade_usd_jpy*sd_pred_USD_JPY &
+              trade_direction == "Short" ~ trade_direction,
+            lm_pred_USD_JPY <= mean_pred_USD_JPY - sd_fac_lm_trade_usd_jpy*sd_pred_USD_JPY &
+              trade_direction == "Long" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "USD_JPY"
+      )
+
     return(list(tagged_trades_EUR_USD %>%
                   mutate( stop_factor = stop_factor,
-                          profit_factor = profit_factor) %>%
-                  filter(Asset %in% assets_to_filter),
+                          profit_factor = profit_factor) ,
                 tagged_trades_GBP_USD %>%
                   mutate( stop_factor = stop_factor,
-                          profit_factor = profit_factor)  %>%
-                  filter(Asset %in% assets_to_filter),
+                          profit_factor = profit_factor)  ,
                 tagged_trades_EUR_GBP %>%
                   mutate( stop_factor = stop_factor,
-                          profit_factor = profit_factor)  %>%
-                  filter(Asset %in% assets_to_filter))
+                          profit_factor = profit_factor)  ,
+                tagged_trades_EUR_JPY %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor),
+                tagged_trades_GBP_JPY %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor),
+                tagged_trades_USD_JPY %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor)
+                )
            )
 
 }
@@ -778,7 +1028,11 @@ get_EUR_GBP_Specific_Trades <-
 #' @export
 #'
 #' @examples
-get_SPX_US2000_XAG_XAU <- function() {
+get_SPX_US2000_XAG_XAU <- function(
+    db_location = db_location,
+    start_date = "2016-01-01",
+    end_date = today() %>% as.character()
+    ) {
 
   SPX <- create_asset_high_freq_data(
     db_location = db_location,
@@ -877,6 +1131,313 @@ get_SPX_US2000_XAG_XAU <- function() {
 
 }
 
+#' get_SPX_US2000_XAG_Specific_Trades
+#'
+#' @param SPX_US2000_XAG
+#' @param start_date
+#' @param raw_macro_data
+#' @param lag_days
+#' @param lm_period
+#' @param lm_train_prop
+#' @param lm_test_prop
+#' @param sd_fac_lm_trade_SPX_USD
+#' @param sd_fac_lm_trade_US2000_USD
+#' @param sd_fac_lm_trade_XAG_USD
+#' @param sd_fac_lm_trade_XAU_USD
+#' @param trade_direction
+#' @param stop_factor
+#' @param profit_factor
+#' @param assets_to_filter
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_SPX_US2000_XAG_Specific_Trades <-
+  function(
+    SPX_US2000_XAG = SPX_US2000_XAG,
+    start_date = "2016-01-01",
+    raw_macro_data = raw_macro_data,
+    lag_days = 1,
+    lm_period = 80,
+    lm_train_prop = 0.25,
+    lm_test_prop = 0.75,
+    sd_fac_lm_trade_SPX_USD = 1,
+    sd_fac_lm_trade_US2000_USD = 1,
+    sd_fac_lm_trade_XAG_USD = 1,
+    sd_fac_lm_trade_XAU_USD = 1,
+    trade_direction = "Long",
+    stop_factor = 10,
+    profit_factor = 15
+  ) {
+
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days)
+    gbp_macro_data <-
+      get_GBP_Indicators(raw_macro_data,
+                         lag_days = lag_days)
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days)
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days)
+
+    eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    gbp_macro_vars <- names(gbp_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(eur_macro_vars, gbp_macro_vars, usd_macro_vars, cny_macro_vars)
+
+    copula_data <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "US2000_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      )
+
+    copula_data_SPX_XAG <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAG_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_XAG <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("US2000_USD", "XAG_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD,
+                    -US2000_USD_log1_price,
+                    -US2000_USD_quantiles_1,
+                    -US2000_USD_tangent_angle1,
+                    -XAG_USD_log2_price, -XAG_USD , -XAG_USD_quantiles_2, -XAG_USD_tangent_angle2)
+
+    copula_data_US2000_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("US2000_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD,
+                    -US2000_USD_log1_price,
+                    -US2000_USD_quantiles_1,
+                    -US2000_USD_tangent_angle1)
+
+    copula_data_SPX_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD,
+                    -SPX500_USD_log1_price,
+                    -SPX500_USD_quantiles_1,
+                    -SPX500_USD_tangent_angle1,
+                    -XAU_USD_log2_price, -XAU_USD , -XAU_USD_quantiles_2, -XAU_USD_tangent_angle2)
+
+    copula_data_macro <-
+      copula_data %>%
+      left_join(copula_data_SPX_XAG) %>%
+      left_join(copula_data_US2000_XAG) %>%
+      left_join(copula_data_US2000_XAU) %>%
+      left_join(copula_data_SPX_XAU) %>%
+      mutate(Date_for_join = as_date(Date)) %>%
+      left_join(
+        eur_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        gbp_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        usd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        cny_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      fill(!contains("AUD_USD|Date"), .direction = "down") %>%
+      filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
+      mutate(
+        dependant_var_SPX500_USD = log(lead(SPX500_USD, lm_period)/SPX500_USD),
+        dependant_var_US2000_USD = log(lead(US2000_USD, lm_period)/US2000_USD),
+        dependant_var_XAG_USD = log(lead(XAG_USD, lm_period)/XAG_USD),
+        dependant_var_XAU_USD = log(lead(XAU_USD, lm_period)/XAU_USD)
+      )
+
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
+    lm_vars1 <- c(all_macro_vars, lm_quant_vars)
+
+    training_data <- copula_data_macro %>%
+      slice_head(prop = lm_train_prop)
+    testing_data <- copula_data_macro %>%
+      slice_tail(prop = lm_test_prop)
+
+    lm_formula_SPX_USD <- create_lm_formula(dependant = "dependant_var_SPX500_USD", independant = lm_vars1)
+    lm_model_SPX_USD <- lm(formula = lm_formula_SPX_USD, data = training_data)
+    summary(lm_model_SPX_USD)
+    predicted_train_SPX_USD <- predict.lm(lm_model_SPX_USD, newdata = training_data)
+    mean_pred_SPX_USD <- mean(predicted_train_SPX_USD, na.rm = T)
+    sd_pred_SPX_USD <- sd(predicted_train_SPX_USD, na.rm = T)
+    predicted_test_SPX_USD <- predict.lm(lm_model_SPX_USD, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_SPX_USD <- mean(predicted_test_SPX_USD, na.rm = T)
+    sd_pred_test_SPX_USD <- sd(predicted_test_SPX_USD, na.rm = T)
+
+    tagged_trades_SPX_USD <-
+      testing_data %>%
+      mutate(
+        lm_pred_SPX_USD = predicted_test_SPX_USD
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_SPX_USD >= mean_pred_SPX_USD + sd_fac_lm_trade_SPX_USD*sd_pred_SPX_USD &
+              trade_direction == "Short" ~trade_direction,
+            lm_pred_SPX_USD <= mean_pred_SPX_USD - sd_fac_lm_trade_SPX_USD*sd_pred_SPX_USD &
+              trade_direction == "Long" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "SPX500_USD"
+      )
+
+    lm_formula_US2000_USD <- create_lm_formula(dependant = "dependant_var_US2000_USD", independant = lm_vars1)
+    lm_model_US2000_USD <- lm(formula = lm_formula_US2000_USD, data = training_data)
+    summary(lm_model_US2000_USD)
+    predicted_train_US2000_USD <- predict.lm(lm_model_US2000_USD, newdata = training_data)
+    mean_pred_US2000_USD <- mean(predicted_train_US2000_USD, na.rm = T)
+    sd_pred_US2000_USD <- sd(predicted_train_US2000_USD, na.rm = T)
+    predicted_test_US2000_USD <- predict.lm(lm_model_US2000_USD, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_US2000_USD <- mean(predicted_test_US2000_USD, na.rm = T)
+    sd_pred_test_US2000_USD <- sd(predicted_test_US2000_USD, na.rm = T)
+
+    tagged_trades_US2000_USD <-
+      testing_data %>%
+      mutate(
+        lm_pred_US2000_USD = predicted_test_US2000_USD
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_US2000_USD >= mean_pred_US2000_USD + sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
+              trade_direction == "Short" ~ trade_direction,
+            lm_pred_US2000_USD <= mean_pred_US2000_USD - sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
+              trade_direction == "Long" ~ trade_direction
+
+            # lm_pred_US2000_USD >= mean_pred_US2000_USD + sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
+            #   trade_direction == "Long" &  US2000_USD_tangent_angle2 < 0 ~ trade_direction,
+            # lm_pred_US2000_USD <= mean_pred_US2000_USD - sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
+            #   trade_direction == "Short" &  US2000_USD_tangent_angle2 >0 ~ trade_direction
+
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "US2000_USD"
+      )
+
+    lm_formula_XAG_USD <- create_lm_formula(dependant = "dependant_var_XAG_USD", independant = lm_vars1)
+    lm_model_XAG_USD <- lm(formula = lm_formula_XAG_USD, data = training_data)
+    summary(lm_model_XAG_USD)
+    predicted_train_XAG_USD <- predict.lm(lm_model_XAG_USD, newdata = training_data)
+    mean_pred_XAG_USD <- mean(predicted_train_XAG_USD, na.rm = T)
+    sd_pred_XAG_USD <- sd(predicted_train_XAG_USD, na.rm = T)
+    predicted_test_XAG_USD <- predict.lm(lm_model_XAG_USD, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_XAG_USD <- mean(predicted_test_XAG_USD, na.rm = T)
+    sd_pred_test_XAG_USD <- sd(predicted_test_XAG_USD, na.rm = T)
+
+    tagged_trades_XAG_USD <-
+      testing_data %>%
+      mutate(
+        lm_pred_XAG_USD = predicted_test_XAG_USD
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_XAG_USD >= mean_pred_XAG_USD + sd_fac_lm_trade_XAG_USD*sd_pred_XAG_USD &
+              trade_direction == "Short" ~ trade_direction,
+            lm_pred_XAG_USD <= mean_pred_XAG_USD - sd_fac_lm_trade_XAG_USD*sd_pred_XAG_USD &
+              trade_direction == "Long" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "XAG_USD"
+      )
+
+
+    lm_formula_XAU_USD <- create_lm_formula(dependant = "dependant_var_XAU_USD", independant = lm_vars1)
+    lm_model_XAU_USD <- lm(formula = lm_formula_XAU_USD, data = training_data)
+    summary(lm_model_XAU_USD)
+    predicted_train_XAU_USD <- predict.lm(lm_model_XAU_USD, newdata = training_data)
+    mean_pred_XAU_USD <- mean(predicted_train_XAU_USD, na.rm = T)
+    sd_pred_XAU_USD <- sd(predicted_train_XAU_USD, na.rm = T)
+    predicted_test_XAU_USD <- predict.lm(lm_model_XAU_USD, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_XAU_USD <- mean(predicted_test_XAU_USD, na.rm = T)
+    sd_pred_test_XAU_USD <- sd(predicted_test_XAU_USD, na.rm = T)
+
+    tagged_trades_XAU_USD <-
+      testing_data %>%
+      mutate(
+        lm_pred_XAU_USD = predicted_test_XAU_USD
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_XAU_USD >= mean_pred_XAU_USD + sd_fac_lm_trade_XAU_USD*sd_pred_XAU_USD &
+              trade_direction == "Long" ~ trade_direction,
+            lm_pred_XAU_USD <= mean_pred_XAU_USD - sd_fac_lm_trade_XAU_USD*sd_pred_XAU_USD &
+              trade_direction == "Short" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "XAU_USD"
+      )
+
+    return(list(tagged_trades_SPX_USD %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor) ,
+                tagged_trades_US2000_USD %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor)  ,
+                tagged_trades_XAG_USD %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor),
+                tagged_trades_XAU_USD %>%
+                  mutate( stop_factor = stop_factor,
+                          profit_factor = profit_factor)
+    )
+    )
+
+}
 
 
 #' mean_values_by_asset_for_loop

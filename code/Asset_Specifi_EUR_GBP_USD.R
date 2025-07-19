@@ -70,29 +70,37 @@ EUR_GBP_USD_Trades_long <-
     start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
     lag_days = 4,
-    lm_period = 80,
-    lm_train_prop = 0.75 ,
-    lm_test_prop = 0.25,
-    sd_fac_lm_trade_eur_usd = 1,
-    sd_fac_lm_trade_gbp_usd = 0.25,
-    sd_fac_lm_trade_eur_gbp = 0.25,
+    lm_period = 2,
+    lm_train_prop = 0.85,
+    lm_test_prop = 0.09,
+    # lm_train_prop = 0.9,
+    # lm_test_prop = 0.09,
+    sd_fac_lm_trade_eur_usd = 0.01,
+    sd_fac_lm_trade_gbp_usd = 0.01,
+    sd_fac_lm_trade_eur_gbp = 0.01,
+    sd_fac_lm_trade_eur_jpy = 0.01,
+    sd_fac_lm_trade_gbp_jpy = 0.01,
+    sd_fac_lm_trade_usd_jpy = 0.01,
     trade_direction = "Long",
-    stop_factor = 10,
-    profit_factor = 15
+    stop_factor = 15,
+    profit_factor = 25
   )
 EUR_GBP_USD_Trades_long <- EUR_GBP_USD_Trades_long %>%
   map_dfr(bind_rows)
 EUR_GBP_USD_Long_Data <-
   run_pairs_analysis(
     tagged_trades = EUR_GBP_USD_Trades_long,
-    stop_factor = 10,
-    profit_factor = 15,
+    stop_factor = 15,
+    profit_factor = 25,
     raw_asset_data = EUR_USD_GBP_USD,
     risk_dollar_value = 10
   )
 
 results_long <- EUR_GBP_USD_Long_Data[[1]]
 results_long_asset <- EUR_GBP_USD_Long_Data[[2]]
+test <- EUR_GBP_USD_Trades_long %>% group_by(Date) %>% slice_max(Date)
+
+#--------------------------------------------------------------------------
 
 EUR_GBP_USD_Trades_short <-
   get_EUR_GBP_Specific_Trades(
@@ -100,23 +108,28 @@ EUR_GBP_USD_Trades_short <-
     start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
     lag_days = 4,
-    lm_period = 80,
-    lm_train_prop = 0.75 ,
-    lm_test_prop = 0.25,
-    sd_fac_lm_trade_eur_usd = 0.25,
-    sd_fac_lm_trade_gbp_usd = 3.5,
-    sd_fac_lm_trade_eur_gbp = 0.25,
+    lm_period = 2,
+    lm_train_prop = 0.9,
+    lm_test_prop = 0.09,
+    # lm_train_prop = 0.9,
+    # lm_test_prop = 0.09,
+    sd_fac_lm_trade_eur_usd = 0.01,
+    sd_fac_lm_trade_gbp_usd = 0.01,
+    sd_fac_lm_trade_eur_gbp = 0.01,
+    sd_fac_lm_trade_eur_jpy = 0.01,
+    sd_fac_lm_trade_gbp_jpy = 0.01,
+    sd_fac_lm_trade_usd_jpy = 0.01,
     trade_direction = "Short",
-    stop_factor = 12,
-    profit_factor = 18
+    stop_factor = 15,
+    profit_factor = 25
   )
 EUR_GBP_USD_Trades_short <- EUR_GBP_USD_Trades_short %>%
   map_dfr(bind_rows)
 EUR_GBP_USD_Short_Data <-
   run_pairs_analysis(
     tagged_trades = EUR_GBP_USD_Trades_short,
-    stop_factor = 12,
-    profit_factor = 18,
+    stop_factor = 15,
+    profit_factor = 25,
     raw_asset_data = EUR_USD_GBP_USD_short,
     risk_dollar_value = 10
   )
@@ -124,44 +137,6 @@ EUR_GBP_USD_Short_Data <-
 results_short <- EUR_GBP_USD_Short_Data[[1]]
 results_short_asset <- EUR_GBP_USD_Short_Data[[2]]
 
-#------------------------------------Convert Trades to Stops Profs
-get_stops_profs_asset_specific <-
-  function(
-    trades_to_convert = EUR_GBP_USD_Trades_long,
-    raw_asset_data = EUR_USD_GBP_USD,
-    currency_conversion = currency_conversion,
-    risk_dollar_value = 5
-
-    ) {
-
-    mean_values_by_asset_for_loop =
-      wrangle_asset_data(raw_asset_data, summarise_means = TRUE)
-
-    trades_with_stops_profs <-
-      EUR_GBP_USD_Trades_long %>%
-      left_join(raw_asset_data %>% dplyr::select(Date, Asset, Price, Open, High, Low)) %>%
-      slice_max(Date) %>%
-      mutate(kk = row_number()) %>%
-      split(.$kk) %>%
-      map_dfr(
-        ~
-          get_stops_profs_volume_trades(
-            tagged_trades = .x,
-            mean_values_by_asset = mean_values_by_asset_for_loop,
-            trade_col = "trade_col",
-            currency_conversion = currency_conversion,
-            risk_dollar_value = risk_dollar_value,
-            stop_factor = .x$stop_factor[1] %>% as.numeric(),
-            profit_factor = .x$profit_factor[1] %>% as.numeric(),
-            asset_col = "Asset",
-            stop_col = "stop_value",
-            profit_col = "profit_value",
-            price_col = "Price",
-            trade_return_col = "trade_returns"
-          )
-      )
-
-    return(trades_with_stops_profs)
-
-}
-
+test <- EUR_GBP_USD_Trades_short %>%
+  group_by(Asset) %>%
+  slice_max(Date)

@@ -49,7 +49,7 @@ asset_list_oanda <- get_oanda_symbols() %>%
 
 asset_infor <- get_instrument_info()
 
-db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data.db"
+db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data Asset Algo Use.db"
 start_date_day_15M = "2024-06-01"
 end_date_day = today() %>% as.character()
 
@@ -59,6 +59,15 @@ starting_asset_data_ask_15M <-
     start_date = start_date_day_15M,
     end_date = end_date_day,
     bid_or_ask = "ask",
+    time_frame = "M15"
+  )
+
+starting_asset_data_bid_15M <-
+  get_db_price(
+    db_location = db_location,
+    start_date = start_date_day_15M,
+    end_date = end_date_day,
+    bid_or_ask = "bid",
     time_frame = "M15"
   )
 
@@ -85,22 +94,22 @@ update_local_db_file(
   how_far_back = 4
 )
 
-gc()
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "M15",
+  bid_or_ask = "bid",
+  asset_list_oanda = asset_list_oanda,
+  how_far_back = 5
+)
 
-new_15_data_ask <-
-  updated_data_internal(starting_asset_data = starting_asset_data_ask_15M,
-                        end_date_day = current_date,
-                        time_frame = "M15",
-                        bid_or_ask = "ask",
-                        db_location = db_location)%>%
-  distinct()
+gc()
 
 end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
 current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
 
-margain_threshold <- 0.05
+margain_threshold <- 0.01
 long_account_num <-2
 account_number_long <-  "001-011-1615559-003"
 account_name_long <- "mt4_hedging"
@@ -110,29 +119,6 @@ account_number_short <- "001-011-1615559-004"
 account_name_short <- "corr_no_macro"
 
 gc()
-
-#-----------------------------
-
-# save_markov_models <-
-#   get_15_min_markov_LM_models(
-#     new_15_data_ask = starting_asset_data_ask_daily,
-#     trade_sd_fact = 0,
-#     rolling_period = 400,
-#     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-#     currency_conversion = currency_conversion,
-#     LM_period_1 = 2,
-#     LM_period_2 = 10,
-#     LM_period_3 = 15,
-#     LM_period_4 = 35,
-#     MA_lag1 = 15,
-#     MA_lag2 = 30,
-#     sd_divides = seq(0.25,2,0.25),
-#     quantile_divides = seq(0.1,0.9, 0.1),
-#     LM_save_path = "C:/Users/nikhi/Documents/trade_data/"
-#   )
-
-
-gc()
 while(current_time < end_time) {
 
   current_time <- now() %>% as_datetime()
@@ -140,109 +126,204 @@ while(current_time < end_time) {
   current_hour <- lubridate::hour(current_time)
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
 
-  if( (current_minute > 0 & current_minute < 3 & data_updated == 0)|
-      (current_minute > 15 & current_minute < 18 & data_updated == 0)|
-      (current_minute > 30 & current_minute < 33 & data_updated == 0)|
-      (current_minute > 45 & current_minute < 48 & data_updated == 0)  ) {
+  if( (current_minute > 0 & current_minute < 2 & data_updated == 0)|
+      (current_minute > 15 & current_minute < 17 & data_updated == 0)|
+      (current_minute > 30 & current_minute < 32 & data_updated == 0)|
+      (current_minute > 45 & current_minute < 47 & data_updated == 0)  ) {
 
     gc()
+
+    tictoc::tic()
 
     update_local_db_file(
       db_location = db_location,
       time_frame = "M15",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 5
+      how_far_back = 4
     )
 
-    gc()
-
-    new_15_data_ask <-
-      updated_data_internal(starting_asset_data = new_15_data_ask,
-                            end_date_day = current_date,
-                            time_frame = "M15",
-                            bid_or_ask = "ask",
-                            db_location = db_location)%>%
-      distinct()
-
-    gc()
-
-    new_15_data_ask <-
-      new_15_data_ask %>%
-      ungroup() %>%
-      filter(Date >= (today() - months(5)) )
+    update_local_db_file(
+      db_location = db_location,
+      time_frame = "M15",
+      bid_or_ask = "bid",
+      asset_list_oanda = asset_list_oanda,
+      how_far_back = 4
+    )
 
     data_updated <- 1
 
     raw_macro_data <- get_macro_event_data()
 
-    markov_macro_data <-
-      get_15_min_markov_data_macro(
-        new_15_data_ask = new_15_data_ask %>% ungroup(),
+    EUR_USD_GBP_USD_ALL <- get_EUR_GBP_USD_pairs_data(
+      db_location = db_location,
+      start_date = "2016-01-01",
+      end_date = today() %>% as.character()
+    )
+
+    EUR_USD_GBP_USD <-EUR_USD_GBP_USD_ALL[[1]]
+    EUR_USD_GBP_USD_short <- EUR_USD_GBP_USD_ALL[[2]]
+    rm(EUR_USD_GBP_USD_ALL)
+
+    EUR_GBP_USD_Trades_long <-
+      get_EUR_GBP_Specific_Trades(
+        EUR_USD_GBP_USD = EUR_USD_GBP_USD,
+        start_date = "2016-01-01",
         raw_macro_data = raw_macro_data,
-        trade_sd_fact = 0,
-        rolling_period = 400,
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-        currency_conversion = currency_conversion,
-        LM_period_1 = 2,
-        LM_period_2 = 10,
-        LM_period_3 = 15,
-        LM_period_4 = 35,
-        MA_lag1 = 15,
-        MA_lag2 = 30,
-        sd_divides = seq(0.25,2,0.25),
-        quantile_divides = seq(0.1,0.9, 0.1)
-      )
-
-    # tictoc::toc()
-
-    # tictoc::tic()
-
-    data_with_LM_pred <-
-      get_15_min_markov_LM_pred(
-        transformed_data = markov_macro_data,
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-        LM_save_path = "C:/Users/nikhi/Documents/trade_data/"
-      )
-
-    # tictoc::toc()
-
-
-    total_trades_long_1 <-
-      get_15_min_markov_LM_pred_trades(
-        data_with_LM_pred = data_with_LM_pred,
-        result_db_location = "C:/Users/nikhi/Documents/trade_data/LM_15min_markov_sampled ALGO TO TAKE.db",
-        minimum_risk_avg = 0.05,
-        minimum_risk_25 = 0,
-        minimum_Final_Dollars_avg = 2500,
+        lag_days = 4,
+        lm_period = 2,
+        lm_train_prop = 0.85,
+        lm_test_prop = 0.09,
+        # lm_train_prop = 0.9,
+        # lm_test_prop = 0.09,
+        sd_fac_lm_trade_eur_usd = 0.01,
+        sd_fac_lm_trade_gbp_usd = 0.01,
+        sd_fac_lm_trade_eur_gbp = 0.01,
+        sd_fac_lm_trade_eur_jpy = 0.01,
+        sd_fac_lm_trade_gbp_jpy = 0.01,
+        sd_fac_lm_trade_usd_jpy = 0.01,
         trade_direction = "Long",
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-        risk_dollar_value = 10,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        date_minute_threshold = 20,
-        table_name = "LM_15min_markov"
+        stop_factor = 15,
+        profit_factor = 25
       )
 
-    total_trades_long_2 <-
-      get_15_min_markov_LM_pred_trades(
-        data_with_LM_pred = data_with_LM_pred,
-        result_db_location = "C:/Users/nikhi/Documents/trade_data/LM_15min_markov_sampled ALGO TO TAKE ADDITIONAL.db",
-        minimum_risk_avg = 0.05,
-        minimum_risk_25 = 0,
-        minimum_Final_Dollars_avg = 2500,
-        trade_direction = "Long",
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
-        risk_dollar_value = 10,
+    EUR_GBP_USD_Trades_long <-
+      EUR_GBP_USD_Trades_long %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup() %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data = EUR_USD_GBP_USD,
         currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        date_minute_threshold = 20,
-        table_name = "LM_15min_markov_full_test"
+        risk_dollar_value = 3
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
+
+    message(glue::glue("Long Trades EUR GBP: {dim(EUR_GBP_USD_Trades_long)[1]}"))
+
+    EUR_GBP_USD_Trades_short <-
+      get_EUR_GBP_Specific_Trades(
+        EUR_USD_GBP_USD = EUR_USD_GBP_USD_short,
+        start_date = "2016-01-01",
+        raw_macro_data = raw_macro_data,
+        lag_days = 4,
+        lm_period = 2,
+        lm_train_prop = 0.9,
+        lm_test_prop = 0.09,
+        # lm_train_prop = 0.9,
+        # lm_test_prop = 0.09,
+        sd_fac_lm_trade_eur_usd = 0.01,
+        sd_fac_lm_trade_gbp_usd = 0.01,
+        sd_fac_lm_trade_eur_gbp = 0.01,
+        sd_fac_lm_trade_eur_jpy = 0.01,
+        sd_fac_lm_trade_gbp_jpy = 0.01,
+        sd_fac_lm_trade_usd_jpy = 0.01,
+        trade_direction = "Short",
+        stop_factor = 15,
+        profit_factor = 25
       )
+
+    EUR_GBP_USD_Trades_short <-
+      EUR_GBP_USD_Trades_short %>%
+      map_dfr(bind_rows) %>%
+      slice_max(Date) %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data = EUR_USD_GBP_USD_short,
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 3
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
+
+
+    message(glue::glue("Short Trades EUR GBP: {dim(EUR_GBP_USD_Trades_short)[1]}"))
+
+    SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
+      db_location = db_location,
+      start_date = "2016-01-01",
+      end_date = today() %>% as.character()
+    )
+    SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
+    SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
+
+    SPX_XAG_US2000_Long_trades <-
+      get_SPX_US2000_XAG_Specific_Trades(
+        SPX_US2000_XAG = SPX_US2000_XAG,
+        start_date = "2016-01-01",
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        lm_period = 2,
+        lm_train_prop = 0.8,
+        lm_test_prop = 0.08,
+        # lm_train_prop = 0.9,
+        # lm_test_prop = 0.08,
+        sd_fac_lm_trade_SPX_USD = 0.01,
+        sd_fac_lm_trade_US2000_USD = 0.01,
+        sd_fac_lm_trade_XAG_USD = 0.01,
+        sd_fac_lm_trade_XAU_USD = 0.01,
+        trade_direction = "Long",
+        stop_factor = 15,
+        profit_factor = 25
+        # stop_factor = 10,
+        # profit_factor = 15
+      )
+
+    SPX_XAG_US2000_Long_trades <-
+      SPX_XAG_US2000_Long_trades %>%
+      map_dfr(bind_rows) %>%
+      slice_max(Date) %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data = SPX_US2000_XAG,
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 5
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
+
+    message(glue::glue("Long Trades SPX, XAG, US2000: {dim(SPX_XAG_US2000_Long_trades)[1]}"))
+
+    SPX_XAG_US2000_Short_trades <-
+      get_SPX_US2000_XAG_Specific_Trades(
+        SPX_US2000_XAG = SPX_US2000_XAG_short,
+        start_date = "2016-01-01",
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        lm_period = 2,
+        lm_train_prop = 0.8,
+        lm_test_prop = 0.08,
+        # lm_train_prop = 0.9,
+        # lm_test_prop = 0.08,
+        sd_fac_lm_trade_SPX_USD = 0.01,
+        sd_fac_lm_trade_US2000_USD = 0.01,
+        sd_fac_lm_trade_XAG_USD = 0.01,
+        sd_fac_lm_trade_XAU_USD = 0.01,
+        trade_direction = "Short",
+        stop_factor = 15,
+        profit_factor = 25
+        # stop_factor = 10,
+        # profit_factor = 15
+      )
+
+    SPX_XAG_US2000_Short_trades <-
+      SPX_XAG_US2000_Short_trades %>%
+      map_dfr(bind_rows) %>%
+      slice_max(Date) %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data = SPX_US2000_XAG_short,
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 5
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
+
+    message(glue::glue("Short Trades SPX, XAG, US2000: {dim(SPX_XAG_US2000_Short_trades)[1]}"))
+
+    tictoc::toc()
 
     total_trades_long <-
-      list(total_trades_long_1,
-           total_trades_long_2) %>%
+      list(
+           EUR_GBP_USD_Trades_short,
+           EUR_GBP_USD_Trades_long,
+           SPX_XAG_US2000_Long_trades,
+           SPX_XAG_US2000_Short_trades) %>%
       map_dfr(bind_rows)
 
     if(dim(total_trades_long)[1] < 1 ) {
@@ -397,13 +478,8 @@ while(current_time < end_time) {
 
   }
 
-  if((current_minute > 12 & current_minute < 14 & data_updated == 1)|
-     (current_minute > 27 & current_minute < 29 & data_updated == 1)|
-     (current_minute > 42 & current_minute < 44 & data_updated == 1)|
-     (current_minute > 55 & current_minute < 59 & data_updated == 1) ) {
     data_updated <- 0
-    message(glue::glue("Time is: {current_time}"))
-    }
-
+    # message(glue::glue("Time is: {current_time}"))
 
 }
+0
