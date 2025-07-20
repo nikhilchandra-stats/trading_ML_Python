@@ -425,36 +425,54 @@ while (current_time < end_time) {
 
     if(!is.null(trades_4)) {trades_4 <- trades_4 %>% filter(trade_col == "Long")}
 
-    # H1_Model_data_train_bid <-
-    #   Hour_data_with_LM_markov_bid %>%
-    #   group_by(Asset) %>%
-    #   slice_head(prop = 0.4)
-    #
-    # H1_Model_data_test_bid <-
-    #   Hour_data_with_LM_markov_bid %>%
-    #   group_by(Asset) %>%
-    #   slice_tail(prop = 0.55)
-    #
-    # trades_3 <-
-    #   combine_NN_predictions(
-    #             training_data = H1_Model_data_train_bid,
-    #             testing_data = H1_Model_data_test_bid,
-    #             stop_factor = 6,
-    #             profit_factor = 6,
-    #             mean_values_by_asset_for_loop_H1_bid = mean_values_by_asset_for_loop_H1_bid,
-    #             mean_values_by_asset_for_loop_H1_ask = mean_values_by_asset_for_loop_H1_ask,
-    #             sd_fac = 3,
-    #             currency_conversion = currency_conversion,
-    #             risk_dollar_value = risk_dollar_value,
-    #             asset_list_temp =
-    #               c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK", "USD_CHF", "USD_SEK", "XCU_USD",
-    #                 "USD_MXN", "GBP_USD", "WTICO_USD", "SUGAR_USD", "USD_NOK", "USD_CZK", "WHEAT_USD",
-    #                 "EUR_USD", "XAG_USD", "EUR_GBP", "USD_CNH", "USD_CAD", "SOYBN_USD", "AUD_USD", "NZD_USD",
-    #                 "NZD_CHF", "WHEAT_USD", "USD_NOK"),
-    #             trade_direction = "Short",
-    #             test_results = FALSE
-    #             )
+    AUD_NZD_Trades_long <-
+      get_AUD_USD_NZD_Specific_Trades(
+        AUD_USD_NZD_USD =
+          new_H1_data_ask %>%
+          filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        lm_period = 25,
+        # lm_period = 4,
+        lm_train_prop = 0.5,
+        lm_test_prop = 0.5,
+        sd_fac_AUD_USD_trade = 12,
+        sd_fac_NZD_USD_trade = 6,
+        sd_fac_XCU_USD_trade = 4,
+        trade_direction = "Long",
+        stop_factor = 8,
+        profit_factor = 16,
+        assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
+      )
 
+    AUD_NZD_Trades_long <-
+      AUD_NZD_Trades_long %>%
+      map_dfr(bind_rows) %>%
+      filter(trade_col == "Long")
+
+    AUD_NZD_Trades_short <-
+      get_AUD_USD_NZD_Specific_Trades(
+        AUD_USD_NZD_USD =
+          new_H1_data_bid %>%
+          filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        lm_period = 2,
+        lm_train_prop = 0.5,
+        lm_test_prop = 0.5,
+        sd_fac_AUD_USD_trade = 2.5,
+        sd_fac_NZD_USD_trade = 2.5,
+        sd_fac_XCU_USD_trade = -1.5,
+        trade_direction = "Short",
+        stop_factor = 6,
+        profit_factor = 12,
+        assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
+      )
+
+    AUD_NZD_Trades_short <-
+      AUD_NZD_Trades_short %>%
+      map_dfr(bind_rows) %>%
+      filter(trade_col == "Short")
 
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
