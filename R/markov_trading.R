@@ -323,7 +323,8 @@ get_markov_tag_pos_neg_diff <- function(
     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
     trade_sd_fact = 2,
     currency_conversion = currency_conversion,
-    risk_dollar_value = 5
+    risk_dollar_value = 5,
+    skip_trade_analysis = FALSE
 ) {
 
   # Best Trades:
@@ -360,32 +361,35 @@ get_markov_tag_pos_neg_diff <- function(
         )
     )
 
-  Lows_Trades <-
-    generic_trade_finder_loop(
-      tagged_trades = Lows ,
-      asset_data_daily_raw = asset_data_combined,
-      stop_factor = stop_factor,
-      profit_factor =profit_factor,
-      trade_col = "trade_col",
-      date_col = "Date",
-      start_price_col = "Price",
-      mean_values_by_asset =mean_values_by_asset_for_loop
-    )
+  if(skip_trade_analysis == FALSE) {
+    Lows_Trades <-
+      generic_trade_finder_loop(
+        tagged_trades = Lows ,
+        asset_data_daily_raw = asset_data_combined,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset =mean_values_by_asset_for_loop
+      )
 
-  Lows_Trades_Analysis <-
-    generic_anlyser(
-      trade_data = Lows_Trades %>% rename(Asset = asset),
-      profit_factor = profit_factor,
-      stop_factor = stop_factor,
-      asset_infor = asset_infor,
-      currency_conversion = currency_conversion,
-      asset_col = "Asset",
-      stop_col = "starting_stop_value",
-      profit_col = "starting_profit_value",
-      price_col = "trade_start_prices",
-      trade_return_col = "trade_returns",
-      risk_dollar_value = risk_dollar_value
-    )
+    Lows_Trades_Analysis <-
+      generic_anlyser(
+        trade_data = Lows_Trades %>% rename(Asset = asset),
+        profit_factor = profit_factor,
+        stop_factor = stop_factor,
+        asset_infor = asset_infor,
+        currency_conversion = currency_conversion,
+        asset_col = "Asset",
+        stop_col = "starting_stop_value",
+        profit_col = "starting_profit_value",
+        price_col = "trade_start_prices",
+        trade_return_col = "trade_returns",
+        risk_dollar_value = risk_dollar_value
+      )
+  }
+
 
   #----------------------------------High
   Highs <- markov_data[[2]] %>%
@@ -399,40 +403,55 @@ get_markov_tag_pos_neg_diff <- function(
         )
     )
 
-  Highs_Trades <-
-    generic_trade_finder_loop(
-      tagged_trades = Highs,
-      asset_data_daily_raw = asset_data_combined,
-      stop_factor = stop_factor,
-      profit_factor =profit_factor,
-      trade_col = "trade_col",
-      date_col = "Date",
-      start_price_col = "Price",
-      mean_values_by_asset =mean_values_by_asset_for_loop
-    )
+  if(skip_trade_analysis == FALSE) {
+    Highs_Trades <-
+      generic_trade_finder_loop(
+        tagged_trades = Highs,
+        asset_data_daily_raw = asset_data_combined,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset =mean_values_by_asset_for_loop
+      )
 
-  Highs_Trades_Analysis <-
-    generic_anlyser(
-      trade_data = Highs_Trades %>% rename(Asset = asset),
-      profit_factor = profit_factor,
-      stop_factor = stop_factor,
-      asset_infor = asset_infor,
-      currency_conversion = currency_conversion,
-      asset_col = "Asset",
-      stop_col = "starting_stop_value",
-      profit_col = "starting_profit_value",
-      price_col = "trade_start_prices",
-      trade_return_col = "trade_returns",
-      risk_dollar_value = risk_dollar_value
-    )
+    Highs_Trades_Analysis <-
+      generic_anlyser(
+        trade_data = Highs_Trades %>% rename(Asset = asset),
+        profit_factor = profit_factor,
+        stop_factor = stop_factor,
+        asset_infor = asset_infor,
+        currency_conversion = currency_conversion,
+        asset_col = "Asset",
+        stop_col = "starting_stop_value",
+        profit_col = "starting_profit_value",
+        price_col = "trade_start_prices",
+        trade_return_col = "trade_returns",
+        risk_dollar_value = risk_dollar_value
+      )
+  }
 
 
-  return(
-    list(
-      "Trades" = list(Lows, Highs),
-      "Trade Summaries" = list(Lows_Trades_Analysis, Highs_Trades_Analysis)
+  if(skip_trade_analysis == FALSE) {
+    return(
+      list(
+        "Trades" = list(Lows, Highs),
+        "Trade Summaries" = list(Lows_Trades_Analysis, Highs_Trades_Analysis)
+      )
     )
-  )
+  }
+
+  if(skip_trade_analysis == TRUE) {
+    return(
+      list(
+        "Trades" = list(Lows, Highs),
+        "Trade Summaries" = NULL
+      )
+    )
+  }
+
+
 
 }
 
