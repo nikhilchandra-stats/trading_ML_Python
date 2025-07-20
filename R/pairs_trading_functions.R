@@ -2189,3 +2189,39 @@ create_PCA_Asset_Index <- function(
   return(returned_data)
 
 }
+
+
+#' rolling_cauchy
+#'
+#' @param .vec
+#' @param summarise_func
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rolling_cauchy <-
+  function(.vec,
+           summarise_func = "max") {
+
+    mean_var <- mean(.vec, na.rm = T)
+    sd_var <- sd(.vec, na.rm = T)
+    mle_training_cdf_1 <-pnorm(.vec, mean = mean_var, sd  = sd_var)
+    mle_training_cdf_2 <-pcauchy(.vec, location  = mean_var, scale =  sd_var)
+
+
+    if(summarise_func == "max") {
+      mle_training_cdf_1 <- mle_training_cdf_1[length(mle_training_cdf_1)] %>% as.numeric()
+      mle_training_cdf_2 <- mle_training_cdf_2[length(mle_training_cdf_2)] %>% as.numeric()
+      return_value <- (mle_training_cdf_1+mle_training_cdf_2)/2
+    }
+
+    if(summarise_func == "mean") {
+      mle_training_cdf_1 <- mean(mle_training_cdf_1, na.rm = T)
+      mle_training_cdf_2 <- mean(mle_training_cdf_2, na.rm = T)
+      return_value <- (mle_training_cdf_1+mle_training_cdf_2)/2
+    }
+
+    return(return_value)
+
+  }

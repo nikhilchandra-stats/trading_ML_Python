@@ -51,34 +51,100 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db"
-start_date = "2016-01-01"
+start_date = "2011-01-01"
 end_date = today() %>% as.character()
 
-AUD_USD_NZD_USD_all_data <-
+AUD_USD_NZD_USD_list <-
   get_all_AUD_USD_specific_data(
-    db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db",
-    start_date = "2016-01-01",
-    end_date = today() %>% as.character()
+    db_location = db_location,
+    start_date = start_date,
+    end_date = today() %>% as.character(),
+    time_frame = "H1"
   )
+
+random_results_list <-
+  list()
+
+#Beta Binomial - beta(x + a, n - x + b),  x = number of sucesses, a,b hyper priors beta
+#
+mean(rbeta(n = 900000, shape1 = 5000, shape2 = 5000))
+samples <- 1000
+random_results_db_location <- "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db"
+db_con <- connect_db(random_results_db_location)
+stop_factor = 8
+profit_factor = 16
+analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD")
+trade_samples = 5000
+new_table = FALSE
+time_frame = "H1"
+
+for (i in 1:samples) {
+
+  temp_results <-
+    get_random_results_trades(
+    raw_asset_data_ask = AUD_USD_NZD_USD_list[[1]],
+    raw_asset_data_bid = AUD_USD_NZD_USD_list[[2]],
+    stop_factor = stop_factor,
+    profit_factor = profit_factor,
+    risk_dollar_value = 10,
+    analysis_syms = analysis_syms,
+    trade_samples = trade_samples
+  )
+
+  complete_results <-
+    temp_results[[1]] %>%
+    bind_rows(temp_results[[2]]) %>%
+    mutate(trade_samples = trade_samples,
+           time_frame = time_frame)
+
+  if(new_table == TRUE) {
+    write_table_sql_lite(.data = complete_results,
+                         table_name = "random_results",
+                         conn = db_con,
+                         overwrite_true = TRUE)
+  }
+
+  if(new_table == FALSE) {
+    append_table_sql_lite(
+      .data = complete_results,
+      table_name = "random_results",
+      conn = db_con
+    )
+  }
+
+}
+
+DBI::dbDisconnect(db_con)
+
+control_random_samples <-
+  get_random_samples_MLE_beta(
+    random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
+    stop_factor = 8,
+    profit_factor = 16,
+    analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD"),
+    time_frame = "H1",
+    return_summary = TRUE
+  )
+
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
 AUD_NZD_Trades_long <-
   get_AUD_USD_NZD_Specific_Trades(
-    AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[1]],
-    start_date = "2016-01-01",
+    AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[1]],
     raw_macro_data = raw_macro_data,
     lag_days = 1,
-    lm_period = 2,
-    lm_train_prop = 0.74,
-    lm_test_prop = 0.24,
-    sd_fac_lm_trade = 2,
-    sd_fac_lm_trade2 = 20,
-    sd_fac_lm_trade3 = 20,
+    lm_period = 25,
+    # lm_period = 4,
+    lm_train_prop = 0.5,
+    lm_test_prop = 0.5,
+    sd_fac_AUD_USD_trade = 12,
+    sd_fac_NZD_USD_trade = 6,
+    sd_fac_XCU_USD_trade = 4,
     trade_direction = "Long",
-    stop_factor = 12,
-    profit_factor = 18,
-    assets_to_return = c("AUD_USD", "NZD_USD")
+    stop_factor = 8,
+    profit_factor = 16,
+    assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
   )
 
 AUD_NZD_Trades_long <-
@@ -88,31 +154,39 @@ AUD_NZD_Trades_long <-
 AUD_NZD_Long_Data <-
   run_pairs_analysis(
     tagged_trades = AUD_NZD_Trades_long,
-    stop_factor = 17,
-    profit_factor = 25,
-    raw_asset_data = AUD_USD_NZD_USD_all_data[[1]],
+    stop_factor = 8,
+    profit_factor = 16,
+    raw_asset_data = AUD_USD_NZD_USD_list[[1]],
     risk_dollar_value = 10
   )
 
 results_long <- AUD_NZD_Long_Data[[1]]
-results_long_asset <- AUD_NZD_Long_Data[[2]]
+results_long_asset <- AUD_NZD_Long_Data[[2]] %>%
+  left_join(control_random_samples %>%
+              ungroup() %>%
+              dplyr::select(-stop_factor, -profit_factor)) %>%
+  mutate(
+    p_value_risk =
+      pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
+  )
 
+
+#------------------------------------------------------------
 AUD_NZD_Trades_short <-
   get_AUD_USD_NZD_Specific_Trades(
-    AUD_USD_NZD_USD = AUD_USD_NZD_USD_all_data[[2]],
-    start_date = "2016-01-01",
+    AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[2]],
     raw_macro_data = raw_macro_data,
     lag_days = 1,
     lm_period = 2,
-    lm_train_prop = 0.74,
-    lm_test_prop = 0.24,
-    sd_fac_lm_trade = 2,
-    sd_fac_lm_trade2 = 20,
-    sd_fac_lm_trade3 = 20,
+    lm_train_prop = 0.5,
+    lm_test_prop = 0.5,
+    sd_fac_AUD_USD_trade = 2.5,
+    sd_fac_NZD_USD_trade = 2.5,
+    sd_fac_XCU_USD_trade = -1.5,
     trade_direction = "Short",
-    stop_factor = 12,
-    profit_factor = 18,
-    assets_to_return = c("AUD_USD", "NZD_USD")
+    stop_factor = 6,
+    profit_factor = 12,
+    assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
   )
 
 AUD_NZD_Trades_short <- AUD_NZD_Trades_short %>%
@@ -121,11 +195,18 @@ AUD_NZD_Trades_short <- AUD_NZD_Trades_short %>%
 AUD_NZD_Short_Data <-
   run_pairs_analysis(
     tagged_trades = AUD_NZD_Trades_short,
-    stop_factor = 17,
-    profit_factor = 25,
-    raw_asset_data =  AUD_USD_NZD_USD_all_data[[2]],
+    stop_factor = 6,
+    profit_factor = 12,
+    raw_asset_data =  AUD_USD_NZD_USD_list[[2]],
     risk_dollar_value = 10
   )
 
 results_short <- AUD_NZD_Short_Data[[1]]
-results_short2 <- AUD_NZD_Short_Data[[2]]
+results_short2 <- AUD_NZD_Short_Data[[2]] %>%
+  left_join(control_random_samples %>%
+              ungroup() %>%
+              dplyr::select(-stop_factor, -profit_factor)) %>%
+  mutate(
+    p_value_risk =
+      pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
+  )
