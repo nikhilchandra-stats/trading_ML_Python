@@ -55,6 +55,65 @@ major_indices_bid <-
 major_indices$Asset %>% unique()
 gc()
 
+mean(rbeta(n = 900000, shape1 = 5000, shape2 = 5000))
+samples <- 1000
+random_results_db_location <- "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db"
+db_con <- connect_db(random_results_db_location)
+stop_factor = 5
+profit_factor = 10
+analysis_syms = c("AU200_AUD", "SPX500_USD", "EU50_EUR", "US2000_USD")
+trade_samples = 10000
+new_table = FALSE
+time_frame = "H1"
+
+for (i in 1:samples) {
+
+  temp_results <-
+    get_random_results_trades(
+      raw_asset_data_ask = major_indices,
+      raw_asset_data_bid = major_indices_bid,
+      stop_factor = stop_factor,
+      profit_factor = profit_factor,
+      risk_dollar_value = 10,
+      analysis_syms = analysis_syms,
+      trade_samples = trade_samples
+    )
+
+  complete_results <-
+    temp_results[[1]] %>%
+    bind_rows(temp_results[[2]]) %>%
+    mutate(trade_samples = trade_samples,
+           time_frame = time_frame)
+
+  if(new_table == TRUE) {
+    write_table_sql_lite(.data = complete_results,
+                         table_name = "random_results",
+                         conn = db_con,
+                         overwrite_true = TRUE)
+  }
+
+  if(new_table == FALSE) {
+    append_table_sql_lite(
+      .data = complete_results,
+      table_name = "random_results",
+      conn = db_con
+    )
+  }
+
+}
+
+DBI::dbDisconnect(db_con)
+
+control_random_samples <-
+  get_random_samples_MLE_beta(
+    random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
+    stop_factor = 5,
+    profit_factor = 10,
+    analysis_syms = c("AU200_AUD", "SPX500_USD", "EU50_EUR", "US2000_USD"),
+    time_frame = "H1",
+    return_summary = TRUE
+  )
+
 major_indices_log_cumulative <-
   c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
   map_dfr(
@@ -323,81 +382,51 @@ create_Index_PCA_copula <-
       ) %>%
       filter(!is.na(SPX_joint_density_INDEX_PCA_prob_roll))
 
-    tagged_trades %>%
-      group_by(trade_col, Asset) %>%
-      summarise(
-        # return_mean = mean(return_10_High, na.rm= T),
-        return_median = median(return_10_High, na.rm= T),
-        return25_high = quantile(return_10_High,0.25 ,na.rm= T),
-        return_75_high = quantile(return_10_High,0.75 ,na.rm= T),
-
-        return_25_low = quantile(return_10_Low,0.25 ,na.rm= T),
-        return_75_low = quantile(return_10_Low,0.75 ,na.rm= T),
-
-        wins = sum(long_win, na.rm = T),
-        lose = sum(long_lose, na.rm = T),
-        percent_win = wins/(wins + lose)
-      ) %>%
-      arrange(Asset)
+    # tagged_trades %>%
+    #   group_by(trade_col, Asset) %>%
+    #   summarise(
+    #     # return_mean = mean(return_10_High, na.rm= T),
+    #     return_median = median(return_10_High, na.rm= T),
+    #     return25_high = quantile(return_10_High,0.25 ,na.rm= T),
+    #     return_75_high = quantile(return_10_High,0.75 ,na.rm= T),
+    #
+    #     return_25_low = quantile(return_10_Low,0.25 ,na.rm= T),
+    #     return_75_low = quantile(return_10_Low,0.75 ,na.rm= T),
+    #
+    #     wins = sum(long_win, na.rm = T),
+    #     lose = sum(long_lose, na.rm = T),
+    #     percent_win = wins/(wins + lose)
+    #   ) %>%
+    #   arrange(Asset)
 
     return(full_PCA_Copula_Data2)
 
   }
 
+full_PCA_Copula_Data2 <-
+  create_Index_PCA_copula(
+    major_indices_log_cumulative = major_indices_log_cumulative,
+    assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+    samples_for_MLE = 0.5,
+    test_samples = 0.45,
+    rolling_period = 100
+  )
 
+test <-
+  analysis_data %>% filter(Asset == "SPX500_USD") %>%
+  dplyr::select(Date, Asset,US2000_joint_density_INDEX_PCA_prob_roll, Price_Index_minus_PCA_prob_roll  )
 
 get_tagged_PCA_Index_Equities_Analysis <- function(
   analysis_data = full_PCA_Copula_Data2,
   raw_asset_data_ask = major_indices_log_cumulative,
   raw_asset_data_bid = major_indices_log_cumulative_bid,
-  stop_factor = 3,
-  profit_factor = 5,
+  stop_factor = 5,
+  profit_factor = 10,
   risk_dollar_value = 10,
-  analysis_syms = c("AUD_USD", "SPX500_USD", "EU50_EUR", "US2000_USD")
+  analysis_syms = c("AU200_AUD", "SPX500_USD", "EU50_EUR", "US2000_USD"),
+  control_random_samples = control_random_samples
   ) {
 
-  #--------------------------------------Random Results
-  random_trades_long <-
-    analysis_data %>%
-    group_by(Asset) %>%
-    slice_sample(n = 10000) %>%
-    ungroup() %>%
-    mutate(
-      trade_col = "Long"
-    )
-
-  random_analysis_long <-
-    run_pairs_analysis(
-      tagged_trades = random_trades_long %>% filter(trade_col == "Long"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = raw_asset_data_ask,
-      risk_dollar_value = risk_dollar_value
-    )
-
-  random_results_long_asset <-
-    random_analysis_long[[2]]
-
-  random_trades_short <-
-    analysis_data %>%
-    group_by(Asset) %>%
-    slice_sample(n = 5000) %>%
-    ungroup() %>%
-    mutate(
-      trade_col = "Short"
-    )
-
-  random_analysis_short <-
-    run_pairs_analysis(
-      tagged_trades = random_trades_short %>% filter(trade_col == "Short"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = raw_asset_data_ask,
-      risk_dollar_value = risk_dollar_value
-    )
-
-  random_results_short_asset <-
-    random_analysis_short[[2]]
   #--------------------------------------Random Results
 
   total_time_periods <- dim(analysis_data)[1]
@@ -412,109 +441,8 @@ get_tagged_PCA_Index_Equities_Analysis <- function(
     mutate(
       trade_col =
         case_when(
-          Price_Index_minus_PCA_prob_roll <= 0.49 &
-            SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD"~ "Short",
-          Price_Index_minus_PCA_prob_roll >= 0.51  &
-            SPX_joint_density_INDEX_PCA_prob_roll <=0.49 & Asset == "SPX500_USD" ~ "Long",
-          AU200_joint_density_INDEX_PCA_prob_roll >= 0.51 &
-            SPX_joint_density_INDEX_PCA_prob_roll <= 0.49 & Asset == "SPX500_USD"~ "Short",
-          AU200_joint_density_INDEX_PCA_prob_roll <=0.49 &
-            SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD" ~ "Long",
-          US2000_joint_density_INDEX_PCA_prob_roll >= 0.51 &
-            SPX_joint_density_INDEX_PCA_prob_roll <= 0.49 & Asset == "SPX500_USD"~ "Short",
-          US2000_joint_density_INDEX_PCA_prob_roll <=0.49 &
-            SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD" ~ "Long",
-          EU50_EUR_joint_density_INDEX_PCA_prob_roll >= 0.51 &
-            SPX_joint_density_INDEX_PCA_prob_roll <= 0.49 & Asset == "SPX500_USD"~ "Short",
-          EU50_EUR_joint_density_INDEX_PCA_prob_roll <=0.49 &
-            SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD" ~ "Long",
-
-          # Price_Index_minus_PCA_prob_roll <= 0.49 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD"~ "Long",
-          # Price_Index_minus_PCA_prob_roll >= 0.51  &
-          #   SPX_joint_density_INDEX_PCA_prob_roll <=0.49 & Asset == "SPX500_USD" ~ "Short",
-          # AU200_joint_density_INDEX_PCA_prob_roll >= 0.51 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll <= 0.49 & Asset == "SPX500_USD"~ "Long",
-          # AU200_joint_density_INDEX_PCA_prob_roll <=0.49 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD" ~ "Short",
-          # US2000_joint_density_INDEX_PCA_prob_roll >= 0.51 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll <= 0.49 & Asset == "SPX500_USD"~ "Long",
-          # US2000_joint_density_INDEX_PCA_prob_roll <=0.49 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD" ~ "Short",
-          # EU50_EUR_joint_density_INDEX_PCA_prob_roll >= 0.51 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll <= 0.49 & Asset == "SPX500_USD"~ "Long",
-          # EU50_EUR_joint_density_INDEX_PCA_prob_roll <=0.49 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll >= 0.51 & Asset == "SPX500_USD" ~ "Short",
-
-
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            AU200_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "AU200_AUD"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            AU200_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "AU200_AUD" ~ "Short",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            SPX_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "AU200_AUD"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            SPX_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "AU200_AUD" ~ "Short",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            US2000_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "AU200_AUD"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            US2000_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "AU200_AUD" ~ "Short",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            EU50_EUR_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "AU200_AUD"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            EU50_EUR_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "AU200_AUD" ~ "Short",
-
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            AU200_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "EU50_EUR"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            AU200_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "EU50_EUR" ~ "Short",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            SPX_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "EU50_EUR"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            SPX_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "EU50_EUR" ~ "Short",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            US2000_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "EU50_EUR"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            US2000_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "EU50_EUR" ~ "Short",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            EU50_EUR_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "EU50_EUR"~ "Long",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            EU50_EUR_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "EU50_EUR" ~ "Short",
-
-          # Price_Index_minus_PCA_prob_roll > 0.55 &
-          #   AU200_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Long",
-          # Price_Index_minus_PCA_prob_roll < 0.45  &
-          #   AU200_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Short",
-          # Price_Index_minus_PCA_prob_roll > 0.55 &
-          #   SPX_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Long",
-          # Price_Index_minus_PCA_prob_roll < 0.45  &
-          #   SPX_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Short",
-          # Price_Index_minus_PCA_prob_roll > 0.55 &
-          #   US2000_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Long",
-          # Price_Index_minus_PCA_prob_roll < 0.45  &
-          #   US2000_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Short",
-          # Price_Index_minus_PCA_prob_roll > 0.55 &
-          #   EU50_EUR_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Long",
-          # Price_Index_minus_PCA_prob_roll < 0.45  &
-          #   EU50_EUR_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Short"
-
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            AU200_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Short",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            AU200_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Long",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            SPX_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Short",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            SPX_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Long",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            US2000_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Short",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            US2000_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Long",
-          Price_Index_minus_PCA_prob_roll > 0.55 &
-            EU50_EUR_joint_density_INDEX_PCA_prob_roll < 0.45 & Asset == "US2000_USD"~ "Short",
-          Price_Index_minus_PCA_prob_roll < 0.45  &
-            EU50_EUR_joint_density_INDEX_PCA_prob_roll > 0.55 & Asset == "US2000_USD" ~ "Long"
-
+          SPX_joint_density_INDEX_PCA_prob_roll   > 0.5 & Asset == "SPX500_USD"  ~ "Long",
+          SPX_joint_density_INDEX_PCA_prob_roll    < 0.5 & Asset == "SPX500_USD"  ~ "Short"
         ),
       return_10_High = ((lead(High, 14) - Open))/(10^pipLocation),
       return_10_Low = ((lead(Low, 14) - Open))/(10^pipLocation),
@@ -536,12 +464,9 @@ get_tagged_PCA_Index_Equities_Analysis <- function(
     mutate(
       trade_col =
         case_when(
-          Price_Index_minus_PCA_prob_roll >= 0.85 &
-             !(Asset %in% c("US2000_USD", "SPX500_USD", "EU50_EUR")) ~ "Long",
-          (Price_Index_minus_PCA_prob_roll > 0.4) &
-            (Price_Index_minus_PCA_prob_roll < 0.6) & Asset == "US2000_USD" ~ "Long",
-          Price_Index_minus_PCA_prob_roll >= 0.875 & Asset == "SPX500_USD" ~ "Long",
-          (Price_Index_minus_PCA_prob_roll < 0.05) & Asset == "EU50_EUR" ~ "Long",
+          # SPX_joint_density_INDEX_PCA_prob_roll   > 0.65 & Asset == "SPX500_USD"  ~ "Long"
+          Price_Index_minus_PCA_prob_roll > 0.92~ "Long"
+          # SPX_joint_density_copula_INDEX_PCA  < 0.5 & Asset == "SPX500_USD"  ~ "Short"
           )
       ) %>%
     filter(!is.na(trade_col))
@@ -550,24 +475,16 @@ get_tagged_PCA_Index_Equities_Analysis <- function(
     mutate(
       trade_col =
         case_when(
-
-          US2000_joint_density_INDEX_PCA_prob_roll <= 0.38 &
-            Asset == "US2000_USD" & Price_Index_minus_PCA_prob_roll >= 0.62~ "Short",
-
-          EU50_EUR_joint_density_INDEX_PCA_prob_roll >= 0.70 &
-            Asset == "EU50_EUR" & Price_Index_minus_PCA_prob_roll <= 0.3~ "Short",
-
-          AU200_joint_density_INDEX_PCA_prob_roll >= 0.6 &
-            Asset == "AU200_AUD" & Price_Index_minus_PCA_prob_roll <= 0.4~ "Short",
-
-          Price_Index_minus_PCA_prob_roll <= 0.1 & Asset == "SG30_SGD"~ "Short"
+          # SPX_joint_density_copula_INDEX_PCA > 0.5 & Asset == "SPX500_USD"  ~ "Long",
+          # SPX_joint_density_INDEX_PCA_prob_roll    < 0.35 & Asset == "SPX500_USD"  ~ "Short"
+          Price_Index_minus_PCA_prob_roll < 0.08~ "Short"
         )
     ) %>%
     filter(!is.na(trade_col))
 
   percent_trades_taken <- dim(tagged_trades)[1]/total_time_periods
-  stop_factor = 6
-  profit_factor = 12
+  stop_factor = 5
+  profit_factor = 10
   #---------------------------------------------------------------------------
     long_analysis <- run_pairs_analysis(
       tagged_trades = tagged_trades_long %>% filter(trade_col == "Long"),
@@ -581,18 +498,17 @@ get_tagged_PCA_Index_Equities_Analysis <- function(
     long_analysis_asset <- long_analysis[[2]]
 
     long_comparison <- long_analysis_asset %>%
-      dplyr::select(Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return) %>%
-      left_join(
-        random_results_long_asset %>%
-          dplyr::select(Asset,  Final_Dollars_control = Final_Dollars,
-                        risk_weighted_return_control = risk_weighted_return)
-      ) %>%
+    left_join(control_random_samples %>%
+                ungroup() %>%
+                dplyr::select(-stop_factor, -profit_factor)) %>%
       mutate(
-        results_diff = risk_weighted_return_strat - risk_weighted_return_control
+        p_value_risk =
+          round(pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk), 4)
       )
   #--------------------------------------------------------------------------------
-    short_analysis <- run_pairs_analysis(
+  short_analysis <- run_pairs_analysis(
       tagged_trades = tagged_trades_short %>% filter(trade_col == "Short"),
       stop_factor = stop_factor,
       profit_factor = profit_factor,
@@ -603,12 +519,14 @@ get_tagged_PCA_Index_Equities_Analysis <- function(
     short_analysis_total <- short_analysis[[1]]
     short_analysis_asset <- short_analysis[[2]]
     short_comparison <- short_analysis_asset %>%
-      dplyr::select(Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return) %>%
-      left_join(
-        random_results_short_asset %>%
-          dplyr::select(Asset,  Final_Dollars_control = Final_Dollars,
-                        risk_weighted_return_control = risk_weighted_return)
+      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
+                    risk_weighted_return_strat = risk_weighted_return)  %>%
+      left_join(control_random_samples %>%
+                  ungroup() %>%
+                  dplyr::select(-stop_factor, -profit_factor)) %>%
+      mutate(
+        p_value_risk =
+          pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk)
       )
 
 }

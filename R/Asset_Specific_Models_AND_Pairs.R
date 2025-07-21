@@ -283,6 +283,7 @@ get_AUD_USD_NZD_Specific_Trades <-
     sd_fac_AUD_USD_trade = 1,
     sd_fac_NZD_USD_trade = 1,
     sd_fac_XCU_USD_trade = 1,
+    sd_fac_NZD_CHF_trade = 1,
     trade_direction = "Long",
     stop_factor = 5,
     profit_factor = 10,
@@ -633,9 +634,72 @@ get_AUD_USD_NZD_Specific_Trades <-
 
     message(glue::glue("Max Date in Tagged Data XCU_USD: {max_trades_XCU_USD}"))
 
+    #------------------------------------------------------------------NZD_CHF
+
+    lm_formula_NZD_CHF <- create_lm_formula(dependant = "dependant_var_nzd_chf", independant = lm_vars1)
+    lm_model_NZD_CHF <- lm(formula = lm_formula_NZD_CHF, data = training_data)
+    lm_formula_NZD_CHF_quant <- create_lm_formula(dependant = "dependant_var_nzd_chf", independant = lm_quant_vars)
+    lm_model_NZD_CHF_quant <- lm(formula = lm_formula_NZD_CHF_quant, data = training_data)
+    summary(lm_model_NZD_CHF)
+
+    predicted_train_NZD_CHF <- predict.lm(lm_model_NZD_CHF, newdata = training_data)
+    mean_pred_NZD_CHF <- mean(predicted_train_NZD_CHF, na.rm = T)
+    sd_pred_NZD_CHF <- sd(predicted_train_NZD_CHF, na.rm = T)
+    predicted_test_NZD_CHF <- predict.lm(lm_model_NZD_CHF, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_NZD_CHF <- mean(predicted_test_NZD_CHF, na.rm = T)
+    sd_pred_test_NZD_CHF <- sd(predicted_test_NZD_CHF, na.rm = T)
+
+    predicted_train_NZD_CHF_quant <- predict.lm(lm_model_NZD_CHF_quant, newdata = training_data)
+    mean_pred_NZD_CHF_quant <- mean(predicted_train_NZD_CHF_quant, na.rm = T)
+    sd_pred_NZD_CHF_quant <- sd(predicted_train_NZD_CHF_quant, na.rm = T)
+    predicted_test_NZD_CHF_quant <- predict.lm(lm_model_NZD_CHF_quant, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_NZD_CHF_quant <- mean(predicted_test_NZD_CHF_quant, na.rm = T)
+    sd_pred_test_NZD_CHF_quant <- sd(predicted_test_NZD_CHF_quant, na.rm = T)
+
+    tagged_trades_NZD_CHF <-
+      testing_data %>%
+      mutate(
+        lm_pred_NZD_CHF = predicted_test_NZD_CHF,
+        lm_pred_NZD_CHF_quant = predicted_test_NZD_CHF_quant
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            # lm_pred_NZD_CHF >= mean_pred_NZD_CHF + sd_fac_NZD_CHF_trade*sd_pred_NZD_CHF &
+            #   trade_direction == "Short" ~ trade_direction,
+            # lm_pred_NZD_CHF <= mean_pred_NZD_CHF - sd_fac_NZD_CHF_trade*sd_pred_NZD_CHF &
+            #   trade_direction == "Long" ~ trade_direction,
+
+            lm_pred_NZD_CHF <= mean_pred_NZD_CHF - sd_fac_NZD_CHF_trade*sd_pred_NZD_CHF &
+              trade_direction == "Long" ~ trade_direction,
+            lm_pred_NZD_CHF >= mean_pred_NZD_CHF + sd_fac_NZD_CHF_trade*sd_pred_NZD_CHF &
+              trade_direction == "Short" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "NZD_CHF"
+      ) %>%
+      mutate(
+        stop_factor = stop_factor,
+        profit_factor = profit_factor
+      )
+
+    max_trades_NZD_CHF <-
+      tagged_trades_NZD_CHF %>%
+      pull(Date) %>%
+      max(na.rm = T) %>%
+      as.character()
+
+    message(glue::glue("Max Date in Tagged Data XCU_USD: {max_trades_XCU_USD}"))
+
     return(list(tagged_trades_NZD_USD %>% filter(Asset %in% assets_to_return),
                 tagged_trades_AUD_USD %>% filter(Asset %in% assets_to_return),
-                tagged_trades_XCU_USD %>% filter(Asset %in% assets_to_return) ))
+                tagged_trades_XCU_USD %>% filter(Asset %in% assets_to_return),
+                tagged_trades_NZD_CHF %>% filter(Asset %in% assets_to_return)
+                )
+           )
 
   }
 
@@ -1222,7 +1286,8 @@ get_EUR_GBP_Specific_Trades <-
 get_SPX_US2000_XAG_XAU <- function(
     db_location = db_location,
     start_date = "2016-01-01",
-    end_date = today() %>% as.character()
+    end_date = today() %>% as.character(),
+    time_frame = "M15"
     ) {
 
   SPX <- create_asset_high_freq_data(
@@ -1230,7 +1295,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "SPX500_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1240,7 +1305,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "US2000_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1250,7 +1315,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "XAG_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1260,7 +1325,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "XAU_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1274,7 +1339,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "SPX500_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1284,7 +1349,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "US2000_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1294,7 +1359,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "XAG_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1304,7 +1369,7 @@ get_SPX_US2000_XAG_XAU <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "XAU_USD",
     keep_bid_to_ask = TRUE
   )
@@ -1347,7 +1412,6 @@ get_SPX_US2000_XAG_XAU <- function(
 get_SPX_US2000_XAG_Specific_Trades <-
   function(
     SPX_US2000_XAG = SPX_US2000_XAG,
-    start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
     lag_days = 1,
     lm_period = 80,

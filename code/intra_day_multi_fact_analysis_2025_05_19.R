@@ -88,7 +88,7 @@ current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
 
-margain_threshold <- 0.05
+margain_threshold <- 0.01
 long_account_num <- 1
 account_number_long <- "001-011-1615559-001"
 account_name_long <- "primary"
@@ -439,15 +439,27 @@ while (current_time < end_time) {
         sd_fac_AUD_USD_trade = 12,
         sd_fac_NZD_USD_trade = 6,
         sd_fac_XCU_USD_trade = 4,
+        sd_fac_NZD_CHF_trade = 15,
         trade_direction = "Long",
-        stop_factor = 8,
-        profit_factor = 16,
+        stop_factor = 10,
+        profit_factor = 15,
         assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
       )
 
     AUD_NZD_Trades_long <-
       AUD_NZD_Trades_long %>%
       map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup() %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data =
+          new_H1_data_ask %>%
+          filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 5
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(60))) %>%
       filter(trade_col == "Long")
 
     AUD_NZD_Trades_short <-
@@ -463,25 +475,45 @@ while (current_time < end_time) {
         sd_fac_AUD_USD_trade = 2.5,
         sd_fac_NZD_USD_trade = 2.5,
         sd_fac_XCU_USD_trade = -1.5,
+        sd_fac_NZD_CHF_trade = 5,
         trade_direction = "Short",
-        stop_factor = 6,
-        profit_factor = 12,
+        stop_factor = 5,
+        profit_factor = 10,
         assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
       )
 
     AUD_NZD_Trades_short <-
       AUD_NZD_Trades_short %>%
       map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup() %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data =
+          new_H1_data_bid %>%
+          filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 5
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(60))) %>%
       filter(trade_col == "Short")
 
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
     trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
     trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
+    AUD_NZD_USD_long_dim <- ifelse(!is.null(AUD_NZD_Trades_long), dim(AUD_NZD_Trades_long)[1], 0)
+    AUD_NZD_USD_short_dim <- ifelse(!is.null(AUD_NZD_Trades_short), dim(AUD_NZD_Trades_short)[1], 0)
     trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
 
     all_trades_string <-
       glue::glue("Trades 1: {trades1_dim}, Trades 2: {trades2_dim}, Trades 4: {trades4_dim}, Trades 1_50: {trades1_50_dim}") %>%
+      as.character()
+
+    message(all_trades_string)
+
+    all_trades_string <-
+      glue::glue("Trades AUD_USD_NZD Long: {AUD_NZD_USD_long_dim},  Trades AUD_USD_NZD Short: {AUD_NZD_USD_short_dim}") %>%
       as.character()
 
     message(all_trades_string)
@@ -551,6 +583,13 @@ while (current_time < end_time) {
         }
 
     }
+
+    total_trades <-
+      total_trades %>%
+      bind_rows(
+        list(AUD_NZD_Trades_long, AUD_NZD_Trades_short) %>%
+          map_dfr(bind_rows)
+      )
 
     if(dim(total_trades)[1] > 0) {
 

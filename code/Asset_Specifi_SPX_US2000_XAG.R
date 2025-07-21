@@ -50,22 +50,85 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
-db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date = "2016-01-01"
+load_custom_functions()
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db"
+start_date = "2011-01-01"
 end_date = today() %>% as.character()
 
 SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
   db_location = db_location,
-  start_date = "2016-01-01",
+  start_date = "2011-01-01",
   end_date = today() %>% as.character()
 )
 SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
 SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
 
+#Beta Binomial - beta(x + a, n - x + b),  x = number of sucesses, a,b hyper priors beta
+#
+mean(rbeta(n = 900000, shape1 = 5000, shape2 = 5000))
+samples <- 1000
+random_results_db_location <- "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db"
+db_con <- connect_db(random_results_db_location)
+stop_factor = 8
+profit_factor = 16
+analysis_syms = c("XCU_USD", "NZD_CHF")
+trade_samples = 5000
+new_table = FALSE
+time_frame = "H1"
+
+for (i in 1:samples) {
+
+  temp_results <-
+    get_random_results_trades(
+      raw_asset_data_ask = AUD_USD_NZD_USD_list[[1]],
+      raw_asset_data_bid = AUD_USD_NZD_USD_list[[2]],
+      stop_factor = stop_factor,
+      profit_factor = profit_factor,
+      risk_dollar_value = 10,
+      analysis_syms = analysis_syms,
+      trade_samples = trade_samples
+    )
+
+  complete_results <-
+    temp_results[[1]] %>%
+    bind_rows(temp_results[[2]]) %>%
+    mutate(trade_samples = trade_samples,
+           time_frame = time_frame)
+
+  if(new_table == TRUE) {
+    write_table_sql_lite(.data = complete_results,
+                         table_name = "random_results",
+                         conn = db_con,
+                         overwrite_true = TRUE)
+  }
+
+  if(new_table == FALSE) {
+    append_table_sql_lite(
+      .data = complete_results,
+      table_name = "random_results",
+      conn = db_con
+    )
+  }
+
+}
+
+DBI::dbDisconnect(db_con)
+
+control_random_samples <-
+  get_random_samples_MLE_beta(
+    random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
+    stop_factor = 8,
+    profit_factor = 16,
+    analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF"),
+    time_frame = "H1",
+    return_summary = TRUE
+  )
+#-----------------------------------------------------------
+
+#--------------------------------------------------Analysis
 SPX_XAG_US2000_Long_trades <-
   get_SPX_US2000_XAG_Specific_Trades(
   SPX_US2000_XAG = SPX_US2000_XAG,
-  start_date = "2016-01-01",
   raw_macro_data = raw_macro_data,
   lag_days = 1,
   lm_period = 2,
@@ -96,6 +159,7 @@ SPX_XAG_US2000_Long_Data <-
     raw_asset_data = SPX_US2000_XAG,
     risk_dollar_value = 5
   )
+
 results_long <- SPX_XAG_US2000_Long_Data[[1]]
 results_long_asset <- SPX_XAG_US2000_Long_Data[[2]]
 test_long <- SPX_XAG_US2000_Long_trades %>% group_by(Asset) %>% slice_max(Date)

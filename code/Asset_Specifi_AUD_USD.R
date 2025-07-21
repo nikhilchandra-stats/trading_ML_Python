@@ -73,7 +73,7 @@ random_results_db_location <- "C:/Users/Nikhil Chandra/Documents/trade_data/rand
 db_con <- connect_db(random_results_db_location)
 stop_factor = 8
 profit_factor = 16
-analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD")
+analysis_syms = c("XCU_USD", "NZD_CHF")
 trade_samples = 5000
 new_table = FALSE
 time_frame = "H1"
@@ -121,7 +121,7 @@ control_random_samples <-
     random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
     stop_factor = 8,
     profit_factor = 16,
-    analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD"),
+    analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF"),
     time_frame = "H1",
     return_summary = TRUE
   )
@@ -141,9 +141,10 @@ AUD_NZD_Trades_long <-
     sd_fac_AUD_USD_trade = 12,
     sd_fac_NZD_USD_trade = 6,
     sd_fac_XCU_USD_trade = 4,
+    sd_fac_NZD_CHF_trade = 15,
     trade_direction = "Long",
-    stop_factor = 8,
-    profit_factor = 16,
+    stop_factor = 10,
+    profit_factor = 15,
     assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
   )
 
@@ -154,8 +155,8 @@ AUD_NZD_Trades_long <-
 AUD_NZD_Long_Data <-
   run_pairs_analysis(
     tagged_trades = AUD_NZD_Trades_long,
-    stop_factor = 8,
-    profit_factor = 16,
+    stop_factor = 10,
+    profit_factor = 15,
     raw_asset_data = AUD_USD_NZD_USD_list[[1]],
     risk_dollar_value = 10
   )
@@ -172,6 +173,7 @@ results_long_asset <- AUD_NZD_Long_Data[[2]] %>%
 
 
 #------------------------------------------------------------
+load_custom_functions()
 AUD_NZD_Trades_short <-
   get_AUD_USD_NZD_Specific_Trades(
     AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[2]],
@@ -183,9 +185,10 @@ AUD_NZD_Trades_short <-
     sd_fac_AUD_USD_trade = 2.5,
     sd_fac_NZD_USD_trade = 2.5,
     sd_fac_XCU_USD_trade = -1.5,
+    sd_fac_NZD_CHF_trade = 5,
     trade_direction = "Short",
-    stop_factor = 6,
-    profit_factor = 12,
+    stop_factor = 5,
+    profit_factor = 10,
     assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
   )
 
@@ -195,8 +198,8 @@ AUD_NZD_Trades_short <- AUD_NZD_Trades_short %>%
 AUD_NZD_Short_Data <-
   run_pairs_analysis(
     tagged_trades = AUD_NZD_Trades_short,
-    stop_factor = 6,
-    profit_factor = 12,
+    stop_factor = 5,
+    profit_factor = 10,
     raw_asset_data =  AUD_USD_NZD_USD_list[[2]],
     risk_dollar_value = 10
   )
@@ -210,3 +213,4 @@ results_short2 <- AUD_NZD_Short_Data[[2]] %>%
     p_value_risk =
       pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
   )
+
