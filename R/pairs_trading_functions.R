@@ -2179,16 +2179,117 @@ create_PCA_Asset_Index <- function(
       Average_PCA = (PC1 + PC2)/2
     )
 
+  pca_calc1 %>%
+    mutate(index = row_number()) %>%
+    ggplot(aes(x = index)) +
+    geom_line(aes(y = PC1)) +
+    geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
+    geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
+    geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
+    theme_minimal()
+
   returned_data <-
     pca_data %>%
     dplyr::select(Date) %>%
     mutate(
-      Average_PCA = pca_calc1$Average_PCA %>% as.numeric()
+      Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
+      PC1 = pca_calc1$PC1 %>% as.numeric(),
+      PC2 = pca_calc1$PC2 %>% as.numeric(),
+      PC3 = pca_calc1$PC3 %>% as.numeric(),
+      PC4 = pca_calc1$PC4 %>% as.numeric(),
+      PC5 = pca_calc1$PC5 %>% as.numeric(),
+      PC6 = pca_calc1$PC6 %>% as.numeric()
     )
 
   return(returned_data)
 
 }
+
+#' get_PCA_Index_rolling_cor_sd_mean
+#'
+#' @param raw_asset_data_for_PCA_cor
+#' @param PCA_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_PCA_Index_rolling_cor_sd_mean <-
+  function(
+    raw_asset_data_for_PCA_cor = asset_data_to_use %>% filter(Asset == "SPX500_USD"),
+    PCA_data = returned_data
+    ) {
+
+    returned_data_rolling_PCA_cor <-
+      raw_asset_data_for_PCA_cor %>%
+      left_join(PCA_data) %>%
+      filter(!is.na(PC1)) %>%
+      group_by(Asset) %>%
+      mutate(
+
+        tan_angle = lag(atan((Price - lag(Price, rolling_period))/rolling_period)),
+
+        rolling_cor_PC1 = slider::slide2_dbl(.x = Return_Index,
+                                             .y = PC1,
+                                             .f = ~ cor(.x, .y),
+                                             .before = rolling_period),
+        rolling_cor_PC2 = slider::slide2_dbl(.x = Return_Index,
+                                             .y = PC2,
+                                             .f = ~ cor(.x, .y),
+                                             .before = rolling_period),
+        rolling_cor_PC3 = slider::slide2_dbl(.x = Return_Index,
+                                             .y = PC3,
+                                             .f = ~ cor(.x, .y),
+                                             .before = rolling_period),
+        rolling_cor_PC4 = slider::slide2_dbl(.x = Return_Index,
+                                             .y = PC4,
+                                             .f = ~ cor(.x, .y),
+                                             .before = rolling_period),
+
+        rolling_cor_PC1_mean = slider::slide_dbl(.x = rolling_cor_PC1,
+                                                 .f = ~ mean(.x, na.rm = T),
+                                                 .before = rolling_period),
+
+        rolling_cor_PC2_mean = slider::slide_dbl(.x = rolling_cor_PC2,
+                                                 .f = ~ mean(.x, na.rm = T),
+                                                 .before = rolling_period),
+
+        rolling_cor_PC3_mean = slider::slide_dbl(.x = rolling_cor_PC3,
+                                                 .f = ~ mean(.x, na.rm = T),
+                                                 .before = rolling_period),
+
+        rolling_cor_PC4_mean = slider::slide_dbl(.x = rolling_cor_PC4,
+                                                 .f = ~ mean(.x, na.rm = T),
+                                                 .before = rolling_period),
+
+        rolling_cor_PC1_sd = slider::slide_dbl(.x = rolling_cor_PC1,
+                                               .f = ~ sd(.x, na.rm = T),
+                                               .before = rolling_period),
+
+        rolling_cor_PC2_sd = slider::slide_dbl(.x = rolling_cor_PC2,
+                                               .f = ~ sd(.x, na.rm = T),
+                                               .before = rolling_period),
+
+        rolling_cor_PC3_sd = slider::slide_dbl(.x = rolling_cor_PC3,
+                                               .f = ~ sd(.x, na.rm = T),
+                                               .before = rolling_period),
+
+        rolling_cor_PC4_sd = slider::slide_dbl(.x = rolling_cor_PC4,
+                                               .f = ~ sd(.x, na.rm = T),
+                                               .before = rolling_period),
+
+        rolling_tan_angle_mean = slider::slide_dbl(.x = tan_angle,
+                                              .f = ~  mean(.x, na.rm = T),
+                                              .before = rolling_period),
+
+        rolling_tan_angle_sd = slider::slide_dbl(.x = tan_angle,
+                                                   .f = ~  sd(.x, na.rm = T),
+                                                   .before = rolling_period)
+      )
+
+    return(returned_data_rolling_PCA_cor)
+
+  }
 
 
 #' rolling_cauchy

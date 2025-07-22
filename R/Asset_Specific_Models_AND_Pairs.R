@@ -1711,7 +1711,8 @@ run_pairs_analysis <- function(
     stop_factor = 5,
     profit_factor = 10,
     raw_asset_data = AUD_USD_NZD_USD,
-    risk_dollar_value = 10
+    risk_dollar_value = 10,
+    return_trade_ts = FALSE
 ) {
 
   mean_values_by_asset_for_loop <-
@@ -1784,7 +1785,11 @@ run_pairs_analysis <- function(
     ) %>%
     bind_cols(trade_timings_by_asset)
 
-  return(list(analysis_data, analysis_data_asset))
+  if(return_trade_ts == TRUE) {
+    return(long_bayes_loop_analysis)
+  } else {
+    return(list(analysis_data, analysis_data_asset))
+  }
 
 }
 
