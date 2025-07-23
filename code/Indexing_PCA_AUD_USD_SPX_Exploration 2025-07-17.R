@@ -61,6 +61,373 @@ mean_values_by_asset_for_loop <-
 major_indices$Asset %>% unique()
 gc()
 
+control_random_samples <-
+  get_random_samples_MLE_beta(
+    random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
+    stop_factor = 5,
+    profit_factor = 10,
+    analysis_syms = c("AU200_AUD", "SPX500_USD", "EU50_EUR", "US2000_USD"),
+    time_frame = "H1",
+    return_summary = TRUE
+  )
+
+major_indices_log_cumulative <-
+  c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
+  map_dfr(
+    ~
+      create_log_cumulative_returns(
+        asset_data_to_use = major_indices,
+        asset_to_use = c(.x[1]),
+        price_col = "Open",
+        return_long_format = TRUE
+      )
+  ) %>%
+  left_join(
+    major_indices %>% distinct(Date, Asset, Price, Open, High, Low)
+  )
+
+major_indices_log_cumulative_bid <-
+  c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
+  map_dfr(
+    ~
+      create_log_cumulative_returns(
+        asset_data_to_use = major_indices_bid,
+        asset_to_use = c(.x[1]),
+        price_col = "Open",
+        return_long_format = TRUE
+      )
+  ) %>%
+  left_join(
+    major_indices_bid %>% distinct(Date, Asset, Price, Open, High, Low)
+  )
+
+SPX_bench_mark <-
+  get_bench_mark_results(
+    asset_data = major_indices_log_cumulative,
+    Asset_Var = "SPX500_USD",
+    min_date = "2018-01-01",
+    trade_direction = "Long",
+    risk_dollar_value = 5,
+    stop_factor = 4,
+    profit_factor = 8,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    currency_conversion = currency_conversion
+  )
+
+US2000_bench_mark <-
+  get_bench_mark_results(
+    asset_data = major_indices_log_cumulative_bid,
+    Asset_Var = "US2000_USD",
+    min_date = "2018-01-01",
+    trade_direction = "Short",
+    risk_dollar_value = 5,
+    stop_factor = 4,
+    profit_factor = 8,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    currency_conversion = currency_conversion
+  )
+
+#Rolling Period 100
+all_tagged_trades_equity <-
+  equity_index_asset_model_trades(
+  major_indices_log_cumulative = major_indices_log_cumulative ,
+  assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+  samples_for_MLE = 0.5,
+  test_samples = 0.45,
+  rolling_period = 100,
+  date_filter_min = "2018-01-01",
+  stop_factor = 4,
+  profit_factor = 8,
+  stop_factor_long = 10,
+  profit_factor_long = 15
+)
+
+all_tagged_trades_equity_dfr <-
+  all_tagged_trades_equity %>%
+  map_dfr(bind_rows) %>%
+  slice_max(Date)
+
+analysis_data <-
+  equity_index_asset_model(
+  asset_data_ask = major_indices_log_cumulative,
+  asset_data_bid = major_indices_log_cumulative_bid,
+  asset_1_tag = all_tagged_trades_equity[[1]],
+  asset_2_tag = all_tagged_trades_equity[[2]],
+  asset_3_tag = all_tagged_trades_equity[[3]],
+  asset_4_tag = all_tagged_trades_equity[[4]],
+  asset_5_tag = all_tagged_trades_equity[[5]],
+  risk_dollar_value = 5,
+  stop_factor = 4,
+  profit_factor = 8,
+  stop_factor_long = 10,
+  profit_factor_long = 15,
+  control_random_samples,
+  US2000_bench_mark = US2000_bench_mark,
+  SPX_bench_mark = SPX_bench_mark
+)
+
+analysis_comparison <- analysis_data[[1]]
+analysis_data[[2]]
+
+#Rolling Period 20
+
+SPX_bench_mark <-
+  get_bench_mark_results(
+    asset_data = major_indices_log_cumulative,
+    Asset_Var = "SPX500_USD",
+    min_date = "2018-01-01",
+    trade_direction = "Long",
+    risk_dollar_value = 5,
+    stop_factor = 3,
+    profit_factor = 6,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    currency_conversion = currency_conversion
+  )
+
+US2000_bench_mark_short <-
+  get_bench_mark_results(
+    asset_data = major_indices_log_cumulative_bid,
+    Asset_Var = "US2000_USD",
+    min_date = "2018-01-01",
+    trade_direction = "Long",
+    risk_dollar_value = 5,
+    stop_factor = 3,
+    profit_factor = 6,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    currency_conversion = currency_conversion
+  )
+
+US2000_bench_mark_short <-
+  get_bench_mark_results(
+    asset_data = major_indices_log_cumulative_bid,
+    Asset_Var = "US2000_USD",
+    min_date = "2018-01-01",
+    trade_direction = "Short",
+    risk_dollar_value = 5,
+    stop_factor = 3,
+    profit_factor = 6,
+    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
+    currency_conversion = currency_conversion
+  )
+
+all_tagged_trades_equity <-
+  equity_index_asset_model_trades(
+  major_indices_log_cumulative = major_indices_log_cumulative ,
+  assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+  samples_for_MLE = 0.5,
+  test_samples = 0.45,
+  rolling_period = 20,
+  date_filter_min = "2018-01-01",
+  stop_factor = 3,
+  profit_factor = 6,
+  stop_factor_long = 3,
+  profit_factor_long = 6
+)
+
+all_tagged_trades_equity_dfr <-
+  all_tagged_trades_equity %>%
+  map_dfr(bind_rows) %>%
+  slice_max(Date)
+
+analysis_data <-
+  equity_index_asset_model(
+    asset_data_ask = major_indices_log_cumulative,
+    asset_data_bid = major_indices_log_cumulative_bid,
+    asset_1_tag = all_tagged_trades_equity[[1]],
+    asset_2_tag = all_tagged_trades_equity[[2]],
+    asset_3_tag = all_tagged_trades_equity[[3]],
+    asset_4_tag = all_tagged_trades_equity[[4]],
+    asset_5_tag = all_tagged_trades_equity[[5]],
+    risk_dollar_value = 5,
+    stop_factor = 4,
+    profit_factor = 8,
+    stop_factor_long = 10,
+    profit_factor_long = 15,
+    control_random_samples,
+    US2000_bench_mark = US2000_bench_mark,
+    SPX_bench_mark = SPX_bench_mark
+  )
+
+analysis_comparison <- analysis_data[[1]]
+analysis_data[[2]]
+
+
+#' equity_index_asset_model
+#'
+#' @param major_indices_log_cumulative
+#' @param assets_to_use
+#' @param samples_for_MLE
+#' @param test_samples
+#' @param rolling_period
+#' @param asset1
+#' @param asset2
+#' @param asset_1_fac
+#' @param asset_2_fac
+#'
+#' @return
+#' @export
+#'
+#' @examples
+equity_index_asset_model_trades <-
+  function(
+    major_indices_log_cumulative = major_indices_log_cumulative_raw ,
+    assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+    samples_for_MLE = 0.5,
+    test_samples = 0.45,
+    rolling_period = 100,
+    date_filter_min = "2018-01-01",
+    stop_factor = 4,
+    profit_factor = 8,
+    stop_factor_long = 10,
+    profit_factor_long = 15
+  ) {
+
+    major_indices_log_cumulative <-
+      major_indices_log_cumulative %>%
+      group_by(Asset) %>%
+      mutate(
+        Return_Index_Diff = ((Price - Open)/Open)*100
+      ) %>%
+      ungroup() %>%
+      filter(!is.na(Return_Index_Diff)) %>%
+      filter(Date >= date_filter_min)
+
+    major_indices_PCA_Index <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_indices_log_cumulative,
+        asset_to_use = assets_to_use,
+        price_col = "Return_Index"
+      ) %>%
+      rename(
+        Average_PCA_Index = Average_PCA
+      )
+
+    major_indices_cumulative_pca <-
+      major_indices_log_cumulative %>%
+      left_join(major_indices_PCA_Index)
+
+    asset_1 <-
+      get_PCA_Index_rolling_cor_sd_mean(
+        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "SPX500_USD"),
+        PCA_data = major_indices_cumulative_pca,
+        rolling_period = rolling_period
+      )
+
+    asset_2 <-
+      get_PCA_Index_rolling_cor_sd_mean(
+        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "US2000_USD"),
+        PCA_data = major_indices_cumulative_pca,
+        rolling_period = rolling_period
+      )
+
+    asset_3 <-
+      get_PCA_Index_rolling_cor_sd_mean(
+        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "EU50_EUR"),
+        PCA_data = major_indices_cumulative_pca,
+        rolling_period = rolling_period
+      )
+
+    asset_4 <-
+      get_PCA_Index_rolling_cor_sd_mean(
+        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "AU200_AUD"),
+        PCA_data = major_indices_cumulative_pca,
+        rolling_period = rolling_period
+      )
+
+    asset_5 <-
+      get_PCA_Index_rolling_cor_sd_mean(
+        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "SG30_SGD"),
+        PCA_data = major_indices_cumulative_pca,
+        rolling_period = rolling_period
+      )
+
+    asset_1_tag <-
+      asset_1 %>%
+      mutate(trade_col =
+               case_when(
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1.5*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 1.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC4 >= rolling_cor_PC4_mean + 2.5*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long"
+               )
+      ) %>%
+      filter(!is.na(trade_col))
+
+    asset_2_tag <-
+      asset_2 %>%
+      mutate(trade_col =
+               case_when(
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 4*rolling_cor_PC2_sd & tan_angle < 0  ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 4*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0  ~ "Long"
+               )
+      ) %>%
+      filter(!is.na(trade_col))
+
+    asset_3_tag <-
+      asset_3 %>%
+      mutate(trade_col =
+               case_when(
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1.5*rolling_cor_PC2_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 1.5*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Short"
+
+
+               )
+      ) %>%
+      filter(!is.na(trade_col))
+
+    asset_4_tag <-
+      asset_4 %>%
+      mutate(trade_col =
+               case_when(
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC4 <= rolling_cor_PC4_mean - 2*rolling_cor_PC4_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC4 <= rolling_cor_PC4_mean - 1.75*rolling_cor_PC4_sd & tan_angle > 0 ~ "Short"
+
+               )
+      ) %>%
+      filter(!is.na(trade_col))
+
+    asset_5_tag <-
+      asset_5 %>%
+      mutate(trade_col =
+               case_when(
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC4 <= rolling_cor_PC4_mean - 2.5*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC4 >= rolling_cor_PC4_mean + 2*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long"
+
+               )
+      ) %>%
+      filter(!is.na(trade_col))
+
+    return(list(
+      asset_1_tag,
+      asset_2_tag,
+      asset_3_tag,
+      asset_4_tag,
+      asset_5_tag
+    ))
+
+  }
+
+#-----------------------------------------------------------------------------------------
 mean(rbeta(n = 900000, shape1 = 5000, shape2 = 5000))
 samples <- 1000
 random_results_db_location <- "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db"
@@ -110,624 +477,6 @@ for (i in 1:samples) {
 
 DBI::dbDisconnect(db_con)
 
-control_random_samples <-
-  get_random_samples_MLE_beta(
-    random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
-    stop_factor = 5,
-    profit_factor = 10,
-    analysis_syms = c("AU200_AUD", "SPX500_USD", "EU50_EUR", "US2000_USD"),
-    time_frame = "H1",
-    return_summary = TRUE
-  )
-
-major_indices_log_cumulative <-
-  c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
-  map_dfr(
-    ~
-      create_log_cumulative_returns(
-        asset_data_to_use = major_indices,
-        asset_to_use = c(.x[1]),
-        price_col = "Open",
-        return_long_format = TRUE
-      )
-  ) %>%
-  left_join(
-    major_indices %>% distinct(Date, Asset, Price, Open, High, Low)
-  )
-
-major_indices_log_cumulative_bid <-
-  c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
-  map_dfr(
-    ~
-      create_log_cumulative_returns(
-        asset_data_to_use = major_indices_bid,
-        asset_to_use = c(.x[1]),
-        price_col = "Open",
-        return_long_format = TRUE
-      )
-  ) %>%
-  left_join(
-    major_indices_bid %>% distinct(Date, Asset, Price, Open, High, Low)
-  )
-
-#' get_bench_mark_results
-#'
-#' @param asset_data
-#' @param Asset
-#' @param min_date
-#'
-#' @return
-#' @export
-#'
-#' @examples
-get_bench_mark_results <-
-  function(asset_data = major_indices_log_cumulative,
-           Asset_Var = "SPX500_USD",
-           min_date = "2018-01-01",
-           trade_direction = "Long",
-           risk_dollar_value = 5,
-           stop_factor = 4,
-           profit_factor = 8,
-           mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
-           currency_conversion = currency_conversion
-           ) {
-
-    tagged_trades <-
-      asset_data %>%
-      ungroup() %>%
-      filter(Asset == Asset_Var, Date >= as_date(min_date)) %>%
-      mutate(trade_col = trade_direction)
-
-    bench_mark_ts <- run_pairs_analysis(
-      tagged_trades = tagged_trades %>% filter(trade_col == trade_direction),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data,
-      risk_dollar_value = risk_dollar_value,
-      return_trade_ts = TRUE
-    )
-
-    bench_mark_analysis <- run_pairs_analysis(
-      tagged_trades = tagged_trades %>% filter(trade_col == trade_direction),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    bench_mark_analysis_total <- bench_mark_analysis[[1]]
-    bench_mark_analysis_asset <- bench_mark_analysis[[2]]
-
-    benchmark_ts_with_returns <-
-      get_stops_profs_volume_trades(tagged_trades = bench_mark_ts %>%
-                                      rename(Asset = asset, Date = dates) %>%
-                                      left_join(asset_data %>%
-                                                  dplyr::select(Date, Asset, Price, Low, High, Open)),
-                                  mean_values_by_asset =  mean_values_by_asset_for_loop,
-                                  trade_col = "trade_col",
-                                  currency_conversion = currency_conversion,
-                                  risk_dollar_value = risk_dollar_value,
-                                  stop_factor = stop_factor,
-                                  profit_factor =profit_factor,
-                                  asset_col = "Asset",
-                                  stop_col = "stop_value",
-                                  profit_col = "profit_value",
-                                  price_col = "Price",
-                                  trade_return_col = "trade_returns") %>%
-      mutate(
-        trade_returns =
-          case_when(
-            trade_col == "Long" & trade_start_prices < trade_end_prices ~ maximum_win,
-            trade_col == "Long" & trade_start_prices >= trade_end_prices ~ -1*minimal_loss,
-            trade_col == "Short" & trade_start_prices > trade_end_prices ~ maximum_win,
-            trade_col == "Short" & trade_start_prices <= trade_end_prices ~ -1*minimal_loss
-          )
-      ) %>%
-      dplyr::select(Date, trade_returns, Asset)
-
-    benchmark_ts_sum <- benchmark_ts_with_returns %>%
-      group_by(Date) %>%
-      summarise(trade_returns = sum(trade_returns, na.rm = T)) %>%
-      mutate(
-        cumulative_returns = cumsum(trade_returns)
-      )
-
-    return(
-      list(benchmark_ts_sum,
-           benchmark_ts_with_returns,
-           bench_mark_analysis_asset)
-    )
-
-  }
-
-SPX_bench_mark <-
-  get_bench_mark_results(
-    asset_data = major_indices_log_cumulative,
-    Asset_Var = "SPX500_USD",
-    min_date = "2018-01-01",
-    trade_direction = "Long",
-    risk_dollar_value = 5,
-    stop_factor = 4,
-    profit_factor = 8,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
-    currency_conversion = currency_conversion
-  )
-
-US2000_bench_mark <-
-  get_bench_mark_results(
-    asset_data = major_indices_log_cumulative_bid,
-    Asset_Var = "US2000_USD",
-    min_date = "2018-01-01",
-    trade_direction = "Short",
-    risk_dollar_value = 5,
-    stop_factor = 4,
-    profit_factor = 8,
-    mean_values_by_asset_for_loop = mean_values_by_asset_for_loop,
-    currency_conversion = currency_conversion
-  )
-
-US2000_bench_mark[[1]] %>%
-  ggplot(aes(x = Date, y = cumulative_returns)) +
-  geom_line() +
-  theme_minimal()
-
-SPX_bench_mark[[1]] %>%
-  ggplot(aes(x = Date, y = cumulative_returns)) +
-  geom_line() +
-  theme_minimal()
-
-
-#' get_2_asset_combined_results
-#'
-#' @param asset_1_tag_trades
-#' @param asset_2_tag_trades
-#' @param asset_data_ask
-#' @param asset_data_bid
-#'
-#' @return
-#' @export
-#'
-#' @examples
-get_3_asset_combined_results <-
-  function(
-    asset_1_tag_trades = asset_1_tag,
-    asset_2_tag_trades = asset_2_tag,
-    asset_3_tag_trades = asset_3_tag,
-    asset_data_ask = major_indices_log_cumulative,
-    asset_data_bid = major_indices_log_cumulative_bid,
-    risk_dollar_value = risk_dollar_value,
-    profit_factor = profit_factor,
-    stop_factor = stop_factor,
-    profit_factor_long = profit_factor_long,
-    stop_factor_long = stop_factor_long,
-    control_random_samples = control_random_samples
-    ){
-
-    long_analysis <- run_pairs_analysis(
-      tagged_trades = asset_1_tag_trades %>% filter(trade_col == "Long"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data_ask,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    long_analysis_total <- long_analysis[[1]]
-    long_analysis_asset <- long_analysis[[2]]
-
-    long_comparison <- long_analysis_asset %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return,
-                    profit_factor, stop_factor) %>%
-      left_join(control_random_samples %>%
-                  ungroup() %>%
-                  dplyr::select(-stop_factor, -profit_factor)) %>%
-      mutate(
-        p_value_risk =
-          round(pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk), 4)
-      )
-    #--------------------------------------------------------------------------------
-    short_analysis <- run_pairs_analysis(
-      tagged_trades = asset_1_tag_trades %>% filter(trade_col == "Short"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data_bid,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    short_analysis_total <- short_analysis[[1]]
-    short_analysis_asset <- short_analysis[[2]]
-    short_comparison <- short_analysis_asset %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return,
-                    profit_factor, stop_factor)  %>%
-      left_join(control_random_samples %>%
-                  ungroup() %>%
-                  dplyr::select(-stop_factor, -profit_factor)) %>%
-      mutate(
-        p_value_risk =
-          pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk)
-      )
-
-    #--------------------------------------------------------------------------------
-    long_analysis2 <- run_pairs_analysis(
-      tagged_trades = asset_2_tag_trades %>% filter(trade_col == "Long"),
-      stop_factor = stop_factor_long,
-      profit_factor = profit_factor_long,
-      raw_asset_data = asset_data_ask,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    long_analysis_total2 <- long_analysis2[[1]]
-    long_analysis_asset2 <- long_analysis2[[2]]
-
-    long_comparison2 <- long_analysis_asset2 %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return,
-                    profit_factor, stop_factor) %>%
-      left_join(control_random_samples %>%
-                  ungroup() %>%
-                  dplyr::select(-stop_factor, -profit_factor)) %>%
-      mutate(
-        p_value_risk =
-          round(pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk), 4)
-      )
-    #--------------------------------------------------------------------------------
-    short_analysis2 <- run_pairs_analysis(
-      tagged_trades = asset_2_tag_trades %>% filter(trade_col == "Short"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data_bid,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    short_analysis_total2 <- short_analysis2[[1]]
-    short_analysis_asset2 <- short_analysis2[[2]]
-    short_comparison2 <- short_analysis_asset2 %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return,
-                    profit_factor, stop_factor)  %>%
-      left_join(control_random_samples %>%
-                  ungroup() %>%
-                  dplyr::select(-stop_factor, -profit_factor)) %>%
-      mutate(
-        p_value_risk =
-          pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk)
-      )
-
-    #--------------------------------------------------------------------------------
-    long_analysis3 <- run_pairs_analysis(
-      tagged_trades = asset_3_tag_trades %>% filter(trade_col == "Long"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data_ask,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    long_analysis_total3 <- long_analysis3[[1]]
-    long_analysis_asset3 <- long_analysis3[[2]]
-
-    long_comparison3 <- long_analysis_asset3 %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return,
-                    profit_factor, stop_factor) %>%
-      left_join(control_random_samples %>%
-                  ungroup() %>%
-                  dplyr::select(-stop_factor, -profit_factor)) %>%
-      mutate(
-        p_value_risk =
-          round(pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk), 4)
-      )
-    #--------------------------------------------------------------------------------
-    short_analysis3 <- run_pairs_analysis(
-      tagged_trades = asset_3_tag_trades %>% filter(trade_col == "Short"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = asset_data_bid,
-      risk_dollar_value = risk_dollar_value
-    )
-
-    short_analysis_total3 <- short_analysis3[[1]]
-    short_analysis_asset3 <- short_analysis3[[2]]
-    short_comparison3 <- short_analysis_asset3 %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
-                    risk_weighted_return_strat = risk_weighted_return,
-                    profit_factor, stop_factor)  %>%
-      left_join(control_random_samples %>%
-                  ungroup() %>%
-                  dplyr::select(-stop_factor, -profit_factor)) %>%
-      mutate(
-        p_value_risk =
-          pnorm(risk_weighted_return_strat, mean = mean_risk, sd = sd_risk)
-      )
-
-    full_comparison <-
-      long_comparison %>%
-      bind_rows(short_comparison) %>%
-      bind_rows(long_comparison2) %>%
-      bind_rows(short_comparison2) %>%
-      bind_rows(long_comparison3) %>%
-      bind_rows(short_comparison3)
-
-}
-
-#' Title
-#'
-#' @param major_indices_log_cumulative
-#' @param assets_to_use
-#' @param samples_for_MLE
-#' @param test_samples
-#' @param rolling_period
-#' @param asset1
-#' @param asset2
-#' @param asset_1_fac
-#' @param asset_2_fac
-#'
-#' @return
-#' @export
-#'
-#' @examples
-two_asset_model <-
-  function(
-    major_indices_log_cumulative = major_indices_log_cumulative_raw ,
-    assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
-    samples_for_MLE = 0.5,
-    test_samples = 0.45,
-    rolling_period = 100,
-    asset1 = "SPX500_USD",
-    asset2 = "US2000_USD",
-    asset_1_fac = 0.5,
-    asset_2_fac = 0.5,
-    date_filter_min = "2018-01-01",
-    all_bench_mark_data =       list(benchmark_ts_sum,
-                                     benchmark_ts_with_returns,
-                                     bench_mark_analysis_asset)
-    ) {
-
-    major_indices_log_cumulative <-
-      major_indices_log_cumulative %>%
-      group_by(Asset) %>%
-      mutate(
-        Return_Index_Diff = ((Price - Open)/Open)*100
-      ) %>%
-      ungroup() %>%
-      filter(!is.na(Return_Index_Diff)) %>%
-      filter(Date >= date_filter_min)
-
-    major_indices_PCA_Index <-
-      create_PCA_Asset_Index(
-        asset_data_to_use = major_indices_log_cumulative,
-        asset_to_use = assets_to_use,
-        price_col = "Return_Index"
-      ) %>%
-      rename(
-        Average_PCA_Index = Average_PCA
-      )
-
-    major_indices_cumulative_pca <-
-      major_indices_log_cumulative %>%
-      left_join(major_indices_PCA_Index)
-
-    asset_1 <-
-      get_PCA_Index_rolling_cor_sd_mean(
-        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "SPX500_USD"),
-        PCA_data = major_indices_cumulative_pca
-      )
-
-    asset_2 <-
-      get_PCA_Index_rolling_cor_sd_mean(
-        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "US2000_USD"),
-        PCA_data = major_indices_cumulative_pca
-      )
-
-    asset_3 <-
-      get_PCA_Index_rolling_cor_sd_mean(
-        raw_asset_data_for_PCA_cor = major_indices_log_cumulative %>% filter(Asset == "EU50_EUR"),
-        PCA_data = major_indices_cumulative_pca
-      )
-
-    asset_1_tag <-
-      asset_1 %>%
-      mutate(trade_col =
-               case_when(
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1.5*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 1.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC4 >= rolling_cor_PC4_mean + 2.5*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long"
-               )
-             ) %>%
-      filter(!is.na(trade_col))
-
-    asset_2_tag <-
-      asset_2 %>%
-      mutate(trade_col =
-               case_when(
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 4*rolling_cor_PC2_sd & tan_angle < 0  ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 4*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0  ~ "Long"
-               )
-      ) %>%
-      filter(!is.na(trade_col))
-
-    asset_3_tag <-
-      asset_3 %>%
-      mutate(trade_col =
-               case_when(
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1*rolling_cor_PC2_sd & tan_angle > 0 ~ "Short"
-                 # rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
-                 # rolling_cor_PC3 <= rolling_cor_PC3_mean - 1.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 # rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Short",
-                 # rolling_cor_PC4 >= rolling_cor_PC4_mean + 2.5*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long"
-               )
-      ) %>%
-      filter(!is.na(trade_col))
-
-    stop_factor = 4
-    profit_factor = 8
-    stop_factor_long = 10
-    profit_factor_long = 15
-
-    combined_results <- get_3_asset_combined_results(
-      asset_1_tag_trades = asset_1_tag,
-      asset_2_tag_trades = asset_2_tag,
-      asset_3_tag_trades = asset_3_tag,
-      asset_data_ask = major_indices_log_cumulative,
-      asset_data_bid = major_indices_log_cumulative_bid,
-      risk_dollar_value = risk_dollar_value,
-      profit_factor = profit_factor,
-      stop_factor = stop_factor,
-      profit_factor_long = profit_factor_long,
-      stop_factor_long = stop_factor_long,
-      control_random_samples = control_random_samples
-    )
-
-    if(!is.null(all_bench_mark_data)) {
-      benchmark_risk_results <-
-        all_bench_mark_data[[3]] %>%
-        dplyr::select(Asset, trade_direction,
-                      risk_return_benchmark = risk_weighted_return,
-                      final_dollars_benchmark = Final_Dollars)
-
-      US2000_bench_risk <- US2000_bench_mark[[3]] %>%
-        dplyr::select(Asset, trade_direction,
-                      risk_return_benchmark = risk_weighted_return,
-                      final_dollars_benchmark = Final_Dollars)
-
-      combined_results_benched <-
-        combined_results %>%
-        left_join(benchmark_risk_results %>% bind_rows(US2000_bench_risk))
-    }
-
-    #---------------------------------------------------------------------------
-    long_analysis_ts <- run_pairs_analysis(
-      tagged_trades = asset_1_tag %>% filter(trade_col == "Long"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = major_indices_log_cumulative,
-      risk_dollar_value = risk_dollar_value,
-      return_trade_ts = TRUE
-    )
-
-    short_analysis_ts <- run_pairs_analysis(
-      tagged_trades = asset_1_tag %>% filter(trade_col == "Short"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = major_indices_log_cumulative,
-      risk_dollar_value = risk_dollar_value,
-      return_trade_ts = TRUE
-    )
-
-    long_analysis_ts_2 <- run_pairs_analysis(
-      tagged_trades = asset_2_tag %>% filter(trade_col == "Long"),
-      stop_factor = stop_factor_long,
-      profit_factor = profit_factor_long,
-      raw_asset_data = major_indices_log_cumulative,
-      risk_dollar_value = risk_dollar_value,
-      return_trade_ts = TRUE
-    )
-
-    short_analysis_ts_2 <- run_pairs_analysis(
-      tagged_trades = asset_2_tag %>% filter(trade_col == "Short"),
-      stop_factor = stop_factor,
-      profit_factor = profit_factor,
-      raw_asset_data = major_indices_log_cumulative_bid,
-      risk_dollar_value = risk_dollar_value,
-      return_trade_ts = TRUE
-    )
-
-   trade_returns_ts <-
-     list(
-      list(long_analysis_ts %>%
-        rename(Asset = asset, Date = dates) %>%
-        left_join(major_indices_log_cumulative %>%
-                    dplyr::select(Date, Asset, Price, Low, High, Open)),
-        "SPX500_USD"),
-      list(long_analysis_ts_2 %>%
-        rename(Asset = asset, Date = dates) %>%
-        left_join(major_indices_log_cumulative %>%
-                    dplyr::select(Date, Asset, Price, Low, High, Open)),
-        "US2000_USD"),
-      list(short_analysis_ts %>%
-             rename(Asset = asset, Date = dates) %>%
-             left_join(major_indices_log_cumulative %>%
-                         dplyr::select(Date, Asset, Price, Low, High, Open)),
-           "SPX500_USD"),
-      list(short_analysis_ts_2 %>%
-             rename(Asset = asset, Date = dates) %>%
-             left_join(major_indices_log_cumulative %>%
-                         dplyr::select(Date, Asset, Price, Low, High, Open)),
-           "US2000_USD")
-    ) %>%
-      map(
-        ~
-          get_stops_profs_volume_trades(tagged_trades = .x[[1]],
-                                        mean_values_by_asset =  mean_values_by_asset_for_loop,
-                                        trade_col = "trade_col",
-                                        currency_conversion = currency_conversion,
-                                        risk_dollar_value = risk_dollar_value,
-                                        stop_factor = stop_factor,
-                                        profit_factor =profit_factor,
-                                        asset_col = "Asset",
-                                        stop_col = "stop_value",
-                                        profit_col = "profit_value",
-                                        price_col = "Price",
-                                        trade_return_col = "trade_returns") %>%
-          mutate(
-            trade_returns =
-              case_when(
-                trade_col == "Long" & trade_start_prices < trade_end_prices ~ maximum_win,
-                trade_col == "Long" & trade_start_prices > trade_end_prices ~ -1*minimal_loss,
-                trade_col == "Short" & trade_start_prices > trade_end_prices ~ maximum_win,
-                trade_col == "Short" & trade_start_prices < trade_end_prices ~ -1*minimal_loss
-              )
-          ) %>%
-          dplyr::select(Date, trade_returns, Asset)
-      ) %>%
-     reduce(bind_rows)
-
-   trade_returns_ts_sum <- trade_returns_ts %>%
-     group_by(Date) %>%
-     summarise(trade_returns = sum(trade_returns, na.rm = T)) %>%
-     mutate(
-       cumulative_returns = cumsum(trade_returns)
-     )
-
-   first_date_in_simulation <- trade_returns_ts_sum$Date %>% min()
-
-   if(!is.null(all_bench_mark_data)) {
-
-     bench_mark_ts_sum <- all_bench_mark_data[[1]]
-
-     plot_data <- trade_returns_ts %>%
-       group_by(Date) %>%
-       summarise(trade_returns = sum(trade_returns, na.rm = T)) %>%
-       mutate(
-         cumulative_returns = cumsum(trade_returns)
-       ) %>%
-       mutate(
-         strat_or_control = "Strat"
-       ) %>%
-       bind_rows(bench_mark_ts_sum  %>%
-                   mutate(
-                     strat_or_control = "Control"
-                   )
-                 )
-
-     plot_data %>%
-       ggplot(aes(x = Date, y = cumulative_returns, color = strat_or_control)) +
-       geom_line() +
-       theme_minimal() +
-       theme(legend.position = "bottom", legend.title = element_blank())
-
-   }
-
-
-
-  }
 
 create_Index_PCA_copula <-
   function(

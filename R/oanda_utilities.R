@@ -198,6 +198,10 @@ get_oanda_url <- function( account = 1 ){
   if(account == 2){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-003')}
   if(account == 3){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-004')}
 
+  # Equity Accounts
+  if(account == 4){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-002')}
+  if(account == 5){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-005')}
+
 }
 
 get_oanda_account_number <- function(account_name = "primary"){
@@ -205,15 +209,17 @@ get_oanda_account_number <- function(account_name = "primary"){
   if(account_name == "primary"){return("001-011-1615559-001")}
   if(account_name == "mt4_hedging"){return("001-011-1615559-003")}
   if(account_name == "corr_no_macro"){return("001-011-1615559-004")}
-
+  if(account_name == "equity_long"){return("001-011-1615559-002")}
+  if(account_name == "equity_short"){return("001-011-1615559-005")}
 
 }
 
-get_account_summary <- function(account_var = 1){
+get_account_summary <- function(account_var = 2){
 
   headers = c(
     `Content-Type` = 'application/json',
     `Authorization` = get_oanda_from_sys()
+    # `Authorization` = "Bearer 0321f8a633d09bf602613fb11255fadf-b2c91d351f1e7d21f82c6caab40c4872"
   )
 
   res <- httr::GET(url =

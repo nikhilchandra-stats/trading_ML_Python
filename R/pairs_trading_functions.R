@@ -2217,7 +2217,8 @@ create_PCA_Asset_Index <- function(
 get_PCA_Index_rolling_cor_sd_mean <-
   function(
     raw_asset_data_for_PCA_cor = asset_data_to_use %>% filter(Asset == "SPX500_USD"),
-    PCA_data = returned_data
+    PCA_data = returned_data,
+    rolling_period = 100
     ) {
 
     returned_data_rolling_PCA_cor <-
