@@ -20,6 +20,8 @@ trade_results_upload <- function(position_date_min = "2025-04-01",
   pos_1_book <- list()
   pos_2_book <- list()
   pos_3_book <- list()
+  pos_4_book <- list()
+  pos_5_book <- list()
   safely_get_positions <- safely(get_closed_positions, otherwise = NULL)
   for (i in 1:length(assets_to_analyse)) {
 
@@ -28,45 +30,69 @@ trade_results_upload <- function(position_date_min = "2025-04-01",
     pos_2_book[[i]] <- safely_get_positions(account_var = 2, asset = assets_to_analyse[i])
     Sys.sleep(1)
     pos_3_book[[i]] <- safely_get_positions(account_var = 3, asset = assets_to_analyse[i])
+    Sys.sleep(1)
+    pos_4_book[[i]] <- safely_get_positions(account_var = 4, asset = assets_to_analyse[i])
+    Sys.sleep(1)
+    pos_5_book[[i]] <- safely_get_positions(account_var = 5, asset = assets_to_analyse[i])
   }
 
-  account1 <- pos_1_book %>%
-    map(~ .x %>% pluck('result')) %>%
-    keep(~ !is.null(.x)) %>%
+  all_perf_results_combined <-
+    list(
+    list(pos_1_book, "account1"),
+    list(pos_2_book, "account2"),
+    list(pos_3_book, "account3"),
+    list(pos_4_book, "account4"),
+    list(pos_5_book, "account5")
+  ) %>%
     map_dfr(
-      ~ .x %>%
-        mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours"))
-    ) %>%
-    mutate(
-      account_var = "account1"
+      ~
+        .x[[1]] %>%
+        map(~ .x %>% pluck('result')) %>%
+        # keep(!is.null) %>%
+        map_dfr(bind_rows) %>%
+        mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours")) %>%
+        mutate(
+          account_var = .x[[2]]
+        )
     )
 
-  account2 <- pos_2_book %>%
-    map(~ .x %>% pluck('result')) %>%
-    keep(~ !is.null(.x)) %>%
-    map_dfr(
-      ~ .x %>%
-        mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours"))
-    )%>%
-    mutate(
-      account_var = "account2"
-    )
-
-  account3 <- pos_3_book %>%
-    map(~ .x %>% pluck('result')) %>%
-    keep(~ !is.null(.x)) %>%
-    map_dfr(
-      ~ .x %>%
-        mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours"))
-    ) %>%
-    mutate(
-      account_var = "account3"
-    )
-
-  total_trade_results <-
-    account1 %>%
-    bind_rows(account2) %>%
-    bind_rows(account3)
+  # account1 <- pos_1_book %>%
+  #   map(~ .x %>% pluck('result')) %>%
+  #   keep(~ !is.null(.x)) %>%
+  #   map_dfr(
+  #     ~ .x %>%
+  #       mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours"))
+  #   ) %>%
+  #   mutate(
+  #     account_var = "account1"
+  #   )
+  #
+  # account2 <- pos_2_book %>%
+  #   map(~ .x %>% pluck('result')) %>%
+  #   keep(~ !is.null(.x)) %>%
+  #   map_dfr(
+  #     ~ .x %>%
+  #       mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours"))
+  #   )%>%
+  #   mutate(
+  #     account_var = "account2"
+  #   )
+  #
+  # account3 <- pos_3_book %>%
+  #   map(~ .x %>% pluck('result')) %>%
+  #   keep(~ !is.null(.x)) %>%
+  #   map_dfr(
+  #     ~ .x %>%
+  #       mutate(openTime = as_datetime(openTime) %>% floor_date(unit = "hours"))
+  #   ) %>%
+  #   mutate(
+  #     account_var = "account3"
+  #   )
+  #
+  # total_trade_results <-
+  #   account1 %>%
+  #   bind_rows(account2) %>%
+  #   bind_rows(account3)
 
   db_con <- connect_db(db_path)
   current_data_in_db <-
@@ -75,7 +101,8 @@ trade_results_upload <- function(position_date_min = "2025-04-01",
   current_ids <- current_data_in_db %>% distinct(id, account_var, price, realizedPL)
 
   total_trade_results_new <-
-    total_trade_results %>%
+    # total_trade_results %>%
+    all_perf_results_combined %>%
     anti_join(current_ids)
 
   if(dim(total_trade_results_new)[1] > 0) {
@@ -86,36 +113,18 @@ trade_results_upload <- function(position_date_min = "2025-04-01",
 
   DBI::dbDisconnect(db_con)
 
-
-  # pos1_vol_trades <- pos_1_book %>%
-  #   filter(openTime >= position_date_min) %>%
-  #   distinct(instrument, realizedPL, openTime) %>%
-  #   rename(realizedPL = realizedPL)
-  #
-  # pos2_vol_trades <- pos_2_book %>%
-  #   filter(openTime >= position_date_min) %>%
-  #   distinct(instrument, realizedPL, openTime)  %>%
-  #   rename(realizedPL = realizedPL)
-  #
-  # total_data <-
-  #   pos1_vol_trades %>%
-  #   bind_rows(pos2_vol_trades) %>%
-  #   mutate(realizedPL = as.numeric(realizedPL))
-  #
-  # test <- get_account_summary()
-
 }
 
 
 analyse_trade_results <- function(
     position_date_min = "2025-04-01",
     db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_results.db" ,
-    accounts = c("account1", "account2"),
+    accounts = c("account1", "account2", "account3", "account4", "account5"),
     direction = "Long"
 ) {
 
   current_balances <-
-    c(1,2,3) %>%
+    c(1,2,3,4,5) %>%
     map_dfr(
       ~
         tibble(
@@ -181,23 +190,6 @@ analyse_trade_results <- function(
     ylab("Winnings ($)") +
     labs(title = title_var, subtitle = subtitle_var) +
     theme(axis.title.x = element_blank())
-
-
-  # pos1_vol_trades <- pos_1_book %>%
-  #   filter(openTime >= position_date_min) %>%
-  #   distinct(instrument, realizedPL, openTime) %>%
-  #   rename(realizedPL = realizedPL)
-  #
-  # pos2_vol_trades <- pos_2_book %>%
-  #   filter(openTime >= position_date_min) %>%
-  #   distinct(instrument, realizedPL, openTime)  %>%
-  #   rename(realizedPL = realizedPL)
-  #
-  # total_data <-
-  #   pos1_vol_trades %>%
-  #   bind_rows(pos2_vol_trades) %>%
-  #   mutate(realizedPL = as.numeric(realizedPL))
-  #
 
 }
 

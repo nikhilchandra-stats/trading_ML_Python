@@ -399,8 +399,8 @@ equity_index_asset_model_trades <-
         Return_Index_Diff = ((Price - Open)/Open)*100
       ) %>%
       ungroup() %>%
-      filter(!is.na(Return_Index_Diff)) %>%
-      filter(Date >= date_filter_min)
+      filter(!is.na(Return_Index_Diff))
+      # filter(Date >= date_filter_min)
 
     major_indices_PCA_Index <-
       create_PCA_Asset_Index(
