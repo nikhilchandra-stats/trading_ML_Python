@@ -2330,6 +2330,10 @@ get_PCA_Index_rolling_cor_sd_mean <-
                                              .y = PC4,
                                              .f = ~ cor(.x, .y),
                                              .before = rolling_period),
+        rolling_cor_PC5 = slider::slide2_dbl(.x = Return_Index,
+                                             .y = PC5,
+                                             .f = ~ cor(.x, .y),
+                                             .before = rolling_period),
 
         rolling_cor_PC1_mean = slider::slide_dbl(.x = rolling_cor_PC1,
                                                  .f = ~ mean(.x, na.rm = T),
@@ -2347,6 +2351,10 @@ get_PCA_Index_rolling_cor_sd_mean <-
                                                  .f = ~ mean(.x, na.rm = T),
                                                  .before = rolling_period),
 
+        rolling_cor_PC5_mean = slider::slide_dbl(.x = rolling_cor_PC5,
+                                                 .f = ~ mean(.x, na.rm = T),
+                                                 .before = rolling_period),
+
         rolling_cor_PC1_sd = slider::slide_dbl(.x = rolling_cor_PC1,
                                                .f = ~ sd(.x, na.rm = T),
                                                .before = rolling_period),
@@ -2360,6 +2368,10 @@ get_PCA_Index_rolling_cor_sd_mean <-
                                                .before = rolling_period),
 
         rolling_cor_PC4_sd = slider::slide_dbl(.x = rolling_cor_PC4,
+                                               .f = ~ sd(.x, na.rm = T),
+                                               .before = rolling_period),
+
+        rolling_cor_PC5_sd = slider::slide_dbl(.x = rolling_cor_PC5,
                                                .f = ~ sd(.x, na.rm = T),
                                                .before = rolling_period),
 
