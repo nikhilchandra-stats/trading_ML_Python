@@ -82,7 +82,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "ask",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 4
+  how_far_back = 10
 )
 
 gc()
@@ -100,7 +100,7 @@ current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
 
-margain_threshold <- 0.05
+margain_threshold <- 0.01
 long_account_num <-2
 account_number_long <-  "001-011-1615559-003"
 account_name_long <- "mt4_hedging"
@@ -393,7 +393,6 @@ while(current_time < end_time) {
 
     }
 
-    message(glue::glue("Short Trades EUR GBP: {dim(EUR_GBP_USD_Trades_short)[1]}"))
 
   }
 

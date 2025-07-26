@@ -109,7 +109,7 @@ current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
 
-margain_threshold <- 0.01
+margain_threshold <- 0.03
 long_account_num <-2
 account_number_long <-  "001-011-1615559-003"
 account_name_long <- "mt4_hedging"
@@ -482,4 +482,4 @@ while(current_time < end_time) {
     # message(glue::glue("Time is: {current_time}"))
 
 }
-0
+

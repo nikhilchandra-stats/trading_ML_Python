@@ -75,15 +75,15 @@ EUR_GBP_USD_Trades_long <-
     lm_test_prop = 0.09,
     # lm_train_prop = 0.9,
     # lm_test_prop = 0.09,
-    sd_fac_lm_trade_eur_usd = 0.01,
-    sd_fac_lm_trade_gbp_usd = 0.01,
-    sd_fac_lm_trade_eur_gbp = 0.01,
-    sd_fac_lm_trade_eur_jpy = 0.01,
-    sd_fac_lm_trade_gbp_jpy = 0.01,
-    sd_fac_lm_trade_usd_jpy = 0.01,
+    sd_fac_lm_trade_eur_usd = 1,
+    sd_fac_lm_trade_gbp_usd = 1,
+    sd_fac_lm_trade_eur_gbp = 1.5,
+    sd_fac_lm_trade_eur_jpy = 1,
+    sd_fac_lm_trade_gbp_jpy = 1.5,
+    sd_fac_lm_trade_usd_jpy = 1,
     trade_direction = "Long",
-    stop_factor = 15,
-    profit_factor = 25
+    stop_factor = 12,
+    profit_factor = 22
   )
 EUR_GBP_USD_Trades_long <- EUR_GBP_USD_Trades_long %>%
   map_dfr(bind_rows)
@@ -98,7 +98,6 @@ EUR_GBP_USD_Long_Data <-
 
 results_long <- EUR_GBP_USD_Long_Data[[1]]
 results_long_asset <- EUR_GBP_USD_Long_Data[[2]]
-test <- EUR_GBP_USD_Trades_long %>% group_by(Date) %>% slice_max(Date)
 
 #--------------------------------------------------------------------------
 
@@ -113,12 +112,12 @@ EUR_GBP_USD_Trades_short <-
     lm_test_prop = 0.09,
     # lm_train_prop = 0.9,
     # lm_test_prop = 0.09,
-    sd_fac_lm_trade_eur_usd = 0.01,
-    sd_fac_lm_trade_gbp_usd = 0.01,
-    sd_fac_lm_trade_eur_gbp = 0.01,
-    sd_fac_lm_trade_eur_jpy = 0.01,
-    sd_fac_lm_trade_gbp_jpy = 0.01,
-    sd_fac_lm_trade_usd_jpy = 0.01,
+    sd_fac_lm_trade_eur_usd = 0.5,
+    sd_fac_lm_trade_gbp_usd = 0.5,
+    sd_fac_lm_trade_eur_gbp = 0.5,
+    sd_fac_lm_trade_eur_jpy = 0.5,
+    sd_fac_lm_trade_gbp_jpy = 0.5,
+    sd_fac_lm_trade_usd_jpy = 0.5,
     trade_direction = "Short",
     stop_factor = 15,
     profit_factor = 25
