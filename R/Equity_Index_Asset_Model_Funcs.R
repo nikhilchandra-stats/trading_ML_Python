@@ -381,6 +381,7 @@ get_5_index_equity_combined_results <-
 equity_index_asset_model_trades <-
   function(
     major_indices_log_cumulative = major_indices_log_cumulative_raw ,
+    PCA_Data = NULL,
     assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
     samples_for_MLE = 0.5,
     test_samples = 0.45,
@@ -399,18 +400,28 @@ equity_index_asset_model_trades <-
         Return_Index_Diff = ((Price - Open)/Open)*100
       ) %>%
       ungroup() %>%
-      filter(!is.na(Return_Index_Diff))
-      # filter(Date >= date_filter_min)
+      filter(!is.na(Return_Index_Diff)) %>%
+      filter(Date >= date_filter_min)
 
-    major_indices_PCA_Index <-
-      create_PCA_Asset_Index(
-        asset_data_to_use = major_indices_log_cumulative,
-        asset_to_use = assets_to_use,
-        price_col = "Return_Index"
-      ) %>%
-      rename(
-        Average_PCA_Index = Average_PCA
-      )
+    if(is.null(PCA_Data)) {
+      major_indices_PCA_Index <-
+        create_PCA_Asset_Index(
+          asset_data_to_use = major_indices_log_cumulative,
+          asset_to_use = assets_to_use,
+          price_col = "Return_Index"
+        ) %>%
+        rename(
+          Average_PCA_Index = Average_PCA
+        )
+    }
+
+    if(!is.null(PCA_Data)) {
+      major_indices_PCA_Index <-
+        PCA_Data  %>%
+        rename(
+          Average_PCA_Index = Average_PCA
+        )
+    }
 
     major_indices_cumulative_pca <-
       major_indices_log_cumulative %>%

@@ -2205,6 +2205,90 @@ create_PCA_Asset_Index <- function(
 
 }
 
+#' prepare_PCA_wide_data_rolling
+#'
+#' This version of the function prepares a rolling PCA over equities
+#'
+#' @param asset_data_to_use
+#' @param asset_to_use
+#' @param price_col
+#' @param min_sample_size
+#' @param save_db_path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+prepare_PCA_wide_data_rolling <-
+  function(
+    asset_data_to_use = major_indices_log_cumulative,
+    asset_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+    price_col = "Return_Index",
+    min_sample_size = 1000,
+    save_db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/PCA_Rolling_equity_temp.db"
+  ) {
+
+    pca_data <-
+      asset_data_to_use %>%
+      dplyr::select(Date, Asset, !!as.name(price_col)) %>%
+      filter(Asset %in% asset_to_use) %>%
+      rename(pivot_data = !!as.name(price_col)) %>%
+      pivot_wider(names_from = Asset, values_from = pivot_data) %>%
+      arrange(Date) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(.cols = everything(), .fns = ~ !is.na(.)))
+
+    pca_index_dat <- pca_data %>% dplyr::select(-Date)
+
+    PC1 <- numeric(length(min_sample_size:dim(pca_data)[1]))
+    PC2 <- numeric(length(min_sample_size:dim(pca_data)[1]))
+    PC3 <- numeric(length(min_sample_size:dim(pca_data)[1]))
+    PC4 <- numeric(length(min_sample_size:dim(pca_data)[1]))
+    PC5 <- numeric(length(min_sample_size:dim(pca_data)[1]))
+    PC6 <- numeric(length(min_sample_size:dim(pca_data)[1]))
+    c = 0
+
+    for (i in min_sample_size:dim(pca_data)[1]) {
+
+      c = c + 1
+      pca_calc <- prcomp(pca_index_dat[1:i,])
+      xx <- pca_calc$x
+      PC1[c] <- xx[i,1] %>% as.numeric()
+      PC2[c] <- xx[i,2] %>% as.numeric()
+      PC3[c] <- xx[i,3] %>% as.numeric()
+      PC4[c] <- xx[i,4] %>% as.numeric()
+      PC5[c] <- xx[i,5] %>% as.numeric()
+      PC6[c] <- xx[i,6] %>% as.numeric()
+
+    }
+
+    returned_data <-
+      pca_data[min_sample_size:dim(pca_data)[1], ]
+
+    returned_data <-
+      returned_data %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Average_PCA = (PC1 + PC2)/2 %>% as.numeric(),
+        PC1 = PC1 %>% as.numeric(),
+        PC2 = PC2 %>% as.numeric(),
+        PC3 = PC3 %>% as.numeric(),
+        PC4 = PC4 %>% as.numeric(),
+        PC5 = PC5 %>% as.numeric(),
+        PC6 = PC6 %>% as.numeric()
+      )
+
+    if(!is.null(save_db_path)) {
+      db_con <- connect_db(save_db_path)
+      write_table_sql_lite(conn = db_con,
+                           .data = returned_data,
+                           table_name = "PCA_Rolling_equity_temp",
+                           overwrite_true = TRUE)
+      DBI::dbDisconnect(db_con)
+    }
+
+  }
+
 #' get_PCA_Index_rolling_cor_sd_mean
 #'
 #' @param raw_asset_data_for_PCA_cor

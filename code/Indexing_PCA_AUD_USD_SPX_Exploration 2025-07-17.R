@@ -130,17 +130,17 @@ US2000_bench_mark <-
 #Rolling Period 100
 all_tagged_trades_equity <-
   equity_index_asset_model_trades(
-  major_indices_log_cumulative = major_indices_log_cumulative ,
-  assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
-  samples_for_MLE = 0.5,
-  test_samples = 0.45,
-  rolling_period = 100,
-  date_filter_min = "2018-01-01",
-  stop_factor = 4,
-  profit_factor = 8,
-  stop_factor_long = 10,
-  profit_factor_long = 15
-)
+    major_indices_log_cumulative = major_indices_log_cumulative ,
+    assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+    samples_for_MLE = 0.5,
+    test_samples = 0.45,
+    rolling_period = 100,
+    date_filter_min = "2018-01-01",
+    stop_factor = 4,
+    profit_factor = 8,
+    stop_factor_long = 10,
+    profit_factor_long = 15
+  )
 
 all_tagged_trades_equity_dfr <-
   all_tagged_trades_equity %>%
@@ -149,22 +149,22 @@ all_tagged_trades_equity_dfr <-
 
 analysis_data <-
   equity_index_asset_model(
-  asset_data_ask = major_indices_log_cumulative,
-  asset_data_bid = major_indices_log_cumulative_bid,
-  asset_1_tag = all_tagged_trades_equity[[1]],
-  asset_2_tag = all_tagged_trades_equity[[2]],
-  asset_3_tag = all_tagged_trades_equity[[3]],
-  asset_4_tag = all_tagged_trades_equity[[4]],
-  asset_5_tag = all_tagged_trades_equity[[5]],
-  risk_dollar_value = 5,
-  stop_factor = 4,
-  profit_factor = 8,
-  stop_factor_long = 10,
-  profit_factor_long = 15,
-  control_random_samples,
-  US2000_bench_mark = US2000_bench_mark,
-  SPX_bench_mark = SPX_bench_mark
-)
+    asset_data_ask = major_indices_log_cumulative,
+    asset_data_bid = major_indices_log_cumulative_bid,
+    asset_1_tag = all_tagged_trades_equity[[1]],
+    asset_2_tag = all_tagged_trades_equity[[2]],
+    asset_3_tag = all_tagged_trades_equity[[3]],
+    asset_4_tag = all_tagged_trades_equity[[4]],
+    asset_5_tag = all_tagged_trades_equity[[5]],
+    risk_dollar_value = 5,
+    stop_factor = 4,
+    profit_factor = 8,
+    stop_factor_long = 10,
+    profit_factor_long = 15,
+    control_random_samples,
+    US2000_bench_mark = US2000_bench_mark,
+    SPX_bench_mark = SPX_bench_mark
+  )
 
 analysis_comparison <- analysis_data[[1]]
 analysis_data[[2]]

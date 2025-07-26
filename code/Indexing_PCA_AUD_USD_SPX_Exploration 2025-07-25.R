@@ -136,10 +136,10 @@ simulation_date_vec <- seq(first_date,last_date, "hour" )
 all_analysis_stored <- list()
 equity_sim_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/equity_sim_results.db"
 db_con_quity_sim <- connect_db(equity_sim_db_location)
-new_table <- TRUE
+new_table <- FALSE
 c = 0
 
-for (i in 813:length(simulation_date_vec)) {
+for (i in 1072:length(simulation_date_vec)) {
 
   all_tagged_trades_equity <-
     equity_index_asset_model_trades(
@@ -242,6 +242,8 @@ test <- all_analysis_stored %>%
   group_by(Asset, trade_col) %>%
   summarise(Returns = sum(Final_Dollars))
 test$Returns %>% sum()
+
+test_db_data <- DBI::dbGetQuery(conn = db_con_quity_sim, "SELECT * FROM equity_sim_results")
 
 
 #' equity_index_asset_model
