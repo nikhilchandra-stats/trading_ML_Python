@@ -128,7 +128,7 @@ get_5_index_equity_combined_results <-
     long_analysis_asset <- long_analysis[[2]]
 
     long_comparison <- long_analysis_asset %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction , Asset, Trades, wins, Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor) %>%
       left_join(control_random_samples %>%
@@ -150,7 +150,7 @@ get_5_index_equity_combined_results <-
     short_analysis_total <- short_analysis[[1]]
     short_analysis_asset <- short_analysis[[2]]
     short_comparison <- short_analysis_asset %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction, Asset, Trades, wins, Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor)  %>%
       left_join(control_random_samples %>%
@@ -173,7 +173,7 @@ get_5_index_equity_combined_results <-
     long_analysis_asset2 <- long_analysis2[[2]]
 
     long_comparison2 <- long_analysis_asset2 %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction , Asset, Trades,wins,  Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor) %>%
       left_join(control_random_samples %>%
@@ -195,7 +195,7 @@ get_5_index_equity_combined_results <-
     short_analysis_total2 <- short_analysis2[[1]]
     short_analysis_asset2 <- short_analysis2[[2]]
     short_comparison2 <- short_analysis_asset2 %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction, Asset, Trades, wins,  Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor)  %>%
       left_join(control_random_samples %>%
@@ -219,7 +219,7 @@ get_5_index_equity_combined_results <-
     long_analysis_asset3 <- long_analysis3[[2]]
 
     long_comparison3 <- long_analysis_asset3 %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction , Asset, Trades, wins,  Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor) %>%
       left_join(control_random_samples %>%
@@ -241,7 +241,7 @@ get_5_index_equity_combined_results <-
     short_analysis_total3 <- short_analysis3[[1]]
     short_analysis_asset3 <- short_analysis3[[2]]
     short_comparison3 <- short_analysis_asset3 %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction, Asset, Trades, wins, Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor)  %>%
       left_join(control_random_samples %>%
@@ -265,7 +265,7 @@ get_5_index_equity_combined_results <-
     long_analysis_asset4 <- long_analysis4[[2]]
 
     long_comparison4 <- long_analysis_asset4 %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction , Asset, Trades,wins,  Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor) %>%
       left_join(control_random_samples %>%
@@ -288,7 +288,7 @@ get_5_index_equity_combined_results <-
     short_analysis_total4 <- short_analysis4[[1]]
     short_analysis_asset4 <- short_analysis4[[2]]
     short_comparison4 <- short_analysis_asset4 %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction, Asset, Trades, wins, Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor)  %>%
       left_join(control_random_samples %>%
@@ -312,7 +312,7 @@ get_5_index_equity_combined_results <-
     long_analysis_asset5 <- long_analysis5[[2]]
 
     long_comparison5 <- long_analysis_asset5 %>%
-      dplyr::select(trade_direction , Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction , Asset, Trades, wins,  Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor) %>%
       left_join(control_random_samples %>%
@@ -335,7 +335,7 @@ get_5_index_equity_combined_results <-
     short_analysis_total5 <- short_analysis5[[1]]
     short_analysis_asset5 <- short_analysis5[[2]]
     short_comparison5 <- short_analysis_asset5 %>%
-      dplyr::select(trade_direction, Asset, Trades, Final_Dollars,
+      dplyr::select(trade_direction, Asset, Trades, wins, Final_Dollars,
                     risk_weighted_return_strat = risk_weighted_return,
                     profit_factor, stop_factor)  %>%
       left_join(control_random_samples %>%
@@ -466,12 +466,14 @@ equity_index_asset_model_trades <-
       asset_1 %>%
       mutate(trade_col =
                case_when(
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1.5*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 1.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC4 >= rolling_cor_PC4_mean + 2.5*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long"
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 2.75*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2.75*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 3*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2.75*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3.1*rolling_cor_PC2_sd & tan_angle > 0  ~ "Short",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2.75*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2.75*rolling_cor_PC3_sd & tan_angle > 0 ~ "Short"
                )
       ) %>%
       filter(!is.na(trade_col))
@@ -480,44 +482,64 @@ equity_index_asset_model_trades <-
       asset_2 %>%
       mutate(trade_col =
                case_when(
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 4*rolling_cor_PC2_sd & tan_angle < 0  ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 4*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 1*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0  ~ "Long"
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 3*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 3*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2.75*rolling_cor_PC2_sd & tan_angle < 0 &
+                   rolling_cor_PC2 >= rolling_cor_PC2_mean - 3.5*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2.75*rolling_cor_PC2_sd & tan_angle < 0  &
+                   rolling_cor_PC2 <= rolling_cor_PC2_mean + 3.5*rolling_cor_PC2_sd & tan_angle < 0  ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3*rolling_cor_PC2_sd & tan_angle > 0  ~ "Short",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 3.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long"
                )
       ) %>%
       filter(!is.na(trade_col))
 
+    # EU50_EUR
     asset_3_tag <-
       asset_3 %>%
       mutate(trade_col =
                case_when(
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 1.5*rolling_cor_PC2_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 2.5*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
                  rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Short",
-                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 1.5*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
-                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Short"
 
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 3.5*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 3.2*rolling_cor_PC2_sd & tan_angle > 0  ~ "Long",
 
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3.2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2.75*rolling_cor_PC2_sd & tan_angle > 0  ~ "Short",
+
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 3.25*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.25*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.25*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long"
                )
       ) %>%
       filter(!is.na(trade_col))
 
+    # AU200_AUD
     asset_4_tag <-
       asset_4 %>%
       mutate(trade_col =
                case_when(
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.5*rolling_cor_PC3_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC4 <= rolling_cor_PC4_mean - 2*rolling_cor_PC4_sd & tan_angle < 0 ~ "Long",
-                 rolling_cor_PC4 <= rolling_cor_PC4_mean - 1.75*rolling_cor_PC4_sd & tan_angle > 0 ~ "Short"
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 3*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 3*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 3*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2.75*rolling_cor_PC1_sd & tan_angle > 0 ~ "Short",
 
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 3.6*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 3.3*rolling_cor_PC2_sd & tan_angle > 0  ~ "Long",
+
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3.3*rolling_cor_PC2_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3.3*rolling_cor_PC2_sd & tan_angle > 0  ~ "Long",
+
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 3.25*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 3.25*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
+
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.25*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3.25*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long"
                )
       ) %>%
       filter(!is.na(trade_col))
@@ -526,14 +548,14 @@ equity_index_asset_model_trades <-
       asset_5 %>%
       mutate(trade_col =
                case_when(
-                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2*rolling_cor_PC1_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 2*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 2*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
-                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 2*rolling_cor_PC2_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 2*rolling_cor_PC3_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC4 <= rolling_cor_PC4_mean - 2.5*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long",
-                 rolling_cor_PC4 >= rolling_cor_PC4_mean + 2*rolling_cor_PC4_sd & tan_angle > 0 ~ "Long"
-
+                 rolling_cor_PC1 <= rolling_cor_PC1_mean - 3.25*rolling_cor_PC1_sd & tan_angle > 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 3.25*rolling_cor_PC1_sd & tan_angle < 0 ~ "Long",
+                 rolling_cor_PC1 >= rolling_cor_PC1_mean + 2.5*rolling_cor_PC1_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC2 <= rolling_cor_PC2_mean - 3.25*rolling_cor_PC2_sd & tan_angle > 0  ~ "Long",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3*rolling_cor_PC2_sd & tan_angle < 0 ~ "Short",
+                 rolling_cor_PC2 >= rolling_cor_PC2_mean + 3*rolling_cor_PC2_sd & tan_angle > 0  ~ "Short",
+                 rolling_cor_PC3 <= rolling_cor_PC3_mean - 3.5*rolling_cor_PC3_sd & tan_angle > 0 ~ "Short",
+                 rolling_cor_PC3 >= rolling_cor_PC3_mean + 3*rolling_cor_PC3_sd & tan_angle < 0 ~ "Long"
                )
       ) %>%
       filter(!is.na(trade_col))
@@ -783,16 +805,23 @@ equity_index_asset_model <-
           ) %>%
           dplyr::select(Date, trade_returns, Asset)
       ) %>%
-      reduce(bind_rows)
+      reduce(bind_rows) %>%
+      distinct()
 
-    trade_returns_ts_sum <- trade_returns_ts %>%
+    trade_returns_ts_sum <-
+      trade_returns_ts %>%
+      distinct() %>%
       group_by(Date) %>%
       summarise(trade_returns = sum(trade_returns, na.rm = T)) %>%
       mutate(
         cumulative_returns = cumsum(trade_returns)
       )
 
-    bench_mark_ts_sum <- SPX_bench_mark[[1]]
+    bench_mark_ts_sum <-
+      SPX_bench_mark[[1]] %>%
+      distinct(Date, trade_returns) %>%
+      arrange(Date) %>%
+      mutate(cumulative_returns = cumsum(trade_returns))
 
     plot_data <- trade_returns_ts %>%
       group_by(Date) %>%
