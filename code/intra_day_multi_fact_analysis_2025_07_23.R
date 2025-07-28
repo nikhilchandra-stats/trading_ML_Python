@@ -33,7 +33,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
+  start_date = (today() - days(5)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -447,7 +447,8 @@ while (current_time < end_time) {
         sd_fac_AUD_USD_trade = 12,
         sd_fac_NZD_USD_trade = 6,
         sd_fac_XCU_USD_trade = 4,
-        sd_fac_NZD_CHF_trade = 15,
+        sd_fac_NZD_CHF_trade = 10,
+        sd_fac_XAG_USD_trade = 15,
         trade_direction = "Long",
         stop_factor = 10,
         profit_factor = 15,
@@ -480,13 +481,14 @@ while (current_time < end_time) {
         lm_period = 2,
         lm_train_prop = 0.5,
         lm_test_prop = 0.5,
-        sd_fac_AUD_USD_trade = 2.5,
+        sd_fac_AUD_USD_trade = 3.5,
         sd_fac_NZD_USD_trade = 2.5,
         sd_fac_XCU_USD_trade = -1.5,
         sd_fac_NZD_CHF_trade = 5,
+        sd_fac_XAG_USD_trade = 20,
         trade_direction = "Short",
-        stop_factor = 5,
-        profit_factor = 10,
+        stop_factor = 10,
+        profit_factor = 15,
         assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
       )
 
@@ -813,6 +815,7 @@ while (current_time < end_time) {
       ) %>%
       filter(Date >= (now() - minutes(60)) )
 
+    message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))
 
     if(dim(all_tagged_trades_equity_dfr)[1] > 0 &
        !is.null(all_tagged_trades_equity_dfr) ) {
@@ -828,7 +831,7 @@ while (current_time < end_time) {
               mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 5,
+              risk_dollar_value = 10,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",

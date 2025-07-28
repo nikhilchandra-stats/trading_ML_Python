@@ -284,6 +284,7 @@ get_AUD_USD_NZD_Specific_Trades <-
     sd_fac_NZD_USD_trade = 1,
     sd_fac_XCU_USD_trade = 1,
     sd_fac_NZD_CHF_trade = 1,
+    sd_fac_XAG_USD_trade = 1,
     trade_direction = "Long",
     stop_factor = 5,
     profit_factor = 10,
@@ -427,7 +428,8 @@ get_AUD_USD_NZD_Specific_Trades <-
         dependant_var_aud_usd = log(lead(AUD_USD, lm_period)/AUD_USD),
         dependant_var_nzd_usd = log(lead(NZD_USD, lm_period)/NZD_USD),
         dependant_var_xcu_usd = log(lead(XCU_USD, lm_period)/XCU_USD),
-        dependant_var_nzd_chf = log(lead(NZD_CHF, lm_period)/NZD_CHF)
+        dependant_var_nzd_chf = log(lead(NZD_CHF, lm_period)/NZD_CHF),
+        dependant_var_xag_usd = log(lead(XAG_USD, lm_period)/XAG_USD)
       )
 
     max_data_in_copula <- copula_data_macro %>%
@@ -634,6 +636,63 @@ get_AUD_USD_NZD_Specific_Trades <-
 
     message(glue::glue("Max Date in Tagged Data XCU_USD: {max_trades_XCU_USD}"))
 
+    #------------------------------------------------------------------XAG_USD
+
+    lm_formula_XAG_USD <- create_lm_formula(dependant = "dependant_var_xag_usd", independant = lm_vars1)
+    lm_model_XAG_USD <- lm(formula = lm_formula_XAG_USD, data = training_data)
+    lm_formula_XAG_USD_quant <- create_lm_formula(dependant = "dependant_var_xag_usd", independant = lm_quant_vars)
+    lm_model_XAG_USD_quant <- lm(formula = lm_formula_XAG_USD_quant, data = training_data)
+    summary(lm_model_XAG_USD)
+
+    predicted_train_XAG_USD <- predict.lm(lm_model_XAG_USD, newdata = training_data)
+    mean_pred_XAG_USD <- mean(predicted_train_XAG_USD, na.rm = T)
+    sd_pred_XAG_USD <- sd(predicted_train_XAG_USD, na.rm = T)
+    predicted_test_XAG_USD <- predict.lm(lm_model_XAG_USD, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_XAG_USD <- mean(predicted_test_XAG_USD, na.rm = T)
+    sd_pred_test_XAG_USD <- sd(predicted_test_XAG_USD, na.rm = T)
+
+    predicted_train_XAG_USD_quant <- predict.lm(lm_model_XAG_USD_quant, newdata = training_data)
+    mean_pred_XAG_USD_quant <- mean(predicted_train_XAG_USD_quant, na.rm = T)
+    sd_pred_XAG_USD_quant <- sd(predicted_train_XAG_USD_quant, na.rm = T)
+    predicted_test_XAG_USD_quant <- predict.lm(lm_model_XAG_USD_quant, newdata = testing_data) %>% as.numeric()
+    mean_pred_test_XAG_USD_quant <- mean(predicted_test_XAG_USD_quant, na.rm = T)
+    sd_pred_test_XAG_USD_quant <- sd(predicted_test_XAG_USD_quant, na.rm = T)
+
+    tagged_trades_XAG_USD <-
+      testing_data %>%
+      mutate(
+        lm_pred_XAG_USD = predicted_test_XAG_USD,
+        lm_pred_XAG_USD_quant = predicted_test_XAG_USD_quant
+      ) %>%
+      mutate(
+        trade_col =
+          case_when(
+            lm_pred_XAG_USD >= mean_pred_XAG_USD + sd_fac_XAG_USD_trade*sd_pred_XAG_USD &
+              trade_direction == "Short" ~ trade_direction,
+            lm_pred_XAG_USD <= mean_pred_XAG_USD - sd_fac_XAG_USD_trade*sd_pred_XAG_USD &
+              trade_direction == "Long" ~ trade_direction
+            # lm_pred_XAG_USD <= mean_pred_XAG_USD - sd_fac_XAG_USD_trade*sd_pred_XAG_USD &
+            #   trade_direction == "Short" ~ trade_direction
+          )
+      ) %>%
+      filter(!is.na(trade_col)) %>%
+      dplyr::select(Date, trade_col) %>%
+      mutate(
+        Asset = "XAG_USD"
+      ) %>%
+      mutate(
+        stop_factor = stop_factor,
+        profit_factor = profit_factor
+      )
+
+    max_trades_XAG_USD <-
+      tagged_trades_XAG_USD %>%
+      pull(Date) %>%
+      max(na.rm = T) %>%
+      as.character()
+
+    message(glue::glue("Max Date in Tagged Data XAG_USD: {max_trades_XAG_USD}"))
+
     #------------------------------------------------------------------NZD_CHF
 
     lm_formula_NZD_CHF <- create_lm_formula(dependant = "dependant_var_nzd_chf", independant = lm_vars1)
@@ -692,12 +751,13 @@ get_AUD_USD_NZD_Specific_Trades <-
       max(na.rm = T) %>%
       as.character()
 
-    message(glue::glue("Max Date in Tagged Data XCU_USD: {max_trades_XCU_USD}"))
+    message(glue::glue("Max Date in Tagged Data NZD_CHF: {max_trades_NZD_CHF}"))
 
     return(list(tagged_trades_NZD_USD %>% filter(Asset %in% assets_to_return),
                 tagged_trades_AUD_USD %>% filter(Asset %in% assets_to_return),
                 tagged_trades_XCU_USD %>% filter(Asset %in% assets_to_return),
-                tagged_trades_NZD_CHF %>% filter(Asset %in% assets_to_return)
+                tagged_trades_NZD_CHF %>% filter(Asset %in% assets_to_return),
+                tagged_trades_XAG_USD %>% filter(Asset %in% assets_to_return)
                 )
            )
 

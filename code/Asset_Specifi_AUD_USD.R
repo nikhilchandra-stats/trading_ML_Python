@@ -10,7 +10,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
+  start_date = (today() - days(5)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -141,7 +141,8 @@ AUD_NZD_Trades_long <-
     sd_fac_AUD_USD_trade = 12,
     sd_fac_NZD_USD_trade = 6,
     sd_fac_XCU_USD_trade = 4,
-    sd_fac_NZD_CHF_trade = 15,
+    sd_fac_NZD_CHF_trade = 10,
+    sd_fac_XAG_USD_trade = 15,
     trade_direction = "Long",
     stop_factor = 10,
     profit_factor = 15,
@@ -161,8 +162,8 @@ AUD_NZD_Long_Data <-
     risk_dollar_value = 10
   )
 
-results_long <- AUD_NZD_Long_Data[[1]]
-results_long_asset <- AUD_NZD_Long_Data[[2]] %>%
+results_long_orig <- AUD_NZD_Long_Data[[1]]
+results_long_asset_orig <- AUD_NZD_Long_Data[[2]] %>%
   left_join(control_random_samples %>%
               ungroup() %>%
               dplyr::select(-stop_factor, -profit_factor)) %>%
@@ -182,13 +183,14 @@ AUD_NZD_Trades_short <-
     lm_period = 2,
     lm_train_prop = 0.5,
     lm_test_prop = 0.5,
-    sd_fac_AUD_USD_trade = 2.5,
+    sd_fac_AUD_USD_trade = 3.5,
     sd_fac_NZD_USD_trade = 2.5,
     sd_fac_XCU_USD_trade = -1.5,
     sd_fac_NZD_CHF_trade = 5,
+    sd_fac_XAG_USD_trade = 20,
     trade_direction = "Short",
-    stop_factor = 5,
-    profit_factor = 10,
+    stop_factor = 10,
+    profit_factor = 15,
     assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
   )
 
@@ -198,14 +200,61 @@ AUD_NZD_Trades_short <- AUD_NZD_Trades_short %>%
 AUD_NZD_Short_Data <-
   run_pairs_analysis(
     tagged_trades = AUD_NZD_Trades_short,
-    stop_factor = 5,
-    profit_factor = 10,
+    stop_factor = 10,
+    profit_factor = 15,
     raw_asset_data =  AUD_USD_NZD_USD_list[[2]],
     risk_dollar_value = 10
   )
 
 results_short <- AUD_NZD_Short_Data[[1]]
 results_short2 <- AUD_NZD_Short_Data[[2]] %>%
+  left_join(control_random_samples %>%
+              ungroup() %>%
+              dplyr::select(-stop_factor, -profit_factor)) %>%
+  mutate(
+    p_value_risk =
+      pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
+  )
+
+
+#------------------------------------------------------------Long Short Period
+#------------------------------------------------------Test with big LM Prop
+load_custom_functions()
+AUD_NZD_Trades_long <-
+  get_AUD_USD_NZD_Specific_Trades(
+    AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[1]],
+    raw_macro_data = raw_macro_data,
+    lag_days = 1,
+    lm_period = 1,
+    # lm_period = 4,
+    lm_train_prop = 0.5,
+    lm_test_prop = 0.5,
+    sd_fac_AUD_USD_trade = 15,
+    sd_fac_NZD_USD_trade = 12,
+    sd_fac_XCU_USD_trade = 10,
+    sd_fac_NZD_CHF_trade = 10,
+    sd_fac_XAG_USD_trade = 20,
+    trade_direction = "Long",
+    stop_factor = 9,
+    profit_factor = 14,
+    assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
+  )
+
+AUD_NZD_Trades_long <-
+  AUD_NZD_Trades_long %>%
+  map_dfr(bind_rows)
+
+AUD_NZD_Long_Data <-
+  run_pairs_analysis(
+    tagged_trades = AUD_NZD_Trades_long,
+    stop_factor = 9,
+    profit_factor = 14,
+    raw_asset_data = AUD_USD_NZD_USD_list[[1]],
+    risk_dollar_value = 10
+  )
+
+results_long <- AUD_NZD_Long_Data[[1]]
+results_long_asset <- AUD_NZD_Long_Data[[2]] %>%
   left_join(control_random_samples %>%
               ungroup() %>%
               dplyr::select(-stop_factor, -profit_factor)) %>%
