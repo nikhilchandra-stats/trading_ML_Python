@@ -508,12 +508,63 @@ while (current_time < end_time) {
       filter(Date >= ((now() %>% as_datetime()) - minutes(60))) %>%
       filter(trade_col == "Short")
 
+    commod_log_cumulative <-
+      c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              new_H1_data_ask %>%
+              filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        new_H1_data_ask %>%
+          filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")) %>%
+          distinct(Date, Asset, Price, Open, High, Low)
+      )
+
+    commod_trades <- commod_model_trades_diff_vers(
+      commod_data = commod_log_cumulative ,
+      PCA_Data = NULL,
+      assets_to_use = c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD"),
+      samples_for_MLE = 0.5,
+      test_samples = 0.45,
+      rolling_period = 100,
+      date_filter_min = "2011-01-01",
+      stop_factor = 12,
+      profit_factor = 15
+    )
+
+    commod_trades_dfr <- commod_trades %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup() %>%
+      dplyr::select(Date, Asset, Price, Open, High, Low) %>%
+      mutate(
+        stop_factor = 12,
+        profit_factor = 15
+      ) %>%
+      get_stops_profs_asset_specific(
+        raw_asset_data =
+          new_H1_data_bid %>%
+          filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")),
+        currency_conversion = currency_conversion,
+        risk_dollar_value = 5
+      ) %>%
+      filter(Date >= ((now() %>% as_datetime()) - minutes(60)))
+
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
     trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
     trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
     AUD_NZD_USD_long_dim <- ifelse(!is.null(AUD_NZD_Trades_long), dim(AUD_NZD_Trades_long)[1], 0)
     AUD_NZD_USD_short_dim <- ifelse(!is.null(AUD_NZD_Trades_short), dim(AUD_NZD_Trades_short)[1], 0)
+    commod_dim <- ifelse(!is.null(commod_trades_dfr), dim(commod_trades_dfr)[1], 0)
     trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
 
     all_trades_string <-
@@ -524,6 +575,12 @@ while (current_time < end_time) {
 
     all_trades_string <-
       glue::glue("Trades AUD_USD_NZD Long: {AUD_NZD_USD_long_dim},  Trades AUD_USD_NZD Short: {AUD_NZD_USD_short_dim}") %>%
+      as.character()
+
+    message(all_trades_string)
+
+    all_trades_string <-
+      glue::glue("Trades COMMOD Long and Short Trades: {commod_dim}") %>%
       as.character()
 
     message(all_trades_string)
@@ -597,7 +654,7 @@ while (current_time < end_time) {
     total_trades <-
       total_trades %>%
       bind_rows(
-        list(AUD_NZD_Trades_long, AUD_NZD_Trades_short) %>%
+        list(AUD_NZD_Trades_long, AUD_NZD_Trades_short, commod_trades_dfr) %>%
           map_dfr(bind_rows)
       )
 
@@ -658,6 +715,7 @@ while (current_time < end_time) {
                 Asset == "WHEAT_USD" & abs(units)>=600 ~ TRUE,
                 Asset == "CORN_USD" & abs(units)>=600 ~ TRUE,
                 Asset == "NATGAS_USD" & abs(units)>=600 ~ TRUE,
+                Asset == "XAG_USD" & abs(units)>=120 ~ TRUE,
                 Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=45 ~ TRUE,
                 TRUE ~ FALSE
               )
@@ -784,6 +842,7 @@ while (current_time < end_time) {
     all_tagged_trades_equity <-
       equity_index_asset_model_trades(
         major_indices_log_cumulative = major_indices_log_cumulative ,
+        PCA_Data = NULL,
         assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
         samples_for_MLE = 0.5,
         test_samples = 0.45,
@@ -795,7 +854,22 @@ while (current_time < end_time) {
         profit_factor_long = 15
       )
 
-    all_tagged_trades_equity_dfr <-
+    all_tagged_trades_equity2 <-
+      equity_index_asset_model_trades_diff_vers(
+      major_indices_log_cumulative = major_indices_log_cumulative ,
+      PCA_Data = NULL,
+      assets_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR"),
+      samples_for_MLE = 0.5,
+      test_samples = 0.45,
+      rolling_period = 100,
+      date_filter_min = "2018-01-01",
+      stop_factor = 4,
+      profit_factor = 8,
+      stop_factor_long = 4,
+      profit_factor_long = 8
+    )
+
+    all_tagged_trades_equity_dfr1 <-
       all_tagged_trades_equity %>%
       map_dfr(bind_rows) %>%
       slice_max(Date) %>%
@@ -814,6 +888,23 @@ while (current_time < end_time) {
           )
       ) %>%
       filter(Date >= (now() - minutes(60)) )
+
+    all_tagged_trades_equity_dfr2 <-
+      all_tagged_trades_equity2 %>%
+      map_dfr(bind_rows) %>%
+      slice_max(Date) %>%
+      ungroup() %>%
+      dplyr::select(Date, Asset ,Price, Open, High, Low, trade_col) %>%
+      mutate(
+        stop_factor =4,
+        profit_factor =8
+      ) %>%
+      filter(Date >= (now() - minutes(60)) )
+
+    all_tagged_trades_equity_dfr <-
+      list(all_tagged_trades_equity_dfr1,
+           all_tagged_trades_equity_dfr2) %>%
+      map_dfr(bind_rows)
 
     message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))
 

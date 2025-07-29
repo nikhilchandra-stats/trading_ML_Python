@@ -2423,3 +2423,128 @@ rolling_cauchy <-
     return(return_value)
 
   }
+
+
+#' get_all_commod_USD
+#'
+#' @param db_location
+#' @param start_date
+#' @param end_date
+#' @param bid_or_ask
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_all_commod_USD <- function(
+    db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db",
+    start_date = "2016-01-01",
+    end_date = today() %>% as.character(),
+    bid_or_ask = "ask",
+    time_frame = "M15"
+) {
+
+  BCO_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "BCO_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  WTICO_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "WTICO_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "XAG_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XCU_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "XCU_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "XAU_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  WHEAT_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "WHEAT_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  SOYBN_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "SOYBN_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  NATGAS_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "NATGAS_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  SUGAR_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask,
+    time_frame = time_frame,
+    asset = "SUGAR_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  all_dat <-
+    BCO_USD %>%
+    bind_rows(WTICO_USD) %>%
+    bind_rows(XAG_USD) %>%
+    bind_rows(XCU_USD) %>%
+    bind_rows(XAU_USD) %>%
+    bind_rows(WHEAT_USD) %>%
+    bind_rows(SOYBN_USD)%>%
+    bind_rows(NATGAS_USD)%>%
+    bind_rows(SUGAR_USD)
+
+  return(all_dat)
+
+}
