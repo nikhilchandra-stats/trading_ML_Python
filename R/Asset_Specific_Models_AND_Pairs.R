@@ -830,9 +830,9 @@ get_EUR_GBP_Specific_Trades <-
         trade_col =
           case_when(
             lm_pred_EUR_USD >= mean_pred_EUR_USD + sd_fac_lm_trade_eur_usd*sd_pred_EUR_USD &
-              trade_direction == "Short" ~trade_direction,
+              trade_direction == "Short" & EUR_USD_tangent_angle1 > 0 ~trade_direction,
             lm_pred_EUR_USD <= mean_pred_EUR_USD - sd_fac_lm_trade_eur_usd*sd_pred_EUR_USD &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Long"  & EUR_USD_tangent_angle1 < 0~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -865,9 +865,9 @@ get_EUR_GBP_Specific_Trades <-
             #   trade_direction == "Short" ~ trade_direction
 
             lm_pred_GBP_USD >= mean_pred_GBP_USD + sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
-              trade_direction == "Short" &  GBP_USD_tangent_angle2 < 0 ~ trade_direction,
+              trade_direction == "Long" &  GBP_USD_tangent_angle2 < 0 ~ trade_direction,
             lm_pred_GBP_USD <= mean_pred_GBP_USD - sd_fac_lm_trade_gbp_usd*sd_pred_GBP_USD &
-              trade_direction == "Long" &  GBP_USD_tangent_angle2 >0 ~ trade_direction
+              trade_direction == "Short" &  GBP_USD_tangent_angle2 >0 ~ trade_direction
 
           )
       ) %>%
@@ -898,7 +898,7 @@ get_EUR_GBP_Specific_Trades <-
             lm_pred_EUR_GBP >= mean_pred_EUR_GBP + sd_fac_lm_trade_eur_gbp*sd_pred_EUR_GBP &
               trade_direction == "Long" ~ trade_direction,
             lm_pred_EUR_GBP <= mean_pred_EUR_GBP - sd_fac_lm_trade_eur_gbp*sd_pred_EUR_GBP &
-              trade_direction == "Short" ~ trade_direction
+              trade_direction == "Short" & EUR_GBP_tangent_angle2 < 0 ~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -957,9 +957,9 @@ get_EUR_GBP_Specific_Trades <-
         trade_col =
           case_when(
             lm_pred_GBP_JPY >= mean_pred_GBP_JPY + sd_fac_lm_trade_gbp_jpy*sd_pred_GBP_JPY &
-              trade_direction == "Short" ~ trade_direction,
+              trade_direction == "Long" & GBP_JPY_tangent_angle2 < 0~ trade_direction,
             lm_pred_GBP_JPY <= mean_pred_GBP_JPY - sd_fac_lm_trade_gbp_jpy*sd_pred_GBP_JPY &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Short" & GBP_JPY_tangent_angle2 > 0 ~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -1054,6 +1054,26 @@ get_SPX_US2000_XAG_XAU <- function(
     keep_bid_to_ask = TRUE
   )
 
+  EU50 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "EU50_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  AU200 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = "M15",
+    asset = "AU200_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
   XAG <- create_asset_high_freq_data(
     db_location = db_location,
     start_date = start_date,
@@ -1074,8 +1094,13 @@ get_SPX_US2000_XAG_XAU <- function(
     keep_bid_to_ask = TRUE
   )
 
-  XAG_SPX_US2000_USD <- SPX %>% bind_rows(US2000) %>% bind_rows(XAG)%>% bind_rows(XAU)
-  rm(SPX, US2000, XAG, XAU)
+  XAG_SPX_US2000_USD <- SPX %>%
+    bind_rows(US2000) %>%
+    bind_rows(XAG)%>%
+    bind_rows(XAU)%>%
+    bind_rows(EU50)%>%
+    bind_rows(AU200)
+  rm(SPX, US2000, XAG, XAU, EU50, AU200)
   gc()
 
   SPX <- create_asset_high_freq_data(
@@ -1098,6 +1123,26 @@ get_SPX_US2000_XAG_XAU <- function(
     keep_bid_to_ask = TRUE
   )
 
+  EU50 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "EU50_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  AU200 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = "M15",
+    asset = "AU200_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
   XAG <- create_asset_high_freq_data(
     db_location = db_location,
     start_date = start_date,
@@ -1118,8 +1163,14 @@ get_SPX_US2000_XAG_XAU <- function(
     keep_bid_to_ask = TRUE
   )
 
-  XAG_SPX_US2000_USD_short <- SPX %>% bind_rows(US2000) %>% bind_rows(XAG) %>% bind_rows(XAU)
-  rm(SPX, US2000, XAG, XAU)
+  XAG_SPX_US2000_USD_short <-
+    SPX %>%
+    bind_rows(US2000) %>%
+    bind_rows(XAG) %>%
+    bind_rows(XAU) %>%
+    bind_rows(EU50)%>%
+    bind_rows(AU200)
+  rm(SPX, US2000, XAG, XAU, EU50, AU200 )
   gc()
 
   return(
@@ -1183,12 +1234,22 @@ get_SPX_US2000_XAG_Specific_Trades <-
     cny_macro_data <-
       get_CNY_Indicators(raw_macro_data,
                          lag_days = lag_days)
+    jpy_macro_data <-
+      get_JPY_Indicators(raw_macro_data,
+                         lag_days = lag_days)
+
+    cad_macro_data <-
+      get_CAD_Indicators(raw_macro_data,
+                         lag_days = lag_days)
 
     eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     gbp_macro_vars <- names(gbp_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
-    all_macro_vars <- c(eur_macro_vars, gbp_macro_vars, usd_macro_vars, cny_macro_vars)
+    jpy_macro_vars <- names(jpy_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    cad_macro_vars <- names(cad_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(eur_macro_vars, gbp_macro_vars, usd_macro_vars, cny_macro_vars,
+                        jpy_macro_vars, cad_macro_vars)
 
     copula_data <-
       estimating_dual_copula(
@@ -1278,6 +1339,14 @@ get_SPX_US2000_XAG_Specific_Trades <-
         cny_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
+      left_join(
+        jpy_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        cad_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
       fill(!contains("AUD_USD|Date"), .direction = "down") %>%
       filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
       mutate(
@@ -1314,9 +1383,9 @@ get_SPX_US2000_XAG_Specific_Trades <-
         trade_col =
           case_when(
             lm_pred_SPX_USD >= mean_pred_SPX_USD + sd_fac_lm_trade_SPX_USD*sd_pred_SPX_USD &
-              trade_direction == "Short" ~trade_direction,
+              trade_direction == "Long" ~trade_direction,
             lm_pred_SPX_USD <= mean_pred_SPX_USD - sd_fac_lm_trade_SPX_USD*sd_pred_SPX_USD &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Short" ~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col)) %>%
@@ -1344,9 +1413,9 @@ get_SPX_US2000_XAG_Specific_Trades <-
         trade_col =
           case_when(
             lm_pred_US2000_USD >= mean_pred_US2000_USD + sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
-              trade_direction == "Short" ~ trade_direction,
+              trade_direction == "Long" ~ trade_direction,
             lm_pred_US2000_USD <= mean_pred_US2000_USD - sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Short" ~ trade_direction
 
             # lm_pred_US2000_USD >= mean_pred_US2000_USD + sd_fac_lm_trade_US2000_USD*sd_pred_US2000_USD &
             #   trade_direction == "Long" &  US2000_USD_tangent_angle2 < 0 ~ trade_direction,
@@ -1380,9 +1449,9 @@ get_SPX_US2000_XAG_Specific_Trades <-
         trade_col =
           case_when(
             lm_pred_XAG_USD >= mean_pred_XAG_USD + sd_fac_lm_trade_XAG_USD*sd_pred_XAG_USD &
-              trade_direction == "Short" ~ trade_direction,
+              trade_direction == "Long" ~ trade_direction,
             lm_pred_XAG_USD <= mean_pred_XAG_USD - sd_fac_lm_trade_XAG_USD*sd_pred_XAG_USD &
-              trade_direction == "Long" ~ trade_direction
+              trade_direction == "Short" ~ trade_direction
           )
       ) %>%
       filter(!is.na(trade_col)) %>%

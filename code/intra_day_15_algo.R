@@ -170,7 +170,7 @@ while(current_time < end_time) {
     new_15_data_ask <-
       new_15_data_ask %>%
       ungroup() %>%
-      filter(Date >= (today() - months(5)) )
+      filter(Date >= (today() - lubridate::dmonths(5)) )
 
     data_updated <- 1
 

@@ -91,7 +91,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "ask",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 4
+  how_far_back = 8
 )
 
 update_local_db_file(
@@ -99,7 +99,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "bid",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 5
+  how_far_back = 8
 )
 
 gc()
@@ -170,26 +170,27 @@ while(current_time < end_time) {
         EUR_USD_GBP_USD = EUR_USD_GBP_USD,
         start_date = "2016-01-01",
         raw_macro_data = raw_macro_data,
-        lag_days = 4,
+        lag_days = 1,
         lm_period = 2,
         lm_train_prop = 0.85,
         lm_test_prop = 0.09,
         # lm_train_prop = 0.9,
         # lm_test_prop = 0.09,
-        sd_fac_lm_trade_eur_usd = 0.01,
-        sd_fac_lm_trade_gbp_usd = 0.01,
-        sd_fac_lm_trade_eur_gbp = 0.01,
-        sd_fac_lm_trade_eur_jpy = 0.01,
-        sd_fac_lm_trade_gbp_jpy = 0.01,
-        sd_fac_lm_trade_usd_jpy = 0.01,
+        sd_fac_lm_trade_eur_usd = 2,
+        sd_fac_lm_trade_gbp_usd = 0.15,
+        sd_fac_lm_trade_eur_gbp = 2,
+        sd_fac_lm_trade_eur_jpy = 2,
+        sd_fac_lm_trade_gbp_jpy = 0.5,
+        sd_fac_lm_trade_usd_jpy = 0.75,
         trade_direction = "Long",
-        stop_factor = 15,
-        profit_factor = 25
+        stop_factor = 12,
+        profit_factor = 22
       )
 
     EUR_GBP_USD_Trades_long <-
       EUR_GBP_USD_Trades_long %>%
       map_dfr(bind_rows) %>%
+      filter(Asset != "GBP_JPY") %>%
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup() %>%
@@ -207,26 +208,27 @@ while(current_time < end_time) {
         EUR_USD_GBP_USD = EUR_USD_GBP_USD_short,
         start_date = "2016-01-01",
         raw_macro_data = raw_macro_data,
-        lag_days = 4,
+        lag_days = 1,
         lm_period = 2,
-        lm_train_prop = 0.9,
+        lm_train_prop = 0.85,
         lm_test_prop = 0.09,
         # lm_train_prop = 0.9,
         # lm_test_prop = 0.09,
-        sd_fac_lm_trade_eur_usd = 0.01,
-        sd_fac_lm_trade_gbp_usd = 0.01,
-        sd_fac_lm_trade_eur_gbp = 0.01,
-        sd_fac_lm_trade_eur_jpy = 0.01,
-        sd_fac_lm_trade_gbp_jpy = 0.01,
-        sd_fac_lm_trade_usd_jpy = 0.01,
+        sd_fac_lm_trade_eur_usd = 1,
+        sd_fac_lm_trade_gbp_usd = 2.5,
+        sd_fac_lm_trade_eur_gbp = 2.5,
+        sd_fac_lm_trade_eur_jpy = 1.5,
+        sd_fac_lm_trade_gbp_jpy = 1,
+        sd_fac_lm_trade_usd_jpy = 3,
         trade_direction = "Short",
-        stop_factor = 15,
-        profit_factor = 25
+        stop_factor = 12,
+        profit_factor = 22
       )
 
     EUR_GBP_USD_Trades_short <-
       EUR_GBP_USD_Trades_short %>%
       map_dfr(bind_rows) %>%
+      filter(Asset != "EUR_GBP") %>%
       slice_max(Date) %>%
       get_stops_profs_asset_specific(
         raw_asset_data = EUR_USD_GBP_USD_short,
@@ -238,92 +240,93 @@ while(current_time < end_time) {
 
     message(glue::glue("Short Trades EUR GBP: {dim(EUR_GBP_USD_Trades_short)[1]}"))
 
-    SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
-      db_location = db_location,
-      start_date = "2016-01-01",
-      end_date = today() %>% as.character()
-    )
-    SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
-    SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
-
-    SPX_XAG_US2000_Long_trades <-
-      get_SPX_US2000_XAG_Specific_Trades(
-        SPX_US2000_XAG = SPX_US2000_XAG,
-        start_date = "2016-01-01",
-        raw_macro_data = raw_macro_data,
-        lag_days = 1,
-        lm_period = 2,
-        lm_train_prop = 0.8,
-        lm_test_prop = 0.08,
-        # lm_train_prop = 0.9,
-        # lm_test_prop = 0.08,
-        sd_fac_lm_trade_SPX_USD = 0.01,
-        sd_fac_lm_trade_US2000_USD = 0.01,
-        sd_fac_lm_trade_XAG_USD = 0.01,
-        sd_fac_lm_trade_XAU_USD = 0.01,
-        trade_direction = "Long",
-        stop_factor = 15,
-        profit_factor = 25
-        # stop_factor = 10,
-        # profit_factor = 15
-      )
-
-    SPX_XAG_US2000_Long_trades <-
-      SPX_XAG_US2000_Long_trades %>%
-      map_dfr(bind_rows) %>%
-      slice_max(Date) %>%
-      get_stops_profs_asset_specific(
-        raw_asset_data = SPX_US2000_XAG,
-        currency_conversion = currency_conversion,
-        risk_dollar_value = 5
-      ) %>%
-      filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
-
-    message(glue::glue("Long Trades SPX, XAG, US2000: {dim(SPX_XAG_US2000_Long_trades)[1]}"))
-
-    SPX_XAG_US2000_Short_trades <-
-      get_SPX_US2000_XAG_Specific_Trades(
-        SPX_US2000_XAG = SPX_US2000_XAG_short,
-        start_date = "2016-01-01",
-        raw_macro_data = raw_macro_data,
-        lag_days = 1,
-        lm_period = 2,
-        lm_train_prop = 0.8,
-        lm_test_prop = 0.08,
-        # lm_train_prop = 0.9,
-        # lm_test_prop = 0.08,
-        sd_fac_lm_trade_SPX_USD = 0.01,
-        sd_fac_lm_trade_US2000_USD = 0.01,
-        sd_fac_lm_trade_XAG_USD = 0.01,
-        sd_fac_lm_trade_XAU_USD = 0.01,
-        trade_direction = "Short",
-        stop_factor = 15,
-        profit_factor = 25
-        # stop_factor = 10,
-        # profit_factor = 15
-      )
-
-    SPX_XAG_US2000_Short_trades <-
-      SPX_XAG_US2000_Short_trades %>%
-      map_dfr(bind_rows) %>%
-      slice_max(Date) %>%
-      get_stops_profs_asset_specific(
-        raw_asset_data = SPX_US2000_XAG_short,
-        currency_conversion = currency_conversion,
-        risk_dollar_value = 5
-      ) %>%
-      filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
-
-    message(glue::glue("Short Trades SPX, XAG, US2000: {dim(SPX_XAG_US2000_Short_trades)[1]}"))
+    # SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
+    #   db_location = db_location,
+    #   start_date = "2016-01-01",
+    #   end_date = today() %>% as.character()
+    # )
+    # SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
+    # SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
+    #
+    # SPX_XAG_US2000_Long_trades <-
+    #   get_SPX_US2000_XAG_Specific_Trades(
+    #     SPX_US2000_XAG = SPX_US2000_XAG,
+    #     start_date = "2016-01-01",
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1,
+    #     lm_period = 2,
+    #     lm_train_prop = 0.8,
+    #     lm_test_prop = 0.08,
+    #     # lm_train_prop = 0.9,
+    #     # lm_test_prop = 0.08,
+    #     sd_fac_lm_trade_SPX_USD = 0.01,
+    #     sd_fac_lm_trade_US2000_USD = 0.01,
+    #     sd_fac_lm_trade_XAG_USD = 0.01,
+    #     sd_fac_lm_trade_XAU_USD = 0.01,
+    #     trade_direction = "Long",
+    #     stop_factor = 15,
+    #     profit_factor = 25
+    #     # stop_factor = 10,
+    #     # profit_factor = 15
+    #   )
+    #
+    # SPX_XAG_US2000_Long_trades <-
+    #   SPX_XAG_US2000_Long_trades %>%
+    #   map_dfr(bind_rows) %>%
+    #   slice_max(Date) %>%
+    #   get_stops_profs_asset_specific(
+    #     raw_asset_data = SPX_US2000_XAG,
+    #     currency_conversion = currency_conversion,
+    #     risk_dollar_value = 5
+    #   ) %>%
+    #   filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
+    #
+    # message(glue::glue("Long Trades SPX, XAG, US2000: {dim(SPX_XAG_US2000_Long_trades)[1]}"))
+    #
+    # SPX_XAG_US2000_Short_trades <-
+    #   get_SPX_US2000_XAG_Specific_Trades(
+    #     SPX_US2000_XAG = SPX_US2000_XAG_short,
+    #     start_date = "2016-01-01",
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1,
+    #     lm_period = 2,
+    #     lm_train_prop = 0.8,
+    #     lm_test_prop = 0.08,
+    #     # lm_train_prop = 0.9,
+    #     # lm_test_prop = 0.08,
+    #     sd_fac_lm_trade_SPX_USD = 0.01,
+    #     sd_fac_lm_trade_US2000_USD = 0.01,
+    #     sd_fac_lm_trade_XAG_USD = 0.01,
+    #     sd_fac_lm_trade_XAU_USD = 0.01,
+    #     trade_direction = "Short",
+    #     stop_factor = 15,
+    #     profit_factor = 25
+    #     # stop_factor = 10,
+    #     # profit_factor = 15
+    #   )
+    #
+    # SPX_XAG_US2000_Short_trades <-
+    #   SPX_XAG_US2000_Short_trades %>%
+    #   map_dfr(bind_rows) %>%
+    #   slice_max(Date) %>%
+    #   get_stops_profs_asset_specific(
+    #     raw_asset_data = SPX_US2000_XAG_short,
+    #     currency_conversion = currency_conversion,
+    #     risk_dollar_value = 5
+    #   ) %>%
+    #   filter(Date >= ((now() %>% as_datetime()) - minutes(20)))
+    #
+    # message(glue::glue("Short Trades SPX, XAG, US2000: {dim(SPX_XAG_US2000_Short_trades)[1]}"))
 
     tictoc::toc()
 
     total_trades_long <-
       list(
            EUR_GBP_USD_Trades_short,
-           EUR_GBP_USD_Trades_long,
-           SPX_XAG_US2000_Long_trades,
-           SPX_XAG_US2000_Short_trades) %>%
+           EUR_GBP_USD_Trades_long
+           # SPX_XAG_US2000_Long_trades,
+           # SPX_XAG_US2000_Short_trades
+           ) %>%
       map_dfr(bind_rows)
 
     if(dim(total_trades_long)[1] < 1 ) {

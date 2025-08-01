@@ -50,7 +50,7 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
-db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data.db"
+db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data EDA.db"
 start_date = "2016-01-01"
 end_date = today() %>% as.character()
 
@@ -70,35 +70,33 @@ SPX_XAG_US2000_Long_trades <-
   lag_days = 1,
   lm_period = 2,
   lm_train_prop = 0.8,
-  lm_test_prop = 0.08,
+  lm_test_prop = 0.19,
   # lm_train_prop = 0.9,
   # lm_test_prop = 0.08,
-  sd_fac_lm_trade_SPX_USD = 0.01,
-  sd_fac_lm_trade_US2000_USD = 0.01,
-  sd_fac_lm_trade_XAG_USD = 0.01,
-  sd_fac_lm_trade_XAU_USD = 0.01,
+  sd_fac_lm_trade_SPX_USD = 1,
+  sd_fac_lm_trade_US2000_USD = 1,
+  sd_fac_lm_trade_XAG_USD = 1,
+  sd_fac_lm_trade_XAU_USD = 1,
   trade_direction = "Long",
-  stop_factor = 15,
-  profit_factor = 25
+  stop_factor = 10,
+  profit_factor = 15
   # stop_factor = 10,
   # profit_factor = 15
   )
 SPX_XAG_US2000_Long_trades <- SPX_XAG_US2000_Long_trades %>% map_dfr(bind_rows)
 
-
 SPX_XAG_US2000_Long_Data <-
   run_pairs_analysis(
     tagged_trades = SPX_XAG_US2000_Long_trades,
-    stop_factor = 15,
-    profit_factor = 25,
-    # stop_factor = 10,
-    # profit_factor = 15,
+    # stop_factor = 15,
+    # profit_factor = 25,
+    stop_factor = 10,
+    profit_factor = 15,
     raw_asset_data = SPX_US2000_XAG,
-    risk_dollar_value = 5
+    risk_dollar_value = 10
   )
 results_long <- SPX_XAG_US2000_Long_Data[[1]]
 results_long_asset <- SPX_XAG_US2000_Long_Data[[2]]
-test_long <- SPX_XAG_US2000_Long_trades %>% group_by(Asset) %>% slice_max(Date)
 
 #-------------------------------------------------------
 SPX_XAG_US2000_Short_trades <-
