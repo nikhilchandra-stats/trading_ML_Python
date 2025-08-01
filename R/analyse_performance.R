@@ -183,13 +183,15 @@ analyse_trade_results <- function(
   subtitle_var <-
     glue::glue("Total Deposits: {total_deposits_string}, Returns - {total_return_string}, Daily Income:{daily_income_string}")
 
-  total_by_date %>%
+  p1 <- total_by_date %>%
     ggplot(aes(x = closeTime, y = cumulative_returns)) +
     geom_line() +
     theme_minimal() +
     ylab("Winnings ($)") +
     labs(title = title_var, subtitle = subtitle_var) +
     theme(axis.title.x = element_blank())
+
+  return(p1)
 
 }
 

@@ -128,6 +128,9 @@ control_random_samples <-
 
 
 #------------------------------------------------------Test with big LM Prop
+AUD_NZD_XCU_XAG_db_location <- "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_NZD_XCU_rolling_testing.db"
+db_con_AUD_NZD_XCU_XAG <- connect_db(AUD_NZD_XCU_XAG_db_location)
+last_data_date = AUD_USD_NZD_USD_list[[1]] %>% pull(Date) %>% max()
 load_custom_functions()
 AUD_NZD_Trades_long <-
   get_AUD_USD_NZD_Specific_Trades(
@@ -172,6 +175,17 @@ results_long_asset_orig <- AUD_NZD_Long_Data[[2]] %>%
       pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
   )
 
+append_table_sql_lite(.data = results_long_asset_orig %>% mutate(last_data_date = as_date(last_data_date) ) ,
+                     table_name = "AUD_NZD_XCU_rolling_testing",
+                     conn = db_con_AUD_NZD_XCU_XAG)
+
+view_long_results_ts <-
+  DBI::dbGetQuery(conn = db_con_AUD_NZD_XCU_XAG,
+                  statement = "SELECT * FROM AUD_NZD_XCU_rolling_testing") %>%
+  mutate(last_data_date = as_date(last_data_date)) %>%
+  filter(trade_direction == "Long") %>%
+  group_by(Asset) %>%
+  arrange(last_data_date, .by_group = TRUE)
 
 #------------------------------------------------------------
 load_custom_functions()
@@ -216,50 +230,18 @@ results_short2 <- AUD_NZD_Short_Data[[2]] %>%
       pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
   )
 
+append_table_sql_lite(.data = results_short2 %>% mutate(last_data_date = as_date(last_data_date) ),
+                      table_name = "AUD_NZD_XCU_rolling_testing",
+                      conn = db_con_AUD_NZD_XCU_XAG)
 
-#------------------------------------------------------------Long Short Period
-#------------------------------------------------------Test with big LM Prop
-load_custom_functions()
-AUD_NZD_Trades_long <-
-  get_AUD_USD_NZD_Specific_Trades(
-    AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[1]],
-    raw_macro_data = raw_macro_data,
-    lag_days = 1,
-    lm_period = 1,
-    # lm_period = 4,
-    lm_train_prop = 0.5,
-    lm_test_prop = 0.5,
-    sd_fac_AUD_USD_trade = 15,
-    sd_fac_NZD_USD_trade = 12,
-    sd_fac_XCU_USD_trade = 10,
-    sd_fac_NZD_CHF_trade = 10,
-    sd_fac_XAG_USD_trade = 20,
-    trade_direction = "Long",
-    stop_factor = 9,
-    profit_factor = 14,
-    assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
-  )
+view_short_results_ts <-
+  DBI::dbGetQuery(conn = db_con_AUD_NZD_XCU_XAG,
+                  statement = "SELECT * FROM AUD_NZD_XCU_rolling_testing") %>%
+  mutate(last_data_date = as_date(last_data_date)) %>%
+  filter(trade_direction == "Short") %>%
+  group_by(Asset) %>%
+  arrange(last_data_date, .by_group = TRUE)
 
-AUD_NZD_Trades_long <-
-  AUD_NZD_Trades_long %>%
-  map_dfr(bind_rows)
-
-AUD_NZD_Long_Data <-
-  run_pairs_analysis(
-    tagged_trades = AUD_NZD_Trades_long,
-    stop_factor = 9,
-    profit_factor = 14,
-    raw_asset_data = AUD_USD_NZD_USD_list[[1]],
-    risk_dollar_value = 10
-  )
-
-results_long <- AUD_NZD_Long_Data[[1]]
-results_long_asset <- AUD_NZD_Long_Data[[2]] %>%
-  left_join(control_random_samples %>%
-              ungroup() %>%
-              dplyr::select(-stop_factor, -profit_factor)) %>%
-  mutate(
-    p_value_risk =
-      pnorm(risk_weighted_return, mean = mean_risk, sd = sd_risk)
-  )
-
+DBI::dbDisconnect(db_con_AUD_NZD_XCU_XAG)
+rm(db_con_AUD_NZD_XCU_XAG)
+gc()

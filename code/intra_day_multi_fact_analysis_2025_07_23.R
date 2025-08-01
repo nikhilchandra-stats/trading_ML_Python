@@ -544,7 +544,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup() %>%
-      dplyr::select(Date, Asset, Price, Open, High, Low) %>%
+      dplyr::select(Date, Asset, Price, Open, High, Low, trade_col) %>%
       mutate(
         stop_factor = 12,
         profit_factor = 15
@@ -554,7 +554,7 @@ while (current_time < end_time) {
           new_H1_data_bid %>%
           filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")),
         currency_conversion = currency_conversion,
-        risk_dollar_value = 5
+        risk_dollar_value = 10
       ) %>%
       filter(Date >= ((now() %>% as_datetime()) - minutes(60)))
 
@@ -708,14 +708,14 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 18000 ~ TRUE,
+                )) & abs(units) >= 22000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
                              "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
-                Asset == "XCU_USD" & abs(units)>=800 ~ TRUE,
+                Asset == "XCU_USD" & abs(units)>=1200 ~ TRUE,
                 Asset == "WHEAT_USD" & abs(units)>=600 ~ TRUE,
                 Asset == "CORN_USD" & abs(units)>=600 ~ TRUE,
                 Asset == "NATGAS_USD" & abs(units)>=600 ~ TRUE,
-                Asset == "XAG_USD" & abs(units)>=120 ~ TRUE,
+                Asset == "XAG_USD" & abs(units)>=150 ~ TRUE,
                 Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=45 ~ TRUE,
                 TRUE ~ FALSE
               )
