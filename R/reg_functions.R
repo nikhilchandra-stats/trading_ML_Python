@@ -114,7 +114,8 @@ run_reg_for_trades <- function(
 get_AUS_Indicators <-
   function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
     ) {
 
     AIG_INDEX <- raw_macro_data %>%
@@ -149,7 +150,24 @@ get_AUS_Indicators <-
             )
       ) %>%
       filter(!is.na(Index_Type)) %>%
-      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::select(Index_Type, actual,date )
+
+    if(first_difference == TRUE) {
+
+      AIG_INDEX <-
+        AIG_INDEX %>%
+        group_by(Index_Type) %>%
+        arrange(date, .by_group = TRUE) %>%
+        group_by(Index_Type) %>%
+        mutate(
+          actual = actual - lag(actual)
+        ) %>%
+        mutate(
+          actual = ifelse(is.na(actual), 0, actual)
+        )
+    }
+
+    AIG_INDEX <- AIG_INDEX %>%
       dplyr::group_by(Index_Type,date ) %>%
       summarise(
         actual = median(actual, na.rm = T)
@@ -172,7 +190,7 @@ get_AUS_Indicators <-
         across(
           .cols = where(is.numeric),
           .fns = ~ case_when(
-            . > 0 ~ log(.),
+            . > 0  &  first_difference == FALSE~ log(.),
             TRUE ~ .
           )
         )
@@ -184,7 +202,8 @@ get_AUS_Indicators <-
 
 get_USD_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
     ) {
 
   USD_INDEX <- raw_macro_data %>%
@@ -226,7 +245,25 @@ get_USD_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    USD_INDEX <-
+      USD_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+
+  USD_INDEX <- USD_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -249,7 +286,7 @@ get_USD_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -261,7 +298,8 @@ get_USD_Indicators <- function(
 
 get_EUR_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
 ) {
 
   EUR_INDEX <- raw_macro_data %>%
@@ -297,7 +335,26 @@ get_EUR_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    EUR_INDEX <-
+      EUR_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+
+
+  EUR_INDEX <- EUR_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -320,7 +377,7 @@ get_EUR_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -332,7 +389,8 @@ get_EUR_Indicators <- function(
 
 get_JPY_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
 ) {
 
   JPY_INDEX <- raw_macro_data %>%
@@ -359,7 +417,25 @@ get_JPY_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    JPY_INDEX <-
+      JPY_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+
+  JPY_INDEX <- JPY_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -382,7 +458,7 @@ get_JPY_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -394,7 +470,8 @@ get_JPY_Indicators <- function(
 
 get_CNY_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
 ) {
 
   CNY_INDEX <- raw_macro_data %>%
@@ -415,7 +492,25 @@ get_CNY_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    CNY_INDEX <-
+      CNY_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+  CNY_INDEX <-
+    CNY_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -438,7 +533,7 @@ get_CNY_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -450,7 +545,8 @@ get_CNY_Indicators <- function(
 
 get_GBP_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
 ) {
 
   GBP_INDEX <- raw_macro_data %>%
@@ -476,7 +572,24 @@ get_GBP_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    GBP_INDEX <-
+      GBP_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+  GBP_INDEX <- GBP_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -499,7 +612,7 @@ get_GBP_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -511,7 +624,8 @@ get_GBP_Indicators <- function(
 
 get_CAD_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
 ) {
 
   CAD_INDEX <- raw_macro_data %>%
@@ -545,7 +659,25 @@ get_CAD_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    CAD_INDEX <-
+      CAD_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+
+  CAD_INDEX <- CAD_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -568,7 +700,7 @@ get_CAD_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -581,7 +713,8 @@ get_CAD_Indicators <- function(
 
 get_NZD_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
-    lag_days = 3
+    lag_days = 3,
+    first_difference = FALSE
 ) {
 
   NZD_INDEX <- raw_macro_data %>%
@@ -615,7 +748,24 @@ get_NZD_Indicators <- function(
         )
     ) %>%
     filter(!is.na(Index_Type)) %>%
-    dplyr::select(Index_Type, actual,date ) %>%
+    dplyr::select(Index_Type, actual,date )
+
+  if(first_difference == TRUE) {
+
+    NZD_INDEX <-
+      NZD_INDEX %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = actual - lag(actual)
+      ) %>%
+      mutate(
+        actual = ifelse(is.na(actual), 0, actual)
+      )
+  }
+
+  NZD_INDEX <- NZD_INDEX %>%
     dplyr::group_by(Index_Type,date ) %>%
     summarise(
       actual = median(actual, na.rm = T)
@@ -638,7 +788,7 @@ get_NZD_Indicators <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -1281,7 +1431,7 @@ get_AUS_exports <- function() {
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -1311,7 +1461,7 @@ get_US_exports <- function() {
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
@@ -1387,7 +1537,7 @@ get_EUR_exports <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0 ~ log(.),
+          . > 0  &  first_difference == FALSE~ log(.),
           TRUE ~ .
         )
       )
