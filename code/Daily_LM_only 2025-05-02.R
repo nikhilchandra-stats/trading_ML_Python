@@ -369,7 +369,7 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return >= 0.07) %>%
+  filter(risk_weighted_return >= 0.1) %>%
   mutate(redont_risk_weighted_return =
            1000*( (Perc*maximum_win) - (minimal_loss*(1 - Perc)) )
          )

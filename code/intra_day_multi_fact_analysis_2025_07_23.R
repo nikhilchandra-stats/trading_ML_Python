@@ -198,6 +198,15 @@ mean_values_by_asset_for_loop_H1_bid =
     summarise_means = TRUE
   )
 
+all_trade_ts_actuals <-
+  get_Major_Indices_trade_ts_actuals(
+    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db",
+    asset_infor = asset_infor,
+    currency_conversion = currency_conversion,
+    stop_factor_var = 4,
+    profit_factor_var = 8
+  )
+
 
 #------------------------------------------------------------Loop
 #------------------------------------------------------------
@@ -901,9 +910,24 @@ while (current_time < end_time) {
       ) %>%
       filter(Date >= (now() - minutes(60)) )
 
+    GLM_equity_trades <-
+      get_all_GLM_index_trades(
+          major_indices = major_indices_log_cumulative,
+          major_indices_bid = major_indices_log_cumulative_bid,
+          raw_macro_data = raw_macro_data,
+          all_trade_ts_actuals = all_trade_ts_actuals,
+          train_sample = 1000000,
+          date_split_train = as.character(today() - days(10)) ,
+          US2000_thresh = 0.8,
+          SPX500_thresh = 0.8,
+          EU50_thresh = 0.9
+          ) %>%
+          filter(Date >= (now() - minutes(60)) )
+
     all_tagged_trades_equity_dfr <-
       list(all_tagged_trades_equity_dfr1,
-           all_tagged_trades_equity_dfr2) %>%
+           all_tagged_trades_equity_dfr2,
+           GLM_equity_trades) %>%
       map_dfr(bind_rows)
 
     message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))

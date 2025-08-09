@@ -1431,7 +1431,7 @@ get_AUS_exports <- function() {
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0  &  first_difference == FALSE~ log(.),
+          . > 0~ log(.),
           TRUE ~ .
         )
       )
@@ -1461,7 +1461,7 @@ get_US_exports <- function() {
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0  &  first_difference == FALSE~ log(.),
+          . > 0 ~ log(.),
           TRUE ~ .
         )
       )
@@ -1537,7 +1537,7 @@ get_EUR_exports <- function(
       across(
         .cols = where(is.numeric),
         .fns = ~ case_when(
-          . > 0  &  first_difference == FALSE~ log(.),
+          . > 0~ log(.),
           TRUE ~ .
         )
       )

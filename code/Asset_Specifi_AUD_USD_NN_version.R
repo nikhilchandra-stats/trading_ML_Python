@@ -54,19 +54,19 @@ db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For
 start_date = "2011-01-01"
 end_date = today() %>% as.character()
 
-# update_local_db_file(
-#   db_location = db_location,
-#   time_frame = "H1",
-#   bid_or_ask = "ask",
-#   how_far_back = 26
-# )
-#
-# update_local_db_file(
-#   db_location = db_location,
-#   time_frame = "H1",
-#   bid_or_ask = "bid",
-#   how_far_back = 26
-# )
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "ask",
+  how_far_back = 26
+)
+
+update_local_db_file(
+  db_location = db_location,
+  time_frame = "H1",
+  bid_or_ask = "bid",
+  how_far_back = 26
+)
 
 AUD_USD_NZD_USD_list <-
   get_all_AUD_USD_specific_data(
@@ -287,59 +287,224 @@ DBI::dbDisconnect(full_ts_trade_db_con)
 rm(full_ts_trade_db_con)
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-split_date <- "2024-01-01"
-current_asset <- "NZD_USD"
-analysis_direction <- "Long"
+lm_test_prop <- 0.9999
+accumulating_data <- list()
+available_assets <- c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD")
+date_sequence <- seq(as_date("2022-01-01"), as_date("2025-06-01"), "week")
+all_results_ts <- list()
 
+NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_NN_sims.db"
+NN_sims_db_con <- connect_db(path = NN_sims_db)
 copula_data_AUD_USD_NZD <-
   create_NN_AUD_USD_XCU_NZD_data(
     AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[1]],
     raw_macro_data = raw_macro_data,
     actual_wins_losses = actual_wins_losses,
     lag_days = 1,
-    stop_value_var = 15,
-    profit_value_var = 20,
-    dependant_var_name = current_asset
+    stop_value_var = stop_value_var,
+    profit_value_var = profit_value_var,
+    use_PCA_vars = FALSE
   )
 
-generate_NNs_create_preds(
-  copula_data_macro = copula_data_AUD_USD_NZD[[1]],
-  lm_vars1 = copula_data_AUD_USD_NZD[[2]],
-  NN_samples = 1000,
-  dependant_var_name = current_asset,
-  NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-  training_max_date = split_date,
-  lm_train_prop = lm_train_prop,
-  trade_direction_var = analysis_direction,
-  stop_value_var = 15,
-  profit_value_var = 20,
-  max_NNs = 30,
-  hidden_layers = c(120),
-  ending_thresh = 0.09
-)
+redo_db = TRUE
+params_to_test <-
+  tibble(
+    NN_samples = c(1000,2000)
+  )
+params_to_test <-
+  c(2,3) %>%
+  map_dfr(
+    ~ params_to_test %>%
+      mutate(
+        hidden_layers = .x
+      )
+  )
+params_to_test <-
+  c(0.01,0.05) %>%
+  map_dfr(
+    ~ params_to_test %>%
+      mutate(
+        p_value_thresh_for_inputs = .x
+      )
+  )
+params_to_test <-
+  c(0.05,0.1) %>%
+  map_dfr(
+    ~ params_to_test %>%
+      mutate(
+        neuron_adjustment = .x
+      )
+  )
 
-NN_test_preds <- list()
-for (j in 1:20) {
-  NN_test_preds[[j]] <-
-    read_NNs_create_preds(
-      copula_data_macro = copula_data_AUD_USD_NZD[[1]],
-      lm_vars1 = copula_data_AUD_USD_NZD[[2]],
-      dependant_var_name = "NZD_USD",
-      NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-      testing_min_date = split_date,
-      lm_test_prop = lm_test_prop,
-      trade_direction_var = analysis_direction,
-      NN_index_to_choose = "",
-      stop_value_var = 15,
-      profit_value_var = 20,
-      analysis_threshs = c(-0.5, 0)
-    )
+params_to_test <-
+  c(0.02,0.05) %>%
+  map_dfr(
+    ~ params_to_test %>%
+      mutate(
+        ending_thresh = .x
+      )
+  )
+
+params_to_test <-
+  params_to_test %>%
+  mutate(trade_direction_var = "Long") %>%
+  bind_rows(
+    params_to_test %>%
+      mutate(trade_direction_var = "Short")
+  )
+
+params_to_test <-
+  params_to_test %>%
+  mutate(stop_value_var = 8) %>%
+  mutate(profit_value_var = 12) %>%
+  bind_rows(
+    params_to_test %>%
+      mutate(stop_value_var = 5) %>%
+      mutate(profit_value_var = 6)
+  )
+
+safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
+
+for (j in 1:dim(params_to_test)[1]) {
+
+  NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
+  hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
+  ending_thresh = params_to_test$ending_thresh[j] %>% as.numeric()
+  p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
+  neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
+  analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
+  stop_value_var <- params_to_test$stop_value_var[j] %>% as.numeric()
+  profit_value_var <- params_to_test$profit_value_var[j] %>% as.numeric()
+
+  for (k in 1:length(date_sequence)) {
+
+    max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
+
+    accumulating_data <- list()
+
+    for (i in 1:length(available_assets)) {
+
+      check_completion <- safely_generate_NN(
+        copula_data_macro = copula_data_AUD_USD_NZD[[1]],
+        lm_vars1 = copula_data_AUD_USD_NZD[[2]],
+        NN_samples = NN_samples,
+        dependant_var_name = available_assets[i],
+        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+        training_max_date = date_sequence[k],
+        lm_train_prop = 1,
+        trade_direction_var = analysis_direction,
+        stop_value_var = stop_value_var,
+        profit_value_var = profit_value_var,
+        max_NNs = 1,
+        hidden_layers = hidden_layers,
+        ending_thresh = ending_thresh,
+        run_logit_instead = FALSE,
+        p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+        neuron_adjustment = neuron_adjustment,
+        lag_price_col = "Price"
+      )
+
+      if(!is.null(check_completion)) {
+        NN_test_preds <-
+          read_NNs_create_preds(
+            copula_data_macro = copula_data_AUD_USD_NZD[[1]] %>% filter(Date <= max_test_date),
+            lm_vars1 = copula_data_AUD_USD_NZD[[2]],
+            dependant_var_name = available_assets[i],
+            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+            testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
+            trade_direction_var = analysis_direction,
+            NN_index_to_choose = "",
+            stop_value_var = stop_value_var,
+            profit_value_var = profit_value_var,
+            analysis_threshs = c(0.5,0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999),
+            run_logit_instead = FALSE,
+            lag_price_col = "Price",
+            return_tagged_trades = FALSE
+          )
+
+        accumulating_data[[i]] <-
+          NN_test_preds %>%
+          mutate(
+            NN_samples = NN_samples,
+            hidden_layers = hidden_layers,
+            ending_thresh = ending_thresh,
+            p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+            neuron_adjustment = neuron_adjustment
+          )
+      }
+
+    }
+
+    all_asset_logit_results <-
+      accumulating_data %>%
+      map_dfr(bind_rows) %>%
+      mutate(
+        sim_date = date_sequence[k],
+        max_test_date = max_test_date
+      )
+
+    all_results_ts[[k]] <- all_asset_logit_results
+
+    if(j == 1 & k == 1 & redo_db == TRUE) {
+      write_table_sql_lite(.data = all_asset_logit_results,
+                           table_name = "AUD_USD_NZD_XCU_NN_sims",
+                           conn = NN_sims_db_con,
+                           overwrite_true = TRUE)
+      redo_db = FALSE
+    } else {
+      write_table_sql_lite(.data = all_asset_logit_results,
+                           table_name = "AUD_USD_NZD_XCU_NN_sims",
+                           conn = NN_sims_db_con)
+
+    }
+
+    rm(all_asset_logit_results)
+    rm(accumulating_data)
+
+  }
+
 }
-NN_test_preds <- NN_test_preds %>% map_dfr(bind_rows)
 
-names(NN_test_preds)
+all_results_ts_dfr <-
+  all_results_ts %>%
+  map_dfr(bind_rows)
 
+write_table_sql_lite(.data = all_results_ts_dfr,
+                     table_name = "AUD_USD_NZD_XCU_NN_sims",
+                     conn = NN_sims_db_con,
+                     overwrite_true = TRUE)
 
+all_results_ts_dfr_sum <-
+  all_results_ts_dfr %>%
+  mutate(Control_Wins = round(Perc_control*Total_control)) %>%
+  group_by(Asset, threshold, trade_col) %>%
+  summarise(Trades = sum(Trades),
+            wins_losses = sum(wins_losses),
+            win_amount = mean(win_amount),
+            loss_amount = mean(loss_amount),
+            control_trades = sum(Total_control),
+            Control_Wins = sum(Control_Wins)) %>%
+  mutate(Perc = wins_losses/Trades,
+         Perc_Control = Control_Wins/control_trades,
+         risk_weighted_return = Perc*(win_amount/loss_amount) - (1- Perc),
+         risk_weighted_return_control = Perc_Control*(win_amount/loss_amount) - (1- Perc_Control)
+         )
+
+all_asset_logit_results_sum <-
+  all_results_ts_dfr %>%
+  mutate(
+    edge = risk_weighted_return - control_risk_return
+  ) %>%
+  group_by(trade_col, Asset, threshold, win_amount, loss_amount) %>%
+  summarise(
+    Trades = mean(Trades, na.rm = T),
+    edge = mean(edge, na.rm = T),
+    Perc = mean(Perc, na.rm = T),
+    risk_weighted_return = mean(risk_weighted_return, na.rm = T),
+    control_trades = mean(Total_control, na.rm = T)
+  )
+
+#----------------------------------------------------------------------------------
 NZD_USD_Long_Logit <- list()
 for (i in 1:20) {
   NZD_USD_Long_Logit[[i]] <-

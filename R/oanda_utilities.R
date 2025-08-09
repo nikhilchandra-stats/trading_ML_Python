@@ -413,53 +413,17 @@ get_closed_positions <- function(save_csv = FALSE,
 
     returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
 
-    # if(any(str_detect(names(returned_value$trades),"trailingStopLossOrder|guaranteedStopLossOrder")) == TRUE){
-    #   returned_value$trades <- returned_value$trades %>%
-    #     select(-trailingStopLossOrder,-guaranteedStopLossOrder)
-    # }else{
-    #   returned_value$trades <-  returned_value$trades
-    # }
-
     returned_value$trades <-  returned_value$trades
 
-    winning <- returned_value$trades  %>%
+    complete_frame <- returned_value$trades  %>%
       select(-takeProfitOrder,-stopLossOrder) %>%
       bind_cols(returned_value$trades$takeProfitOrder %>%
                   select(cancelled_or_not = state)) %>%
-      filter(cancelled_or_not != "CANCELLED") %>%
       mutate(
-        date = as_date(str_extract(openTime,"[0-9]+-[0-9]+-[0-9]+"))
-      ) %>%
-      filter(
-        date > "2021-09-02"
-      ) %>%
-      as_tibble() %>%
-      select(date,id,instrument,price,openTime,initialUnits,initialMarginRequired,state,currentUnits,realizedPL,
-             financing,dividendAdjustment,closeTime,averageClosePrice,state,cancelled_or_not)
-
-    losing <- returned_value$trades %>%
-      bind_cols(returned_value$trades$stopLossOrder %>%
-                  select(cancelled_or_not = state)) %>%
-      filter(cancelled_or_not != "CANCELLED") %>%
-      mutate(
-        date = as_date(str_extract(openTime,"[0-9]+-[0-9]+-[0-9]+"))
-      ) %>%
-      filter(
-        date > "2021-09-02"
-      ) %>%
-      as_tibble() %>%
-      select(date,id,instrument,price,openTime,initialUnits,initialMarginRequired,state,currentUnits,realizedPL,
-             financing,dividendAdjustment,closeTime,averageClosePrice,state,cancelled_or_not)
-
-    complete_frame <- winning %>%
-      bind_rows(losing) %>%
-      mutate(
-        closing_date =  as_date(str_extract(closeTime,"[0-9]+-[0-9]+-[0-9]+"))
-      )
-
-    if(save_csv == TRUE){
-      write.csv(x = complete_frame,file = glue::glue("data/live_trade_data/live_trades_{format(lubridate::now(), '%Y_%m_%d_%H_%M_%S')}.csv"))
-    }
+        date_open = as_datetime(openTime),
+        date_closed = as_datetime(closeTime)
+      )  %>%
+      distinct(id, instrument, realizedPL, date_closed, date_open)
 
     return(complete_frame)
 

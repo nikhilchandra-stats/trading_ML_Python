@@ -1,4 +1,4 @@
-trade_results_upload <- function(position_date_min = "2025-05-01",
+trade_results_upload <- function(position_date_min = "2025-07-31",
                            assets_to_analyse =
                              c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
                                "DE30_EUR",
