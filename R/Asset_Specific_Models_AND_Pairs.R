@@ -3993,9 +3993,58 @@ create_NN_Indices_data <-
            lag_days = 1,
            stop_value_var = 15,
            profit_value_var = 20,
-           use_PCA_vars = FALSE) {
+           use_PCA_vars = FALSE,
+           rolling_period_index_PCA_cor = 15) {
 
-    # assets_to_return <- dependant_var_name
+
+    Indices_log_cumulative <-
+      c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD", "XAU_USD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use = SPX_US2000_XAG,
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        SPX_US2000_XAG %>% distinct(Date, Asset, Price, Open, High, Low)
+      )
+
+    Indices_log_cumulative <-
+      Indices_log_cumulative %>%
+      group_by(Asset) %>%
+      mutate(
+        Return_Index_Diff = ((Price - Open)/Open)*100
+      ) %>%
+      ungroup() %>%
+      filter(!is.na(Return_Index_Diff))
+
+    Indices_data_Index <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = Indices_log_cumulative,
+        asset_to_use = c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD", "XAU_USD"),
+        price_col = "Return_Index_Diff"
+      ) %>%
+      rename(
+        Average_PCA_Index = Average_PCA
+      )
+
+    Indices_data_pca <-
+      Indices_log_cumulative %>%
+      left_join(Indices_data_Index)
+
+    correlation_PCA_dat <-
+      c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD", "XAU_USD") %>%
+      map_dfr(
+        ~
+          get_PCA_Index_rolling_cor_sd_mean(
+            raw_asset_data_for_PCA_cor = Indices_log_cumulative %>% filter(Asset == .x),
+            PCA_data = Indices_data_pca,
+            rolling_period = rolling_period_index_PCA_cor
+          )
+      )
 
     aus_macro_data <-
       get_AUS_Indicators(raw_macro_data,
@@ -4121,19 +4170,119 @@ create_NN_Indices_data <-
         "CNY_PC1", "CNY_PC2",
         "EUR_PC1", "EUR_PC2")
 
-    copula_data <-
+    copula_data_SPX500_US2000 <-
       estimating_dual_copula(
-        asset_data_to_use = AUD_USD_NZD_USD,
-        asset_to_use = c("AUD_USD", "NZD_USD"),
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "US2000_USD"),
         price_col = "Open",
         rolling_period = 100,
         samples_for_MLE = 0.15,
         test_samples = 0.85
       )
 
+    copula_data_SPX500_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("US2000_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD, -US2000_USD_log1_price,
+                    -US2000_USD_quantiles_1, -US2000_USD_tangent_angle1) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log2_price,
+                    -XAU_USD_quantiles_2, -XAU_USD_tangent_angle2)
+
+    copula_data_SPX500_XAG <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAG_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_XAG <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("US2000_USD", "XAG_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD, -US2000_USD_log1_price, -US2000_USD_quantiles_1, -US2000_USD_tangent_angle1) %>%
+      dplyr::select(-XAG_USD, -XAG_USD_log2_price,
+                    -XAG_USD_quantiles_2, -XAG_USD_tangent_angle2)
+
+    copula_data_SPX500_EU50 <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_EU50 <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("US2000_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD, -US2000_USD_log1_price, -US2000_USD_quantiles_1, -US2000_USD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price,
+                    -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_XAU_EU50 <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("XAU_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log1_price, -XAU_USD_quantiles_1, -XAU_USD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price,
+                    -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_XAG_EU50 <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("XAG_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAG_USD, -XAG_USD_log1_price, -XAG_USD_quantiles_1, -XAG_USD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price,
+                    -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+
     binary_data_for_post_model <-
       actual_wins_losses %>%
-      rename(Date = dates, Asset = asset) %>%
+      # rename(Date = dates, Asset = asset) %>%
       filter(profit_factor == profit_value_var)%>%
       filter(stop_factor == stop_value_var) %>%
       mutate(
@@ -4153,18 +4302,25 @@ create_NN_Indices_data <-
                     starting_stop_value, starting_profit_value)
 
     copula_data_macro <-
-      AUD_USD_NZD_USD %>%
-      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
-      left_join(copula_data) %>%
-      left_join(copula_data_AUD_XCU) %>%
-      left_join(copula_data_AUD_XAG) %>%
-      left_join(copula_data_NZD_XCU) %>%
-      left_join(copula_data_NZD_XAG) %>%
-      left_join(copula_data_NZD_USD_CHF) %>%
-      left_join(copula_data_AUD_NZD_CHF) %>%
-      left_join(copula_data_XAG_XAU) %>%
-      left_join(copula_data_XCU_XAU) %>%
-      left_join(copula_data_XCU_XAG) %>%
+      correlation_PCA_dat %>%
+      dplyr::select(Date,Asset, Price, High, Low, Open, PC1, PC2, PC3, PC4, PC4, PC5,
+                    Return_Index,
+                    contains("rolling_cor_PC")) %>%
+      filter(!is.na(PC1)) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(across(where(is.numeric), ~ lag(.) )) %>%
+      ungroup() %>%
+      left_join(copula_data_SPX500_US2000) %>%
+      left_join(copula_data_SPX500_XAU) %>%
+      left_join(copula_data_US2000_XAU) %>%
+      left_join(copula_data_SPX500_XAG) %>%
+      left_join(copula_data_US2000_XAG) %>%
+      left_join(copula_data_SPX500_EU50) %>%
+      left_join(copula_data_US2000_EU50) %>%
+      left_join(copula_data_XAU_EU50) %>%
+      left_join(copula_data_XAG_EU50) %>%
       left_join(binary_data_for_post_model) %>%
       mutate(Date_for_join = as_date(Date)) %>%
       left_join(
@@ -4220,7 +4376,11 @@ create_NN_Indices_data <-
                     "lagged_var_13", "lagged_var_21",
                     "lagged_var_3_ma", "lagged_var_5_ma",
                     "lagged_var_8_ma", "lagged_var_13_ma",
-                    "lagged_var_21_ma"
+                    "lagged_var_21_ma", "PC1", "PC2" ,"PC3", "PC4", "PC5",
+                    "rolling_cor_PC1", "rolling_cor_PC2", "rolling_cor_PC3",
+                    "rolling_cor_PC4", "rolling_cor_PC4", "rolling_cor_PC5",
+                    "rolling_cor_PC1_mean", "rolling_cor_PC2_mean", "rolling_cor_PC3_mean",
+                    "rolling_cor_PC4_mean", "rolling_cor_PC4_mean", "rolling_cor_PC5_mean"
                     # "hour_of_day", "day_of_week"
       )
     } else {
@@ -4234,7 +4394,9 @@ create_NN_Indices_data <-
                     "lagged_var_13", "lagged_var_21",
                     "lagged_var_3_ma", "lagged_var_5_ma",
                     "lagged_var_8_ma", "lagged_var_13_ma",
-                    "lagged_var_21_ma"
+                    "lagged_var_21_ma", "PC1", "PC2" ,"PC3", "PC4", "PC5",
+                    "rolling_cor_PC1_mean", "rolling_cor_PC2_mean", "rolling_cor_PC3_mean",
+                    "rolling_cor_PC4_mean", "rolling_cor_PC4_mean", "rolling_cor_PC5_mean"
                     # "hour_of_day", "day_of_week"
       )
     }

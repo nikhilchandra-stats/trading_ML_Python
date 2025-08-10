@@ -93,8 +93,8 @@ get_trade_results_ts_aud <- function(
     rename(Asset = asset,
            Date = dates) %>%
     mutate(
-      stop_factor = 10,
-      profit_factor = 15
+      stop_factor = stop_factor,
+      profit_factor = profit_factor
     ) %>%
     left_join(
       raw_asset_data %>% dplyr::select(Date, Asset, Price , Low, High, Open)
@@ -121,7 +121,10 @@ get_trade_results_ts_aud <- function(
           trade_col == "Short" & trade_start_prices >= trade_end_prices ~ minimal_loss
         )
     ) %>%
-    dplyr::select(Date, Asset, trade_returns, stop_factor, profit_factor, volume_required, estimated_margin)
+    dplyr::select(Date, Asset, trade_returns, stop_factor, trade_col,
+                  profit_factor, volume_required, estimated_margin,
+                  trade_start_prices, trade_end_prices, minimal_loss, maximum_win,
+                  starting_stop_value, starting_profit_value)
 
   return(trades_with_aud_ts)
 
@@ -137,14 +140,14 @@ update_local_db_file(
   db_location = db_location,
   time_frame = "M15",
   bid_or_ask = "ask",
-  how_far_back = 30
+  how_far_back = 20
 )
 
 update_local_db_file(
   db_location = db_location,
   time_frame = "M15",
   bid_or_ask = "bid",
-  how_far_back = 30
+  how_far_back = 20
 )
 
 SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
@@ -172,7 +175,7 @@ SPX_XAG_US2000_Long_Data <-
   )
 
 trade_actual_db_con <- connect_db(trade_actual_db)
-append_table_sql_lite(
+write_table_sql_lite(
   SPX_XAG_US2000_Long_Data,
   table_name =  "trade_actual",
   conn = trade_actual_db_con,
@@ -202,8 +205,7 @@ trade_actual_db_con <- connect_db(trade_actual_db)
 append_table_sql_lite(
   SPX_XAG_US2000_Short_Data,
   table_name =  "trade_actual",
-  conn = trade_actual_db_con,
-  overwrite_true = TRUE)
+  conn = trade_actual_db_con)
 DBI::dbDisconnect(trade_actual_db_con)
 rm(trade_actual_db_con)
 
@@ -222,7 +224,7 @@ rm(trade_actual_db_con)
 load_custom_functions()
 lm_test_prop <- 0.9999
 accumulating_data <- list()
-available_assets <- c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD")
+available_assets <- c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD", "XAU_USD")
 date_sequence <- seq(as_date("2022-01-01"), as_date("2025-06-01"), "week")
 all_results_ts <- list()
 profit_value_var <- 15
@@ -231,16 +233,6 @@ stop_value_var <- 10
 
 NN_sims_db <- "C:/Users/nikhi/Documents/trade_data/INDICES_15M_NN_sims.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
-copula_data_AUD_USD_NZD <-
-  create_NN_Indices_data(
-    SPX_US2000_XAG = SPX_US2000_XAG_ALL[[1]],
-    raw_macro_data = raw_macro_data,
-    actual_wins_losses = actual_wins_losses,
-    lag_days = 1,
-    stop_value_var = stop_value_var,
-    profit_value_var = profit_value_var,
-    use_PCA_vars = FALSE
-  )
 
 redo_db = TRUE
 params_to_test <-
@@ -256,7 +248,7 @@ params_to_test <-
       )
   )
 params_to_test <-
-  c(0.01,0.05) %>%
+  c(0.1,0.15) %>%
   map_dfr(
     ~ params_to_test %>%
       mutate(
@@ -273,7 +265,7 @@ params_to_test <-
   )
 
 params_to_test <-
-  c(0.02,0.05) %>%
+  c(0.07, 0.05) %>%
   map_dfr(
     ~ params_to_test %>%
       mutate(
@@ -289,14 +281,123 @@ params_to_test <-
       mutate(trade_direction_var = "Short")
   )
 
-params_to_test <-
-  params_to_test %>%
-  mutate(stop_value_var = 8) %>%
-  mutate(profit_value_var = 12) %>%
-  bind_rows(
-    params_to_test %>%
-      mutate(stop_value_var = 5) %>%
-      mutate(profit_value_var = 6)
+safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
+
+copula_data_Indices <-
+  create_NN_Indices_data(
+    SPX_US2000_XAG = SPX_US2000_XAG_ALL[[1]],
+    raw_macro_data = raw_macro_data,
+    actual_wins_losses = actual_wins_losses,
+    lag_days = 1,
+    stop_value_var = stop_value_var,
+    profit_value_var = profit_value_var,
+    use_PCA_vars = FALSE,
+    rolling_period_index_PCA_cor = 15
   )
 
-safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
+for (j in 1:dim(params_to_test)[1]) {
+
+  NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
+  hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
+  ending_thresh = params_to_test$ending_thresh[j] %>% as.numeric()
+  p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
+  neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
+  analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
+
+  for (k in 1:length(date_sequence)) {
+
+    max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
+
+    accumulating_data <- list()
+
+    for (i in 1:length(available_assets)) {
+
+      check_completion <- safely_generate_NN(
+        copula_data_macro = copula_data_Indices[[1]],
+        lm_vars1 = copula_data_Indices[[2]],
+        NN_samples = NN_samples,
+        dependant_var_name = available_assets[i],
+        NN_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
+        training_max_date = date_sequence[k],
+        lm_train_prop = 1,
+        trade_direction_var = analysis_direction,
+        stop_value_var = stop_value_var,
+        profit_value_var = profit_value_var,
+        max_NNs = 1,
+        hidden_layers = hidden_layers,
+        ending_thresh = ending_thresh,
+        run_logit_instead = FALSE,
+        p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+        neuron_adjustment = neuron_adjustment,
+        lag_price_col = "Price"
+      ) %>%
+        pluck('result')
+
+      gc()
+
+      if(!is.null(check_completion)) {
+        message("Made it to Prediction, NN generated Success")
+        NN_test_preds <-
+          read_NNs_create_preds(
+            copula_data_macro = copula_data_Indices[[1]] %>% filter(Date <= max_test_date),
+            lm_vars1 = copula_data_Indices[[2]],
+            dependant_var_name = available_assets[i],
+            NN_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
+            testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
+            trade_direction_var = analysis_direction,
+            NN_index_to_choose = "",
+            stop_value_var = stop_value_var,
+            profit_value_var = profit_value_var,
+            analysis_threshs = c(0.5,0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999),
+            run_logit_instead = FALSE,
+            lag_price_col = "Price",
+            return_tagged_trades = FALSE
+          )
+
+        accumulating_data[[i]] <-
+          NN_test_preds %>%
+          mutate(
+            NN_samples = NN_samples,
+            hidden_layers = hidden_layers,
+            ending_thresh = ending_thresh,
+            p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+            neuron_adjustment = neuron_adjustment
+          )
+      }
+
+    }
+
+    all_asset_logit_results <-
+      accumulating_data %>%
+      map_dfr(bind_rows) %>%
+      mutate(
+        sim_date = date_sequence[k],
+        max_test_date = max_test_date
+      )
+
+    gc()
+
+    if(redo_db == TRUE) {
+      write_table_sql_lite(.data = all_asset_logit_results,
+                            table_name = "INDICES_15_NN_sims",
+                            conn = NN_sims_db_con,
+                            overwrite_true = TRUE)
+      redo_db = FALSE
+    } else {
+      append_table_sql_lite(.data = all_asset_logit_results,
+                            table_name = "INDICES_15_NN_sims",
+                            conn = NN_sims_db_con)
+
+    }
+
+    rm(all_asset_logit_results)
+    rm(accumulating_data)
+    rm(check_completion)
+
+  }
+
+}
+
+all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
+                                      statement = "SELECT * FROM INDICES_15_NN_sims")
+
