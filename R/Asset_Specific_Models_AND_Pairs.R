@@ -2692,8 +2692,6 @@ get_AUD_USD_NZD_Specific_Trades_NN <-
 
 }
 
-
-
 #' create_NN_AUD_USD_XCU_NZD_data
 #'
 #' @return
@@ -3982,4 +3980,272 @@ create_NN_AUD_USD_XCU_NZD <- function(
 
 }
 
+#' create_NN_AUD_USD_XCU_NZD_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_NN_Indices_data <-
+  function(SPX_US2000_XAG = SPX_US2000_XAG_ALL[[1]],
+           raw_macro_data,
+           actual_wins_losses = actual_wins_losses,
+           lag_days = 1,
+           stop_value_var = 15,
+           profit_value_var = 20,
+           use_PCA_vars = FALSE) {
 
+    # assets_to_return <- dependant_var_name
+
+    aus_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    aus_macro_data_PCA <-
+      aus_macro_data %>%
+      dplyr::select(-date) %>%
+      prcomp(scale = TRUE) %>%
+      pluck("x") %>%
+      as_tibble() %>%
+      dplyr::select(AUD_PC1= PC1,
+                    AUD_PC2= PC2,
+                    AUD_PC3= PC3,
+                    AUD_PC4= PC4,
+                    AUD_PC5= PC5) %>%
+      mutate(
+        date = aus_macro_data %>% pull(date)
+      )
+
+    nzd_macro_data <-
+      get_NZD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    nzd_macro_data_PCA <-
+      nzd_macro_data %>%
+      dplyr::select(-date) %>%
+      prcomp(scale = TRUE) %>%
+      pluck("x") %>%
+      as_tibble() %>%
+      dplyr::select(NZD_PC1= PC1,
+                    NZD_PC2= PC2,
+                    NZD_PC3= PC3,
+                    NZD_PC4= PC4,
+                    NZD_PC5= PC5) %>%
+      mutate(
+        date = nzd_macro_data %>% pull(date)
+      )
+
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    usd_macro_data_PCA <-
+      usd_macro_data %>%
+      dplyr::select(-date) %>%
+      prcomp(scale = TRUE) %>%
+      pluck("x") %>%
+      as_tibble() %>%
+      dplyr::select(USD_PC1= PC1,
+                    USD_PC2= PC2,
+                    USD_PC3= PC3,
+                    USD_PC4= PC4,
+                    USD_PC5= PC5) %>%
+      mutate(
+        date = usd_macro_data %>% pull(date)
+      )
+
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    cny_macro_data_PCA <-
+      cny_macro_data %>%
+      dplyr::select(-date) %>%
+      prcomp(scale = TRUE) %>%
+      pluck("x") %>%
+      as_tibble() %>%
+      dplyr::select(CNY_PC1= PC1,
+                    CNY_PC2= PC2,
+                    CNY_PC3= PC3,
+                    CNY_PC4= PC4,
+                    CNY_PC5= PC5) %>%
+      mutate(
+        date = cny_macro_data %>% pull(date)
+      )
+
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    eur_macro_data_PCA <-
+      eur_macro_data %>%
+      dplyr::select(-date) %>%
+      prcomp(scale = TRUE) %>%
+      pluck("x") %>%
+      as_tibble() %>%
+      dplyr::select(EUR_PC1= PC1,
+                    EUR_PC2= PC2,
+                    EUR_PC3= PC3,
+                    EUR_PC4= PC4,
+                    EUR_PC5= PC5) %>%
+      mutate(
+        date = eur_macro_data %>% pull(date)
+      )
+
+    aud_macro_vars <- names(aus_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(aud_macro_vars, nzd_macro_vars, usd_macro_vars, cny_macro_vars, eur_macro_vars)
+
+    PC_macro_vars <-
+      c("AUD_PC1", "AUD_PC2",
+        "NZD_PC1", "NZD_PC2",
+        "USD_PC1", "USD_PC2",
+        "CNY_PC1", "CNY_PC2",
+        "EUR_PC1", "EUR_PC2")
+
+    copula_data <-
+      estimating_dual_copula(
+        asset_data_to_use = AUD_USD_NZD_USD,
+        asset_to_use = c("AUD_USD", "NZD_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      )
+
+    binary_data_for_post_model <-
+      actual_wins_losses %>%
+      rename(Date = dates, Asset = asset) %>%
+      filter(profit_factor == profit_value_var)%>%
+      filter(stop_factor == stop_value_var) %>%
+      mutate(
+        bin_var =
+          case_when(
+            trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
+            trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
+
+            trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
+            trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
+
+          )
+      ) %>%
+      dplyr::select(Date, bin_var, Asset, trade_col,
+                    profit_factor, stop_factor,
+                    trade_start_prices, trade_end_prices,
+                    starting_stop_value, starting_profit_value)
+
+    copula_data_macro <-
+      AUD_USD_NZD_USD %>%
+      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
+      left_join(copula_data) %>%
+      left_join(copula_data_AUD_XCU) %>%
+      left_join(copula_data_AUD_XAG) %>%
+      left_join(copula_data_NZD_XCU) %>%
+      left_join(copula_data_NZD_XAG) %>%
+      left_join(copula_data_NZD_USD_CHF) %>%
+      left_join(copula_data_AUD_NZD_CHF) %>%
+      left_join(copula_data_XAG_XAU) %>%
+      left_join(copula_data_XCU_XAU) %>%
+      left_join(copula_data_XCU_XAG) %>%
+      left_join(binary_data_for_post_model) %>%
+      mutate(Date_for_join = as_date(Date)) %>%
+      left_join(
+        aus_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        nzd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        usd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        cny_macro_data %>%
+          rename(Date_for_join = date)
+      )  %>%
+      left_join(
+        eur_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(aus_macro_data_PCA %>%
+                  rename(Date_for_join = date) )%>%
+      left_join(usd_macro_data_PCA %>%
+                  rename(Date_for_join = date) )%>%
+      left_join(cny_macro_data_PCA %>%
+                  rename(Date_for_join = date) )%>%
+      left_join(eur_macro_data_PCA %>%
+                  rename(Date_for_join = date) ) %>%
+      left_join(nzd_macro_data_PCA %>%
+                  rename(Date_for_join = date) ) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      mutate(hour_of_day = lubridate::hour(Date) %>% as.numeric(),
+             day_of_week = lubridate::wday(Date) %>% as.numeric())
+
+    max_date_in_testing_data <- copula_data_macro %>% pull(Date) %>% max(na.rm = T)
+    message(glue::glue("Max date in Complete data: {max_date_in_testing_data}"))
+
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
+
+    if(use_PCA_vars == TRUE) {
+      lm_vars1 <- c(PC_macro_vars, lm_quant_vars,
+                    "fib_1", "fib_2",
+                    "fib_3", "fib_4",
+                    "fib_5", "fib_6",
+                    "lagged_var_1", "lagged_var_2",
+                    "lagged_var_3", "lagged_var_5",
+                    "lagged_var_8",
+                    "lagged_var_13", "lagged_var_21",
+                    "lagged_var_3_ma", "lagged_var_5_ma",
+                    "lagged_var_8_ma", "lagged_var_13_ma",
+                    "lagged_var_21_ma"
+                    # "hour_of_day", "day_of_week"
+      )
+    } else {
+      lm_vars1 <- c(all_macro_vars, lm_quant_vars,
+                    "fib_1", "fib_2",
+                    "fib_3", "fib_4",
+                    "fib_5", "fib_6",
+                    "lagged_var_1", "lagged_var_2",
+                    "lagged_var_3", "lagged_var_5",
+                    "lagged_var_8",
+                    "lagged_var_13", "lagged_var_21",
+                    "lagged_var_3_ma", "lagged_var_5_ma",
+                    "lagged_var_8_ma", "lagged_var_13_ma",
+                    "lagged_var_21_ma"
+                    # "hour_of_day", "day_of_week"
+      )
+    }
+
+    return(
+      list(
+        "copula_data_macro" = copula_data_macro,
+        "lm_vars1" =
+          lm_vars1 %>%
+          keep( ~ !str_detect(.x, "sd") & !str_detect(.x, "tangent") )
+      )
+    )
+
+  }
