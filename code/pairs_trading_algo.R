@@ -12,6 +12,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
+
   start_date = (today() - days(2)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
@@ -218,14 +219,16 @@ tictoc::tic()
         lm_train_prop = 0.74,
         lm_test_prop = 0.24,
         sd_fac_lm_trade = 1.5,
-        sd_fac_lm_trade2 = 1,
-        sd_fac_lm_trade3 = 1,
+        sd_fac_lm_trade2 = 3,
+        sd_fac_lm_trade3 = 3,
         trade_direction = "Long",
-        stop_factor = 20,
-        profit_factor = 30,
+        stop_factor = 12,
+        profit_factor = 18,
         assets_to_return = c("AUD_USD")
       ) %>%
       map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
       filter(Date >= (current_time - lubridate::minutes(20)) )
 
     AUD_NZD_Trades_short <-
@@ -238,15 +241,26 @@ tictoc::tic()
         lm_train_prop = 0.74,
         lm_test_prop = 0.24,
         sd_fac_lm_trade = 0.75,
-        sd_fac_lm_trade2 = 1.25,
-        sd_fac_lm_trade3 = 1.25,
+        sd_fac_lm_trade2 = 4,
+        sd_fac_lm_trade3 = 4,
         trade_direction = "Short",
-        stop_factor = 17,
-        profit_factor = 27,
+        stop_factor = 12,
+        profit_factor = 18,
         assets_to_return = c("AUD_USD", "NZD_USD")
       ) %>%
       map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
       filter(Date >= (current_time - lubridate::minutes(20)) )
+
+    short_AUD_positions <- AUD_NZD_Trades_short %>% filter(Asset == "AUD_USD") %>% dim() %>% pluck(1)
+    long_AUD_positions <- AUD_NZD_Trades_long %>% filter(Asset == "AUD_USD") %>% dim() %>% pluck(1)
+
+    short_NZD_positions <- AUD_NZD_Trades_short %>% filter(Asset == "NZD_USD") %>% dim() %>% pluck(1)
+    long_NZD_positions <- AUD_NZD_Trades_long %>% filter(Asset == "NZD_USD") %>% dim() %>% pluck(1)
+
+    message(glue::glue("AUD_USD Long: {long_AUD_positions}, AUD_USD Short: {short_AUD_positions}"))
+    message(glue::glue("NZD_USD Long: {long_NZD_positions}, NZD_USD Short: {short_NZD_positions}"))
 
     tictoc::toc()
 
@@ -262,7 +276,7 @@ tictoc::tic()
           filter(Date >= start_date),
         mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
         trade_direction = "Long",
-        risk_dollar_value = 3,
+        risk_dollar_value = 2.5,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor
       )
@@ -334,7 +348,7 @@ tictoc::tic()
               mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 3,
+              risk_dollar_value = 2.5,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",
@@ -469,9 +483,9 @@ tictoc::tic()
 
   }
 
-  if((current_minute > 12 & current_minute < 14 & data_updated == 1)|
-     (current_minute > 27 & current_minute < 29 & data_updated == 1)|
-     (current_minute > 42 & current_minute < 44 & data_updated == 1)|
+  if((current_minute > 12 & current_minute < 15 & data_updated == 1)|
+     (current_minute > 27 & current_minute < 30 & data_updated == 1)|
+     (current_minute > 42 & current_minute < 45 & data_updated == 1)|
      (current_minute > 55 & current_minute < 59 & data_updated == 1)
      ) {data_updated <- 0}
 

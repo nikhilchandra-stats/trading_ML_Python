@@ -198,6 +198,10 @@ get_oanda_url <- function( account = 1 ){
   if(account == 2){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-003')}
   if(account == 3){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-004')}
 
+  # Equity Accounts
+  if(account == 4){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-002')}
+  if(account == 5){  return('https://api-fxtrade.oanda.com/v3/accounts/001-011-1615559-005')}
+
 }
 
 get_oanda_account_number <- function(account_name = "primary"){
@@ -205,15 +209,17 @@ get_oanda_account_number <- function(account_name = "primary"){
   if(account_name == "primary"){return("001-011-1615559-001")}
   if(account_name == "mt4_hedging"){return("001-011-1615559-003")}
   if(account_name == "corr_no_macro"){return("001-011-1615559-004")}
-
+  if(account_name == "equity_long"){return("001-011-1615559-002")}
+  if(account_name == "equity_short"){return("001-011-1615559-005")}
 
 }
 
-get_account_summary <- function(account_var = 1){
+get_account_summary <- function(account_var = 2){
 
   headers = c(
     `Content-Type` = 'application/json',
     `Authorization` = get_oanda_from_sys()
+    # `Authorization` = "Bearer 0321f8a633d09bf602613fb11255fadf-b2c91d351f1e7d21f82c6caab40c4872"
   )
 
   res <- httr::GET(url =
@@ -385,7 +391,8 @@ get_oanda_data_position_book <- function(assets = assets_x){
 
 
 get_closed_positions <- function(save_csv = FALSE,
-                                 account_var = 2){
+                                 account_var = 2,
+                                 asset = "AUD_USD"){
 
     headers = c(
       `Content-Type` = 'application/json',
@@ -395,7 +402,8 @@ get_closed_positions <- function(save_csv = FALSE,
     params <-
       list(
         `state` = "CLOSED",
-        `count` = 500L
+        `count` = 500L,
+        instrument = asset
       )
 
     res <- httr::GET(url =
@@ -405,53 +413,17 @@ get_closed_positions <- function(save_csv = FALSE,
 
     returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
 
-    # if(any(str_detect(names(returned_value$trades),"trailingStopLossOrder|guaranteedStopLossOrder")) == TRUE){
-    #   returned_value$trades <- returned_value$trades %>%
-    #     select(-trailingStopLossOrder,-guaranteedStopLossOrder)
-    # }else{
-    #   returned_value$trades <-  returned_value$trades
-    # }
-
     returned_value$trades <-  returned_value$trades
 
-    winning <- returned_value$trades  %>%
+    complete_frame <- returned_value$trades  %>%
       select(-takeProfitOrder,-stopLossOrder) %>%
       bind_cols(returned_value$trades$takeProfitOrder %>%
                   select(cancelled_or_not = state)) %>%
-      filter(cancelled_or_not != "CANCELLED") %>%
       mutate(
-        date = as_date(str_extract(openTime,"[0-9]+-[0-9]+-[0-9]+"))
-      ) %>%
-      filter(
-        date > "2021-09-02"
-      ) %>%
-      as_tibble() %>%
-      select(date,id,instrument,price,openTime,initialUnits,initialMarginRequired,state,currentUnits,realizedPL,
-             financing,dividendAdjustment,closeTime,averageClosePrice,state,cancelled_or_not)
-
-    losing <- returned_value$trades %>%
-      bind_cols(returned_value$trades$stopLossOrder %>%
-                  select(cancelled_or_not = state)) %>%
-      filter(cancelled_or_not != "CANCELLED") %>%
-      mutate(
-        date = as_date(str_extract(openTime,"[0-9]+-[0-9]+-[0-9]+"))
-      ) %>%
-      filter(
-        date > "2021-09-02"
-      ) %>%
-      as_tibble() %>%
-      select(date,id,instrument,price,openTime,initialUnits,initialMarginRequired,state,currentUnits,realizedPL,
-             financing,dividendAdjustment,closeTime,averageClosePrice,state,cancelled_or_not)
-
-    complete_frame <- winning %>%
-      bind_rows(losing) %>%
-      mutate(
-        closing_date =  as_date(str_extract(closeTime,"[0-9]+-[0-9]+-[0-9]+"))
-      )
-
-    if(save_csv == TRUE){
-      write.csv(x = complete_frame,file = glue::glue("data/live_trade_data/live_trades_{format(lubridate::now(), '%Y_%m_%d_%H_%M_%S')}.csv"))
-    }
+        date_open = as_datetime(openTime),
+        date_closed = as_datetime(closeTime)
+      )  %>%
+      distinct(id, instrument, realizedPL, date_closed, date_open)
 
     return(complete_frame)
 
