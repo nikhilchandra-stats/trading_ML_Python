@@ -3216,7 +3216,7 @@ generate_NNs_create_preds <- function(
 
   }
 
-  return("Complete")
+  return(NN_model_1)
 
 }
 
