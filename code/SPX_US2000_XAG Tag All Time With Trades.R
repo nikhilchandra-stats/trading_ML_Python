@@ -297,12 +297,19 @@ copula_data_Indices <-
 
 for (j in 1:dim(params_to_test)[1]) {
 
-  NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
-  hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
-  ending_thresh = params_to_test$ending_thresh[j] %>% as.numeric()
-  p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
-  neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
-  analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
+  # NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
+  # hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
+  # ending_thresh = params_to_test$ending_thresh[j] %>% as.numeric()
+  # p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
+  # neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
+  # analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
+
+  NN_samples = 2000
+  hidden_layers = 3
+  ending_thresh = 0.02
+  p_value_thresh_for_inputs = 0.25
+  neuron_adjustment = 0.15
+  analysis_direction <- "Long"
 
   for (k in 1:length(date_sequence)) {
 
@@ -312,7 +319,7 @@ for (j in 1:dim(params_to_test)[1]) {
 
     for (i in 1:length(available_assets)) {
 
-      check_completion <- safely_generate_NN(
+      check_completion <- generate_NNs_create_preds(
         copula_data_macro = copula_data_Indices[[1]],
         lm_vars1 = copula_data_Indices[[2]],
         NN_samples = NN_samples,
@@ -330,8 +337,7 @@ for (j in 1:dim(params_to_test)[1]) {
         p_value_thresh_for_inputs = p_value_thresh_for_inputs,
         neuron_adjustment = neuron_adjustment,
         lag_price_col = "Price"
-      ) %>%
-        pluck('result')
+      )
 
       gc()
 

@@ -3197,7 +3197,7 @@ generate_NNs_create_preds <- function(
 
       saveRDS(object = NN_model_1,
               file =
-                glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/{dependant_var_name}_NN_{i}.rds")
+                glue::glue("{NN_path}/{dependant_var_name}_NN_{i}.rds")
       )
 
     }
@@ -3210,7 +3210,7 @@ generate_NNs_create_preds <- function(
 
       saveRDS(object = glm_model_1,
               file =
-                glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/{dependant_var_name}_GLM_{i}.rds")
+                glue::glue("{NN_path}/{dependant_var_name}_GLM_{i}.rds")
       )
     }
 
