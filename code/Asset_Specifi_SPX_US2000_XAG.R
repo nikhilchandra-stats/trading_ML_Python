@@ -68,9 +68,9 @@ SPX_XAG_US2000_Long_trades <-
   start_date = "2016-01-01",
   raw_macro_data = raw_macro_data,
   lag_days = 1,
-  lm_period = 2,
-  lm_train_prop = 0.8,
-  lm_test_prop = 0.19,
+  lm_period = 5,
+  lm_train_prop = 0.9,
+  lm_test_prop = 0.1,
   # lm_train_prop = 0.9,
   # lm_test_prop = 0.08,
   sd_fac_lm_trade_SPX_USD = 1,
@@ -105,18 +105,18 @@ SPX_XAG_US2000_Short_trades <-
     start_date = "2016-01-01",
     raw_macro_data = raw_macro_data,
     lag_days = 1,
-    lm_period = 2,
-    lm_train_prop = 0.8,
-    lm_test_prop = 0.08,
+    lm_period = 5,
+    lm_train_prop = 0.9,
+    lm_test_prop = 0.1,
     # lm_train_prop = 0.9,
     # lm_test_prop = 0.08,
-    sd_fac_lm_trade_SPX_USD = 0.01,
-    sd_fac_lm_trade_US2000_USD = 0.01,
-    sd_fac_lm_trade_XAG_USD = 0.01,
-    sd_fac_lm_trade_XAU_USD = 0.01,
+    sd_fac_lm_trade_SPX_USD = 1,
+    sd_fac_lm_trade_US2000_USD = 1,
+    sd_fac_lm_trade_XAG_USD = 1,
+    sd_fac_lm_trade_XAU_USD = 1,
     trade_direction = "Short",
-    stop_factor = 15,
-    profit_factor = 25
+    stop_factor = 10,
+    profit_factor = 15
     # stop_factor = 10,
     # profit_factor = 15
   )
@@ -126,13 +126,12 @@ SPX_XAG_US2000_Short_trades <- SPX_XAG_US2000_Short_trades %>% map_dfr(bind_rows
 SPX_XAG_US2000_Short_Data <-
   run_pairs_analysis(
     tagged_trades = SPX_XAG_US2000_Short_trades,
-    stop_factor = 15,
-    profit_factor = 25,
-    # stop_factor = 10,
-    # profit_factor = 15,
+    # stop_factor = 15,
+    # profit_factor = 25,
+    stop_factor = 10,
+    profit_factor = 15,
     raw_asset_data = SPX_US2000_XAG_short,
     risk_dollar_value = 5
   )
 results_short <- SPX_XAG_US2000_Short_Data[[1]]
 results_short_asset <- SPX_XAG_US2000_Short_Data[[2]]
-test <- SPX_XAG_US2000_Short_trades %>% group_by(Asset) %>% slice_max(Date)
