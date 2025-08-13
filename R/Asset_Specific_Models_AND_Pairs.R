@@ -2936,16 +2936,6 @@ create_NN_AUD_USD_XCU_NZD_data <-
         eur_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
-      left_join(aus_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(usd_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(cny_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(eur_macro_data_PCA %>%
-                  rename(Date_for_join = date) ) %>%
-      left_join(nzd_macro_data_PCA %>%
-                  rename(Date_for_join = date) ) %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE) %>%
       group_by(Asset) %>%
@@ -3343,6 +3333,7 @@ read_NNs_create_preds <- function(
 
   trade_dollar_returns <-
     testing_data %>%
+    filter(!is.na(bin_var)) %>%
     dplyr::select(Date, Asset, profit_factor, stop_factor,
                   trade_start_prices, trade_end_prices,
                   starting_stop_value, starting_profit_value,
@@ -3378,6 +3369,7 @@ read_NNs_create_preds <- function(
     post_testing_data %>%
     ungroup() %>%
     left_join(trade_dollar_returns)  %>%
+    filter(!is.na(bin_var)) %>%
     group_by( bin_var) %>%
     summarise(
       wins_losses = n(),
@@ -3395,6 +3387,7 @@ read_NNs_create_preds <- function(
 
     temp_trades  <-
       post_testing_data %>%
+      filter(!is.na(bin_var)) %>%
       mutate(
         trade_col = case_when(pred >= analysis_threshs[i] ~ trade_direction_var,
                               TRUE ~ "No Trade")

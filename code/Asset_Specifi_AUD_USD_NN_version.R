@@ -278,6 +278,14 @@ gc()
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
+AUD_USD_NZD_USD_list <-
+  get_all_AUD_USD_specific_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = today() %>% as.character(),
+    time_frame = "H1"
+  )
+
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
@@ -291,70 +299,15 @@ rm(full_ts_trade_db_con)
 lm_test_prop <- 1
 accumulating_data <- list()
 available_assets <- c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD")
-date_sequence <- seq(as_date("2022-01-01"), as_date("2025-06-01"), "week")
+date_sequence <- seq(as_date("2022-01-01"), as_date("2025-06-01"), "week") %>% sample(size = 10)
 all_results_ts <- list()
 
 NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_NN_sims.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
-
-redo_db = TRUE
-params_to_test <-
-  tibble(
-    NN_samples = c(1000,2000,2500)
-  )
-params_to_test <-
-  c(1,2,3,4) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        hidden_layers = .x
-      )
-  )
-params_to_test <-
-  c(0.1,0.15, 0.2) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        p_value_thresh_for_inputs = .x
-      )
-  )
-params_to_test <-
-  c(0.05,0.1, 0.25) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        neuron_adjustment = .x
-      )
-  )
-
-params_to_test <-
-  c(0.02,0.05) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        ending_thresh = .x
-      )
-  )
-
-params_to_test <-
-  params_to_test %>%
-  mutate(trade_direction_var = "Long") %>%
-  bind_rows(
-    params_to_test %>%
-      mutate(trade_direction_var = "Short")
-  )
-#
-# params_to_test <-
-#   params_to_test %>%
-#   mutate(stop_value_var = 8) %>%
-#   mutate(profit_value_var = 12) %>%
-#   bind_rows(
-#     params_to_test %>%
-#       mutate(stop_value_var = 5) %>%
-#       mutate(profit_value_var = 6)
-#   )
-
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
+date_sequence <-
+  seq(as_date("2022-01-01"), as_date("2025-06-01"), "week") %>%
+  sample(size = 30)
 
 copula_data_AUD_USD_NZD <-
   create_NN_AUD_USD_XCU_NZD_data(
@@ -367,7 +320,22 @@ copula_data_AUD_USD_NZD <-
     use_PCA_vars = FALSE
   )
 
-for (j in 1:dim(params_to_test)[1]) {
+
+redo_db = TRUE
+stop_value_var <- 8
+profit_value_var <- 12
+
+params_to_test <-
+  tibble(
+    NN_samples = c(5000, 15000, 2000, 2000, 2000),
+    hidden_layers = c(5, 2, 10, 20, 20),
+    ending_thresh = c(0.02, 0.02, 0.01, 0.02, 0.02),
+    p_value_thresh_for_inputs = c(0.3, 0.3, 0.00001, 0.1, 0.00001),
+    neuron_adjustment = c(0, 0, 0, 0.5, 0.5),
+    trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
+  )
+
+for (j in 2:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -376,14 +344,46 @@ for (j in 1:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 1:length(date_sequence)) {
+  # AUD_USD, NZD_USD, XCU_USD Good Params
+  # NN_samples = 5000
+  # hidden_layers = 5
+  # ending_thresh = 0.02
+  # p_value_thresh_for_inputs = 0.3
+  # neuron_adjustment = 0
+  # analysis_direction <- "Long"
+  # redo_db = TRUE
+  # stop_value_var <- 8
+  # profit_value_var <- 12
+
+  # AUD_USD, XAG_USD, XCU_USD Good Params
+  # NN_samples = 15000
+  # hidden_layers = 2
+  # ending_thresh = 0.02
+  # p_value_thresh_for_inputs = 0.3
+  # neuron_adjustment = 0
+  # analysis_direction <- "Long"
+  # redo_db = TRUE
+  # stop_value_var <- 8
+  # profit_value_var <- 12
+
+  # AUD_USD, XAG_USD, XCU_USD More Good Params
+  # NN_samples = 2000
+  # hidden_layers = 10
+  # ending_thresh = 0.01
+  # p_value_thresh_for_inputs = 0.00001
+  # neuron_adjustment = 0
+  # analysis_direction <- "Long"
+  # redo_db = TRUE
+  # stop_value_var <- 8
+  # profit_value_var <- 12
+
+  for (k in 8:length(date_sequence)) {
 
     max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
-
     accumulating_data <- list()
 
     for (i in 1:length(available_assets)) {
-
+      # message(i)
       check_completion <- safely_generate_NN(
         copula_data_macro = copula_data_AUD_USD_NZD[[1]],
         lm_vars1 = copula_data_AUD_USD_NZD[[2]],
@@ -411,7 +411,8 @@ for (j in 1:dim(params_to_test)[1]) {
         message("Made it to Prediction, NN generated Success")
         NN_test_preds <-
           read_NNs_create_preds(
-            copula_data_macro = copula_data_AUD_USD_NZD[[1]] %>% filter(Date <= max_test_date),
+            copula_data_macro = copula_data_AUD_USD_NZD[[1]] %>%
+              filter(Date <= max_test_date),
             lm_vars1 = copula_data_AUD_USD_NZD[[2]],
             dependant_var_name = available_assets[i],
             NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
@@ -449,10 +450,10 @@ for (j in 1:dim(params_to_test)[1]) {
 
     all_results_ts[[k]] <- all_asset_logit_results
 
-    if(j == 1 & k == 1 & redo_db == TRUE) {
-      append_table_sql_lite(.data = all_asset_logit_results,
-                           table_name = "AUD_USD_NZD_XCU_NN_sims",
-                           conn = NN_sims_db_con)
+    if(redo_db == TRUE) {
+      # write_table_sql_lite(.data = all_asset_logit_results,
+      #                      table_name = "AUD_USD_NZD_XCU_NN_sims",
+      #                      conn = NN_sims_db_con)
       redo_db = FALSE
     } else {
       append_table_sql_lite(.data = all_asset_logit_results,
@@ -479,11 +480,11 @@ all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
 all_results_ts_dfr_sum <-
   all_results_ts_dfr %>%
   mutate(Control_Wins = round(Perc_control*Total_control)) %>%
-  group_by(Asset, threshold, trade_col) %>%
+  group_by(Asset, threshold, trade_col, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
+           hidden_layers, win_amount, loss_amount
+           ) %>%
   summarise(Trades = sum(Trades),
             wins_losses = sum(wins_losses),
-            win_amount = mean(win_amount),
-            loss_amount = mean(loss_amount),
             control_trades = sum(Total_control),
             Control_Wins = sum(Control_Wins)) %>%
   mutate(Perc = wins_losses/Trades,
@@ -491,17 +492,37 @@ all_results_ts_dfr_sum <-
          risk_weighted_return = Perc*(win_amount/loss_amount) - (1- Perc),
          risk_weighted_return_control = Perc_Control*(win_amount/loss_amount) - (1- Perc_Control)
          )
+  # filter(
+  #   NN_samples == 2000,
+  #   hidden_layers == 2,
+  #   ending_thresh == 0.02,
+  #   p_value_thresh_for_inputs == 0.1,
+  #   neuron_adjustment == 0.25,
+  #   analysis_direction == "Long",
+  # )
 
 all_asset_logit_results_sum <-
   all_results_ts_dfr %>%
   mutate(
-    edge = risk_weighted_return - control_risk_return
+    edge = risk_weighted_return - control_risk_return,
+    outperformance_count = ifelse(Perc > Perc_control, 1, 0)
   ) %>%
-  group_by(trade_col, Asset, threshold, win_amount, loss_amount) %>%
+  group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
+           hidden_layers, trade_col, win_amount, loss_amount
+  ) %>%
   summarise(
     Trades = mean(Trades, na.rm = T),
     edge = mean(edge, na.rm = T),
     Perc = mean(Perc, na.rm = T),
-    risk_weighted_return = mean(risk_weighted_return, na.rm = T),
-    control_trades = mean(Total_control, na.rm = T)
-  )
+    risk_weighted_return_low = quantile(risk_weighted_return, 0.25 ,na.rm = T),
+    risk_weighted_return_mid = median(risk_weighted_return, na.rm = T),
+    risk_weighted_return_high = quantile(risk_weighted_return, 0.75 ,na.rm = T),
+    control_trades = mean(Total_control, na.rm = T),
+    control_risk_return_mid = median(control_risk_return, na.rm = T),
+    simulations = n(),
+    outperformance_count = sum(outperformance_count)
+  ) %>%
+  mutate(
+    outperformance_perc = outperformance_count/simulations
+  ) %>%
+  filter(NN_samples == 15000)
