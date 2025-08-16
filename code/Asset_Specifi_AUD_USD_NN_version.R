@@ -307,7 +307,7 @@ NN_sims_db_con <- connect_db(path = NN_sims_db)
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
 date_sequence <-
   seq(as_date("2022-01-01"), as_date("2025-06-01"), "week") %>%
-  sample(size = 30)
+  sample(size = 60)
 
 copula_data_AUD_USD_NZD <-
   create_NN_AUD_USD_XCU_NZD_data(
@@ -321,21 +321,21 @@ copula_data_AUD_USD_NZD <-
   )
 
 
-redo_db = TRUE
+redo_db = FALSE
 stop_value_var <- 8
 profit_value_var <- 12
 
 params_to_test <-
   tibble(
-    NN_samples = c(5000, 15000, 2000, 2000, 2000),
-    hidden_layers = c(5, 2, 10, 20, 20),
-    ending_thresh = c(0.02, 0.02, 0.01, 0.02, 0.02),
-    p_value_thresh_for_inputs = c(0.3, 0.3, 0.00001, 0.1, 0.00001),
-    neuron_adjustment = c(0, 0, 0, 0.5, 0.5),
-    trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
+    NN_samples = c(5000, 15000,10000, 10000, 5000, 10000),
+    hidden_layers = c(5, 2,3, 10, 20, 20),
+    ending_thresh = c(0.02, 0.02,0.02, 0.01, 0.02, 0.02),
+    p_value_thresh_for_inputs = c(0.3, 0.3,0.3, 0.00001, 0.1, 0.00001),
+    neuron_adjustment = c(0, 0, 0,0, 0.5, 0.5),
+    trade_direction_var = c("Long", "Long","Long", "Long", "Long", "Long")
   )
 
-for (j in 2:dim(params_to_test)[1]) {
+for (j in 5:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -377,10 +377,14 @@ for (j in 2:dim(params_to_test)[1]) {
   # stop_value_var <- 8
   # profit_value_var <- 12
 
-  for (k in 8:length(date_sequence)) {
+  for (k in 1:length(date_sequence)) {
 
     max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
     accumulating_data <- list()
+    # available_assets <- available_assets %>%
+    #   keep(~ .x != "NZD_CHF") %>%
+    #   unlist() %>%
+    #   as.character()
 
     for (i in 1:length(available_assets)) {
       # message(i)
@@ -473,6 +477,15 @@ for (j in 2:dim(params_to_test)[1]) {
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                 statement = "SELECT * FROM AUD_USD_NZD_XCU_NN_sims")
 
+distinct_params <-
+  all_results_ts_dfr %>%
+  distinct(
+    NN_samples, ending_thresh,
+    p_value_thresh_for_inputs,
+    neuron_adjustment,
+    hidden_layers
+  )
+
 # all_results_ts_dfr <-
 #   all_results_ts %>%
 #   map_dfr(bind_rows)
@@ -491,7 +504,8 @@ all_results_ts_dfr_sum <-
          Perc_Control = Control_Wins/control_trades,
          risk_weighted_return = Perc*(win_amount/loss_amount) - (1- Perc),
          risk_weighted_return_control = Perc_Control*(win_amount/loss_amount) - (1- Perc_Control)
-         )
+         ) %>%
+  filter(NN_samples == 10000)
   # filter(
   #   NN_samples == 2000,
   #   hidden_layers == 2,
@@ -505,7 +519,8 @@ all_asset_logit_results_sum <-
   all_results_ts_dfr %>%
   mutate(
     edge = risk_weighted_return - control_risk_return,
-    outperformance_count = ifelse(Perc > Perc_control, 1, 0)
+    outperformance_count = ifelse(Perc > Perc_control, 1, 0),
+    returns_total = Trades*Perc*win_amount - Trades*loss_amount*(1-Perc)
   ) %>%
   group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
            hidden_layers, trade_col, win_amount, loss_amount
@@ -514,6 +529,7 @@ all_asset_logit_results_sum <-
     Trades = mean(Trades, na.rm = T),
     edge = mean(edge, na.rm = T),
     Perc = mean(Perc, na.rm = T),
+    Median_Actual_Return = median(returns_total, na.rm = T),
     risk_weighted_return_low = quantile(risk_weighted_return, 0.25 ,na.rm = T),
     risk_weighted_return_mid = median(risk_weighted_return, na.rm = T),
     risk_weighted_return_high = quantile(risk_weighted_return, 0.75 ,na.rm = T),
@@ -525,4 +541,8 @@ all_asset_logit_results_sum <-
   mutate(
     outperformance_perc = outperformance_count/simulations
   ) %>%
-  filter(NN_samples == 15000)
+  filter(hidden_layers == 10)
+  filter(simulations >= 10, edge > 0, outperformance_count > 0.51) %>%
+  group_by(Asset) %>%
+  slice_max(risk_weighted_return_mid)
+  # filter(NN_samples == 10000)

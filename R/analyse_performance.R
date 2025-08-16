@@ -83,7 +83,7 @@ trade_results_upload <- function(position_date_min = "2025-05-01",
 analyse_trade_results <- function(
     position_date_min = "2025-04-01",
     db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_results.db" ,
-    accounts = c("account1", "account2", "account3", "account4", "account5"),
+    accounts = c("account1", "account2", "account4"),
     direction = "Long"
 ) {
 
