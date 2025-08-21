@@ -571,6 +571,9 @@ while (current_time < end_time) {
       ) %>%
       filter(Date >= ((now() %>% as_datetime()) - minutes(60)))
 
+    rm(commod_log_cumulative)
+    gc()
+
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
     trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
@@ -932,10 +935,91 @@ while (current_time < end_time) {
           ) %>%
           filter(Date >= (now() - minutes(60)) )
 
+    rm(major_indices_log_cumulative, major_indices_log_cumulative_bid)
+    gc()
+
+    log_cumulative <-
+      c("EU50_EUR", "AU200_AUD" ,"WTICO_USD",
+        "SPX500_USD", "US2000_USD", "EUR_GBP",
+        "EUR_USD", "EUR_JPY", "GBP_JPY", "USD_CNH",
+        "GBP_USD", "USD_CHF", "USD_CAD", "USD_MXN", "USD_SEK",
+        "USD_NOK", "EUR_SEK", "AUD_USD", "NZD_USD", "NZD_CHF",
+        "SG30_SGD", "XAG_USD",
+        # "XCU_USD",
+        "USD_SGD", "USD_CZK",
+        "NATGAS_USD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use = new_H1_data_ask,
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        new_H1_data_ask %>% distinct(Date, Asset, Price, Open, High, Low)
+      )
+
+    fib_trades_1 <-
+      get_best_pivots_fib_trades(
+        .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
+        sims_db=
+          "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
+        risk_weighted_return_min = 0.15,
+        Trades_min =2000,
+        Trades_max = 20000,
+        currency_conversion = currency_conversion,
+        trade_type = "Fib",
+        how_far_back_var = 500
+      )  %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_min(profit_factor) %>%
+      ungroup() %>%
+      dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
+
+    fib_trades_2 <-
+      get_best_pivots_fib_trades(
+        .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
+        sims_db=
+          "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
+        risk_weighted_return_min = 0.15,
+        Trades_min =2000,
+        Trades_max = 20000,
+        currency_conversion = currency_conversion,
+        trade_type = "Fib",
+        how_far_back_var = 1000
+      )  %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_min(profit_factor) %>%
+      ungroup() %>%
+      dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
+
+    fib_trades <-
+      list(fib_trades_1, fib_trades_2) %>%
+      map_dfr(bind_rows) %>%
+      distinct() %>%
+      ungroup() %>%
+      filter(!is.na(trade_col)) %>%
+      filter(Date >= (now() - minutes(60)) )
+
+    if(dim(fib_trades)[1] > 0) {
+      fib_trades <- fib_trades %>%
+        group_by(Asset) %>%
+        slice_min(profit_factor) %>%
+        ungroup()
+    }
+
+    rm(log_cumulative)
+    gc()
+
     all_tagged_trades_equity_dfr <-
       list(all_tagged_trades_equity_dfr1,
            all_tagged_trades_equity_dfr2,
-           GLM_equity_trades) %>%
+           GLM_equity_trades,
+           fib_trades) %>%
       map_dfr(bind_rows)
 
     message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))
@@ -1042,6 +1126,7 @@ while (current_time < end_time) {
 
     }
 
+    gc()
 
   }
 

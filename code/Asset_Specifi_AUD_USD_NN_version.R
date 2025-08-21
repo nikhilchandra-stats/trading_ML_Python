@@ -327,7 +327,7 @@ profit_value_var <- 12
 
 params_to_test <-
   tibble(
-    NN_samples = c(5000, 15000,10000, 10000, 5000, 10000),
+    NN_samples = c(5000, 15000,10000, 10000, 5000, 5000),
     hidden_layers = c(5, 2,3, 10, 20, 20),
     ending_thresh = c(0.02, 0.02,0.02, 0.01, 0.02, 0.02),
     p_value_thresh_for_inputs = c(0.3, 0.3,0.3, 0.00001, 0.1, 0.00001),
@@ -335,7 +335,17 @@ params_to_test <-
     trade_direction_var = c("Long", "Long","Long", "Long", "Long", "Long")
   )
 
-for (j in 5:dim(params_to_test)[1]) {
+params_to_test <-
+  tibble(
+    NN_samples = c(5000 ),
+    hidden_layers = c(20),
+    ending_thresh = c(0.02),
+    p_value_thresh_for_inputs = c(0.1),
+    neuron_adjustment = c(0.50),
+    trade_direction_var = c("Long")
+  )
+
+for (j in 1:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -377,7 +387,9 @@ for (j in 5:dim(params_to_test)[1]) {
   # stop_value_var <- 8
   # profit_value_var <- 12
 
-  for (k in 1:length(date_sequence)) {
+  for (k in 13:length(date_sequence)) {
+
+    gc()
 
     max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
     accumulating_data <- list()
@@ -505,7 +517,7 @@ all_results_ts_dfr_sum <-
          risk_weighted_return = Perc*(win_amount/loss_amount) - (1- Perc),
          risk_weighted_return_control = Perc_Control*(win_amount/loss_amount) - (1- Perc_Control)
          ) %>%
-  filter(NN_samples == 10000)
+  filter(hidden_layers == 20, neuron_adjustment == 0.50)
   # filter(
   #   NN_samples == 2000,
   #   hidden_layers == 2,
@@ -523,9 +535,12 @@ all_asset_logit_results_sum <-
     returns_total = Trades*Perc*win_amount - Trades*loss_amount*(1-Perc)
   ) %>%
   group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
-           hidden_layers, trade_col, win_amount, loss_amount
+           hidden_layers, trade_col
+           # win_amount, loss_amount
   ) %>%
   summarise(
+    win_amount = mean(win_amount, na.rm = T),
+    loss_amount = mean(loss_amount, na.rm = T),
     Trades = mean(Trades, na.rm = T),
     edge = mean(edge, na.rm = T),
     Perc = mean(Perc, na.rm = T),
@@ -541,8 +556,109 @@ all_asset_logit_results_sum <-
   mutate(
     outperformance_perc = outperformance_count/simulations
   ) %>%
-  filter(hidden_layers == 10)
-  filter(simulations >= 10, edge > 0, outperformance_count > 0.51) %>%
+  # filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
+  # group_by(Asset) %>%
+  # slice_max(risk_weighted_return_mid, n = 2)
+  filter(simulations >= 10, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.1) %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return_mid)
   # filter(NN_samples == 10000)
+
+
+#' AUD_NZD_create_trade_NNs
+#'
+#' @param NN_path
+#' @param copula_data_AUD_USD_NZD
+#' @param stop_value_var
+#' @param profit_value_var
+#' @param NN_path_save_path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+AUD_NZD_create_trade_NNs <- function(
+    NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+    copula_data_AUD_USD_NZD = copula_data_AUD_USD_NZD,
+    stop_value_var = 8,
+    profit_value_var = 12,
+    NN_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/trading_algo"
+  ) {
+
+  date_filter_for_NN <-
+    as.character(copula_data_AUD_USD_NZD[[1]]$Date %>% max(na.rm = T) + days(1))
+
+  NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_NN_sims.db"
+  NN_sims_db_con <- connect_db(path = NN_sims_db)
+  all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
+                                        statement = "SELECT * FROM AUD_USD_NZD_XCU_NN_sims")
+  DBI::dbDisconnect(NN_sims_db_con)
+  rm(NN_sims_db_con)
+
+  all_asset_logit_results_sum <-
+    all_results_ts_dfr %>%
+    mutate(
+      edge = risk_weighted_return - control_risk_return,
+      outperformance_count = ifelse(Perc > Perc_control, 1, 0),
+      returns_total = Trades*Perc*win_amount - Trades*loss_amount*(1-Perc)
+    ) %>%
+    group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
+             hidden_layers, trade_col, prof
+    ) %>%
+    summarise(
+      win_amount = mean(win_amount, na.rm = T),
+      loss_amount = mean(loss_amount, na.rm = T),
+      Trades = mean(Trades, na.rm = T),
+      edge = mean(edge, na.rm = T),
+      Perc = mean(Perc, na.rm = T),
+      Median_Actual_Return = median(returns_total, na.rm = T),
+      risk_weighted_return_low = quantile(risk_weighted_return, 0.25 ,na.rm = T),
+      risk_weighted_return_mid = median(risk_weighted_return, na.rm = T),
+      risk_weighted_return_high = quantile(risk_weighted_return, 0.75 ,na.rm = T),
+      control_trades = mean(Total_control, na.rm = T),
+      control_risk_return_mid = median(control_risk_return, na.rm = T),
+      simulations = n(),
+      outperformance_count = sum(outperformance_count)
+    ) %>%
+    mutate(
+      outperformance_perc = outperformance_count/simulations
+    ) %>%
+    filter(simulations >= 10, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.1) %>%
+    group_by(Asset) %>%
+    slice_max(risk_weighted_return_mid) %>%
+    group_by(Asset) %>%
+    slice_max(Trades) %>%
+    ungroup()
+
+
+  gernating_params <-
+    all_asset_logit_results_sum %>%
+    distinct(Asset, NN_samples, ending_thresh,
+             p_value_thresh_for_inputs,
+             neuron_adjustment,
+             hidden_layers,
+             trade_col, prof)
+
+  for (i in 1:dim(gernating_params)[1] ) {
+    check_completion <- generate_NNs_create_preds(
+      copula_data_macro = copula_data_AUD_USD_NZD[[1]],
+      lm_vars1 = copula_data_AUD_USD_NZD[[2]],
+      NN_samples = gernating_params$NN_samples[i] %>% as.integer(),
+      dependant_var_name = gernating_params$Asset[i] %>% as.character(),
+      NN_path = NN_path_save_path,
+      training_max_date = date_filter_for_NN,
+      lm_train_prop = 1,
+      trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
+      stop_value_var = stop_value_var,
+      profit_value_var = profit_value_var,
+      max_NNs = 1,
+      hidden_layers = gernating_params$hidden_layers[i] %>% as.integer(),
+      ending_thresh = gernating_params$ending_thresh[i] %>% as.numeric(),
+      run_logit_instead = FALSE,
+      p_value_thresh_for_inputs = gernating_params$p_value_thresh_for_inputs[i] %>% as.numeric(),
+      neuron_adjustment = gernating_params$neuron_adjustment[i] %>% as.numeric(),
+      lag_price_col = "Price"
+    )
+  }
+
+}
