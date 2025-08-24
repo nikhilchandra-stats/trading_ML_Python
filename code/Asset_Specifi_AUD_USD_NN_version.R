@@ -275,6 +275,68 @@ gc()
 rm(full_data_for_upload)
 gc()
 
+#------------------------------------------------------------------------------
+full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
+
+AUD_NZD_Trades_Short <-
+  AUD_USD_NZD_USD_list[[1]] %>%
+  filter(Date >= "2010-01-01") %>%
+  mutate(
+    trade_col = "Short"
+  )
+
+AUD_NZD_Trades_long <-
+  AUD_USD_NZD_USD_list[[1]] %>%
+  filter(Date >= "2010-01-01") %>%
+  mutate(
+    trade_col = "Long"
+  )
+
+AUD_NZD_Long_Data_4_8 <-
+  run_pairs_analysis(
+    tagged_trades = AUD_NZD_Trades_long,
+    stop_factor = 4,
+    profit_factor = 8,
+    raw_asset_data = AUD_USD_NZD_USD_list[[1]],
+    risk_dollar_value = 10,
+    return_trade_ts = TRUE
+  )
+
+AUD_NZD_Short_Data_4_8 <-
+  run_pairs_analysis(
+    tagged_trades = AUD_NZD_Trades_Short,
+    stop_factor = 4,
+    profit_factor = 8,
+    raw_asset_data = AUD_USD_NZD_USD_list[[1]],
+    risk_dollar_value = 10,
+    return_trade_ts = TRUE
+  )
+
+full_data_for_upload <-
+  AUD_NZD_Long_Data_4_8 %>%
+  mutate(
+    stop_factor = 4,
+    profit_factor = 8
+  ) %>%
+  bind_rows(
+    AUD_NZD_Short_Data_4_8 %>%
+      mutate(
+        stop_factor = 4,
+        profit_factor = 8
+      )
+  )
+
+full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+append_table_sql_lite(.data = full_data_for_upload,
+                      table_name = "full_ts_trades_mapped",
+                      conn = full_ts_trade_db_con)
+DBI::dbDisconnect(full_ts_trade_db_con)
+rm(full_ts_trade_db_con)
+gc()
+
+rm(full_data_for_upload)
+gc()
+
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
@@ -387,7 +449,7 @@ for (j in 1:dim(params_to_test)[1]) {
   # stop_value_var <- 8
   # profit_value_var <- 12
 
-  for (k in 13:length(date_sequence)) {
+  for (k in 14:length(date_sequence)) {
 
     gc()
 
@@ -577,12 +639,13 @@ all_asset_logit_results_sum <-
 #' @export
 #'
 #' @examples
-AUD_NZD_create_trade_NNs <- function(
+AUD_NZD_get_NN_trades <- function(
     NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
     copula_data_AUD_USD_NZD = copula_data_AUD_USD_NZD,
     stop_value_var = 8,
     profit_value_var = 12,
-    NN_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/trading_algo"
+    NN_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/trading_algo",
+    skip_NN_generation = FALSE
   ) {
 
   date_filter_for_NN <-
@@ -603,7 +666,7 @@ AUD_NZD_create_trade_NNs <- function(
       returns_total = Trades*Perc*win_amount - Trades*loss_amount*(1-Perc)
     ) %>%
     group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
-             hidden_layers, trade_col, prof
+             hidden_layers, trade_col
     ) %>%
     summarise(
       win_amount = mean(win_amount, na.rm = T),
@@ -637,28 +700,56 @@ AUD_NZD_create_trade_NNs <- function(
              p_value_thresh_for_inputs,
              neuron_adjustment,
              hidden_layers,
-             trade_col, prof)
+             trade_col)
+
+  accumulating_trades <- list()
 
   for (i in 1:dim(gernating_params)[1] ) {
-    check_completion <- generate_NNs_create_preds(
-      copula_data_macro = copula_data_AUD_USD_NZD[[1]],
-      lm_vars1 = copula_data_AUD_USD_NZD[[2]],
-      NN_samples = gernating_params$NN_samples[i] %>% as.integer(),
-      dependant_var_name = gernating_params$Asset[i] %>% as.character(),
-      NN_path = NN_path_save_path,
-      training_max_date = date_filter_for_NN,
-      lm_train_prop = 1,
-      trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
-      stop_value_var = stop_value_var,
-      profit_value_var = profit_value_var,
-      max_NNs = 1,
-      hidden_layers = gernating_params$hidden_layers[i] %>% as.integer(),
-      ending_thresh = gernating_params$ending_thresh[i] %>% as.numeric(),
-      run_logit_instead = FALSE,
-      p_value_thresh_for_inputs = gernating_params$p_value_thresh_for_inputs[i] %>% as.numeric(),
-      neuron_adjustment = gernating_params$neuron_adjustment[i] %>% as.numeric(),
-      lag_price_col = "Price"
-    )
+
+    if(skip_NN_generation == TRUE) {
+      check_completion <- generate_NNs_create_preds(
+        copula_data_macro = copula_data_AUD_USD_NZD[[1]],
+        lm_vars1 = copula_data_AUD_USD_NZD[[2]],
+        NN_samples = gernating_params$NN_samples[i] %>% as.integer(),
+        dependant_var_name = gernating_params$Asset[i] %>% as.character(),
+        NN_path = NN_path_save_path,
+        training_max_date = date_filter_for_NN,
+        lm_train_prop = 1,
+        trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
+        stop_value_var = stop_value_var,
+        profit_value_var = profit_value_var,
+        max_NNs = 1,
+        hidden_layers = gernating_params$hidden_layers[i] %>% as.integer(),
+        ending_thresh = gernating_params$ending_thresh[i] %>% as.numeric(),
+        run_logit_instead = FALSE,
+        p_value_thresh_for_inputs = gernating_params$p_value_thresh_for_inputs[i] %>% as.numeric(),
+        neuron_adjustment = gernating_params$neuron_adjustment[i] %>% as.numeric(),
+        lag_price_col = "Price"
+      )
+    }
+
+    NN_test_preds <-
+      read_NNs_create_preds(
+        copula_data_macro = copula_data_AUD_USD_NZD[[1]],
+        lm_vars1 = copula_data_AUD_USD_NZD[[2]],
+        dependant_var_name = available_assets[i],
+        NN_path = NN_path_save_path,
+        testing_min_date = as.character(as_date(date_filter_for_NN) - days(1000)),
+        trade_direction_var = analysis_direction,
+        NN_index_to_choose = "",
+        stop_value_var = stop_value_var,
+        profit_value_var = profit_value_var,
+        analysis_threshs = c(0.5,0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999),
+        run_logit_instead = FALSE,
+        lag_price_col = "Price",
+        return_tagged_trades = TRUE
+      )
+
+    accumulating_trades[[i]] <-
+      NN_test_preds %>%
+      slice_max(Date) %>%
+      filter(Asset == available_assets[i])
+
   }
 
 }

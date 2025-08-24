@@ -811,108 +811,108 @@ create_NN_Commod_data <-
       arrange(Date, .by_group = TRUE) %>%
       group_by(Asset) %>%
       mutate(across(where(is.numeric), ~ lag(.)))  %>%
-      left_join(copula_data_WTI_BCO)
-    #   left_join(copula_data_WTI_XAG) %>%
-    #   left_join(copula_data_WTI_NATGAS) %>%
-    #   left_join(copula_data_WTI_XAU) %>%
-    #   left_join(copula_data_BCO_NATGAS) %>%
-    #   left_join(copula_data_BCO_XAG) %>%
-    #   left_join(copula_data_BCO_XAU) %>%
-    #   left_join(copula_data_WHEAT_SOY) %>%
-    #   left_join(copula_data_WHEAT_SUGAR) %>%
-    #   mutate(Date_for_join = as_date(Date)) %>%
-    #   filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
-    #   left_join(
-    #     aus_macro_data %>%
-    #       rename(Date_for_join = date)
-    #   ) %>%
-    #   left_join(
-    #     nzd_macro_data %>%
-    #       rename(Date_for_join = date)
-    #   ) %>%
-    #   left_join(
-    #     usd_macro_data %>%
-    #       rename(Date_for_join = date)
-    #   ) %>%
-    #   left_join(
-    #     cny_macro_data %>%
-    #       rename(Date_for_join = date)
-    #   )  %>%
-    #   left_join(
-    #     eur_macro_data %>%
-    #       rename(Date_for_join = date)
-    #   ) %>%
-    #   group_by(Asset) %>%
-    #   arrange(Date, .by_group = TRUE) %>%
-    #   group_by(Asset) %>%
-    #   fill(matches(all_macro_vars), .direction = "down") %>%
-    #   ungroup() %>%
-    #   filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
-    #   mutate(hour_of_day = lubridate::hour(Date) %>% as.numeric(),
-    #          day_of_week = lubridate::wday(Date) %>% as.numeric()) %>%
-    #   group_by(Asset) %>%
-    #   mutate(
-    #     lagged_var_1 = lag(!!as.name(lagged_var_name), 1),
-    #     lagged_var_2 = lag(!!as.name(lagged_var_name), 2),
-    #     lagged_var_3 = lag(!!as.name(lagged_var_name), 3),
-    #     lagged_var_5 = lag(!!as.name(lagged_var_name), 5),
-    #     lagged_var_8 = lag(!!as.name(lagged_var_name), 8),
-    #     lagged_var_13 = lag(!!as.name(lagged_var_name), 13),
-    #     lagged_var_21 = lag(!!as.name(lagged_var_name), 21),
-    #
-    #     fib_1 = lagged_var_1 + lagged_var_2,
-    #     fib_2 = lagged_var_2 + lagged_var_3,
-    #     fib_3 = lagged_var_3 + lagged_var_5,
-    #     fib_4 = lagged_var_5 + lagged_var_8,
-    #     fib_5 = lagged_var_8 + lagged_var_13,
-    #     fib_6 = lagged_var_13 + lagged_var_21,
-    #
-    #     lagged_var_3_ma = slider::slide_dbl(.x = lagged_var_1,
-    #                                         .f = ~ mean(.x, na.rm = T),
-    #                                         .before = 3),
-    #
-    #     lagged_var_5_ma = slider::slide_dbl(.x = lagged_var_1,
-    #                                         .f = ~ mean(.x, na.rm = T),
-    #                                         .before = 5),
-    #
-    #     lagged_var_8_ma = slider::slide_dbl(.x = lagged_var_1,
-    #                                         .f = ~ mean(.x, na.rm = T),
-    #                                         .before = 8),
-    #
-    #     lagged_var_13_ma = slider::slide_dbl(.x = lagged_var_1,
-    #                                          .f = ~ mean(.x, na.rm = T),
-    #                                          .before = 13),
-    #
-    #     lagged_var_21_ma = slider::slide_dbl(.x = lagged_var_1,
-    #                                          .f = ~ mean(.x, na.rm = T),
-    #                                          .before = 21)
-    #   ) %>%
-    #   ungroup()%>%
-    #   left_join(binary_data_for_post_model))
-    #
-    # lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
-    #
-    # lm_vars1 <- c(all_macro_vars,
-    #                 lm_quant_vars,
-    #                 "fib_1", "fib_2",
-    #                 "fib_3", "fib_4",
-    #                 "fib_5", "fib_6",
-    #                 "lagged_var_1", "lagged_var_2",
-    #                 "lagged_var_3", "lagged_var_5",
-    #                 "lagged_var_8",
-    #                 "lagged_var_13", "lagged_var_21",
-    #                 "lagged_var_3_ma", "lagged_var_5_ma",
-    #                 "lagged_var_8_ma", "lagged_var_13_ma",
-    #                 "lagged_var_21_ma",
-    #                 "hour_of_day", "day_of_week"
-    #                 )
-    #
-    # return(
-    #   list(
-    #     "copula_data_macro" = copula_data_macro,
-    #     "lm_vars1" = lm_vars1
-    #   )
-    # )
+      left_join(copula_data_WTI_BCO) %>%
+      left_join(copula_data_WTI_XAG) %>%
+      left_join(copula_data_WTI_NATGAS) %>%
+      left_join(copula_data_WTI_XAU) %>%
+      left_join(copula_data_BCO_NATGAS) %>%
+      left_join(copula_data_BCO_XAG) %>%
+      left_join(copula_data_BCO_XAU) %>%
+      left_join(copula_data_WHEAT_SOY) %>%
+      left_join(copula_data_WHEAT_SUGAR) %>%
+      mutate(Date_for_join = as_date(Date)) %>%
+      filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
+      left_join(
+        aus_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        nzd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        usd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        cny_macro_data %>%
+          rename(Date_for_join = date)
+      )  %>%
+      left_join(
+        eur_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(matches(all_macro_vars), .direction = "down") %>%
+      ungroup() %>%
+      filter(if_all(everything() ,.fns = ~ !is.na(.))) %>%
+      mutate(hour_of_day = lubridate::hour(Date) %>% as.numeric(),
+             day_of_week = lubridate::wday(Date) %>% as.numeric()) %>%
+      group_by(Asset) %>%
+      mutate(
+        lagged_var_1 = lag(!!as.name(lagged_var_name), 1),
+        lagged_var_2 = lag(!!as.name(lagged_var_name), 2),
+        lagged_var_3 = lag(!!as.name(lagged_var_name), 3),
+        lagged_var_5 = lag(!!as.name(lagged_var_name), 5),
+        lagged_var_8 = lag(!!as.name(lagged_var_name), 8),
+        lagged_var_13 = lag(!!as.name(lagged_var_name), 13),
+        lagged_var_21 = lag(!!as.name(lagged_var_name), 21),
+
+        fib_1 = lagged_var_1 + lagged_var_2,
+        fib_2 = lagged_var_2 + lagged_var_3,
+        fib_3 = lagged_var_3 + lagged_var_5,
+        fib_4 = lagged_var_5 + lagged_var_8,
+        fib_5 = lagged_var_8 + lagged_var_13,
+        fib_6 = lagged_var_13 + lagged_var_21,
+
+        lagged_var_3_ma = slider::slide_dbl(.x = lagged_var_1,
+                                            .f = ~ mean(.x, na.rm = T),
+                                            .before = 3),
+
+        lagged_var_5_ma = slider::slide_dbl(.x = lagged_var_1,
+                                            .f = ~ mean(.x, na.rm = T),
+                                            .before = 5),
+
+        lagged_var_8_ma = slider::slide_dbl(.x = lagged_var_1,
+                                            .f = ~ mean(.x, na.rm = T),
+                                            .before = 8),
+
+        lagged_var_13_ma = slider::slide_dbl(.x = lagged_var_1,
+                                             .f = ~ mean(.x, na.rm = T),
+                                             .before = 13),
+
+        lagged_var_21_ma = slider::slide_dbl(.x = lagged_var_1,
+                                             .f = ~ mean(.x, na.rm = T),
+                                             .before = 21)
+      ) %>%
+      ungroup()%>%
+      left_join(binary_data_for_post_model)
+
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
+
+    lm_vars1 <- c(all_macro_vars,
+                    lm_quant_vars,
+                    "fib_1", "fib_2",
+                    "fib_3", "fib_4",
+                    "fib_5", "fib_6",
+                    "lagged_var_1", "lagged_var_2",
+                    "lagged_var_3", "lagged_var_5",
+                    "lagged_var_8",
+                    "lagged_var_13", "lagged_var_21",
+                    "lagged_var_3_ma", "lagged_var_5_ma",
+                    "lagged_var_8_ma", "lagged_var_13_ma",
+                    "lagged_var_21_ma",
+                    "hour_of_day", "day_of_week"
+                    )
+
+    return(
+      list(
+        "copula_data_macro" = copula_data_macro,
+        "lm_vars1" = lm_vars1
+      )
+    )
 
   }
 
