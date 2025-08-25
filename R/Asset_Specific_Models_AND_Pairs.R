@@ -4302,10 +4302,10 @@ get_Logit_trades <-
       read_NNs_create_preds(
         copula_data_macro = copula_data[[1]],
         lm_vars1 = copula_data[[2]],
-        dependant_var_name = available_assets[i],
+        dependant_var_name = gernating_params$Asset[i] %>% as.character(),
         NN_path = logit_path_save_path,
         testing_min_date = as.character(as_date(date_filter_for_Logit) - days(2000)),
-        trade_direction_var = analysis_direction,
+        trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
         NN_index_to_choose = "",
         stop_value_var = gernating_params$stop_factor[i]%>% as.numeric(),
         profit_value_var = gernating_params$profit_factor[i]%>% as.numeric(),
@@ -4318,7 +4318,7 @@ get_Logit_trades <-
     accumulating_trades[[i]] <-
       NN_test_preds %>%
       slice_max(Date) %>%
-      filter(Asset == available_assets[i]) %>%
+      filter(Asset == gernating_params$Asset[i] %>% as.character()) %>%
       mutate(
         pred_min = gernating_params$threshold[i] %>% as.numeric()
       )
@@ -4355,4 +4355,6 @@ get_ts_trade_actuals_Logit_NN <-
       )
     DBI::dbDisconnect(full_ts_trade_db_con)
     rm(full_ts_trade_db_con)
+
+    return(actual_wins_losses)
   }

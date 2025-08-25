@@ -212,7 +212,9 @@ all_trade_ts_actuals_Logit <-
     full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
   ) %>%
   bind_rows(
-    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP.db"
+    get_ts_trade_actuals_Logit_NN(
+      full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP.db"
+      )
   )
 
 all_trade_ts_actuals <- all_trade_ts_actuals %>%
@@ -915,7 +917,7 @@ while (current_time < end_time) {
             TRUE ~ 8
           )
       ) %>%
-      filter(Date >= (now() - minutes(60)) )
+      filter(Date >= (now() - minutes(75)) )
 
     all_tagged_trades_equity_dfr2 <-
       all_tagged_trades_equity2 %>%
@@ -927,7 +929,7 @@ while (current_time < end_time) {
         stop_factor =4,
         profit_factor =8
       ) %>%
-      filter(Date >= (now() - minutes(60)) )
+      filter(Date >= (now() - minutes(75)) )
 
     GLM_equity_trades <-
       get_all_GLM_index_trades(
@@ -941,7 +943,7 @@ while (current_time < end_time) {
         SPX500_thresh = 0.8,
         EU50_thresh = 0.9
       ) %>%
-      filter(Date >= (now() - minutes(60)) )
+      filter(Date >= (now() - minutes(75)) )
 
     rm(major_indices_log_cumulative, major_indices_log_cumulative_bid)
     gc()
@@ -956,8 +958,8 @@ while (current_time < end_time) {
           all_trade_ts_actuals_Logit %>%
           filter(asset %in% c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD", "XAU_USD")),
         lag_days = 1,
-        stop_var = 8,
-        profit_var = 12,
+        stop_value_var = 8,
+        profit_value_var = 12,
         use_PCA_vars = FALSE
       )
 
@@ -1013,12 +1015,14 @@ while (current_time < end_time) {
     EUR_GBP_JPY_LOGIT_trades <-
       EUR_GBP_JPY_LOGIT %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min)
+      dplyr::select(-pred, -pred_min) %>%
+      filter(Date >= (now() - minutes(75)) )
 
     AUD_USD_NZD_LOGIT_trades <-
       AUD_USD_NZD_LOGIT %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min)
+      dplyr::select(-pred, -pred_min) %>%
+      filter(Date >= (now() - minutes(75)) )
 
     log_cumulative <-
       c("EU50_EUR", "AU200_AUD" ,"WTICO_USD",
@@ -1085,7 +1089,7 @@ while (current_time < end_time) {
       distinct() %>%
       ungroup() %>%
       filter(!is.na(trade_col)) %>%
-      filter(Date >= (now() - minutes(60)) )
+      filter(Date >= (now() - minutes(75)) )
 
     if(dim(fib_trades)[1] > 0) {
       fib_trades <- fib_trades %>%

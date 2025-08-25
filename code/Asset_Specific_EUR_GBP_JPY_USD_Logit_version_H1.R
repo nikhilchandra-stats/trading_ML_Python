@@ -104,8 +104,7 @@ min_allowable_date <-
 
 date_sequence <-
   seq(as_date(min_allowable_date), as_date("2025-06-01"), "week") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) ) %>%
-  sample(size = 200)
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) )
 
 
 redo_db = FALSE
@@ -117,7 +116,7 @@ params_to_test <-
     NN_samples = c(30000),
     hidden_layers = c(0),
     ending_thresh = c(0),
-    p_value_thresh_for_inputs = c(0.01),
+    p_value_thresh_for_inputs = c(0.0001),
     neuron_adjustment = c(0),
     trade_direction_var = c("Long")
   )
@@ -131,7 +130,7 @@ for (j in 1:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 163:length(date_sequence)) {
+  for (k in 30:length(date_sequence)) {
 
     gc()
 
@@ -275,7 +274,7 @@ all_asset_logit_results_sum <-
   # filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
   # group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid, n = 2)
-  filter(simulations >= 20, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.1) %>%
+  filter(simulations >= 10, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.1) %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return_mid)
 # filter(NN_samples == 10000)
