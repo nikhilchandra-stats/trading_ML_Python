@@ -91,7 +91,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "ask",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 20
+  how_far_back = 30
 )
 
 update_local_db_file(
@@ -99,7 +99,7 @@ update_local_db_file(
   time_frame = "M15",
   bid_or_ask = "bid",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 20
+  how_far_back = 30
 )
 
 gc()

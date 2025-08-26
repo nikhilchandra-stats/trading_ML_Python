@@ -221,68 +221,35 @@ actual_wins_losses <-
 DBI::dbDisconnect(trade_actual_db_con)
 rm(trade_actual_db_con)
 
+
 load_custom_functions()
+db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data EDA.db"
+trade_actual_db <- "C:/Users/nikhi/Documents/trade_data/trade_actuals.db"
+start_date = "2016-01-01"
+end_date = today() %>% as.character()
+SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
+  db_location = db_location,
+  start_date = "2016-01-01",
+  end_date = today() %>% as.character()
+)
+SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
+SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
 lm_test_prop <- 0.9999
 accumulating_data <- list()
 available_assets <- c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD", "XAU_USD")
-date_sequence <- seq(as_date("2022-01-01"), as_date("2025-06-01"), "week")
+date_sequence <- seq(as_date("2018-01-01"), as_date("2025-06-01"), "week") %>%
+  sample(200) %>%
+  keep(
+    ~ as_date(.x) >= (as_date("2018-01-01") + lubridate::dminutes(15*20000))
+  )
 all_results_ts <- list()
 profit_value_var <- 15
 stop_value_var <- 10
 
-
 NN_sims_db <- "C:/Users/nikhi/Documents/trade_data/INDICES_15M_NN_sims.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
-
-redo_db = TRUE
-params_to_test <-
-  tibble(
-    NN_samples = c(1000,2000)
-  )
-params_to_test <-
-  c(2,3) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        hidden_layers = .x
-      )
-  )
-params_to_test <-
-  c(0.1,0.15) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        p_value_thresh_for_inputs = .x
-      )
-  )
-params_to_test <-
-  c(0.05,0.1) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        neuron_adjustment = .x
-      )
-  )
-
-params_to_test <-
-  c(0.07, 0.05) %>%
-  map_dfr(
-    ~ params_to_test %>%
-      mutate(
-        ending_thresh = .x
-      )
-  )
-
-params_to_test <-
-  params_to_test %>%
-  mutate(trade_direction_var = "Long") %>%
-  bind_rows(
-    params_to_test %>%
-      mutate(trade_direction_var = "Short")
-  )
-
+redo_db = FALSE
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
-
 copula_data_Indices <-
   create_NN_Indices_data(
     SPX_US2000_XAG = SPX_US2000_XAG_ALL[[1]],
@@ -295,23 +262,37 @@ copula_data_Indices <-
     rolling_period_index_PCA_cor = 15
   )
 
+params_to_test <- tibble(
+                NN_samples = 10000,
+                hidden_layers = 6,
+                ending_thresh = 0.02,
+                p_value_thresh_for_inputs = 0.35,
+                neuron_adjustment = 0,
+                trade_direction_var = "Long"
+                )
+
+params_to_test <- tibble(
+  NN_samples = 5000,
+  hidden_layers = 5,
+  ending_thresh = 0.01,
+  p_value_thresh_for_inputs = 0.001,
+  neuron_adjustment = 0.25,
+  trade_direction_var = "Long"
+)
+
+
+redo_db = FALSE
+
 for (j in 1:dim(params_to_test)[1]) {
 
-  # NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
-  # hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
-  # ending_thresh = params_to_test$ending_thresh[j] %>% as.numeric()
-  # p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
-  # neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
-  # analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
+  NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
+  hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
+  ending_thresh = params_to_test$ending_thresh[j] %>% as.numeric()
+  p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
+  neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
+  analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  NN_samples = 2000
-  hidden_layers = 3
-  ending_thresh = 0.02
-  p_value_thresh_for_inputs = 0.25
-  neuron_adjustment = 0.15
-  analysis_direction <- "Long"
-
-  for (k in 1:length(date_sequence)) {
+  for (k in 142:length(date_sequence)) {
 
     max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
 
@@ -384,10 +365,10 @@ for (j in 1:dim(params_to_test)[1]) {
     gc()
 
     if(redo_db == TRUE) {
-      write_table_sql_lite(.data = all_asset_logit_results,
-                            table_name = "INDICES_15_NN_sims",
-                            conn = NN_sims_db_con,
-                            overwrite_true = TRUE)
+      # write_table_sql_lite(.data = all_asset_logit_results,
+      #                       table_name = "INDICES_15_NN_sims",
+      #                       conn = NN_sims_db_con,
+      #                       overwrite_true = TRUE)
       redo_db = FALSE
     } else {
       append_table_sql_lite(.data = all_asset_logit_results,
@@ -406,4 +387,79 @@ for (j in 1:dim(params_to_test)[1]) {
 
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                                       statement = "SELECT * FROM INDICES_15_NN_sims")
+
+distinct_params <-
+  all_results_ts_dfr %>%
+  distinct( NN_samples,
+            hidden_layers,
+            ending_thresh,
+            p_value_thresh_for_inputs,
+            neuron_adjustment)
+
+
+all_results_ts_dfr_sum <-
+  all_results_ts_dfr %>%
+  mutate(Control_Wins = round(Perc_control*Total_control)) %>%
+  group_by(Asset, threshold, trade_col,
+           NN_samples,
+           hidden_layers,
+           ending_thresh,
+           p_value_thresh_for_inputs,
+           neuron_adjustment) %>%
+  summarise(Trades = sum(Trades),
+            wins_losses = sum(wins_losses),
+            win_amount = mean(win_amount),
+            loss_amount = mean(loss_amount),
+            control_trades = sum(Total_control),
+            Control_Wins = sum(Control_Wins)) %>%
+  mutate(Perc = wins_losses/Trades,
+         Perc_Control = Control_Wins/control_trades,
+         risk_weighted_return = Perc*(win_amount/loss_amount) - (1- Perc),
+         risk_weighted_return_control = Perc_Control*(win_amount/loss_amount) - (1- Perc_Control)
+  ) %>%
+  ungroup() %>%
+  filter(p_value_thresh_for_inputs == 0.001)
+
+all_asset_logit_results_sum <-
+  all_results_ts_dfr %>%
+  mutate(
+    edge = risk_weighted_return - control_risk_return,
+    actual_return = Trades*(Perc)*win_amount - (1-Perc)*loss_amount*Trades,
+    Outperformance =
+      case_when(
+        Perc > Perc_control ~ 1,
+        TRUE ~ 0
+      )
+    # actual_return_control = Trades*(Perc_control)*win_amount - (1-Perc_control)*loss_amount*Trades
+  ) %>%
+  group_by(Asset, threshold, trade_col,
+           NN_samples,
+           hidden_layers,
+           ending_thresh,
+           p_value_thresh_for_inputs,
+           neuron_adjustment) %>%
+  summarise(
+    sim_number = n(),
+    Trades = mean(Trades, na.rm = T),
+    edge = mean(edge, na.rm = T),
+    Perc = mean(Perc, na.rm = T),
+    actual_return = median(actual_return, na.rm = T),
+    risk_weighted_return_low = quantile(risk_weighted_return, 0.25 ,na.rm = T),
+    risk_weighted_return_mid = median(risk_weighted_return, na.rm = T),
+    risk_weighted_return_high = quantile(risk_weighted_return, 0.75 ,na.rm = T),
+    low_to_high_ratio = abs(risk_weighted_return_high/risk_weighted_return_low),
+    Outperformance = sum(Outperformance, na.rm = T),
+    total_sims = n(),
+    control_trades = mean(Total_control, na.rm = T),
+    control_risk_return = mean(control_risk_return, na.rm = T)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    Outperformance_Perc = Outperformance/total_sims
+  ) %>%
+  # filter(hidden_layers == 5, p_value_thresh_for_inputs  ==  0.001, neuron_adjustment == 0.15)
+  # filter(hidden_layers == 6) %>%
+  filter(edge > 0, Outperformance_Perc > 0.5, total_sims >= 30) %>%
+  group_by(Asset) %>%
+  slice_max(risk_weighted_return_mid, n = 1)
 

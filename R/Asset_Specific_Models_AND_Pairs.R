@@ -3178,6 +3178,8 @@ generate_NNs_create_preds <- function(
 
       message(length(filtered_coefs))
 
+      if(length(filtered_coefs) < 50) {return(NULL)}
+
       NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = filtered_coefs)
 
       hidden_layers <- rep(
@@ -4053,20 +4055,7 @@ create_NN_Indices_data <-
       ) %>%
       janitor::clean_names()
 
-    aus_macro_data_PCA <-
-      aus_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(AUD_PC1= PC1,
-                    AUD_PC2= PC2,
-                    AUD_PC3= PC3,
-                    AUD_PC4= PC4,
-                    AUD_PC5= PC5) %>%
-      mutate(
-        date = aus_macro_data %>% pull(date)
-      )
+
 
     nzd_macro_data <-
       get_NZD_Indicators(raw_macro_data,
@@ -4075,20 +4064,7 @@ create_NN_Indices_data <-
       ) %>%
       janitor::clean_names()
 
-    nzd_macro_data_PCA <-
-      nzd_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(NZD_PC1= PC1,
-                    NZD_PC2= PC2,
-                    NZD_PC3= PC3,
-                    NZD_PC4= PC4,
-                    NZD_PC5= PC5) %>%
-      mutate(
-        date = nzd_macro_data %>% pull(date)
-      )
+
 
     usd_macro_data <-
       get_USD_Indicators(raw_macro_data,
@@ -4097,20 +4073,7 @@ create_NN_Indices_data <-
       ) %>%
       janitor::clean_names()
 
-    usd_macro_data_PCA <-
-      usd_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(USD_PC1= PC1,
-                    USD_PC2= PC2,
-                    USD_PC3= PC3,
-                    USD_PC4= PC4,
-                    USD_PC5= PC5) %>%
-      mutate(
-        date = usd_macro_data %>% pull(date)
-      )
+
 
     cny_macro_data <-
       get_CNY_Indicators(raw_macro_data,
@@ -4119,20 +4082,6 @@ create_NN_Indices_data <-
       ) %>%
       janitor::clean_names()
 
-    cny_macro_data_PCA <-
-      cny_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(CNY_PC1= PC1,
-                    CNY_PC2= PC2,
-                    CNY_PC3= PC3,
-                    CNY_PC4= PC4,
-                    CNY_PC5= PC5) %>%
-      mutate(
-        date = cny_macro_data %>% pull(date)
-      )
 
     eur_macro_data <-
       get_EUR_Indicators(raw_macro_data,
@@ -4141,20 +4090,6 @@ create_NN_Indices_data <-
       ) %>%
       janitor::clean_names()
 
-    eur_macro_data_PCA <-
-      eur_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(EUR_PC1= PC1,
-                    EUR_PC2= PC2,
-                    EUR_PC3= PC3,
-                    EUR_PC4= PC4,
-                    EUR_PC5= PC5) %>%
-      mutate(
-        date = eur_macro_data %>% pull(date)
-      )
 
     aud_macro_vars <- names(aus_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
@@ -4343,16 +4278,6 @@ create_NN_Indices_data <-
         eur_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
-      left_join(aus_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(usd_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(cny_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(eur_macro_data_PCA %>%
-                  rename(Date_for_join = date) ) %>%
-      left_join(nzd_macro_data_PCA %>%
-                  rename(Date_for_join = date) ) %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE) %>%
       group_by(Asset) %>%
@@ -4376,11 +4301,11 @@ create_NN_Indices_data <-
                     "lagged_var_13", "lagged_var_21",
                     "lagged_var_3_ma", "lagged_var_5_ma",
                     "lagged_var_8_ma", "lagged_var_13_ma",
-                    "lagged_var_21_ma", "PC1", "PC2" ,"PC3", "PC4", "PC5",
-                    "rolling_cor_PC1", "rolling_cor_PC2", "rolling_cor_PC3",
-                    "rolling_cor_PC4", "rolling_cor_PC4", "rolling_cor_PC5",
-                    "rolling_cor_PC1_mean", "rolling_cor_PC2_mean", "rolling_cor_PC3_mean",
-                    "rolling_cor_PC4_mean", "rolling_cor_PC4_mean", "rolling_cor_PC5_mean"
+                    "lagged_var_21_ma", "PC1", "PC2" ,"PC3", "PC4", "PC5"
+                    # "rolling_cor_PC1", "rolling_cor_PC2", "rolling_cor_PC3",
+                    # "rolling_cor_PC4", "rolling_cor_PC4", "rolling_cor_PC5",
+                    # "rolling_cor_PC1_mean", "rolling_cor_PC2_mean", "rolling_cor_PC3_mean",
+                    # "rolling_cor_PC4_mean", "rolling_cor_PC4_mean", "rolling_cor_PC5_mean"
                     # "hour_of_day", "day_of_week"
       )
     } else {
@@ -4394,9 +4319,9 @@ create_NN_Indices_data <-
                     "lagged_var_13", "lagged_var_21",
                     "lagged_var_3_ma", "lagged_var_5_ma",
                     "lagged_var_8_ma", "lagged_var_13_ma",
-                    "lagged_var_21_ma", "PC1", "PC2" ,"PC3", "PC4", "PC5",
-                    "rolling_cor_PC1_mean", "rolling_cor_PC2_mean", "rolling_cor_PC3_mean",
-                    "rolling_cor_PC4_mean", "rolling_cor_PC4_mean", "rolling_cor_PC5_mean"
+                    "lagged_var_21_ma", "PC1", "PC2" ,"PC3", "PC4", "PC5"
+                    # "rolling_cor_PC1_mean", "rolling_cor_PC2_mean", "rolling_cor_PC3_mean",
+                    # "rolling_cor_PC4_mean", "rolling_cor_PC4_mean", "rolling_cor_PC5_mean"
                     # "hour_of_day", "day_of_week"
       )
     }
