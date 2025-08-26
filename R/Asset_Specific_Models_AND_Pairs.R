@@ -776,7 +776,8 @@ get_AUD_USD_NZD_Specific_Trades <-
 get_EUR_GBP_USD_pairs_data <- function(
     db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db",
     start_date = "2016-01-01",
-    end_date = today() %>% as.character()
+    end_date = today() %>% as.character(),
+    time_frame = "M15"
 ) {
 
   EUR_USD <- create_asset_high_freq_data(
@@ -784,7 +785,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EUR_USD",
     keep_bid_to_ask = TRUE
   )
@@ -794,7 +795,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "GBP_USD",
     keep_bid_to_ask = TRUE
   )
@@ -804,7 +805,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EUR_GBP",
     keep_bid_to_ask = TRUE
   )
@@ -814,7 +815,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EUR_JPY",
     keep_bid_to_ask = TRUE
   )
@@ -824,7 +825,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "GBP_JPY",
     keep_bid_to_ask = TRUE
   )
@@ -834,7 +835,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "ask",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "USD_JPY",
     keep_bid_to_ask = TRUE
   )
@@ -854,7 +855,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EUR_USD",
     keep_bid_to_ask = TRUE
   )
@@ -864,7 +865,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "GBP_USD",
     keep_bid_to_ask = TRUE
   )
@@ -874,7 +875,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EUR_GBP",
     keep_bid_to_ask = TRUE
   )
@@ -884,7 +885,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "EUR_JPY",
     keep_bid_to_ask = TRUE
   )
@@ -894,7 +895,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "GBP_JPY",
     keep_bid_to_ask = TRUE
   )
@@ -904,7 +905,7 @@ get_EUR_GBP_USD_pairs_data <- function(
     start_date = start_date,
     end_date = end_date,
     bid_or_ask = "bid",
-    time_frame = "M15",
+    time_frame = time_frame,
     asset = "USD_JPY",
     keep_bid_to_ask = TRUE
   )
@@ -3003,16 +3004,6 @@ create_NN_AUD_USD_XCU_NZD_data <-
         eur_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
-      left_join(aus_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(usd_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(cny_macro_data_PCA %>%
-                  rename(Date_for_join = date) )%>%
-      left_join(eur_macro_data_PCA %>%
-                  rename(Date_for_join = date) ) %>%
-      left_join(nzd_macro_data_PCA %>%
-                  rename(Date_for_join = date) ) %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE) %>%
       group_by(Asset) %>%
@@ -3206,11 +3197,30 @@ generate_NNs_create_preds <- function(
   } else {
     for (i in 1:max_NNs) {
       set.seed(round(runif(1,2,10000)))
+
       glm_model_1 <- glm(formula = NN_form,
-                         data = training_data %>% slice_sample(n = NN_samples),
+                         data = training_data ,
                          family = binomial("logit"))
 
-      saveRDS(object = glm_model_1,
+      all_coefs <- glm_model_1 %>% jtools::j_summ() %>% pluck(1)
+      coef_names <- row.names(all_coefs) %>% as.character()
+
+      filtered_coefs <-
+        all_coefs %>%
+        as_tibble() %>%
+        mutate(all_vars = coef_names) %>%
+        filter(p <= p_value_thresh_for_inputs) %>%
+        filter(!str_detect(all_vars, "Intercep")) %>%
+        pull(all_vars) %>%
+        as.character()
+
+      NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = filtered_coefs)
+
+      NN_model_1 <- glm(formula = NN_form,
+                         data = training_data ,
+                         family = binomial("logit"))
+
+      saveRDS(object = NN_model_1,
               file =
                 glue::glue("{NN_path}/{dependant_var_name}_GLM_{i}.rds")
       )
@@ -3412,6 +3422,7 @@ read_NNs_create_preds <- function(
 
   trade_dollar_returns <-
     testing_data %>%
+    filter(!is.na(bin_var)) %>%
     dplyr::select(Date, Asset, profit_factor, stop_factor,
                   trade_start_prices, trade_end_prices,
                   starting_stop_value, starting_profit_value,
@@ -3447,6 +3458,7 @@ read_NNs_create_preds <- function(
     post_testing_data %>%
     ungroup() %>%
     left_join(trade_dollar_returns)  %>%
+    filter(!is.na(bin_var)) %>%
     group_by( bin_var) %>%
     summarise(
       wins_losses = n(),
@@ -3464,6 +3476,7 @@ read_NNs_create_preds <- function(
 
     temp_trades  <-
       post_testing_data %>%
+      filter(!is.na(bin_var)) %>%
       mutate(
         trade_col = case_when(pred >= analysis_threshs[i] ~ trade_direction_var,
                               TRUE ~ "No Trade")
@@ -3981,3 +3994,435 @@ create_NN_AUD_USD_XCU_NZD <- function(
   )
 
 }
+
+#' create_NN_EUR_GBP_JPY_USD_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_NN_EUR_GBP_JPY_USD_data <-
+  function(EUR_USD_JPY_GBP = EUR_USD_JPY_GBP_list[[1]],
+           raw_macro_data,
+           actual_wins_losses = actual_wins_losses,
+           lag_days = 1,
+           stop_value_var = 15,
+           profit_value_var = 20,
+           use_PCA_vars = FALSE) {
+
+    # assets_to_return <- dependant_var_name
+
+    aus_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    nzd_macro_data <-
+      get_NZD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    aud_macro_vars <- names(aus_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(aud_macro_vars, nzd_macro_vars, usd_macro_vars, cny_macro_vars, eur_macro_vars)
+
+    copula_data <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("EUR_GBP", "EUR_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      )
+
+    copula_data_EUR_GBP_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("EUR_GBP", "GBP_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EUR_GBP, -EUR_GBP_log1_price, -EUR_GBP_quantiles_1, -EUR_GBP_tangent_angle1)
+
+    copula_data_EUR_USD_GBP_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("EUR_USD", "GBP_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EUR_USD, -EUR_USD_log1_price, -EUR_USD_quantiles_1, -EUR_USD_tangent_angle1)%>%
+      dplyr::select(-GBP_USD, -GBP_USD_log2_price, -GBP_USD_quantiles_2, -GBP_USD_tangent_angle2)
+
+    copula_data_EUR_JPY_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("EUR_JPY", "USD_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      )
+
+    copula_data_GBP_JPY_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("GBP_JPY", "USD_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-USD_JPY, -USD_JPY_log2_price, -USD_JPY_quantiles_2, -USD_JPY_tangent_angle2)
+
+    copula_data_EUR_JPY_GBP_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("EUR_JPY", "GBP_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EUR_JPY, -EUR_JPY_log1_price, -EUR_JPY_quantiles_1, -EUR_JPY_tangent_angle1)%>%
+      dplyr::select(-GBP_JPY, -GBP_JPY_log2_price, -GBP_JPY_quantiles_2, -GBP_JPY_tangent_angle2)
+
+    copula_data_EUR_JPY_EUR_GBP <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("EUR_JPY", "EUR_GBP"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EUR_JPY, -EUR_JPY_log1_price, -EUR_JPY_quantiles_1, -EUR_JPY_tangent_angle1)%>%
+      dplyr::select(-EUR_GBP, -EUR_GBP_log2_price, -EUR_GBP_quantiles_2, -EUR_GBP_tangent_angle2)
+
+    copula_data_GBP_JPY_EUR_GBP <-
+      estimating_dual_copula(
+        asset_data_to_use = EUR_USD_JPY_GBP,
+        asset_to_use = c("GBP_JPY", "EUR_GBP"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-GBP_JPY, -GBP_JPY_log1_price, -GBP_JPY_quantiles_1, -GBP_JPY_tangent_angle1)%>%
+      dplyr::select(-EUR_GBP, -EUR_GBP_log2_price, -EUR_GBP_quantiles_2, -EUR_GBP_tangent_angle2)
+
+    binary_data_for_post_model <-
+      actual_wins_losses %>%
+      rename(Date = dates, Asset = asset) %>%
+      filter(profit_factor == profit_value_var)%>%
+      filter(stop_factor == stop_value_var) %>%
+      mutate(
+        bin_var =
+          case_when(
+            trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
+            trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
+
+            trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
+            trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
+
+          )
+      ) %>%
+      dplyr::select(Date, bin_var, Asset, trade_col,
+                    profit_factor, stop_factor,
+                    trade_start_prices, trade_end_prices,
+                    starting_stop_value, starting_profit_value)
+
+    # c(copula_data, copula_data_EUR_GBP_USD, copula_data_EUR_USD_GBP_USD, copula_data_EUR_JPY_USD_JPY,
+    #   copula_data_GBP_JPY_USD_JPY, copula_data_EUR_JPY_GBP_JPY, copula_data_EUR_JPY_EUR_GBP,
+    #   copula_data_GBP_JPY_EUR_GBP)
+
+
+    copula_data_macro <-
+      EUR_USD_JPY_GBP %>%
+      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
+      left_join(copula_data) %>%
+      left_join(copula_data_EUR_GBP_USD) %>%
+      left_join(copula_data_EUR_USD_GBP_USD) %>%
+      left_join(copula_data_EUR_JPY_USD_JPY) %>%
+      left_join(copula_data_GBP_JPY_USD_JPY) %>%
+      left_join(copula_data_EUR_JPY_GBP_JPY) %>%
+      left_join(copula_data_EUR_JPY_EUR_GBP) %>%
+      left_join(copula_data_GBP_JPY_EUR_GBP) %>%
+      left_join(binary_data_for_post_model) %>%
+      mutate(Date_for_join = as_date(Date)) %>%
+      left_join(
+        aus_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        nzd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        usd_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        cny_macro_data %>%
+          rename(Date_for_join = date)
+      )  %>%
+      left_join(
+        eur_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      mutate(hour_of_day = lubridate::hour(Date) %>% as.numeric(),
+             day_of_week = lubridate::wday(Date) %>% as.numeric())
+
+    max_date_in_testing_data <- copula_data_macro %>% pull(Date) %>% max(na.rm = T)
+    message(glue::glue("Max date in Complete data: {max_date_in_testing_data}"))
+
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
+
+    if(use_PCA_vars == TRUE) {
+      lm_vars1 <- c(PC_macro_vars, lm_quant_vars,
+                    "fib_1", "fib_2",
+                    "fib_3", "fib_4",
+                    "fib_5", "fib_6",
+                    "lagged_var_1", "lagged_var_2",
+                    "lagged_var_3", "lagged_var_5",
+                    "lagged_var_8",
+                    "lagged_var_13", "lagged_var_21",
+                    "lagged_var_3_ma", "lagged_var_5_ma",
+                    "lagged_var_8_ma", "lagged_var_13_ma",
+                    "lagged_var_21_ma"
+                    # "hour_of_day", "day_of_week"
+      )
+    } else {
+      lm_vars1 <- c(all_macro_vars, lm_quant_vars,
+                    "fib_1", "fib_2",
+                    "fib_3", "fib_4",
+                    "fib_5", "fib_6",
+                    "lagged_var_1", "lagged_var_2",
+                    "lagged_var_3", "lagged_var_5",
+                    "lagged_var_8",
+                    "lagged_var_13", "lagged_var_21",
+                    "lagged_var_3_ma", "lagged_var_5_ma",
+                    "lagged_var_8_ma", "lagged_var_13_ma",
+                    "lagged_var_21_ma"
+                    # "hour_of_day", "day_of_week"
+      )
+    }
+
+    return(
+      list(
+        "copula_data_macro" = copula_data_macro,
+        "lm_vars1" =
+          lm_vars1 %>%
+          keep( ~ !str_detect(.x, "sd") & !str_detect(.x, "tangent") )
+      )
+    )
+
+  }
+
+
+#' get_Logit_trades
+#'
+#' @param NN_path
+#' @param copula_data
+#' @param stop_value_var
+#' @param profit_value_var
+#' @param NN_path_save_path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_Logit_trades <-
+  function(
+    logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+    Logit_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims.db",
+    copula_data = copula_data_AUD_USD_NZD,
+    sim_min = 20,
+    edge_min = 0,
+    stop_var = 4,
+    profit_var = 8,
+    outperformance_count_min = 0.51,
+    risk_weighted_return_mid_min =  0.14,
+    sim_table = "AUD_USD_NZD_XCU_NN_sims"
+) {
+
+  date_filter_for_Logit <-
+    as.character(copula_data[[1]]$Date %>% max(na.rm = T) + days(1))
+
+  Logit_sims_db_con <- connect_db(path = Logit_sims_db)
+  all_results_ts_dfr <- DBI::dbGetQuery(conn = Logit_sims_db_con,
+                                        statement = as.character(glue::glue("SELECT * FROM {sim_table}")) )
+  DBI::dbDisconnect(Logit_sims_db_con)
+  rm(Logit_sims_db_con)
+
+  all_asset_logit_results_sum <-
+    all_results_ts_dfr %>%
+    filter(stop_factor == stop_var, profit_factor == profit_var) %>%
+    mutate(
+      edge = risk_weighted_return - control_risk_return,
+      outperformance_count = ifelse(Perc > Perc_control, 1, 0),
+      returns_total = Trades*Perc*win_amount - Trades*loss_amount*(1-Perc)
+    ) %>%
+    group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
+             hidden_layers, trade_col, stop_factor, profit_factor
+    ) %>%
+    summarise(
+      win_amount = mean(win_amount, na.rm = T),
+      loss_amount = mean(loss_amount, na.rm = T),
+      Trades = mean(Trades, na.rm = T),
+      edge = mean(edge, na.rm = T),
+      Perc = mean(Perc, na.rm = T),
+      Median_Actual_Return = median(returns_total, na.rm = T),
+      risk_weighted_return_low = quantile(risk_weighted_return, 0.25 ,na.rm = T),
+      risk_weighted_return_mid = median(risk_weighted_return, na.rm = T),
+      risk_weighted_return_high = quantile(risk_weighted_return, 0.75 ,na.rm = T),
+      control_trades = mean(Total_control, na.rm = T),
+      control_risk_return_mid = median(control_risk_return, na.rm = T),
+      simulations = n(),
+      outperformance_count = sum(outperformance_count)
+    ) %>%
+    mutate(
+      outperformance_perc = outperformance_count/simulations
+    ) %>%
+    filter(simulations >= sim_min,
+           edge > edge_min,
+           outperformance_count > outperformance_count_min,
+           risk_weighted_return_mid > risk_weighted_return_mid_min) %>%
+    # filter(simulations >= 20, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.1) %>%
+    group_by(Asset) %>%
+    slice_max(risk_weighted_return_mid)%>%
+    ungroup()
+
+
+  gernating_params <-
+    all_asset_logit_results_sum %>%
+    distinct(Asset, NN_samples, ending_thresh,
+             p_value_thresh_for_inputs,
+             neuron_adjustment,
+             hidden_layers,
+             trade_col,
+             threshold,
+             stop_factor, profit_factor)
+
+  accumulating_trades <- list()
+
+  for (i in 1:dim(gernating_params)[1] ) {
+
+    check_completion <- generate_NNs_create_preds(
+      copula_data_macro = copula_data[[1]],
+      lm_vars1 = copula_data[[2]],
+      NN_samples = gernating_params$NN_samples[i] %>% as.integer(),
+      dependant_var_name = gernating_params$Asset[i] %>% as.character(),
+      NN_path = logit_path_save_path,
+      training_max_date = date_filter_for_Logit,
+      lm_train_prop = 1,
+      trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
+      stop_value_var = gernating_params$stop_factor[i]%>% as.numeric(),
+      profit_value_var = gernating_params$profit_factor[i]%>% as.numeric(),
+      max_NNs = 1,
+      hidden_layers = gernating_params$hidden_layers[i] %>% as.integer(),
+      ending_thresh = gernating_params$ending_thresh[i] %>% as.numeric(),
+      run_logit_instead = TRUE,
+      p_value_thresh_for_inputs = gernating_params$p_value_thresh_for_inputs[i] %>% as.numeric(),
+      neuron_adjustment = gernating_params$neuron_adjustment[i] %>% as.numeric(),
+      lag_price_col = "Price"
+    )
+
+
+    NN_test_preds <-
+      read_NNs_create_preds(
+        copula_data_macro = copula_data[[1]],
+        lm_vars1 = copula_data[[2]],
+        dependant_var_name = gernating_params$Asset[i] %>% as.character(),
+        NN_path = logit_path_save_path,
+        testing_min_date = as.character(as_date(date_filter_for_Logit) - days(2000)),
+        trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
+        NN_index_to_choose = "",
+        stop_value_var = gernating_params$stop_factor[i]%>% as.numeric(),
+        profit_value_var = gernating_params$profit_factor[i]%>% as.numeric(),
+        analysis_threshs = c(0.5,0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999),
+        run_logit_instead = TRUE,
+        lag_price_col = "Price",
+        return_tagged_trades = TRUE
+      )
+
+    accumulating_trades[[i]] <-
+      NN_test_preds %>%
+      slice_max(Date) %>%
+      filter(Asset == gernating_params$Asset[i] %>% as.character()) %>%
+      mutate(
+        pred_min = gernating_params$threshold[i] %>% as.numeric()
+      )
+
+  }
+
+  all_trades <-
+    accumulating_trades %>%
+    map_dfr(bind_rows)
+
+  return(all_trades)
+
+}
+
+#' get_ts_trade_actuals_Logit_NN
+#'
+#' @param full_ts_trade_db_location
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_ts_trade_actuals_Logit_NN <-
+  function(
+    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
+    ) {
+
+    full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+    actual_wins_losses <-
+      DBI::dbGetQuery(full_ts_trade_db_con,
+                      "SELECT * FROM full_ts_trades_mapped") %>%
+      mutate(
+        dates = as_datetime(dates)
+      )
+    DBI::dbDisconnect(full_ts_trade_db_con)
+    rm(full_ts_trade_db_con)
+
+    return(actual_wins_losses)
+  }

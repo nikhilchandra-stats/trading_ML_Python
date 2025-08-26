@@ -327,7 +327,8 @@ NATGAS_results <- list()
 
 for (i in 1:length(random_dates)) {
 
-  generate_NNs_create_preds_futures(
+
+  check_completion <- safely_generate_NN(
     copula_data_macro = modelling_data_all[[1]],
     lm_vars1 = modelling_data_all[[2]],
     NN_samples = 1000,
@@ -339,14 +340,16 @@ for (i in 1:length(random_dates)) {
     stop_value_var = 4,
     profit_value_var = 8,
     max_NNs = 1,
-    hidden_layers = c(33,33,33,33),
+    hidden_layers = 4,
     ending_thresh = 0.01,
     run_logit_instead = FALSE,
     p_value_thresh_for_inputs = 0.05
   )
 
+  gc()
+
   WTI_results[[i]] <-
-    read_NNs_create_preds_futures(
+    read_NNs_create_preds(
       copula_data_macro = modelling_data_all[[1]] %>% filter(Date <= (as_date(random_dates[i]) + dweeks(3)) ),
       lm_vars1 = modelling_data_all[[2]],
       dependant_var_name = "WTICO_USD",
@@ -358,11 +361,15 @@ for (i in 1:length(random_dates)) {
       stop_value_var = 4,
       profit_value_var = 8,
       analysis_threshs = c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95),
-      run_logit_instead = FALSE
+      run_logit_instead = FALSE,
+      lag_price_col = "Price",
+      return_tagged_trades = FALSE
     ) %>%
     mutate(
       sim_date = random_dates[i]
     )
+
+  gc()
 
 
   generate_NNs_create_preds_futures(
@@ -475,308 +482,6 @@ all_trades_sum <-
     risk_weighted_return_control = control_perc*(win_amount/loss_amount) - (1-control_perc)
   )
 
-#' generate_NNs_create_preds
-#'
-#' @param copula_data_macro
-#' @param NN_samples
-#' @param dependant_var_name
-#' @param NN_path
-#' @param training_max_date
-#' @param lm_train_prop
-#' @param trade_direction_var
-#'
-#' @return
-#' @export
-#'
-#' @examples
-generate_NNs_create_preds_futures <- function(
-    copula_data_macro = copula_data_macro,
-    lm_vars1 = lm_vars1,
-    NN_samples = NN_samples,
-    dependant_var_name = "WTICO_USD",
-    NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-    training_max_date = "2021-01-01",
-    lm_train_prop = lm_train_prop,
-    trade_direction_var = "Long",
-    stop_value_var = 15,
-    profit_value_var = 20,
-    max_NNs = 30,
-    hidden_layers = c(33,33,33),
-    ending_thresh = 0.09,
-    run_logit_instead = FALSE,
-    p_value_thresh_for_inputs = 0.05
-) {
-
-  set.seed(round(runif(n = 1, min = 0, max = 100000)))
-  training_data <-
-    copula_data_macro %>%
-    ungroup() %>%
-    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
-    filter(Date < as_date(training_max_date)) %>%
-    filter(Asset == dependant_var_name) %>%
-    filter(trade_col == trade_direction_var) %>%
-    filter(if_all(everything() ,.fns = ~ !is.na(.)))
-
-
-  NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = lm_vars1)
-
-  if(run_logit_instead == FALSE) {
-    for (i in 1:max_NNs) {
-      set.seed(round(runif(1,2,10000)))
-
-      glm_model_1 <- glm(formula = NN_form,
-                         data = training_data ,
-                         family = binomial("logit"))
-
-      all_coefs <- glm_model_1 %>% jtools::j_summ() %>% pluck(1)
-      coef_names <- row.names(all_coefs) %>% as.character()
-
-      filtered_coefs <-
-        all_coefs %>%
-        as_tibble() %>%
-        mutate(all_vars = coef_names) %>%
-        filter(p <= p_value_thresh_for_inputs) %>%
-        filter(!str_detect(all_vars, "Intercep")) %>%
-        pull(all_vars) %>%
-        as.character()
-
-      NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = filtered_coefs)
-
-      hidden_layers <- rep(length(filtered_coefs) - 5, length(hidden_layers))
-
-      message("Made Formula")
-
-      NN_model_1 <- neuralnet::neuralnet(formula = NN_form,
-                                         hidden = hidden_layers,
-                                         data = training_data %>% slice_sample(n = NN_samples),
-                                         lifesign = 'full',
-                                         rep = 1,
-                                         stepmax = 1000000,
-                                         threshold = ending_thresh)
-
-      saveRDS(object = NN_model_1,
-              file =
-                glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/{dependant_var_name}_NN_{i}.rds")
-      )
-
-    }
-  } else {
-    for (i in 1:max_NNs) {
-      set.seed(round(runif(1,2,10000)))
-      glm_model_1 <- glm(formula = NN_form,
-                         data = training_data %>% slice_sample(n = NN_samples),
-                         family = binomial("logit"))
-
-      saveRDS(object = glm_model_1,
-              file =
-                glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/{dependant_var_name}_GLM_{i}.rds")
-      )
-    }
-
-  }
-
-}
-
-#' read_NNs_create_preds
-#'
-#' @param copula_data_macro
-#' @param lm_vars1
-#' @param dependant_var_name
-#' @param NN_path
-#' @param lm_test_prop
-#' @param testing_min_date
-#' @param trade_direction_var
-#' @param NN_index_to_choose
-#' @param stop_value_var
-#' @param profit_value_var
-#' @param analysis_threshs
-#'
-#' @return
-#' @export
-#'
-#' @examples
-read_NNs_create_preds_futures <- function(
-    copula_data_macro = copula_data_macro,
-    lm_vars1 = lm_vars1,
-    dependant_var_name = "AUD_USD",
-    NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-    testing_min_date = "2021-01-01",
-    lm_test_prop = lm_test_prop,
-    trade_direction_var = "Long",
-    NN_index_to_choose = "",
-    stop_value_var = 15,
-    profit_value_var = 20,
-    analysis_threshs,
-    run_logit_instead = FALSE
-) {
-
-  set.seed(round(runif(n = 1, min = 0, max = 100000)))
-  testing_data <-
-    copula_data_macro %>%
-    ungroup() %>%
-    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
-    filter(Date >= as_date(testing_min_date)) %>%
-    filter(Asset == dependant_var_name) %>%
-    filter(trade_col == trade_direction_var) %>%
-    slice_sample(prop = lm_test_prop)
-
-  if(run_logit_instead == FALSE) {
-    NNs_compiled <-
-      fs::dir_info(NN_path)  %>%
-      filter(str_detect(path, as.character(glue::glue("{dependant_var_name}_NN_{NN_index_to_choose}")) )) %>%
-      split(.$path, drop = FALSE) %>%
-      map_dfr(
-        ~
-          tibble( pred = predict(object = readRDS(.x$path[1]),newdata = testing_data) %>%
-                    as.numeric()) %>%
-          mutate(
-            # pred = if_else(pred < 0, 0, pred),
-            index = row_number()
-          )
-      )
-  } else {
-
-    NNs_compiled <-
-      fs::dir_info(NN_path)  %>%
-      filter(str_detect(path, as.character(glue::glue("{dependant_var_name}_GLM_{NN_index_to_choose}")) )) %>%
-      split(.$path, drop = FALSE) %>%
-      map_dfr(
-        ~
-          tibble( pred = predict.glm(object = readRDS(.x$path[1]),newdata = testing_data, type = "response") %>%
-                    as.numeric()) %>%
-          mutate(
-            # pred = if_else(pred < 0, 0, pred),
-            index = row_number()
-          )
-      )
-
-  }
-
-  NNs_compiled2 <-
-    NNs_compiled %>%
-    group_by(index) %>%
-    summarise(
-      pred = mean(pred, na.rm = T)
-    )
-
-  pred_NN  <- NNs_compiled2 %>% pull(pred) %>% as.numeric()
-
-  post_testing_data <-
-    testing_data %>%
-    mutate(
-      pred = pred_NN
-    )
-
-  trade_dollar_returns <-
-    testing_data %>%
-    dplyr::select(Date, Asset, profit_factor, stop_factor,
-                  trade_start_prices, trade_end_prices,
-                  starting_stop_value, starting_profit_value,
-                  trade_col) %>%
-    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
-    filter(Asset == dependant_var_name) %>%
-    convert_stop_profit_AUD(
-      asset_infor = asset_infor,
-      currency_conversion = currency_conversion,
-      asset_col = "Asset",
-      stop_col = "starting_stop_value",
-      profit_col = "starting_profit_value",
-      price_col = "trade_start_prices",
-      risk_dollar_value = 10,
-      returns_present = FALSE,
-      trade_return_col = "trade_return"
-    ) %>%
-    mutate(
-      trade_returns_AUD =
-        case_when(
-          trade_col == "Long" & trade_start_prices > trade_end_prices ~ maximum_win,
-          trade_col == "Long" & trade_start_prices <= trade_end_prices ~ -1*minimal_loss,
-
-          trade_col == "Short" & trade_start_prices < trade_end_prices ~ maximum_win,
-          trade_col == "Short" & trade_start_prices >= trade_end_prices ~ -1*minimal_loss
-        )
-    ) %>%
-    dplyr::select(Date, trade_returns_AUD, Asset,
-                  profit_factor , stop_factor, maximum_win, minimal_loss) %>%
-    distinct()
-
-  analysis_control <-
-    post_testing_data %>%
-    ungroup() %>%
-    left_join(trade_dollar_returns)  %>%
-    group_by( bin_var) %>%
-    summarise(
-      wins_losses = n(),
-    ) %>%
-    ungroup() %>%
-    mutate(
-      Total_control = sum(wins_losses),
-      Perc_control = wins_losses/Total_control
-    )  %>%
-    dplyr::select( -wins_losses)
-
-  analysis_list <- list()
-
-  for (i in 1:length(analysis_threshs) ) {
-
-    temp_trades  <-
-      post_testing_data %>%
-      mutate(
-        trade_col = case_when(pred >= analysis_threshs[i] ~ trade_direction_var,
-                              TRUE ~ "No Trade")
-      ) %>%
-      ungroup()
-
-    analysis_list[[i]] <-
-      temp_trades %>%
-      left_join(trade_dollar_returns) %>%
-      group_by(trade_col, bin_var) %>%
-      summarise(
-        wins_losses = n(),
-        win_amount = max(maximum_win),
-        loss_amount = min(minimal_loss),
-      ) %>%
-      group_by(trade_col) %>%
-      mutate(
-        Total = sum(wins_losses),
-        Perc = wins_losses/Total,
-        returns =
-          case_when(
-            bin_var == "win" ~ wins_losses*win_amount,
-            bin_var == "loss" ~ wins_losses*loss_amount
-          )
-      ) %>%
-      filter(trade_col != "No Trade") %>%
-      mutate(
-        risk_weighted_return =
-          (win_amount/abs(loss_amount) )*Perc - (1- Perc)
-      ) %>%
-      left_join(analysis_control) %>%
-      mutate(
-        control_risk_return =
-          (win_amount/abs(loss_amount) )*Perc_control - (1- Perc_control)
-      ) %>%
-      filter(bin_var == "win") %>%
-      dplyr::select(-bin_var) %>%
-      mutate(Asset = dependant_var_name,
-             profit_factor = profit_value_var,
-             stop_factor = stop_value_var,
-             threshold = analysis_threshs[i]) %>%
-      dplyr::select(
-        trade_col, Asset, wins_losses, win_amount, loss_amount, Trades = Total, Perc,
-        returns, risk_weighted_return, Total_control, Perc_control, control_risk_return,
-        threshold
-      )
-  }
-
-  analysis <-
-    analysis_list %>%
-    map_dfr(bind_rows)
-
-
-  return(analysis)
-
-}
 
 #' create_NN_AUD_USD_XCU_NZD_data
 #'
@@ -804,42 +509,12 @@ create_NN_Commod_data <-
       ) %>%
       janitor::clean_names()
 
-    aus_macro_data_PCA <-
-      aus_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(AUD_PC1= PC1,
-                    AUD_PC2= PC2,
-                    AUD_PC3= PC3,
-                    AUD_PC4= PC4,
-                    AUD_PC5= PC5) %>%
-      mutate(
-        date = aus_macro_data %>% pull(date)
-      )
-
     nzd_macro_data <-
       get_NZD_Indicators(raw_macro_data,
                          lag_days = lag_days,
                          first_difference = TRUE
       ) %>%
       janitor::clean_names()
-
-    nzd_macro_data_PCA <-
-      nzd_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(NZD_PC1= PC1,
-                    NZD_PC2= PC2,
-                    NZD_PC3= PC3,
-                    NZD_PC4= PC4,
-                    NZD_PC5= PC5) %>%
-      mutate(
-        date = nzd_macro_data %>% pull(date)
-      )
 
     usd_macro_data <-
       get_USD_Indicators(raw_macro_data,
@@ -848,42 +523,12 @@ create_NN_Commod_data <-
       ) %>%
       janitor::clean_names()
 
-    usd_macro_data_PCA <-
-      usd_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(USD_PC1= PC1,
-                    USD_PC2= PC2,
-                    USD_PC3= PC3,
-                    USD_PC4= PC4,
-                    USD_PC5= PC5) %>%
-      mutate(
-        date = usd_macro_data %>% pull(date)
-      )
-
     cny_macro_data <-
       get_CNY_Indicators(raw_macro_data,
                          lag_days = lag_days,
                          first_difference = TRUE
       ) %>%
       janitor::clean_names()
-
-    cny_macro_data_PCA <-
-      cny_macro_data %>%
-      dplyr::select(-date) %>%
-      prcomp(scale = TRUE) %>%
-      pluck("x") %>%
-      as_tibble() %>%
-      dplyr::select(CNY_PC1= PC1,
-                    CNY_PC2= PC2,
-                    CNY_PC3= PC3,
-                    CNY_PC4= PC4,
-                    CNY_PC5= PC5) %>%
-      mutate(
-        date = cny_macro_data %>% pull(date)
-      )
 
     eur_macro_data <-
       get_EUR_Indicators(raw_macro_data,
@@ -1161,10 +806,11 @@ create_NN_Commod_data <-
                     starting_stop_value, starting_profit_value)
 
     copula_data_macro <-
-      binary_data_for_post_model %>%
-      left_join(correlation_PCA_dat %>%
-                  mutate(across(where(is.numeric), ~ lag(.)))
-                ) %>%
+      correlation_PCA_dat %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(across(where(is.numeric), ~ lag(.)))  %>%
       left_join(copula_data_WTI_BCO) %>%
       left_join(copula_data_WTI_XAG) %>%
       left_join(copula_data_WTI_NATGAS) %>%
@@ -1241,7 +887,8 @@ create_NN_Commod_data <-
                                              .f = ~ mean(.x, na.rm = T),
                                              .before = 21)
       ) %>%
-      ungroup()
+      ungroup()%>%
+      left_join(binary_data_for_post_model)
 
     lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
 

@@ -1848,15 +1848,15 @@ run_reg_daily_variant <- function(
       Week_Change_lag = week_start_price - lag(week_start_price)
     )
 
-  USD_exports_total = USD_exports_total %>%
-    mutate(
-      month_date = lubridate::floor_date(date, "month")
-    )
-
-  AUD_exports_total = AUD_exports_total %>%
-    mutate(
-      month_date = lubridate::floor_date(date, "month")
-    )
+  # USD_exports_total = USD_exports_total %>%
+  #   mutate(
+  #     month_date = lubridate::floor_date(date, "month")
+  #   )
+  #
+  # AUD_exports_total = AUD_exports_total %>%
+  #   mutate(
+  #     month_date = lubridate::floor_date(date, "month")
+  #   )
 
   macro_us <- transform_macro_to_monthly(
     macro_dat_for_transform = get_USD_Indicators(raw_macro_data = raw_macro_data),
@@ -1880,24 +1880,24 @@ run_reg_daily_variant <- function(
     get_CAD_Indicators(raw_macro_data = raw_macro_data),
     transform_to_week = TRUE)
 
-  EUR_trade2 <- get_EUR_exports() %>% dplyr::select(month_date = date, `EUR Export Total`) %>%
-    mutate(
-      `EUR Export Total` = `EUR Export Total` - lag(`EUR Export Total`)
-    ) %>% filter(!is.na(`EUR Export Total`)) %>%
-    mutate(month_date = month_date + months(1)) %>%
-    mutate(week_date = lubridate::floor_date(month_date, "week")) %>%
-    dplyr::select(-month_date)
-
-  USD_exports_total2 <- USD_exports_total %>%
-    mutate(
-      US_Export = US_Export - lag(US_Export),
-      Aus_Export  = Aus_Export  - lag(Aus_Export )
-    ) %>%
-    filter(!is.na(US_Export), !is.na(Aus_Export)) %>%
-    mutate(month_date = month_date + months(1)) %>%
-    dplyr::select(-date)  %>%
-    mutate(week_date = lubridate::floor_date(month_date, "week")) %>%
-    dplyr::select(-month_date)
+  # EUR_trade2 <- get_EUR_exports() %>% dplyr::select(month_date = date, `EUR Export Total`) %>%
+  #   mutate(
+  #     `EUR Export Total` = `EUR Export Total` - lag(`EUR Export Total`)
+  #   ) %>% filter(!is.na(`EUR Export Total`)) %>%
+  #   mutate(month_date = month_date + months(1)) %>%
+  #   mutate(week_date = lubridate::floor_date(month_date, "week")) %>%
+  #   dplyr::select(-month_date)
+  #
+  # USD_exports_total2 <- USD_exports_total %>%
+  #   mutate(
+  #     US_Export = US_Export - lag(US_Export),
+  #     Aus_Export  = Aus_Export  - lag(Aus_Export )
+  #   ) %>%
+  #   filter(!is.na(US_Export), !is.na(Aus_Export)) %>%
+  #   mutate(month_date = month_date + months(1)) %>%
+  #   dplyr::select(-date)  %>%
+  #   mutate(week_date = lubridate::floor_date(month_date, "week")) %>%
+  #   dplyr::select(-month_date)
 
   testing_data <- trading_dat %>%
     mutate(Date = as_date(Date)) %>%

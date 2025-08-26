@@ -417,13 +417,15 @@ get_closed_positions <- function(save_csv = FALSE,
 
     complete_frame <- returned_value$trades  %>%
       select(-takeProfitOrder,-stopLossOrder) %>%
-      bind_cols(returned_value$trades$takeProfitOrder %>%
-                  select(cancelled_or_not = state)) %>%
       mutate(
         date_open = as_datetime(openTime),
         date_closed = as_datetime(closeTime)
       )  %>%
-      distinct(id, instrument, realizedPL, date_closed, date_open)
+      distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits) %>%
+      mutate(
+        account_var = account_var
+      ) %>%
+      rename(Asset =instrument)
 
     return(complete_frame)
 

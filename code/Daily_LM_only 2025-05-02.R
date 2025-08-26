@@ -5,32 +5,6 @@ library(neuralnet)
 
 raw_macro_data <- get_macro_event_data()
 
-eur_data <- get_EUR_exports()
-
-AUD_exports_total <- get_AUS_exports()  %>%
-  pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
-  rename(date = TIME_PERIOD) %>%
-  group_by(date) %>%
-  summarise(Aus_Export = sum(Aus_Export, na.rm = T))
-
-USD_exports_total <- get_US_exports()  %>%
-  pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
-  group_by(date) %>%
-  summarise(US_Export = sum(US_Export, na.rm = T)) %>%
-  left_join(AUD_exports_total) %>%
-  ungroup()
-
-USD_exports_total <- USD_exports_total %>%
-  mutate(
-    month_date = lubridate::floor_date(date, "month")
-  )
-
-AUD_exports_total <- AUD_exports_total %>%
-  mutate(
-    month_date = lubridate::floor_date(date, "month")
-  )
-
-
 all_aud_symbols <- get_oanda_symbols() %>%
   keep(~ str_detect(.x, "AUD"))
 
@@ -125,8 +99,8 @@ currency_conversion <-
 reg_data_list <- run_reg_daily_variant(
   raw_macro_data = raw_macro_data,
   eur_data = eur_data,
-  AUD_exports_total = AUD_exports_total,
-  USD_exports_total = USD_exports_total,
+  AUD_exports_total = NULL,
+  USD_exports_total = NULL,
   asset_data_daily_raw = asset_data_daily_raw_ask,
   train_percent = 0.57
 )
