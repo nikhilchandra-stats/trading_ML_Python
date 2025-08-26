@@ -639,22 +639,25 @@ all_asset_logit_results_sum <-
 #' @export
 #'
 #' @examples
-AUD_NZD_get_NN_trades <- function(
+get_NN_trades <- function(
     NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-    copula_data_AUD_USD_NZD = copula_data_AUD_USD_NZD,
+    copula_data = copula_data_AUD_USD_NZD,
     stop_value_var = 8,
     profit_value_var = 12,
     NN_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/trading_algo",
+    NN_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_NN_sims.db",
+    table_name = "AUD_USD_NZD_XCU_NN_sims",
     skip_NN_generation = FALSE
   ) {
 
   date_filter_for_NN <-
-    as.character(copula_data_AUD_USD_NZD[[1]]$Date %>% max(na.rm = T) + days(1))
+    as.character(copula_data[[1]]$Date %>% max(na.rm = T) + days(1))
 
-  NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_NN_sims.db"
   NN_sims_db_con <- connect_db(path = NN_sims_db)
   all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
-                                        statement = "SELECT * FROM AUD_USD_NZD_XCU_NN_sims")
+                                        statement =
+                                          as.character(glue::glue("SELECT * FROM {table_name}"))
+                                        )
   DBI::dbDisconnect(NN_sims_db_con)
   rm(NN_sims_db_con)
 
@@ -708,8 +711,8 @@ AUD_NZD_get_NN_trades <- function(
 
     if(skip_NN_generation == TRUE) {
       check_completion <- generate_NNs_create_preds(
-        copula_data_macro = copula_data_AUD_USD_NZD[[1]],
-        lm_vars1 = copula_data_AUD_USD_NZD[[2]],
+        copula_data_macro = copula_data[[1]],
+        lm_vars1 = copula_data[[2]],
         NN_samples = gernating_params$NN_samples[i] %>% as.integer(),
         dependant_var_name = gernating_params$Asset[i] %>% as.character(),
         NN_path = NN_path_save_path,
@@ -730,12 +733,12 @@ AUD_NZD_get_NN_trades <- function(
 
     NN_test_preds <-
       read_NNs_create_preds(
-        copula_data_macro = copula_data_AUD_USD_NZD[[1]],
-        lm_vars1 = copula_data_AUD_USD_NZD[[2]],
-        dependant_var_name = available_assets[i],
+        copula_data_macro = copula_data[[1]],
+        lm_vars1 = copula_data[[2]],
+        dependant_var_name = gernating_params$Asset[i] %>% as.character(),
         NN_path = NN_path_save_path,
         testing_min_date = as.character(as_date(date_filter_for_NN) - days(1000)),
-        trade_direction_var = analysis_direction,
+        trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
         NN_index_to_choose = "",
         stop_value_var = stop_value_var,
         profit_value_var = profit_value_var,
@@ -748,7 +751,14 @@ AUD_NZD_get_NN_trades <- function(
     accumulating_trades[[i]] <-
       NN_test_preds %>%
       slice_max(Date) %>%
-      filter(Asset == available_assets[i])
+      filter(Asset == available_assets[i]) %>%
+      mutate(
+        stop_factor = stop_value_var,
+        profit_factor = profit_value_var
+      ) %>%
+      mutate(
+        pred_min = gernating_params$threshold[i] %>% as.numeric()
+      )
 
   }
 

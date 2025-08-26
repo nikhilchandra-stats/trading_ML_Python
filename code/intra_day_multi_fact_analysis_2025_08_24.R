@@ -1216,6 +1216,10 @@ while (current_time < end_time) {
 
     gc()
 
+    Sys.sleep(10)
+
+    gc()
+
   }
 
 

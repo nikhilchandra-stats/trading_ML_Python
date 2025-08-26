@@ -116,7 +116,7 @@ params_to_test <-
     NN_samples = c(30000),
     hidden_layers = c(0),
     ending_thresh = c(0),
-    p_value_thresh_for_inputs = c(0.0001),
+    p_value_thresh_for_inputs = c(0.1),
     neuron_adjustment = c(0),
     trade_direction_var = c("Long")
   )
@@ -130,7 +130,7 @@ for (j in 1:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 30:length(date_sequence)) {
+  for (k in 193:length(date_sequence)) {
 
     gc()
 
