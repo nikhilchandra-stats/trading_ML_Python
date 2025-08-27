@@ -361,7 +361,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         win_threshold = 0.6,
         slice_max = TRUE,
         filter_profitbale_assets = TRUE
@@ -376,7 +376,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         win_threshold = 0.2,
         risk_weighted_thresh = 0.6,
         slice_max = TRUE,
@@ -395,7 +395,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         win_threshold = 0.6,
         slice_max = TRUE,
         filter_profitbale_assets = TRUE
@@ -410,7 +410,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         win_threshold = 0.2,
         risk_weighted_thresh = 0.35,
         slice_max = TRUE,
@@ -429,7 +429,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         win_threshold = 0.54,
         risk_weighted_thresh = 0.02,
         slice_max = TRUE,
@@ -447,7 +447,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 10,
+        risk_dollar_value = 5,
         win_threshold = 0.2,
         risk_weighted_thresh = 0.2,
         slice_max = TRUE,
@@ -738,7 +738,7 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 22000 ~ TRUE,
+                )) & abs(units) >= 10000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
                              "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
                 Asset == "XCU_USD" & abs(units)>=1200 ~ TRUE,
@@ -1009,8 +1009,28 @@ while (current_time < end_time) {
       sim_table = "EUR_GBP_JPY_USD_XCU_NN_sims"
     )
 
+    EUR_GBP_JPY_LOGIT_short<-
+      get_Logit_trades(
+        logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_short/",
+        Logit_sims_db =  "C:/Users/Nikhil Chandra/Documents/trade_data/EUR_USD_JPY_GBP_Logit_sims_short.db",
+        copula_data = copula_data_EUR_GBP_JPY_USD,
+        sim_min = 20,
+        edge_min = 0,
+        stop_var = 4,
+        profit_var = 8,
+        outperformance_count_min = 0.51,
+        risk_weighted_return_mid_min =  0.1,
+        sim_table = "EUR_GBP_JPY_USD_XCU_NN_sims"
+      )
+
     rm(copula_data_EUR_GBP_JPY_USD)
     gc()
+
+    EUR_GBP_JPY_LOGIT_short_trades <-
+      EUR_GBP_JPY_LOGIT_short %>%
+      filter(pred >= pred_min) %>%
+      dplyr::select(-pred, -pred_min) %>%
+      filter(Date >= (now() - minutes(75)) )
 
     EUR_GBP_JPY_LOGIT_trades <-
       EUR_GBP_JPY_LOGIT %>%
@@ -1107,8 +1127,12 @@ while (current_time < end_time) {
            GLM_equity_trades,
            fib_trades,
            EUR_GBP_JPY_LOGIT_trades,
-           AUD_USD_NZD_LOGIT_trades) %>%
-      map_dfr(bind_rows)
+           AUD_USD_NZD_LOGIT_trades,
+           EUR_GBP_JPY_LOGIT_short_trades) %>%
+      map_dfr(bind_rows) %>%
+      filter(
+            !(Asset %in% c("EUR_JPY", "GBP_JPY") & trade_col == "Long")
+           )
 
     message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))
 

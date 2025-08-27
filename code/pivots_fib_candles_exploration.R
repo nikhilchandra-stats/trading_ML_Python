@@ -70,68 +70,6 @@ mean_values_by_asset_for_loop =
 
 gc()
 
-#' find_pivots_fib_max_min
-#'
-#' @param starting_asset_data
-#' @param how_far_back
-#'
-#' @return
-#' @export
-#'
-#' @examples
-find_pivots_fib_max_min <-
-  function(starting_asset_data = starting_asset_data_ask,
-           how_far_back = 500) {
-
-    returned <- starting_asset_data %>%
-      group_by(Asset) %>%
-      mutate(
-        line_1 = slider::slide_dbl(.x = Low, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_2 = slider::slide_dbl(.x = line_1, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_3 = slider::slide_dbl(.x = line_2, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_5 = slider::slide_dbl(.x = line_3, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_6 = slider::slide_dbl(.x = line_5, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_7 = slider::slide_dbl(.x = line_6, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_8 = slider::slide_dbl(.x = line_7, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        # line_9 = slider::slide_dbl(.x = line_8, .f = ~ min(.x, na.rm = T) ,.before = how_far_back),
-        line_10 = slider::slide_dbl(.x = line_1, .f = ~ min(.x, na.rm = T) ,.before = how_far_back*9),
-
-        line_1_max = slider::slide_dbl(.x = High, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_2_max = slider::slide_dbl(.x = line_1_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_3_max = slider::slide_dbl(.x = line_2_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_5_max = slider::slide_dbl(.x = line_3_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_6_max = slider::slide_dbl(.x = line_5_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_7_max = slider::slide_dbl(.x = line_6_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_8_max = slider::slide_dbl(.x = line_7_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        # line_9_max = slider::slide_dbl(.x = line_8_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back),
-        line_10_max = slider::slide_dbl(.x = line_1_max, .f = ~ max(.x, na.rm = T) ,.before = how_far_back*9)
-      ) %>%
-      mutate(across(.cols = contains("line_") & !contains("_max"),
-             .f = ~ slider::slide_dbl(.x = ., .f = ~ min(., na.rm = T), .before = how_far_back) )) %>%
-      mutate(across(.cols = contains("line_") & contains("_max"),
-                    .f = ~ slider::slide_dbl(.x = ., .f = ~ max(., na.rm = T), .before = how_far_back) )) %>%
-      mutate(
-        perc_line_1 = (Price - line_1)/(line_1_max - line_1),
-        perc_line_10 = (Price - line_10)/(line_10_max - line_10),
-        perc_line_1_to_10 = (Price - line_10)/(line_1_max - line_10),
-
-        perc_line_1_mean = slider::slide_dbl(.x = perc_line_1, .f = ~ mean(., na.rm = T), .before = how_far_back),
-        perc_line_1_sd = slider::slide_dbl(.x = perc_line_1, .f = ~ sd(., na.rm = T), .before = how_far_back),
-
-        perc_line_10_mean = slider::slide_dbl(.x = perc_line_10, .f = ~ mean(., na.rm = T), .before = how_far_back),
-        perc_line_10_sd = slider::slide_dbl(.x = perc_line_10, .f = ~ sd(., na.rm = T), .before = how_far_back),
-
-        perc_line_1_to_10_mean = slider::slide_dbl(.x = perc_line_1_to_10, .f = ~ mean(., na.rm = T), .before = how_far_back),
-        perc_line_1_to_10_sd = slider::slide_dbl(.x = perc_line_1_to_10, .f = ~ sd(., na.rm = T), .before = how_far_back)
-
-      ) %>%
-      ungroup()
-
-      return(returned)
-
-  }
-
-
 sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db"
 sims_db_con <- connect_db(path = sims_db)
 

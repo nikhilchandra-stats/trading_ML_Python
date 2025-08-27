@@ -346,13 +346,6 @@ EUR_USD_JPY_GBP_list <-
   time_frame = "H1"
 )
 
-EUR_USD_JPY_GBP_Trades_Short <-
-  EUR_USD_JPY_GBP_list[[1]] %>%
-  filter(Date >= "2010-01-01") %>%
-  mutate(
-    trade_col = "Short"
-  )
-
 EUR_USD_JPY_GBP_Trades_long <-
   EUR_USD_JPY_GBP_list[[1]] %>%
   filter(Date >= "2010-01-01") %>%
@@ -370,34 +363,95 @@ EUR_USD_JPY_GBP_Long_Data_4_8 <-
     return_trade_ts = TRUE
   )
 
-EUR_USD_JPY_GBP_Short_Data_4_8 <-
-  run_pairs_analysis(
-    tagged_trades = EUR_USD_JPY_GBP_Trades_Short,
-    stop_factor = 4,
-    profit_factor = 8,
-    raw_asset_data = EUR_USD_JPY_GBP_list[[1]],
-    risk_dollar_value = 10,
-    return_trade_ts = TRUE
-  )
-
 full_data_for_upload <-
   EUR_USD_JPY_GBP_Long_Data_4_8 %>%
   mutate(
     stop_factor = 4,
     profit_factor = 8
-  ) %>%
-  bind_rows(
-    EUR_USD_JPY_GBP_Short_Data_4_8 %>%
-      mutate(
-        stop_factor = 4,
-        profit_factor = 8
-      )
   )
 
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 write_table_sql_lite(.data = full_data_for_upload,
                       table_name = "full_ts_trades_mapped",
                       conn = full_ts_trade_db_con)
+DBI::dbDisconnect(full_ts_trade_db_con)
+rm(full_ts_trade_db_con)
+gc()
+
+rm(full_data_for_upload)
+gc()
+#------------------------------------------------------------------------------
+full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP_Short.db"
+EUR_USD_JPY_GBP_list <-
+  get_EUR_GBP_USD_pairs_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = today() %>% as.character(),
+    time_frame = "H1"
+  )
+
+EUR_USD_JPY_GBP_Trades_Short <-
+  EUR_USD_JPY_GBP_list[[2]] %>%
+  filter(Date >= "2010-01-01") %>%
+  mutate(
+    trade_col = "Short"
+  )
+
+EUR_USD_JPY_GBP_Short_Data_4_8 <-
+  run_pairs_analysis(
+    tagged_trades = EUR_USD_JPY_GBP_Trades_Short,
+    stop_factor = 4,
+    profit_factor = 8,
+    raw_asset_data = EUR_USD_JPY_GBP_list[[2]],
+    risk_dollar_value = 10,
+    return_trade_ts = TRUE
+  )
+
+EUR_USD_JPY_GBP_Short_Data_5_10 <-
+  run_pairs_analysis(
+    tagged_trades = EUR_USD_JPY_GBP_Trades_Short,
+    stop_factor = 5,
+    profit_factor = 10,
+    raw_asset_data = EUR_USD_JPY_GBP_list[[2]],
+    risk_dollar_value = 10,
+    return_trade_ts = TRUE
+  )
+
+EUR_USD_JPY_GBP_Short_Data_6_12 <-
+  run_pairs_analysis(
+    tagged_trades = EUR_USD_JPY_GBP_Trades_Short,
+    stop_factor = 6,
+    profit_factor = 12,
+    raw_asset_data = EUR_USD_JPY_GBP_list[[2]],
+    risk_dollar_value = 10,
+    return_trade_ts = TRUE
+  )
+
+full_data_for_upload <-
+  EUR_USD_JPY_GBP_Short_Data_4_8 %>%
+  mutate(
+    stop_factor = 4,
+    profit_factor = 8
+  ) %>%
+  bind_rows(
+    EUR_USD_JPY_GBP_Short_Data_5_10 %>%
+      mutate(
+        stop_factor = 5,
+        profit_factor = 10
+      )
+  )  %>%
+  bind_rows(
+    EUR_USD_JPY_GBP_Short_Data_6_12 %>%
+      mutate(
+        stop_factor = 6,
+        profit_factor = 12
+      )
+  )
+
+full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+write_table_sql_lite(.data = full_data_for_upload,
+                     table_name = "full_ts_trades_mapped",
+                     conn = full_ts_trade_db_con)
 DBI::dbDisconnect(full_ts_trade_db_con)
 rm(full_ts_trade_db_con)
 gc()
