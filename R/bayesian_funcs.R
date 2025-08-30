@@ -1,3 +1,41 @@
+#' rolling_bayesian_binom
+#'
+#' @param .vec
+#' @param prior_weight
+#' @param prior_p
+#' @param samples
+#' @param quantile_posterior
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rolling_bayesian_binom <- function(
+    .vec = SPX_USD$X[1:100],
+    prior_weight = 100,
+    prior_p = 0.5,
+    samples = 1000,
+    quantile_posterior = 0.5
+) {
+
+  N_obs = length(.vec)
+  N_success = sum(.vec)
+
+  alpha_prior = prior_p*prior_weight
+  beta_prior = (1 - prior_p)*prior_weight
+  expected_beta_prior <- alpha_prior/(beta_prior + alpha_prior)
+
+  returned <- numeric(length(samples))
+  returned <- rbeta(n= samples,
+                    shape1 = alpha_prior + N_success,
+                    shape2 = beta_prior + (N_obs - N_success)) %>%
+    quantile(quantile_posterior) %>%
+    as.numeric()
+
+  return(returned)
+
+}
+
 get_pois_calc <- function(asset_data = read_csv("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/EUR_USD Historical Data.csv") %>%
                             mutate(Asset = "AUD_USD"),
                           # starting_scale = 0.5,

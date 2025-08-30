@@ -5,32 +5,6 @@ library(neuralnet)
 
 raw_macro_data <- get_macro_event_data()
 
-eur_data <- get_EUR_exports()
-
-AUD_exports_total <- get_AUS_exports()  %>%
-  pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
-  rename(date = TIME_PERIOD) %>%
-  group_by(date) %>%
-  summarise(Aus_Export = sum(Aus_Export, na.rm = T))
-
-USD_exports_total <- get_US_exports()  %>%
-  pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
-  group_by(date) %>%
-  summarise(US_Export = sum(US_Export, na.rm = T)) %>%
-  left_join(AUD_exports_total) %>%
-  ungroup()
-
-USD_exports_total <- USD_exports_total %>%
-  mutate(
-    month_date = lubridate::floor_date(date, "month")
-  )
-
-AUD_exports_total <- AUD_exports_total %>%
-  mutate(
-    month_date = lubridate::floor_date(date, "month")
-  )
-
-
 all_aud_symbols <- get_oanda_symbols() %>%
   keep(~ str_detect(.x, "AUD"))
 
@@ -125,8 +99,8 @@ currency_conversion <-
 reg_data_list <- run_reg_daily_variant(
   raw_macro_data = raw_macro_data,
   eur_data = eur_data,
-  AUD_exports_total = AUD_exports_total,
-  USD_exports_total = USD_exports_total,
+  AUD_exports_total = NULL,
+  USD_exports_total = NULL,
   asset_data_daily_raw = asset_data_daily_raw_ask,
   train_percent = 0.57
 )
@@ -198,6 +172,8 @@ trade_params <-
 
 profit_factor  = 7
 stop_factor  = 4
+profit_factor  = 5
+stop_factor  = 2.5
 risk_dollar_value <- 10
 trade_with_daily_data <- LM_preped %>% pluck("LM Merged to Daily")
 
@@ -367,7 +343,7 @@ for (j in 1:dim(trade_params)[1]) {
 
 reanalyse_results <-
   retest_data %>% map_dfr(bind_rows) %>%
-  filter(risk_weighted_return > 0.07) %>%
+  filter(risk_weighted_return >= 0.1) %>%
   mutate(redont_risk_weighted_return =
            1000*( (Perc*maximum_win) - (minimal_loss*(1 - Perc)) )
          )
@@ -379,8 +355,7 @@ trades_for_today <-
   ) %>%
   dplyr::select(-Perc) %>%
   left_join(reanalyse_results %>%
-              dplyr::select(stop_factor,
-                            profit_factor,
+              dplyr::select(
                             Final_Dollars,
                             sd_factor_high,
                             sd_factor_low,
@@ -412,6 +387,10 @@ trades_for_today <-
 
 
 #---------------------------------------------
+#Alternative Account:
+# long_account_num <- 1
+# account_number_long <- "001-011-1615559-001"
+# account_name_long <- "primary"
 #We use Account  number 2, 001-011-1615559-003
 account_list <- get_list_of_accounts()
 account_name <- "mt4_hedging"

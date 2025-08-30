@@ -1023,8 +1023,8 @@ analyse_trailing_trades <- function(
 
 
 get_stops_profs_volume_trades <- function(
-                                          tagged_trades = tagged_trades,
-                                          mean_values_by_asset = mean_values_by_asset,
+                                       tagged_trades = tagged_trades,
+                                       mean_values_by_asset = mean_values_by_asset,
                                        trade_col = "trade_col",
                                        currency_conversion = currency_conversion,
                                        risk_dollar_value = risk_dollar_value,
@@ -1065,3 +1065,207 @@ get_stops_profs_volume_trades <- function(
   return(returned)
 
 }
+
+#' get_random_results_trades
+#'
+#' @param raw_asset_data_ask
+#' @param raw_asset_data_bid
+#' @param stop_factor
+#' @param profit_factor
+#' @param risk_dollar_value
+#' @param analysis_syms
+#' @param trade_samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_random_results_trades <-
+  function(
+    raw_asset_data_ask = major_indices_log_cumulative,
+    raw_asset_data_bid = major_indices_log_cumulative_bid,
+    stop_factor = 3,
+    profit_factor = 5,
+    risk_dollar_value = 10,
+    analysis_syms = c("AUD_USD", "SPX500_USD", "EU50_EUR", "US2000_USD"),
+    trade_samples = 10000
+  ) {
+
+    #--------------------------------------Random Results
+    random_trades_long <-
+      raw_asset_data_ask %>%
+      filter(Asset %in% analysis_syms) %>%
+      group_by(Asset) %>%
+      slice_sample(n = trade_samples) %>%
+      ungroup() %>%
+      mutate(
+        trade_col = "Long"
+      )
+
+    random_analysis_long <-
+      run_pairs_analysis(
+        tagged_trades = random_trades_long %>% filter(trade_col == "Long"),
+        stop_factor = stop_factor,
+        profit_factor = profit_factor,
+        raw_asset_data = raw_asset_data_ask,
+        risk_dollar_value = risk_dollar_value
+      )
+
+    random_results_long_asset <-
+      random_analysis_long[[2]]
+
+    random_trades_short <-
+      raw_asset_data_bid %>%
+      filter(Asset %in% analysis_syms) %>%
+      group_by(Asset) %>%
+      slice_sample(n = trade_samples) %>%
+      ungroup() %>%
+      mutate(
+        trade_col = "Short"
+      )
+
+    random_analysis_short <-
+      run_pairs_analysis(
+        tagged_trades = random_trades_short %>% filter(trade_col == "Short"),
+        stop_factor = stop_factor,
+        profit_factor = profit_factor,
+        raw_asset_data = raw_asset_data_bid,
+        risk_dollar_value = risk_dollar_value
+      )
+
+    random_results_short_asset <-
+      random_analysis_short[[2]]
+
+    return(list(random_results_long_asset, random_results_short_asset))
+
+  }
+
+#' get_random_samples_MLE_beta
+#'
+#' @param random_results_db_location
+#' @param stop_factor
+#' @param profit_factor
+#' @param analysis_syms
+#' @param time_frame
+#' @param return_summary
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_random_samples_MLE_beta <-
+  function(
+    random_results_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/random_results.db",
+    stop_factor = 8,
+    profit_factor = 16,
+    analysis_syms = c("AUD_USD", "NZD_USD", "XCU_USD"),
+    time_frame = "H1",
+    return_summary = FALSE
+  ) {
+
+    db_con <- connect_db(random_results_db_location)
+    random_samples_data <-
+      DBI::dbGetQuery(conn = db_con,
+                      statement = "SELECT * FROM random_results")
+
+    DBI::dbDisconnect(db_con)
+
+    perc_random_samples <-
+      random_samples_data %>%
+      filter(Asset %in% analysis_syms) %>%
+      filter(stop_factor == stop_factor, profit_factor == profit_factor,
+             time_frame == time_frame)
+
+    perc_random_samples_short <-
+      perc_random_samples %>% filter(trade_direction == "Short")
+
+    perc_random_samples_long <-
+      perc_random_samples %>% filter(trade_direction == "Long")
+
+    assets_all <- analysis_syms
+    accumulator <- list()
+    accumulator2 <- list()
+
+    for (i in 1:length(assets_all)) {
+
+      temp_long <- perc_random_samples_long %>% filter(Asset == assets_all[i])
+      temp_short <- perc_random_samples_short %>% filter(Asset == assets_all[i])
+
+      beta_short_dist <- fitdistrplus::fitdist(data = temp_short$Perc, distr = "beta")
+      beta_samples_short <-
+        rbeta(n = 500000,
+              shape1 = beta_short_dist$estimate[1] %>% as.numeric(),
+              shape2 = beta_short_dist$estimate[2] %>% as.numeric())
+
+      beta_long_dist <- fitdistrplus::fitdist(data = temp_long$Perc, distr = "beta")
+      beta_samples_long <-
+        rbeta(n = 500000,
+              shape1 = beta_long_dist$estimate[1] %>% as.numeric(),
+              shape2 = beta_long_dist$estimate[2] %>% as.numeric())
+
+      accumulator[[i]] <-
+        tibble(
+          Perc = beta_samples_long,
+          Asset = assets_all[i],
+          time_frame =time_frame,
+          profit_factor = profit_factor,
+          stop_factor = stop_factor,
+          trade_direction = "Long"
+        )  %>%
+        bind_rows(
+          tibble(
+            Perc = beta_samples_short,
+            Asset = assets_all[i],
+            time_frame =time_frame,
+            profit_factor = profit_factor,
+            stop_factor = stop_factor,
+            trade_direction = "Short"
+          )
+        ) %>%
+        mutate(
+          risk_weighted_return = (profit_factor/stop_factor)*Perc - (1 - Perc)
+        )
+
+      accumulator2[[i]] <-
+        tibble(
+          shape1 = beta_long_dist$estimate[1] %>% as.numeric(),
+          shape2 = beta_long_dist$estimate[2] %>% as.numeric(),
+          Asset = assets_all[i],
+          time_frame =time_frame,
+          profit_factor = profit_factor,
+          stop_factor = stop_factor,
+          trade_direction = "Long"
+        )  %>%
+        bind_rows(
+          tibble(
+            shape1 = beta_long_dist$estimate[1] %>% as.numeric(),
+            shape2 = beta_long_dist$estimate[2] %>% as.numeric(),
+            Asset = assets_all[i],
+            time_frame =time_frame,
+            profit_factor = profit_factor,
+            stop_factor = stop_factor,
+            trade_direction = "Short"
+          )
+        )
+
+    }
+
+    all_results <-
+      accumulator %>%
+      map_dfr(bind_rows)
+
+    if(return_summary == TRUE) {
+      all_results <-
+        all_results %>%
+        group_by(trade_direction, profit_factor, stop_factor, time_frame, Asset) %>%
+        summarise(
+          mean_risk = mean(risk_weighted_return, na.rm = T),
+          sd_risk = sd(risk_weighted_return, na.rm = T),
+          mean_perc = mean(Perc, na.rm = T),
+          sd_perc = sd(Perc, na.rm = T)
+        )
+    }
+
+    return(all_results)
+
+  }
