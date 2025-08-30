@@ -11,7 +11,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
+  start_date = (today() - days(5)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -154,7 +154,7 @@ while(current_time < end_time) {
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 5
     )
 
     update_local_db_file(
@@ -162,7 +162,7 @@ while(current_time < end_time) {
       time_frame = "M15",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 5
     )
 
     new_H1_data_ask <-
@@ -186,8 +186,8 @@ while(current_time < end_time) {
     total_trades_long <-
       get_sup_res_trades_to_take(
         db_path = sup_res_trade_db,
-        min_risk_win = 0.09,
-        min_risk_perc = 0.01,
+        min_risk_win = 0.09, #risk
+        min_risk_perc = 0.01, #Perc
         max_win_time = 200,
         starting_asset_data_ask_H1 = new_H1_data_ask,
         starting_asset_data_ask_15M = new_15_data_ask,
@@ -197,7 +197,48 @@ while(current_time < end_time) {
 
     total_trades <- total_trades_long
 
-    if(!is.null(total_trades)) {
+    trades_message <-
+      ifelse(!is.null(total_trades_long), dim(total_trades_long)[1], 0)
+
+    message(glue::glue("Total Trades Found {trades_message}"))
+
+    if(!is.null(total_trades_long)) {
+
+      max_date_in_data <-
+        total_trades_long %>%
+        slice_max(Date) %>%
+        filter(!is.na(trade_col)) %>%
+        pull(Date) %>%
+        pluck(1) %>%
+        as.character()
+
+      message(glue::glue("Total Trades Found {max_date_in_data}"))
+
+      total_trades <-
+        total_trades_long %>%
+        slice_max(Date) %>%
+        filter(!is.na(trade_col)) %>%
+        filter(
+          Date >= (current_time - lubridate::minutes(25))
+        )
+
+      message(glue::glue("Total Trades Found in Current Time {dim(total_trades)[1]}"))
+
+      if(dim(total_trades)[1] > 0) {
+        check_timing <- difftime(current_time, total_trades$Date[1], units = "mins") %>% as.numeric()
+        if( check_timing > 25) {total_trades = NULL}
+      }
+    } else {
+      total_trades <- NULL
+    }
+
+    check_1 <- !is.null(total_trades)
+
+     if(!is.null(total_trades)) {
+       check_2 <-  dim(total_trades)[1] > 0
+    } else {check_2 <- FALSE}
+
+    if(check_2 == TRUE & check_1 == TRUE) {
 
       total_trades <-
         total_trades %>%

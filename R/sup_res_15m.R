@@ -46,6 +46,8 @@ get_res_sup_slow_fast_fractal_data <-
       ) %>%
       ungroup()
 
+    gc()
+
     squeeze_detection <-
       starting_asset_data_ask_15M %>%
       group_by(Asset) %>%
@@ -89,6 +91,8 @@ get_res_sup_slow_fast_fractal_data <-
       ) %>%
       ungroup()
 
+    gc()
+
     squeeze_detection <- squeeze_detection %>%
       mutate(
         Res_Diff_H1_XX = High_Max_XX_H - High,
@@ -129,6 +133,8 @@ get_res_sup_slow_fast_fractal_data <-
       ) %>%
       ungroup()
 
+    gc()
+
     return(squeeze_detection)
 
   }
@@ -163,6 +169,47 @@ get_sup_res_tagged_trades <- function(sup_res_data = squeeze_detection,
           Sup_Diff_H1_XX <= Sup_Diff_H1_XX_run_mean - sd_fac_1*Sup_Diff_H1_XX_run_sd ~ trade_direction,
           Sup_Diff_H1_XX_slow <= Sup_Diff_H1_XX_slow_run_mean - sd_fac_2*Sup_Diff_H1_XX_slow_run_sd ~ trade_direction,
           Sup_Diff_H1_XX_very_slow <= Sup_Diff_H1_XX_very_slow_run_mean - sd_fac_3*Sup_Diff_H1_XX_very_slow_run_sd ~ trade_direction
+        )
+    )
+
+  return(tagged_trades)
+
+}
+
+#' get_sup_res_tagged_trades
+#'
+#' @param squeeze_detection
+#' @param raw_asset_data
+#' @param mean_values_by_asset_for_loop
+#' @param sd_fac_1
+#' @param sd_fac_2
+#' @param sd_fac_3
+#' @param trade_direction
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_sup_res_tagged_trades_short <- function(sup_res_data = squeeze_detection,
+                                      sd_fac_1 = 3.5,
+                                      sd_fac_2 = 3.5,
+                                      sd_fac_3 = 3.5,
+                                      trade_direction = "Short") {
+
+  tagged_trades <-
+    sup_res_data %>%
+    filter(!is.na(Sup_Diff_H1_XX_slow), !is.na(Res_Diff_H1_XX_run_mean)) %>%
+    # group_by(Asset) %>%
+    mutate(
+      trade_col =
+        case_when(
+          # Res_Diff_H1_XX <= Res_Diff_H1_XX_run_mean - sd_fac_1*Res_Diff_H1_XX_run_sd ~ trade_direction,
+          # Res_Diff_H1_XX_slow <= Res_Diff_H1_XX_slow_run_mean - sd_fac_2*Res_Diff_H1_XX_slow_run_sd ~ trade_direction,
+          # Res_Diff_H1_XX_very_slow <= Res_Diff_H1_XX_very_slow_run_mean - sd_fac_3*Res_Diff_H1_XX_very_slow_run_sd ~ trade_direction,
+
+          Sup_Diff_H1_XX >= Sup_Diff_H1_XX_run_mean + sd_fac_1*Sup_Diff_H1_XX_run_sd ~ trade_direction,
+          Sup_Diff_H1_XX_slow >= Sup_Diff_H1_XX_slow_run_mean + sd_fac_2*Sup_Diff_H1_XX_slow_run_sd ~ trade_direction,
+          Sup_Diff_H1_XX_very_slow >= Sup_Diff_H1_XX_very_slow_run_mean + sd_fac_3*Sup_Diff_H1_XX_very_slow_run_sd ~ trade_direction
         )
     )
 
@@ -206,17 +253,33 @@ get_res_sup_trade_analysis <- function(
 ) {
 
 
-  tagged_trades <-
-    get_sup_res_tagged_trades(
-      sup_res_data = squeeze_detection,
-      sd_fac_1 = sd_fac_1,
-      sd_fac_2 = sd_fac_2,
-      sd_fac_3 = sd_fac_3,
-      trade_direction = trade_direction
-    )%>%
-    filter(trade_col == trade_direction) %>%
-    ungroup() %>%
-    slice_sample(n = trade_samples, replace = FALSE)
+  if(trade_direction == "Long") {
+    tagged_trades <-
+      get_sup_res_tagged_trades(
+        sup_res_data = squeeze_detection,
+        sd_fac_1 = sd_fac_1,
+        sd_fac_2 = sd_fac_2,
+        sd_fac_3 = sd_fac_3,
+        trade_direction = trade_direction
+      )%>%
+      filter(trade_col == trade_direction) %>%
+      ungroup() %>%
+      slice_sample(n = trade_samples, replace = FALSE)
+  }
+
+  if(trade_direction == "Short") {
+    tagged_trades <-
+      get_sup_res_tagged_trades_short(
+        sup_res_data = squeeze_detection,
+        sd_fac_1 = sd_fac_1,
+        sd_fac_2 = sd_fac_2,
+        sd_fac_3 = sd_fac_3,
+        trade_direction = trade_direction
+      )%>%
+      filter(trade_col == trade_direction) %>%
+      ungroup() %>%
+      slice_sample(n = trade_samples, replace = FALSE)
+  }
 
   # tagged_trades <-
   #   squeeze_detection %>%
@@ -243,6 +306,8 @@ get_res_sup_trade_analysis <- function(
       start_price_col = "Price",
       mean_values_by_asset = mean_values_by_asset_for_loop
     )
+
+  gc()
 
   trade_timings_neg <-
     long_bayes_loop_analysis_neg %>%
@@ -356,6 +421,7 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
 
   current_analysis <-
     DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM sup_res") %>%
+    filter(trade_direction == trade_direction) %>%
     filter(win_time_hours < max_win_time) %>%
     filter(risk_weighted_return >= min_risk_win,
            Final_Dollars > 0,
@@ -465,7 +531,9 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
       ) %>%
         rename(Date = dates, Asset = asset) %>%
         mutate(stop_factor = stop_factor,
-               profit_factor = profit_factor)
+               profit_factor = profit_factor) %>%
+        left_join(stops_profs) %>%
+        distinct()
 
     }
 
@@ -478,13 +546,13 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
 
 
   } else {
-    returned_data2 <- NULL
+    returned_data3 <- NULL
   }
 
   DBI::dbDisconnect(db_con)
   rm(db_con)
 
-  return(returned_data2)
+  return(returned_data3)
 
 }
 

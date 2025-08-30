@@ -268,7 +268,7 @@ current_results <- current_results %>%
     Dollars_quantile_75 = round(mean(Dollars_quantile_75, na.rm = T)),
     max_Dollars = round(mean(max_Dollars, na.rm = T))
   ) %>%
-  filter(Trades > 8000) %>%
+  # filter(Trades > 8000) %>%
   mutate(
     risk_weighted_return = (maximum_win/minimal_loss)*(Perc) - (1 - Perc)
   ) %>%
@@ -287,3 +287,160 @@ rm(db_con)
 rm(previous_results_con)
 gc()
 
+
+#--------------------------------------------Conplete Restest
+sup_res_trade_db <-
+  glue::glue("C:/Users/Nikhil/Documents/trade_data/sup_res_2025-07-01.db")
+db_con <- connect_db(sup_res_trade_db)
+current_results <- DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM sup_res")
+current_results <- current_results %>%
+  group_by(XX, sd_fac_1, sd_fac_2, sd_fac_3, rolling_slide,
+           pois_period, stop_factor, profit_factor, trade_direction) %>%
+  summarise(
+    Trades = round(mean(Trades, na.rm = T)),
+    wins = round(mean(wins, na.rm = T)),
+    Perc = mean(Perc, na.rm = T),
+    minimal_loss = mean(minimal_loss, na.rm = T),
+    maximum_win = mean(maximum_win, na.rm = T),
+    win_time_hours = round(mean(win_time_hours, na.rm = T)),
+    loss_time_hours = round(mean(loss_time_hours, na.rm = T)),
+
+    Final_Dollars = round(mean(Final_Dollars, na.rm = T)),
+    Lowest_Dollars = round(mean(Lowest_Dollars, na.rm = T)),
+    Dollars_quantile_25 = round(mean(Dollars_quantile_25, na.rm = T)),
+    Dollars_quantile_75 = round(mean(Dollars_quantile_75, na.rm = T)),
+    max_Dollars = round(mean(max_Dollars, na.rm = T))
+  ) %>%
+  # filter(Trades > 8000) %>%
+  mutate(
+    risk_weighted_return = (maximum_win/minimal_loss)*(Perc) - (1 - Perc)
+  ) %>%
+  filter(risk_weighted_return > 0.05, profit_factor > stop_factor) %>%
+  filter((Trades + wins) > 9000) %>%
+  arrange(desc(risk_weighted_return))
+
+trade_params_new <-
+  current_results %>%
+  ungroup() %>%
+  distinct(sd_fac_1, sd_fac_2, sd_fac_3,
+           pois_period, stop_factor, profit_factor, trade_direction) %>%
+  filter(trade_direction == "Long")
+
+trade_params_new_XX_ROLL <-
+  current_results %>%
+  ungroup() %>%
+  distinct(XX, rolling_slide)
+
+create_new_table <- TRUE
+pois_period <- 10
+
+for (i in 3:dim(trade_params_new_XX_ROLL)[1] ) {
+
+  XX = trade_params_new_XX_ROLL$XX[i] %>% as.numeric()
+  rolling_slide = trade_params_new_XX_ROLL$rolling_slide[i] %>% as.numeric()
+
+  tictoc::tic()
+
+  squeeze_detection <-
+    get_res_sup_slow_fast_fractal_data(
+      starting_asset_data_ask_H1 = starting_asset_data_ask_H1,
+      starting_asset_data_ask_15M = starting_asset_data_ask_15M,
+      XX = XX,
+      rolling_slide = rolling_slide,
+      pois_period = pois_period
+    )
+  tictoc::toc()
+
+
+for (j in 1:dim(trade_params_new)[1]) {
+  tictoc::tic()
+
+  stop_factor = trade_params_new$stop_factor[j]
+  profit_factor = trade_params_new$profit_factor[j]
+  sd_fac_1 = trade_params_new$sd_fac_1[j]
+  sd_fac_2 = trade_params_new$sd_fac_2[j]
+  sd_fac_3 = trade_params_new$sd_fac_3[j]
+
+  analysis_data <-
+    get_res_sup_trade_analysis(
+      sup_res_data = squeeze_detection,
+      raw_asset_data = starting_asset_data_ask_15M,
+      mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_15_ask,
+      stop_factor = stop_factor,
+      profit_factor =profit_factor,
+      risk_dollar_value = 10,
+      sd_fac_1 = sd_fac_1,
+      sd_fac_2 = sd_fac_2,
+      sd_fac_3 = sd_fac_3,
+      trade_direction = "Long",
+      currency_conversion = currency_conversion,
+      asset_infor = asset_infor,
+      trade_samples = 100000
+    )
+
+  analysis_data_total <- analysis_data[[2]] %>%
+    mutate(
+      XX = XX,
+      rolling_slide = rolling_slide,
+      pois_period = pois_period
+    )
+  analysis_data_asset <- analysis_data[[1]] %>%
+    mutate(
+      XX = XX,
+      rolling_slide = rolling_slide,
+      pois_period = pois_period
+    )
+
+  gc()
+
+  tictoc::toc()
+
+  if(create_new_table == TRUE & j == 1) {
+    write_table_sql_lite(conn = db_con, .data = analysis_data_total, table_name = "sup_res_FULL_RETEST")
+    write_table_sql_lite(conn = db_con, .data = analysis_data_asset, table_name = "sup_res_asset_FULL_RETEST")
+    create_new_table <- FALSE
+  }
+
+  if(create_new_table == FALSE) {
+    append_table_sql_lite(conn = db_con, .data = analysis_data_total, table_name = "sup_res_FULL_RETEST")
+    append_table_sql_lite(conn = db_con, .data = analysis_data_asset, table_name = "sup_res_asset_FULL_RETEST")
+  }
+
+}
+
+}
+
+full_retest_results <-
+  DBI::dbGetQuery(db_con, "SELECT * FROM sup_res_FULL_RETEST") %>%
+  group_by(XX, sd_fac_1, sd_fac_2, sd_fac_3, rolling_slide,
+           pois_period, stop_factor, profit_factor, trade_direction) %>%
+  summarise(
+    Trades = round(mean(Trades, na.rm = T)),
+    wins = round(mean(wins, na.rm = T)),
+    Perc = mean(Perc, na.rm = T),
+    minimal_loss = mean(minimal_loss, na.rm = T),
+    maximum_win = mean(maximum_win, na.rm = T),
+    win_time_hours = round(mean(win_time_hours, na.rm = T)),
+    loss_time_hours = round(mean(loss_time_hours, na.rm = T)),
+
+    Final_Dollars = round(mean(Final_Dollars, na.rm = T)),
+    Lowest_Dollars = round(mean(Lowest_Dollars, na.rm = T)),
+    Dollars_quantile_25 = round(mean(Dollars_quantile_25, na.rm = T)),
+    Dollars_quantile_75 = round(mean(Dollars_quantile_75, na.rm = T)),
+    max_Dollars = round(mean(max_Dollars, na.rm = T))
+  ) %>%
+  # filter(Trades > 8000) %>%
+  mutate(
+    risk_weighted_return = (maximum_win/minimal_loss)*(Perc) - (1 - Perc)
+  ) %>%
+  filter(risk_weighted_return > 0.05, profit_factor > stop_factor) %>%
+  filter((Trades + wins) > 9000) %>%
+  arrange(desc(risk_weighted_return))
+
+compare_results <-
+  current_results %>%
+  left_join(full_retest_results %>%
+              dplyr::select(XX, sd_fac_1, sd_fac_2, sd_fac_3, rolling_slide,
+                            pois_period, stop_factor, profit_factor, trade_direction,
+                            risk_weighted_return_FULL = risk_weighted_return)) %>%
+  filter(risk_weighted_return >= 0.09)
