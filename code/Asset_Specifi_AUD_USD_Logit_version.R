@@ -56,8 +56,8 @@ end_date = today() %>% as.character()
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-stop_value_var = 8
-profit_value_var = 12
+stop_value_var = 4
+profit_value_var = 8
 AUD_USD_NZD_USD_list <-
   get_all_AUD_USD_specific_data(
     db_location = db_location,
@@ -86,16 +86,6 @@ NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logi
 NN_sims_db_con <- connect_db(path = NN_sims_db)
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
 
-min_allowable_date <-
-  copula_data_AUD_USD_NZD[[1]] %>%
-  filter(if_all(everything(), ~ !is.na(.))) %>%
-  pull(Date) %>% min()
-
-date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-06-01"), "week") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) ) %>%
-  sample(size = 200)
-
 copula_data_AUD_USD_NZD <-
   create_NN_AUD_USD_XCU_NZD_data(
     AUD_USD_NZD_USD = AUD_USD_NZD_USD_list[[1]],
@@ -107,6 +97,15 @@ copula_data_AUD_USD_NZD <-
     use_PCA_vars = FALSE
   )
 
+min_allowable_date <-
+  copula_data_AUD_USD_NZD[[1]] %>%
+  filter(if_all(everything(), ~ !is.na(.))) %>%
+  pull(Date) %>% min()
+
+date_sequence <-
+  seq(as_date(min_allowable_date), as_date("2025-06-01"), "week") %>%
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) )
+
 
 redo_db = FALSE
 stop_value_var <- stop_value_var
@@ -114,15 +113,15 @@ profit_value_var <- profit_value_var
 
 params_to_test <-
   tibble(
-    NN_samples = c(30000),
-    hidden_layers = c(0),
-    ending_thresh = c(0),
-    p_value_thresh_for_inputs = c(0.01),
-    neuron_adjustment = c(0),
-    trade_direction_var = c("Long")
+    NN_samples = c(30000, 30000, 30000, 30000, 30000),
+    hidden_layers = c(0, 0,0,0, 0),
+    ending_thresh = c(0,0,0,0, 0),
+    p_value_thresh_for_inputs = c(0.1, 0.01, 0.001, 0.0001, 0.00001),
+    neuron_adjustment = c(0,0,0,0, 0),
+    trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 1:dim(params_to_test)[1]) {
+for (j in 2:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -274,7 +273,7 @@ all_asset_logit_results_sum <-
   # filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
   # group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid, n = 2)
-  filter(simulations >= 10, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.15) %>%
+  filter(simulations >= 100, edge > 0.1, outperformance_count > 0.55, risk_weighted_return_mid > 0.1) %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return_mid)
 # filter(NN_samples == 10000)

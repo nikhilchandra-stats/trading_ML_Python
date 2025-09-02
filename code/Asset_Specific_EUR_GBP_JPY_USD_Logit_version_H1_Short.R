@@ -129,7 +129,7 @@ for (j in 3:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 88:length(date_sequence)) {
+  for (k in 277:length(date_sequence)) {
 
     gc()
 

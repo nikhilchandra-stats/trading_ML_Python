@@ -53,21 +53,6 @@ db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
 start_date_day = "2011-01-01"
 end_date_day = today() %>% as.character()
 
-H1_model_High_SD_25_71_neg <- readRDS(
-  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds")
-)
-
-H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17 <- readRDS(
-  glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds")
-)
-
-H1_LM_Markov_NN_Hidden35 <-
-  readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Hidden35_withLag_2025-05-17.rds"))
-
-LM_ML_Lead_5_21_21_5_layer =
-  readRDS("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_5_21_21_5_layer_2025-05-20.rds")
-
-
 #-------------------------------Trade Loop
 asset_list_oanda =
   c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
@@ -198,14 +183,14 @@ mean_values_by_asset_for_loop_H1_bid =
     summarise_means = TRUE
   )
 
-all_trade_ts_actuals <-
-  get_Major_Indices_trade_ts_actuals(
-    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db",
-    asset_infor = asset_infor,
-    currency_conversion = currency_conversion,
-    stop_factor_var = 4,
-    profit_factor_var = 8
-  )
+# all_trade_ts_actuals <-
+#   get_Major_Indices_trade_ts_actuals(
+#     full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db",
+#     asset_infor = asset_infor,
+#     currency_conversion = currency_conversion,
+#     stop_factor_var = 4,
+#     profit_factor_var = 8
+#   )
 
 all_trade_ts_actuals_Logit <-
   get_ts_trade_actuals_Logit_NN(
@@ -215,11 +200,17 @@ all_trade_ts_actuals_Logit <-
     get_ts_trade_actuals_Logit_NN(
       full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP.db"
       )
+  )%>%
+  bind_rows(
+    get_ts_trade_actuals_Logit_NN(
+      full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db"
+    )
   )
 
-all_trade_ts_actuals <- all_trade_ts_actuals %>%
-  map(~ .x %>% filter(Asset %in% c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "SG30_SGD")))
+all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
+  filter(profit_factor == 8, stop_factor == 4)
 
+gc()
 
 
 #------------------------------------------------------------Loop
@@ -312,27 +303,27 @@ while (current_time < end_time) {
         trade_sd_fact = 2
       )
 
-    Hour_data_with_LM_bid <-
-      run_LM_join_to_H1(
-        daily_data_internal = new_daily_data_bid,
-        H1_data_internal = new_H1_data_bid,
-        raw_macro_data = raw_macro_data,
-        AUD_exports_total = AUD_exports_total,
-        USD_exports_total = USD_exports_total,
-        eur_data = eur_data
-      )
+    # Hour_data_with_LM_bid <-
+    #   run_LM_join_to_H1(
+    #     daily_data_internal = new_daily_data_bid,
+    #     H1_data_internal = new_H1_data_bid,
+    #     raw_macro_data = raw_macro_data,
+    #     AUD_exports_total = AUD_exports_total,
+    #     USD_exports_total = USD_exports_total,
+    #     eur_data = eur_data
+    #   )
 
-    Hour_data_with_LM_markov_bid <-
-      extract_required_markov_data(
-        Hour_data_with_LM = Hour_data_with_LM_bid,
-        new_daily_data_ask = new_daily_data_bid,
-        currency_conversion = currency_conversion,
-        mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_D_bid,
-        profit_factor  = 5,
-        stop_factor  = 3,
-        risk_dollar_value = 5,
-        trade_sd_fact = 2
-      )
+    # Hour_data_with_LM_markov_bid <-
+    #   extract_required_markov_data(
+    #     Hour_data_with_LM = Hour_data_with_LM_bid,
+    #     new_daily_data_ask = new_daily_data_bid,
+    #     currency_conversion = currency_conversion,
+    #     mean_values_by_asset_for_loop = mean_values_by_asset_for_loop_D_bid,
+    #     profit_factor  = 5,
+    #     stop_factor  = 3,
+    #     risk_dollar_value = 5,
+    #     trade_sd_fact = 2
+    #   )
 
     temp_db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db")
     assets_in_db <-
@@ -351,6 +342,20 @@ while (current_time < end_time) {
     rm(temp_db_con)
 
     all_assets_present <- assets_in_db2 %>% bind_rows(assets_in_db) %>% distinct(Asset) %>% pull(Asset)
+
+    H1_model_High_SD_25_71_neg <- readRDS(
+      glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_25_SD_71Perc_2025-05-13.rds")
+    )
+
+    H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17 <- readRDS(
+      glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Long_56_prof_10_4sd2025-05-17.rds")
+    )
+
+    H1_LM_Markov_NN_Hidden35 <-
+      readRDS(glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/H1_LM_Markov_NN_Hidden35_withLag_2025-05-17.rds"))
+
+    LM_ML_Lead_5_21_21_5_layer =
+      readRDS("C:/Users/Nikhil Chandra/Documents/trade_data/LM_ML_Lead_5_21_21_5_layer_2025-05-20.rds")
 
     trades_1 <-
       get_NN_best_trades_from_mult_anaysis(
@@ -420,23 +425,23 @@ while (current_time < end_time) {
     if(!is.null(trades_2)) {trades_2 <- trades_2 %>% filter(trade_col == "Long")}
     if(!is.null(trades_2_50)) {trades_2_50 <- trades_2_50 %>% filter(trade_col == "Long")}
 
-    trades_3 <-
-      get_NN_best_trades_from_mult_anaysis(
-        db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
-        network_name = "H1_LM_Markov_NN_Hidden35",
-        NN_model = H1_LM_Markov_NN_Hidden35,
-        Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
-        mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        risk_dollar_value = 5,
-        win_threshold = 0.54,
-        risk_weighted_thresh = 0.02,
-        slice_max = TRUE,
-        filter_profitbale_assets = TRUE
-      )
-
-    if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
+    # trades_3 <-
+    #   get_NN_best_trades_from_mult_anaysis(
+    #     db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/NN_simulation_results 2025-05-24 Trading Copy.db",
+    #     network_name = "H1_LM_Markov_NN_Hidden35",
+    #     NN_model = H1_LM_Markov_NN_Hidden35,
+    #     Hour_data_with_LM_markov = Hour_data_with_LM_markov_bid,
+    #     mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_bid,
+    #     currency_conversion = currency_conversion,
+    #     asset_infor = asset_infor,
+    #     risk_dollar_value = 5,
+    #     win_threshold = 0.54,
+    #     risk_weighted_thresh = 0.02,
+    #     slice_max = TRUE,
+    #     filter_profitbale_assets = TRUE
+    #   )
+    #
+    # if(!is.null(trades_3)) {trades_3 <- trades_3 %>% filter(trade_col == "Short")}
 
     trades_4 <-
       get_NN_best_trades_from_mult_anaysis(
@@ -455,81 +460,12 @@ while (current_time < end_time) {
       )
 
     if(!is.null(trades_4)) {trades_4 <- trades_4 %>% filter(trade_col == "Long")}
-    #
-    #     AUD_NZD_Trades_long <-
-    #       get_AUD_USD_NZD_Specific_Trades(
-    #         AUD_USD_NZD_USD =
-    #           new_H1_data_ask %>%
-    #           filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
-    #         raw_macro_data = raw_macro_data,
-    #         lag_days = 1,
-    #         lm_period = 25,
-    #         # lm_period = 4,
-    #         lm_train_prop = 0.5,
-    #         lm_test_prop = 0.5,
-    #         sd_fac_AUD_USD_trade = 12,
-    #         sd_fac_NZD_USD_trade = 6,
-    #         sd_fac_XCU_USD_trade = 4,
-    #         sd_fac_NZD_CHF_trade = 10,
-    #         sd_fac_XAG_USD_trade = 15,
-    #         trade_direction = "Long",
-    #         stop_factor = 10,
-    #         profit_factor = 15,
-    #         assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
-    #       )
-    #
-    #     AUD_NZD_Trades_long <-
-    #       AUD_NZD_Trades_long %>%
-    #       map_dfr(bind_rows) %>%
-    #       group_by(Asset) %>%
-    #       slice_max(Date) %>%
-    #       ungroup() %>%
-    #       get_stops_profs_asset_specific(
-    #         raw_asset_data =
-    #           new_H1_data_ask %>%
-    #           filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
-    #         currency_conversion = currency_conversion,
-    #         risk_dollar_value = 5
-    #       ) %>%
-    #       filter(Date >= ((now() %>% as_datetime()) - minutes(60))) %>%
-    #       filter(trade_col == "Long")
-    #
-    #     AUD_NZD_Trades_short <-
-    #       get_AUD_USD_NZD_Specific_Trades(
-    #         AUD_USD_NZD_USD =
-    #           new_H1_data_bid %>%
-    #           filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
-    #         raw_macro_data = raw_macro_data,
-    #         lag_days = 1,
-    #         lm_period = 2,
-    #         lm_train_prop = 0.5,
-    #         lm_test_prop = 0.5,
-    #         sd_fac_AUD_USD_trade = 3.5,
-    #         sd_fac_NZD_USD_trade = 2.5,
-    #         sd_fac_XCU_USD_trade = -1.5,
-    #         sd_fac_NZD_CHF_trade = 5,
-    #         sd_fac_XAG_USD_trade = 20,
-    #         trade_direction = "Short",
-    #         stop_factor = 10,
-    #         profit_factor = 15,
-    #         assets_to_return = c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")
-    #       )
-    #
-    #     AUD_NZD_Trades_short <-
-    #       AUD_NZD_Trades_short %>%
-    #       map_dfr(bind_rows) %>%
-    #       group_by(Asset) %>%
-    #       slice_max(Date) %>%
-    #       ungroup() %>%
-    #       get_stops_profs_asset_specific(
-    #         raw_asset_data =
-    #           new_H1_data_bid %>%
-    #           filter(Asset %in% c("AUD_USD", "NZD_USD", "NZD_CHF", "XCU_USD", "XAG_USD", "XAU_USD")),
-    #         currency_conversion = currency_conversion,
-    #         risk_dollar_value = 5
-    #       ) %>%
-    #       filter(Date >= ((now() %>% as_datetime()) - minutes(60))) %>%
-    #       filter(trade_col == "Short")
+
+    rm(Hour_data_with_LM_ask, Hour_data_with_LM_markov_ask)
+    rm(H1_model_High_SD_25_71_neg, H1_LM_Markov_NN_Long_56_prof_10_4sd2025_05_17,
+       H1_LM_Markov_NN_Hidden35,  LM_ML_Lead_5_21_21_5_layer)
+    gc()
+    Sys.sleep(2)
 
     commod_log_cumulative <-
       c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD") %>%
@@ -577,7 +513,7 @@ while (current_time < end_time) {
           new_H1_data_bid %>%
           filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")),
         currency_conversion = currency_conversion,
-        risk_dollar_value = 10
+        risk_dollar_value = 5
       ) %>%
       filter(Date >= ((now() %>% as_datetime()) - minutes(60)))
 
@@ -586,10 +522,8 @@ while (current_time < end_time) {
 
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
-    trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
+    # trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
     trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
-    # AUD_NZD_USD_long_dim <- ifelse(!is.null(AUD_NZD_Trades_long), dim(AUD_NZD_Trades_long)[1], 0)
-    # AUD_NZD_USD_short_dim <- ifelse(!is.null(AUD_NZD_Trades_short), dim(AUD_NZD_Trades_short)[1], 0)
     commod_dim <- ifelse(!is.null(commod_trades_dfr), dim(commod_trades_dfr)[1], 0)
     trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
 
@@ -598,12 +532,6 @@ while (current_time < end_time) {
       as.character()
 
     message(all_trades_string)
-
-    # all_trades_string <-
-    #   glue::glue("Trades AUD_USD_NZD Long: {AUD_NZD_USD_long_dim},  Trades AUD_USD_NZD Short: {AUD_NZD_USD_short_dim}") %>%
-    #   as.character()
-    #
-    # message(all_trades_string)
 
     all_trades_string <-
       glue::glue("Trades COMMOD Long and Short Trades: {commod_dim}") %>%
@@ -931,22 +859,49 @@ while (current_time < end_time) {
       ) %>%
       filter(Date >= (now() - minutes(75)) )
 
-    GLM_equity_trades <-
-      get_all_GLM_index_trades(
-        major_indices = major_indices_log_cumulative,
-        major_indices_bid = major_indices_log_cumulative_bid,
-        raw_macro_data = raw_macro_data,
-        all_trade_ts_actuals = all_trade_ts_actuals,
-        train_sample = 1000000,
-        date_split_train = as.character(today() - days(10)) ,
-        US2000_thresh = 0.8,
-        SPX500_thresh = 0.8,
-        EU50_thresh = 0.9
-      ) %>%
-      filter(Date >= (now() - minutes(75)) )
-
     rm(major_indices_log_cumulative, major_indices_log_cumulative_bid)
     gc()
+
+    copula_data_Indices_Silver <-
+      create_NN_Idices_Silver_H1Vers_data(
+        SPX_US2000_XAG =
+          new_H1_data_ask %>%
+          filter(Asset %in% c("SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD", "XAG_USD", "XAU_USD")),
+        raw_macro_data = raw_macro_data,
+        actual_wins_losses = all_trade_ts_actuals_Logit %>%
+          filter(asset %in% c("SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD", "XAG_USD", "XAU_USD")),
+        lag_days = 1,
+        stop_value_var = 4,
+        profit_value_var = 8,
+        use_PCA_vars = FALSE
+      )
+
+    Indices_Silver_LOGIT<- get_Logit_trades(
+      logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+      Logit_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims.db",
+      copula_data = copula_data_Indices_Silver,
+      sim_min = 100,
+      edge_min = 0.16,
+      stop_var = 4,
+      profit_var = 8,
+      outperformance_count_min = 0.52,
+      risk_weighted_return_mid_min =  0.05,
+      sim_table = "Indices_Silver_Logit_sims"
+    )
+
+    Indices_Silver_LOGIT_short <- get_Logit_trades(
+      logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+      Logit_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims_short.db",
+      copula_data = copula_data_Indices_Silver,
+      sim_min = 100,
+      edge_min = 0.1,
+      stop_var = 4,
+      profit_var = 8,
+      outperformance_count_min = 0.55,
+      risk_weighted_return_mid_min =  0.08,
+      sim_table = "Indices_Silver_Logit_sims"
+    )
+
 
     copula_data_AUD_USD_NZD <-
       create_NN_AUD_USD_XCU_NZD_data(
@@ -958,23 +913,37 @@ while (current_time < end_time) {
           all_trade_ts_actuals_Logit %>%
           filter(asset %in% c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD", "XAU_USD")),
         lag_days = 1,
-        stop_value_var = 8,
-        profit_value_var = 12,
+        stop_value_var = 4,
+        profit_value_var = 8,
         use_PCA_vars = FALSE
       )
 
-  AUD_USD_NZD_LOGIT<- get_Logit_trades(
+  AUD_USD_NZD_LOGIT_trades<- get_Logit_trades(
                     logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
                     Logit_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims.db",
                     copula_data = copula_data_AUD_USD_NZD,
-                    sim_min = 20,
-                    edge_min = 0,
-                    stop_var = 8,
-                    profit_var = 12,
-                    outperformance_count_min = 0.51,
-                    risk_weighted_return_mid_min =  0.14,
+                    sim_min = 100,
+                    edge_min = 0.1,
+                    stop_var = 4,
+                    profit_var = 8,
+                    outperformance_count_min = 0.55,
+                    risk_weighted_return_mid_min =  0.1,
                     sim_table = "AUD_USD_NZD_XCU_NN_sims"
                     )
+
+  AUD_USD_NZD_LOGIT_trades_short<-
+    get_Logit_trades(
+      logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_short/",
+      Logit_sims_db =  "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims_short.db",
+      copula_data = copula_data_AUD_USD_NZD,
+      sim_min = 100,
+      edge_min = 0,
+      stop_var = 4,
+      profit_var = 8,
+      outperformance_count_min = 0.51,
+      risk_weighted_return_mid_min =  0.09,
+      sim_table = "AUD_USD_NZD_XCU_NN_sims"
+    )
 
     rm(copula_data_AUD_USD_NZD)
     gc()
@@ -1039,7 +1008,24 @@ while (current_time < end_time) {
       filter(Date >= (now() - minutes(75)) )
 
     AUD_USD_NZD_LOGIT_trades <-
-      AUD_USD_NZD_LOGIT %>%
+      AUD_USD_NZD_LOGIT_trades %>%
+      filter(pred >= pred_min) %>%
+      dplyr::select(-pred, -pred_min) %>%
+      filter(Date >= (now() - minutes(75)) )
+
+    AUD_USD_NZD_LOGIT_short_trades <-
+      AUD_USD_NZD_LOGIT_trades_short %>%
+      filter(pred >= pred_min) %>%
+      dplyr::select(-pred, -pred_min) %>%
+      filter(Date >= (now() - minutes(75)) )
+
+    Indices_Silver_LOGIT_trades <- Indices_Silver_LOGIT %>%
+      filter(pred >= pred_min) %>%
+      dplyr::select(-pred, -pred_min) %>%
+      filter(Date >= (now() - minutes(75)) )
+
+    Indices_Silver_LOGIT_short_trades <-
+      Indices_Silver_LOGIT_short %>%
       filter(pred >= pred_min) %>%
       dplyr::select(-pred, -pred_min) %>%
       filter(Date >= (now() - minutes(75)) )
@@ -1072,7 +1058,7 @@ while (current_time < end_time) {
         .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
         sims_db=
           "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
-        risk_weighted_return_min = 0.15,
+        risk_weighted_return_min = 0.2,
         Trades_min =2000,
         Trades_max = 20000,
         currency_conversion = currency_conversion,
@@ -1090,7 +1076,7 @@ while (current_time < end_time) {
         .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
         sims_db=
           "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
-        risk_weighted_return_min = 0.15,
+        risk_weighted_return_min = 0.2,
         Trades_min =2000,
         Trades_max = 20000,
         currency_conversion = currency_conversion,
@@ -1122,13 +1108,16 @@ while (current_time < end_time) {
     gc()
 
     all_tagged_trades_equity_dfr <-
-      list(all_tagged_trades_equity_dfr1,
+      list(
+          # all_tagged_trades_equity_dfr1,
            all_tagged_trades_equity_dfr2,
-           GLM_equity_trades,
            fib_trades,
-           EUR_GBP_JPY_LOGIT_trades,
+           Indices_Silver_LOGIT_trades,
+           Indices_Silver_LOGIT_short_trades,
            AUD_USD_NZD_LOGIT_trades,
-           EUR_GBP_JPY_LOGIT_short_trades) %>%
+           AUD_USD_NZD_LOGIT_short_trades,
+           EUR_GBP_JPY_LOGIT_short_trades,
+           EUR_GBP_JPY_LOGIT_trades) %>%
       map_dfr(bind_rows) %>%
       filter(
             !(Asset %in% c("EUR_JPY", "GBP_JPY") & trade_col == "Long")
@@ -1150,7 +1139,7 @@ while (current_time < end_time) {
               mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 10,
+              risk_dollar_value = 5,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",
@@ -1246,6 +1235,8 @@ while (current_time < end_time) {
 
   }
 
+
+  gc()
 
   if(current_minute > 30 &  current_minute < 40 & data_updated == 1) {data_updated <- 0}
 
