@@ -666,7 +666,7 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 10000 ~ TRUE,
+                )) & abs(units) >= 20000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
                              "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
                 Asset == "XCU_USD" & abs(units)>=1200 ~ TRUE,
@@ -758,6 +758,7 @@ while (current_time < end_time) {
 
     }
 
+    Sys.sleep(5)
 
     major_indices_log_cumulative <-
       c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
@@ -774,25 +775,6 @@ while (current_time < end_time) {
       ) %>%
       left_join(
         new_H1_data_ask %>%
-          filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR")) %>%
-          distinct(Date, Asset, Price, Open, High, Low)
-      )
-
-    major_indices_log_cumulative_bid <-
-      c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR") %>%
-      map_dfr(
-        ~
-          create_log_cumulative_returns(
-            asset_data_to_use =
-              new_H1_data_bid %>%
-              filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR")),
-            asset_to_use = c(.x[1]),
-            price_col = "Open",
-            return_long_format = TRUE
-          )
-      ) %>%
-      left_join(
-        new_H1_data_bid %>%
           filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "SG30_SGD", "AU200_AUD", "EU50_EUR", "DE30_EUR")) %>%
           distinct(Date, Asset, Price, Open, High, Low)
       )
@@ -859,8 +841,9 @@ while (current_time < end_time) {
       ) %>%
       filter(Date >= (now() - minutes(75)) )
 
-    rm(major_indices_log_cumulative, major_indices_log_cumulative_bid)
+    rm(major_indices_log_cumulative)
     gc()
+    Sys.sleep(2)
 
     copula_data_Indices_Silver <-
       create_NN_Idices_Silver_H1Vers_data(
@@ -901,6 +884,10 @@ while (current_time < end_time) {
       risk_weighted_return_mid_min =  0.08,
       sim_table = "Indices_Silver_Logit_sims"
     )
+
+    rm(copula_data_Indices_Silver)
+    gc()
+    Sys.sleep(5)
 
 
     copula_data_AUD_USD_NZD <-
@@ -947,6 +934,7 @@ while (current_time < end_time) {
 
     rm(copula_data_AUD_USD_NZD)
     gc()
+    Sys.sleep(4)
 
     copula_data_EUR_GBP_JPY_USD <-
       create_NN_EUR_GBP_JPY_USD_data(
@@ -999,36 +987,54 @@ while (current_time < end_time) {
       EUR_GBP_JPY_LOGIT_short %>%
       filter(pred >= pred_min) %>%
       dplyr::select(-pred, -pred_min) %>%
-      filter(Date >= (now() - minutes(75)) )
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(75)) )
 
     EUR_GBP_JPY_LOGIT_trades <-
       EUR_GBP_JPY_LOGIT %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min) %>%
-      filter(Date >= (now() - minutes(75)) )
+      dplyr::select(-pred, -pred_min)%>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(75)) )
 
     AUD_USD_NZD_LOGIT_trades <-
       AUD_USD_NZD_LOGIT_trades %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min) %>%
-      filter(Date >= (now() - minutes(75)) )
+      dplyr::select(-pred, -pred_min)%>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(75)) )
 
     AUD_USD_NZD_LOGIT_short_trades <-
       AUD_USD_NZD_LOGIT_trades_short %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min) %>%
-      filter(Date >= (now() - minutes(75)) )
+      dplyr::select(-pred, -pred_min)%>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(75)) )
 
     Indices_Silver_LOGIT_trades <- Indices_Silver_LOGIT %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min) %>%
-      filter(Date >= (now() - minutes(75)) )
+      dplyr::select(-pred, -pred_min)%>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(75)) )
 
     Indices_Silver_LOGIT_short_trades <-
       Indices_Silver_LOGIT_short %>%
       filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min) %>%
-      filter(Date >= (now() - minutes(75)) )
+      dplyr::select(-pred, -pred_min)%>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(75)) )
 
     log_cumulative <-
       c("EU50_EUR", "AU200_AUD" ,"WTICO_USD",
@@ -1062,8 +1068,8 @@ while (current_time < end_time) {
         Trades_min =2000,
         Trades_max = 20000,
         currency_conversion = currency_conversion,
-        trade_type = "Fib",
-        how_far_back_var = 500
+        trade_type = NULL,
+        how_far_back_var = NULL
       )  %>%
       map_dfr(bind_rows) %>%
       group_by(Asset) %>%
@@ -1071,31 +1077,36 @@ while (current_time < end_time) {
       ungroup() %>%
       dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
 
-    fib_trades_2 <-
-      get_best_pivots_fib_trades(
-        .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
-        sims_db=
-          "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
-        risk_weighted_return_min = 0.2,
-        Trades_min =2000,
-        Trades_max = 20000,
-        currency_conversion = currency_conversion,
-        trade_type = "Fib",
-        how_far_back_var = 1000
-      )  %>%
-      map_dfr(bind_rows) %>%
-      group_by(Asset) %>%
-      slice_min(profit_factor) %>%
-      ungroup() %>%
-      dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
+    # fib_trades_2 <-
+    #   get_best_pivots_fib_trades(
+    #     .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
+    #     sims_db=
+    #       "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
+    #     risk_weighted_return_min = 0.2,
+    #     Trades_min =2000,
+    #     Trades_max = 20000,
+    #     currency_conversion = currency_conversion,
+    #     trade_type = "Line10_Neg",
+    #     how_far_back_var = c(1000, 250)
+    #   )  %>%
+    #   map_dfr(bind_rows) %>%
+    #   group_by(Asset) %>%
+    #   slice_min(profit_factor) %>%
+    #   ungroup() %>%
+    #   dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
 
     fib_trades <-
-      list(fib_trades_1, fib_trades_2) %>%
+      list(fib_trades_1
+           # fib_trades_2
+           ) %>%
       map_dfr(bind_rows) %>%
       distinct() %>%
       ungroup() %>%
       filter(!is.na(trade_col)) %>%
-      filter(Date >= (now() - minutes(75)) )
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+      # filter(Date >= (now() - minutes(150)) )
 
     if(dim(fib_trades)[1] > 0) {
       fib_trades <- fib_trades %>%
@@ -1120,7 +1131,7 @@ while (current_time < end_time) {
            EUR_GBP_JPY_LOGIT_trades) %>%
       map_dfr(bind_rows) %>%
       filter(
-            !(Asset %in% c("EUR_JPY", "GBP_JPY") & trade_col == "Long")
+            # !(Asset %in% c("EUR_JPY", "GBP_JPY") & trade_col == "Long")
            )
 
     message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))
@@ -1139,7 +1150,7 @@ while (current_time < end_time) {
               mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 5,
+              risk_dollar_value = 10,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",

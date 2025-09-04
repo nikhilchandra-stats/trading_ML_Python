@@ -3993,16 +3993,30 @@ get_Logit_trades <-
 #' @examples
 get_ts_trade_actuals_Logit_NN <-
   function(
-    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
+    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db",
+    data_is_daily = FALSE
     ) {
 
     full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
-    actual_wins_losses <-
-      DBI::dbGetQuery(full_ts_trade_db_con,
-                      "SELECT * FROM full_ts_trades_mapped") %>%
-      mutate(
-        dates = as_datetime(dates)
-      )
+
+    if(data_is_daily == FALSE) {
+      actual_wins_losses <-
+        DBI::dbGetQuery(full_ts_trade_db_con,
+                        "SELECT * FROM full_ts_trades_mapped") %>%
+        mutate(
+          dates = as_datetime(dates)
+        )
+    }
+
+    if(data_is_daily == TRUE) {
+      actual_wins_losses <-
+        DBI::dbGetQuery(full_ts_trade_db_con,
+                        "SELECT * FROM full_ts_trades_mapped") %>%
+        mutate(
+          dates = as_date(dates)
+        )
+    }
+
     DBI::dbDisconnect(full_ts_trade_db_con)
     rm(full_ts_trade_db_con)
 
@@ -4317,6 +4331,365 @@ create_NN_Idices_Silver_H1Vers_data <-
                     # "hour_of_day", "day_of_week"
       )
     }
+
+    return(
+      list(
+        "copula_data_macro" = copula_data_macro,
+        "lm_vars1" =
+          lm_vars1 %>%
+          keep( ~ !str_detect(.x, "sd") & !str_detect(.x, "tangent") )
+      )
+    )
+
+  }
+
+
+#' create_NN_METALS_IDINCES_DAILY_QUANT
+#'
+#' @param METALS_INDICES
+#' @param raw_macro_data
+#' @param actual_wins_losses
+#' @param lag_days
+#' @param stop_value_var
+#' @param profit_value_var
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_NN_METALS_IDINCES_DAILY_QUANT <-
+  function(METALS_INDICES = asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|US2000|UK100|AU200_AUD|SG30_SGD|EU50_EUR")),
+           raw_macro_data,
+           actual_wins_losses = actual_wins_losses,
+           lag_days = 1,
+           stop_value_var = 0.5,
+           profit_value_var = 1) {
+
+    copula_data <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("SPX500_USD", "US2000_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      )
+
+    copula_data_SPX_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("SPX500_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("US2000_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD, -US2000_USD_log1_price, -US2000_USD_quantiles_1, -US2000_USD_tangent_angle1)%>%
+      dplyr::select(-XAU_USD, -XAU_USD_log2_price, -XAU_USD_quantiles_2, -XAU_USD_tangent_angle2)
+
+    copula_data_SPX_AU200 <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("SPX500_USD", "AU200_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_AU200 <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("US2000_USD", "AU200_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD, -US2000_USD_log1_price, -US2000_USD_quantiles_1, -US2000_USD_tangent_angle1)%>%
+      dplyr::select(-AU200_AUD, -AU200_AUD_log2_price, -AU200_AUD_quantiles_2, -AU200_AUD_tangent_angle2)
+
+    copula_data_AU200_AUD_XAG <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("AU200_AUD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-AU200_AUD, -AU200_AUD_log1_price, -AU200_AUD_quantiles_1, -AU200_AUD_tangent_angle1)%>%
+      dplyr::select(-XAU_USD, -XAU_USD_log2_price, -XAU_USD_quantiles_2, -XAU_USD_tangent_angle2)
+
+    copula_data_SPX500_EUR50 <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("SPX500_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_US2000_USD_EUR50 <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("US2000_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-US2000_USD, -US2000_USD_log1_price, -US2000_USD_quantiles_1, -US2000_USD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_XAU_USD_EU50_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAU_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log1_price, -XAU_USD_quantiles_1, -XAU_USD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_XAU_USD_EU50_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAG_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAG_USD, -XAG_USD_log1_price, -XAG_USD_quantiles_1, -XAG_USD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_AU200_AUD_EU50_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("AU200_AUD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-AU200_AUD, -AU200_AUD_log1_price, -AU200_AUD_quantiles_1, -AU200_AUD_tangent_angle1)%>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_SG30_XAU_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("SG30_SGD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log2_price, -XAU_USD_quantiles_2, -XAU_USD_tangent_angle2)
+
+    copula_data_SG30_SPX500_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("SG30_SGD", "SPX500_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SG30_SGD, -SG30_SGD_log1_price, -SG30_SGD_quantiles_1, -SG30_SGD_tangent_angle1)%>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log2_price, -SPX500_USD_quantiles_2, -SPX500_USD_tangent_angle2)
+
+    copula_data_XAG_USD_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAG_USD", "XAG_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAG_USD, -XAG_USD_log1_price, -XAG_USD_quantiles_1, -XAG_USD_tangent_angle1)
+
+    copula_data_XAG_USD_AUD <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAG_USD", "XAG_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAG_USD, -XAG_USD_log1_price, -XAG_USD_quantiles_1, -XAG_USD_tangent_angle1)
+
+    copula_data_XAG_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAG_USD", "XAG_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAG_USD, -XAG_USD_log1_price, -XAG_USD_quantiles_1, -XAG_USD_tangent_angle1)
+
+    copula_data_XAU_USD_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAU_USD", "XAU_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log1_price, -XAU_USD_quantiles_1, -XAU_USD_tangent_angle1)
+
+    copula_data_XAU_USD_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAU_USD", "XAU_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log1_price, -XAU_USD_quantiles_1, -XAU_USD_tangent_angle1)
+
+
+    copula_data_XAU_USD_AUD <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("XAU_USD", "XAU_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log1_price, -XAU_USD_quantiles_1, -XAU_USD_tangent_angle1)
+
+    copula_data_UK100_SPX <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("UK100_GBP", "SPX500_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log2_price, -SPX500_USD_quantiles_2, -SPX500_USD_tangent_angle2)
+
+    copula_data_UK100_EU50 <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("UK100_GBP", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2) %>%
+      dplyr::select(-UK100_GBP, -UK100_GBP_log1_price, -UK100_GBP_quantiles_1, -UK100_GBP_tangent_angle1)
+
+    copula_data_UK100_XAU <-
+      estimating_dual_copula(
+        asset_data_to_use = METALS_INDICES,
+        asset_to_use = c("UK100_GBP", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-UK100_GBP, -UK100_GBP_log1_price, -UK100_GBP_quantiles_1, -UK100_GBP_tangent_angle1) %>%
+      dplyr::select(-XAU_USD, -XAU_USD_log2_price, -XAU_USD_quantiles_2, -XAU_USD_tangent_angle2)
+
+    binary_data_for_post_model <-
+      actual_wins_losses %>%
+      rename(Date = dates, Asset = asset) %>%
+      filter(profit_factor == profit_value_var)%>%
+      filter(stop_factor == stop_value_var) %>%
+      mutate(
+        bin_var =
+          case_when(
+            trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
+            trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
+
+            trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
+            trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
+
+          )
+      ) %>%
+      dplyr::select(Date, bin_var, Asset, trade_col,
+                    profit_factor, stop_factor,
+                    trade_start_prices, trade_end_prices,
+                    starting_stop_value, starting_profit_value)
+
+    copula_data_macro <-
+      METALS_INDICES %>%
+      find_pivots_fib_max_min(how_far_back = 20) %>%
+      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
+      left_join(copula_data) %>%
+      left_join(copula_data_SPX_XAU) %>%
+      left_join(copula_data_US2000_XAU) %>%
+      left_join(copula_data_SPX_AU200) %>%
+      left_join(copula_data_US2000_AU200) %>%
+      left_join(copula_data_AU200_AUD_XAG) %>%
+      left_join(copula_data_SPX500_EUR50) %>%
+      left_join(copula_data_US2000_USD_EUR50) %>%
+      left_join(copula_data_XAU_USD_EU50_EUR) %>%
+      left_join(copula_data_AU200_AUD_EU50_EUR)%>%
+      left_join(copula_data_SG30_XAU_USD)%>%
+      left_join(copula_data_SG30_SPX500_USD) %>%
+      left_join(copula_data_XAG_USD_EUR) %>%
+      left_join(copula_data_XAG_USD_AUD) %>%
+      left_join(copula_data_XAG_USD_JPY) %>%
+      left_join(copula_data_XAU_USD_EUR) %>%
+      left_join(copula_data_XAU_USD_AUD) %>%
+      left_join(copula_data_XAU_USD_JPY) %>%
+      left_join(copula_data_UK100_SPX) %>%
+      left_join(copula_data_UK100_EU50) %>%
+      left_join(copula_data_UK100_XAU) %>%
+      left_join(binary_data_for_post_model) %>%
+      mutate(Date_for_join = as_date(Date)) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      # fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      mutate(hour_of_day = lubridate::hour(Date) %>% as.numeric(),
+             day_of_week = lubridate::wday(Date) %>% as.numeric())
+
+    max_date_in_testing_data <- copula_data_macro %>% pull(Date) %>% max(na.rm = T)
+    message(glue::glue("Max date in Complete data: {max_date_in_testing_data}"))
+
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor|perc_line"))
+
+    lm_vars1 <- c(lm_quant_vars,
+                  "fib_1", "fib_2",
+                  "fib_3", "fib_4",
+                  "fib_5", "fib_6",
+                  "lagged_var_1", "lagged_var_2",
+                  "lagged_var_3", "lagged_var_5",
+                  "lagged_var_8",
+                  "lagged_var_13", "lagged_var_21",
+                  "lagged_var_3_ma", "lagged_var_5_ma",
+                  "lagged_var_8_ma", "lagged_var_13_ma",
+                  "lagged_var_21_ma"
+                  # "hour_of_day", "day_of_week"
+    )
 
     return(
       list(

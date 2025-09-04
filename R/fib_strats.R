@@ -100,7 +100,7 @@ get_best_pivots_fib_trades <- function(.data = log_cumulative,
           mutate(
             trade_col =
               case_when(
-                perc_line_10 >= perc_line_10_mean + perc_line_10_sd*line_10_sd_perc ~ trade_direction_loop
+                perc_line_10 >= perc_line_10_mean + perc_line_10_sd*line_10_sd_perc_loop ~ trade_direction_loop
               ),
             profit_factor = profit_factor_loop,
             stop_factor = stop_factor_loop
@@ -113,7 +113,7 @@ get_best_pivots_fib_trades <- function(.data = log_cumulative,
           mutate(
             trade_col =
               case_when(
-                perc_line_10 <= perc_line_10_mean - perc_line_10_sd*line_10_sd_perc ~ trade_direction_loop
+                perc_line_10 <= perc_line_10_mean - perc_line_10_sd*line_10_sd_perc_loop ~ trade_direction_loop
               ),
             profit_factor = profit_factor_loop,
             stop_factor = stop_factor_loop

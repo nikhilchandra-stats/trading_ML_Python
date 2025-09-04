@@ -2075,3 +2075,242 @@ prep_LM_daily_trade_data <- function(
 
 }
 
+
+#' run_reg_daily_variant_Quant_vers
+#'
+#' @param raw_macro_data
+#' @param eur_data
+#' @param AUD_exports_total
+#' @param USD_exports_total
+#' @param asset_data_daily_raw
+#' @param train_percent
+#'
+#' @return
+#' @export
+#'
+#' @examples
+run_reg_daily_variant_Quant_vers <- function(
+
+  raw_macro_data = get_macro_event_data(),
+
+  eur_data = get_EUR_exports(),
+
+  AUD_exports_total = get_AUS_exports()  %>%
+    pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
+    rename(date = TIME_PERIOD) %>%
+    group_by(date) %>%
+    summarise(Aus_Export = sum(Aus_Export, na.rm = T)),
+
+  USD_exports_total = get_US_exports()  %>%
+    pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
+    group_by(date) %>%
+    summarise(US_Export = sum(US_Export, na.rm = T)) %>%
+    left_join(AUD_exports_total) %>%
+    ungroup(),
+
+  asset_data_daily_raw = asset_data_daily_raw,
+
+  train_percent = 0.6
+) {
+
+  trading_dat <- asset_data_daily_raw %>%
+    mutate(
+      week_start_price = log(Price),
+      Week_Change = lead(week_start_price) - week_start_price,
+      Week_Change_lag = week_start_price - lag(week_start_price)
+    )
+
+  # USD_exports_total = USD_exports_total %>%
+  #   mutate(
+  #     month_date = lubridate::floor_date(date, "month")
+  #   )
+  #
+  # AUD_exports_total = AUD_exports_total %>%
+  #   mutate(
+  #     month_date = lubridate::floor_date(date, "month")
+  #   )
+
+  macro_us <- transform_macro_to_monthly(
+    macro_dat_for_transform = get_USD_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+  macro_eur <- transform_macro_to_monthly(
+    macro_dat_for_transform = get_EUR_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+  macro_jpy <- transform_macro_to_monthly(
+    macro_dat_for_transform = get_JPY_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+  macro_aud <- transform_macro_to_monthly(
+    macro_dat_for_transform = get_AUS_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+  Macro_CNY <- transform_macro_to_monthly(
+    get_CNY_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+  Macro_GBP <- transform_macro_to_monthly(
+    macro_dat_for_transform = get_GBP_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+  macro_cad <- transform_macro_to_monthly(
+    get_CAD_Indicators(raw_macro_data = raw_macro_data),
+    transform_to_week = TRUE)
+
+  # EUR_trade2 <- get_EUR_exports() %>% dplyr::select(month_date = date, `EUR Export Total`) %>%
+  #   mutate(
+  #     `EUR Export Total` = `EUR Export Total` - lag(`EUR Export Total`)
+  #   ) %>% filter(!is.na(`EUR Export Total`)) %>%
+  #   mutate(month_date = month_date + months(1)) %>%
+  #   mutate(week_date = lubridate::floor_date(month_date, "week")) %>%
+  #   dplyr::select(-month_date)
+  #
+  # USD_exports_total2 <- USD_exports_total %>%
+  #   mutate(
+  #     US_Export = US_Export - lag(US_Export),
+  #     Aus_Export  = Aus_Export  - lag(Aus_Export )
+  #   ) %>%
+  #   filter(!is.na(US_Export), !is.na(Aus_Export)) %>%
+  #   mutate(month_date = month_date + months(1)) %>%
+  #   dplyr::select(-date)  %>%
+  #   mutate(week_date = lubridate::floor_date(month_date, "week")) %>%
+  #   dplyr::select(-month_date)
+
+  testing_data <- trading_dat %>%
+    mutate(Date = as_date(Date)) %>%
+    left_join(macro_us, by = c("Date" = "week_date") ) %>%
+    left_join(macro_eur, by = c("Date" = "week_date"))%>%
+    left_join(macro_jpy, by = c("Date" = "week_date"))%>%
+    left_join(macro_aud, by = c("Date" = "week_date")) %>%
+    left_join(Macro_CNY, by = c("Date" = "week_date")) %>%
+    left_join(Macro_GBP, by = c("Date" = "week_date")) %>%
+    left_join(macro_cad, by = c("Date" = "week_date")) %>%
+    # left_join(EUR_trade2, by = c("Date" = "week_date")) %>%
+    # left_join(USD_exports_total2, by = c("Date" = "week_date")) %>%
+    # left_join(AUD_exports_total2) %>%
+    # filter(!is.na(`USD Monthly Budget Statement`)) %>%
+    # filter(!is.na(`EUR Export Total`)) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    mutate(
+      lagged_var = Week_Change_lag,
+      lagged_var2 = lag(Week_Change_lag),
+      lagged_var3 = lag(Week_Change_lag, 2),
+      ma3 = slider::slide_dbl(.x = lagged_var, .f = ~ mean(.x, na.rm = T), .before = 3),
+      sd3 = slider::slide_dbl(.x = lagged_var, .f = ~ sd(.x, na.rm = T), .before = 3),
+
+      res_50 = slider::slide_dbl(.x = lag(High), .f = ~ max(.x, na.rm = T), .before = 50, .complete = FALSE),
+      sup_50 = slider::slide_dbl(.x = lag(Low), .f = ~ min(.x, na.rm = T), .before = 50, .complete = FALSE),
+      res_25 = slider::slide_dbl(.x = lag(High), .f = ~ max(.x, na.rm = T), .before = 25, .complete = FALSE),
+      sup_25 = slider::slide_dbl(.x = lag(Low), .f = ~ min(.x, na.rm = T), .before = 25, .complete = FALSE),
+      res_10 = slider::slide_dbl(.x = lag(High), .f = ~ max(.x, na.rm = T), .before = 10, .complete = FALSE),
+      sup_10 = slider::slide_dbl(.x = lag(Low), .f = ~ min(.x, na.rm = T), .before = 10, .complete = FALSE),
+      price_point_sup_res_50 = Price - lag(Price, 1),
+      price_point_sup_res_25 = Price - lag(Price, 1),
+      price_point_sup_res_50 = cumsum(price_point_sup_res_50),
+      price_point_sup_res_25 = cumsum(price_point_sup_res_25),
+
+      fib_point_50 = price_point_sup_res_50/(res_50 - sup_50),
+      fib_point_25 = price_point_sup_res_25/(res_25 - sup_25),
+      fib_point_10 = price_point_sup_res_25/(res_10 - sup_10)
+    ) %>%
+    filter(!is.na(lagged_var),
+           !is.na(ma3),
+           !is.na(lagged_var3)
+    ) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(where(is.numeric), .direction = "down") %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(where(is.numeric), .direction = "up") %>%
+    ungroup() %>%
+    mutate(
+      EUR_check = ifelse(str_detect(Asset, "EUR"), 1, 0),
+      AUD_check = ifelse(str_detect(Asset, "AUD"), 1, 0),
+      USD_check = ifelse(str_detect(Asset, "USD"), 1, 0),
+      GBP_check = ifelse(str_detect(Asset, "GBP"), 1, 0),
+      JPY_check = ifelse(str_detect(Asset, "JPY"), 1, 0),
+      CNY_check = ifelse(str_detect(Asset, "CNY"), 1, 0),
+      CAD_check = ifelse(str_detect(Asset, "CAD"), 1, 0),
+      XAG_check = ifelse(str_detect(Asset, "XAG"), 1, 0),
+      SPX_check = ifelse(str_detect(Asset, "SPX500"), 1, 0),
+      AU200_check = ifelse(str_detect(Asset, "AU200"), 1, 0),
+      US2000_check = ifelse(str_detect(Asset, "US2000"), 1, 0),
+      EU50_check = ifelse(str_detect(Asset, "EU50"), 1, 0),
+      BTC_check = ifelse(str_detect(Asset, "BTC"), 1, 0),
+      LTC_check = ifelse(str_detect(Asset, "LTC"), 1, 0),
+      SG30_check = ifelse(str_detect(Asset, "SG30"), 1, 0),
+      UK100_check = ifelse(str_detect(Asset, "UK100"), 1, 0),
+      USB_check = ifelse(str_detect(Asset, "USB"), 1, 0)
+    ) %>%
+    mutate(
+      bin_dat = case_when(
+        Week_Change >= 0 ~ 1,
+        Week_Change < 0 ~ 0
+      )
+    ) %>%
+    filter(if_all(everything(), ~ !is.na(.)))
+
+  testing_data_train <- testing_data %>%
+    group_by(Asset) %>%
+    slice_head(prop = train_percent) %>%
+    ungroup()
+  testing_data_test <- testing_data %>%
+    group_by(Asset) %>%
+    slice_tail(prop = (1 - train_percent) - 0.03 )%>%
+    ungroup()
+
+  remove_spaces_in_names <- names(testing_data_train) %>%
+    map(~ str_replace_all(.x," ", "_") %>% str_trim()) %>% unlist() %>% as.character()
+
+  names(testing_data_train) <- remove_spaces_in_names
+  names(testing_data_test) <- remove_spaces_in_names
+
+  reg_vars <- names(testing_data_train) %>%
+    keep(~ .x != "date" & .x != "Price"& .x != "Open" &
+           .x != "High" & .x != "Low" & .x != "Change_%" &
+           .x != "daily_change" & .x!= "change_var" & .x!= "bin_dat" &
+           .x != "week_date" & .x != "week_start_price" &
+           .x != "weekly_forward_return" & .x != "Week_Change" & .x != "Asset" &
+           .x != "Week_Change_lag" & .x != "sd3")
+  macro_vars <- reg_vars %>%
+    keep(~ !str_detect(.x, "lagged"))%>%
+    keep(~ .x != "ma" & .x != "ma2" & .x != "ma3" & .x != "week_date" & .x != "week_start_price" &
+           .x != "sdma" & .x != "sdma2" & .x != "sdma3" &
+           .x != "weekly_forward_return" & .x != "Week_Change" & .x != "Asset" &
+           .x != "Week_Change_lag" & .x != "sd3" & .x != "bin_dat")
+
+  dependant_var <- "Week_Change"
+
+  reg_formula <- create_lm_formula_no_space(dependant = dependant_var, independant = reg_vars)
+
+  reg_formula_lm <-  create_lm_formula_no_space(dependant = dependant_var,
+                                                independant = reg_vars
+  )
+
+  lm_reg <- lm(data = testing_data_train, formula = reg_formula_lm)
+  prediction <- predict.lm(lm_reg, testing_data_test)
+  prediction_training <- predict.lm(lm_reg, testing_data_train)
+
+  raw_LM_trade_df <- testing_data_test %>%
+    dplyr::select(Asset, Date) %>%
+    mutate(
+      LM_pred = predict.lm(lm_reg, testing_data_test) %>% as.numeric()
+    )
+
+  raw_LM_trade_df_training <- testing_data_train %>%
+    dplyr::select(Asset, Date) %>%
+    mutate(
+      LM_pred = predict.lm(lm_reg, testing_data_train) %>% as.numeric()
+    )
+
+  return(
+
+    list(
+      "LM Model"= lm_reg,
+      "Testing Data"= raw_LM_trade_df,
+      "Training Data" = raw_LM_trade_df_training
+    )
+
+  )
+
+}
