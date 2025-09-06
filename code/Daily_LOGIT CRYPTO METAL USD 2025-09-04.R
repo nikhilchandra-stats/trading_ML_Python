@@ -88,10 +88,10 @@ mean_values_by_asset_for_loop =
   )
 
 load_custom_functions()
-stop_value_var = 1
-profit_value_var = 2
-available_assets <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|US2000|UK100|AU200_AUD|SG30_SGD|EU50_EUR")) %>% pull(Asset) %>% unique()
-METALS_INDICES <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|US2000|UK100|AU200_AUD|SG30_SGD|EU50_EUR"))
+stop_value_var = 0.5
+profit_value_var = 1
+available_assets <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|USB05Y_USD|USB10Y_USD|BTC_USD|LTC_USD|BCH_USD|USD_JPY|AUD_USD|EUR_USD|GBP_USD|USD_MXN|USD_SEK|USD_CHF")) %>% pull(Asset) %>% unique()
+METALS_INDICES <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|USB05Y_USD|USB10Y_USD|BTC_USD|LTC_USD|BCH_USD|USD_JPY|AUD_USD|EUR_USD|GBP_USD|USD_MXN|USD_SEK|USD_CHF"))
 
 actual_wins_losses <- get_ts_trade_actuals_Logit_NN("C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_Daily_Data.db", data_is_daily = TRUE)
 actual_wins_losses <- actual_wins_losses %>%
@@ -101,13 +101,13 @@ lm_test_prop <- 1
 accumulating_data <- list()
 all_results_ts <- list()
 
-NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/METALS_INDICES_DAILY_LOGIT.db"
+NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/CRYPTO_MET_USD_DAILY_LOGIT.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
 
 metals_indices_Logit_Data <-
-  create_NN_METALS_IDINCES_DAILY_QUANT(
-    METALS_INDICES = asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|US2000|UK100|AU200_AUD|SG30_SGD|EU50_EUR")),
+  create_NN_CRYPTO_MET_CUR_DAILY_QUANT(
+    METALS_INDICES = asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|USB05Y_USD|USB10Y_USD|BTC_USD|LTC_USD|BCH_USD|USD_JPY|AUD_USD|EUR_USD|GBP_USD|USD_MXN|USD_SEK|USD_CHF")),
     raw_macro_data,
     actual_wins_losses = actual_wins_losses,
     lag_days = 1,
@@ -117,15 +117,15 @@ metals_indices_Logit_Data <-
 
 min_allowable_date <-
   (metals_indices_Logit_Data[[1]] %>%
-  filter(if_all(everything(), ~ !is.na(.))) %>%
-  pull(Date) %>% min()) + lubridate::days(1500)
+     filter(if_all(everything(), ~ !is.na(.))) %>%
+     pull(Date) %>% min()) + lubridate::days(1500)
 
 date_sequence <-
   seq(as_date(min_allowable_date), as_date("2025-06-01"), "week") %>%
   keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::days(30) ) )
 
 
-redo_db = FALSE
+redo_db = TRUE
 stop_value_var <- stop_value_var
 profit_value_var <- profit_value_var
 
@@ -134,12 +134,13 @@ params_to_test <-
     NN_samples = c(2000, 2000, 2000, 2000, 2000),
     hidden_layers = c(0, 0,0,0, 0),
     ending_thresh = c(0,0,0,0, 0),
-    p_value_thresh_for_inputs = c(0.1, 0.01, 0.001, 0.0001, 0.00001),
+    # p_value_thresh_for_inputs = c(0.1, 0.01, 0.001, 0.0001, 0.00001),
+    p_value_thresh_for_inputs = c(0.00001 ,0.0001 , 0.001, 0.01, 0.1),
     neuron_adjustment = c(0,0,0,0, 0),
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 4:dim(params_to_test)[1]) {
+for (j in 2:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -148,7 +149,7 @@ for (j in 4:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 183:length(date_sequence)) {
+  for (k in 26:length(date_sequence)) {
 
     gc()
 
@@ -162,7 +163,7 @@ for (j in 4:dim(params_to_test)[1]) {
         lm_vars1 = metals_indices_Logit_Data[[2]],
         NN_samples = NN_samples,
         dependant_var_name = available_assets[i],
-        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant/",
+        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant_2/",
         training_max_date = date_sequence[k],
         lm_train_prop = 1,
         trade_direction_var = analysis_direction,
@@ -190,7 +191,7 @@ for (j in 4:dim(params_to_test)[1]) {
               filter(Date <= max_test_date),
             lm_vars1 = metals_indices_Logit_Data[[2]],
             dependant_var_name = available_assets[i],
-            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant/",
+            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant_2/",
             testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
             trade_direction_var = analysis_direction,
             NN_index_to_choose = "",
@@ -229,12 +230,12 @@ for (j in 4:dim(params_to_test)[1]) {
 
     if(redo_db == TRUE) {
       write_table_sql_lite(.data = all_asset_logit_results,
-                           table_name = "METALS_INDICES_sims",
+                           table_name = "CRYPTO_MET_USD_DAILY_LOGIT",
                            conn = NN_sims_db_con)
       redo_db = FALSE
     } else {
       append_table_sql_lite(.data = all_asset_logit_results,
-                            table_name = "METALS_INDICES_sims",
+                            table_name = "CRYPTO_MET_USD_DAILY_LOGIT",
                             conn = NN_sims_db_con)
 
     }
@@ -248,7 +249,7 @@ for (j in 4:dim(params_to_test)[1]) {
 }
 
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
-                                      statement = "SELECT * FROM METALS_INDICES_sims")
+                                      statement = "SELECT * FROM CRYPTO_MET_USD_DAILY_LOGIT")
 
 distinct_params <-
   all_results_ts_dfr %>%
@@ -290,15 +291,15 @@ all_asset_logit_results_sum <-
   mutate(
     outperformance_perc = outperformance_count/simulations
   ) %>%
-  filter(risk_weighted_return_mid > 0.1, edge > 0, simulations > 30, outperformance_perc > 0.55) %>%
+  filter(risk_weighted_return_mid > 0.05, edge > 0, simulations > 30, outperformance_perc > 0.55) %>%
   group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid) %>%
   group_by(Asset) %>%
   slice_max(Trades)
-  # filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
-  # group_by(Asset) %>%
-  # slice_max(risk_weighted_return_mid, n = 2)
-  # filter(simulations >= 100, edge > 0.1, outperformance_perc > 0.55, risk_weighted_return_mid > 0.08) %>%
-  group_by(Asset) %>%
+# filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
+# group_by(Asset) %>%
+# slice_max(risk_weighted_return_mid, n = 2)
+# filter(simulations >= 100, edge > 0.1, outperformance_perc > 0.55, risk_weighted_return_mid > 0.08) %>%
+group_by(Asset) %>%
   slice_max(risk_weighted_return_mid)
 # filter(NN_samples == 10000)

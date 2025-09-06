@@ -186,7 +186,7 @@ retest_data <- list()
 retest_ts_data <- list()
 store_tagged_trades <- list()
 
-for (j in 1:dim(trade_params)[1]) {
+for (j in 55:dim(trade_params)[1]) {
 
   sd_factor_low <- trade_params$sd_factor_low[j] %>% as.numeric()
   sd_factor_high <- trade_params$sd_factor_high[j] %>% as.numeric()
@@ -213,8 +213,9 @@ for (j in 1:dim(trade_params)[1]) {
         )
     )
 
-  temp_for_trade <- temp_for_trade_pos %>%
-    mutate(pos_neg = "pos")
+  temp_for_trade <-
+    temp_for_trade_pos %>%
+    mutate(pos_neg = "pos") %>%
     bind_rows(temp_for_trade_neg %>%
                 mutate(pos_neg = "neg"))
 

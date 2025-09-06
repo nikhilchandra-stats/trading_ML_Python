@@ -2200,15 +2200,14 @@ run_reg_daily_variant_Quant_vers <- function(
       res_25 = slider::slide_dbl(.x = lag(High), .f = ~ max(.x, na.rm = T), .before = 25, .complete = FALSE),
       sup_25 = slider::slide_dbl(.x = lag(Low), .f = ~ min(.x, na.rm = T), .before = 25, .complete = FALSE),
       res_10 = slider::slide_dbl(.x = lag(High), .f = ~ max(.x, na.rm = T), .before = 10, .complete = FALSE),
-      sup_10 = slider::slide_dbl(.x = lag(Low), .f = ~ min(.x, na.rm = T), .before = 10, .complete = FALSE),
-      price_point_sup_res_50 = Price - lag(Price, 1),
-      price_point_sup_res_25 = Price - lag(Price, 1),
-      price_point_sup_res_50 = cumsum(price_point_sup_res_50),
-      price_point_sup_res_25 = cumsum(price_point_sup_res_25),
-
-      fib_point_50 = price_point_sup_res_50/(res_50 - sup_50),
-      fib_point_25 = price_point_sup_res_25/(res_25 - sup_25),
-      fib_point_10 = price_point_sup_res_25/(res_10 - sup_10)
+      sup_10 = slider::slide_dbl(.x = lag(Low), .f = ~ min(.x, na.rm = T), .before = 10, .complete = FALSE)
+      # price_point_sup_res_50 = Price - lag(Price, 1),
+      # price_point_sup_res_25 = Price - lag(Price, 1),
+      # price_point_sup_res_50 = cumsum(price_point_sup_res_50),
+      # price_point_sup_res_25 = cumsum(price_point_sup_res_25),
+      #
+      # fib_point_50 = price_point_sup_res_50/(res_50 - sup_50),
+      # fib_point_25 = price_point_sup_res_25/(res_25 - sup_25)
     ) %>%
     filter(!is.na(lagged_var),
            !is.na(ma3),

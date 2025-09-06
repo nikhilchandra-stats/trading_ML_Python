@@ -366,8 +366,9 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 5,
-        win_threshold = 0.6,
+        risk_dollar_value = 10,
+        win_threshold = 0.2,
+        risk_weighted_thresh = 0.3,
         slice_max = TRUE,
         filter_profitbale_assets = TRUE
       )
@@ -381,9 +382,9 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 5,
+        risk_dollar_value = 10,
         win_threshold = 0.2,
-        risk_weighted_thresh = 0.6,
+        risk_weighted_thresh = 0.3,
         slice_max = TRUE,
         filter_profitbale_assets = TRUE
       )
@@ -400,8 +401,9 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 5,
-        win_threshold = 0.6,
+        risk_dollar_value = 10,
+        win_threshold = 0.2,
+        risk_weighted_thresh = 0.3,
         slice_max = TRUE,
         filter_profitbale_assets = TRUE
       )
@@ -415,9 +417,9 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 5,
+        risk_dollar_value = 10,
         win_threshold = 0.2,
-        risk_weighted_thresh = 0.35,
+        risk_weighted_thresh = 0.3,
         slice_max = TRUE,
         filter_profitbale_assets = TRUE
       )
@@ -452,7 +454,7 @@ while (current_time < end_time) {
         mean_values_by_asset_for_loop_H1 = mean_values_by_asset_for_loop_H1_ask,
         currency_conversion = currency_conversion,
         asset_infor = asset_infor,
-        risk_dollar_value = 5,
+        risk_dollar_value = 10,
         win_threshold = 0.2,
         risk_weighted_thresh = 0.2,
         slice_max = TRUE,
@@ -548,73 +550,31 @@ while (current_time < end_time) {
 
     if(dim(total_trades)[1] > 0 & !is.null(total_trades)) {
 
-      total_trades <- total_trades %>%
-        filter(Asset %in% all_assets_present)
-
-      greater_prof_trades <-
+      total_trades <-
         total_trades %>%
-        filter(stop_factor < profit_factor)
+        filter(Asset %in% all_assets_present) %>%
+        filter(stop_factor < profit_factor) %>%
+        distinct()
 
-      if(dim(greater_prof_trades)[1] > 0) {
-        greater_prof_trades <- greater_prof_trades %>%
-          group_by(Asset, trade_col) %>%
+      if(dim(total_trades)[1] > 0 & !is.null(total_trades)) {
+        total_trades <-
+          total_trades %>%
+          group_by(Asset) %>%
           slice_max(risk_weighted_returns) %>%
-          ungroup()
-
-        greater_prof_trades_assets <- greater_prof_trades %>% distinct(Asset) %>% pull(Asset)
-
-      } else {
-        greater_prof_trades_assets <- c("XXXXXXXXXX")
-        greater_prof_trades_assets <- NULL
-      }
-
-      equal_prof_trades <- total_trades %>%
-        filter(!(Asset %in% greater_prof_trades_assets))
-
-      if(dim(equal_prof_trades)[1] > 0) {
-
-        equal_prof_trades <-
-          equal_prof_trades %>%
-          group_by(Asset, trade_col) %>%
-          slice_min(stop_value) %>%
-          group_by(Asset, trade_col) %>%
-          slice_min(risk_weighted_returns) %>%
-          group_by(Asset, trade_col) %>%
-          mutate(
-            kk = row_number()
-          ) %>%
-          group_by(Asset, trade_col) %>%
-          slice_min(kk) %>%
-          ungroup()
-
-      } else {
-        equal_prof_trades <- NULL
-      }
-
-      if(!is.null(equal_prof_trades)) {
-        total_trades <-
-          equal_prof_trades %>%
-          bind_rows(greater_prof_trades)
-      }
-
-      if( is.null(equal_prof_trades) & !is.null(greater_prof_trades) ) {
-        total_trades <-
-          greater_prof_trades %>%
-          bind_rows(equal_prof_trades)
+          group_by(Asset) %>%
+          mutate(xx = row_number()) %>%
+          group_by(Asset) %>%
+          slice_min(xx) %>%
+          ungroup() %>%
+          dplyr::select(-xx)
       }
 
     }
 
     total_trades <-
-      total_trades %>%
-      bind_rows(
-        list(
-          # AUD_NZD_Trades_long,
-          # AUD_NZD_Trades_short,
-          commod_trades_dfr
-        ) %>%
-          map_dfr(bind_rows)
-      )
+      list(total_trades,
+           commod_trades_dfr) %>%
+      map_dfr(bind_rows)
 
     if(dim(total_trades)[1] > 0) {
 
@@ -666,7 +626,7 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 20000 ~ TRUE,
+                )) & abs(units) >= 15000 ~ TRUE,
                 Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
                              "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
                 Asset == "XCU_USD" & abs(units)>=1200 ~ TRUE,
