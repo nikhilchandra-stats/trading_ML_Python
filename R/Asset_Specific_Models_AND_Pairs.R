@@ -3140,6 +3140,11 @@ generate_NNs_create_preds <- function(
     ) %>%
     ungroup() %>%
     distinct() %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(!matches( c("bin_var", "trade_col"), ignore.case = FALSE ), .direction = "down") %>%
+    ungroup() %>%
     filter(if_all(everything() ,.fns = ~ !is.na(.)))
 
   max_date_in_testing_data <- training_data %>% pull(Date) %>% max(na.rm = T)
@@ -3334,7 +3339,12 @@ read_NNs_create_preds <- function(
                                            .before = 21)
     ) %>%
     ungroup() %>%
-    distinct()
+    distinct() %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(!matches( c("bin_var", "trade_col"), ignore.case = FALSE ), .direction = "down") %>%
+    ungroup()
 
 
   max_date_in_testing_data <- testing_data %>% pull(Date) %>% max(na.rm = T)
@@ -4323,9 +4333,8 @@ get_Logit_trades <-
     ) %>%
     filter(simulations >= sim_min,
            edge > edge_min,
-           outperformance_count > outperformance_count_min,
+           outperformance_perc > outperformance_count_min,
            risk_weighted_return_mid > risk_weighted_return_mid_min) %>%
-    # filter(simulations >= 20, edge > 0, outperformance_count > 0.51, risk_weighted_return_mid > 0.1) %>%
     group_by(Asset) %>%
     slice_max(risk_weighted_return_mid)%>%
     ungroup()
@@ -4781,3 +4790,159 @@ create_NN_Indices_data <-
     )
 
   }
+
+#' get_NN_trades_Asset_Specific
+#'
+#' @param NN_path
+#' @param copula_data
+#' @param stop_value_var
+#' @param profit_value_var
+#' @param NN_path_save_path
+#' @param NN_sims_db
+#' @param table_name
+#' @param skip_NN_generation
+#' @param testing_min_date_days_lag
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_NN_trades_Asset_Specific <- function(
+    NN_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
+    copula_data = copula_data_Indices,
+    stop_value_var = 10,
+    profit_value_var = 15,
+    NN_path_save_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
+    NN_sims_db = "C:/Users/nikhi/Documents/trade_data/INDICES_15M_NN_sims.db",
+    table_name = "INDICES_15_NN_sims",
+    skip_NN_generation = TRUE,
+    testing_min_date_days_lag = 1000,
+    sim_min = 30,
+    edge_min = 0,
+    outperformance_count_min = 0.51 ,
+    risk_weighted_return_mid_min = 0.14
+) {
+
+  date_filter_for_NN <-
+    as.character(copula_data[[1]]$Date %>% max(na.rm = T) + days(1))
+
+  NN_sims_db_con <- connect_db(path = NN_sims_db)
+  all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
+                                        statement =
+                                          as.character(glue::glue("SELECT * FROM {table_name}"))
+  )
+  DBI::dbDisconnect(NN_sims_db_con)
+  rm(NN_sims_db_con)
+
+  all_asset_logit_results_sum <-
+    all_results_ts_dfr %>%
+    mutate(
+      edge = risk_weighted_return - control_risk_return,
+      outperformance_count = ifelse(Perc > Perc_control, 1, 0),
+      returns_total = Trades*Perc*win_amount - Trades*loss_amount*(1-Perc)
+    ) %>%
+    group_by(Asset, threshold, NN_samples, ending_thresh, p_value_thresh_for_inputs, neuron_adjustment,
+             hidden_layers, trade_col
+    ) %>%
+    summarise(
+      win_amount = mean(win_amount, na.rm = T),
+      loss_amount = mean(loss_amount, na.rm = T),
+      Trades = mean(Trades, na.rm = T),
+      edge = mean(edge, na.rm = T),
+      Perc = mean(Perc, na.rm = T),
+      Median_Actual_Return = median(returns_total, na.rm = T),
+      risk_weighted_return_low = quantile(risk_weighted_return, 0.25 ,na.rm = T),
+      risk_weighted_return_mid = median(risk_weighted_return, na.rm = T),
+      risk_weighted_return_high = quantile(risk_weighted_return, 0.75 ,na.rm = T),
+      control_trades = mean(Total_control, na.rm = T),
+      control_risk_return_mid = median(control_risk_return, na.rm = T),
+      simulations = n(),
+      outperformance_count = sum(outperformance_count)
+    ) %>%
+    mutate(
+      outperformance_perc = outperformance_count/simulations
+    ) %>%
+    filter(simulations >= sim_min,
+           edge > edge_min,
+           outperformance_count > outperformance_count_min,
+           risk_weighted_return_mid > risk_weighted_return_mid_min) %>%
+    group_by(Asset) %>%
+    slice_max(risk_weighted_return_mid) %>%
+    group_by(Asset) %>%
+    slice_max(Trades) %>%
+    ungroup()
+
+
+  gernating_params <-
+    all_asset_logit_results_sum %>%
+    distinct(Asset, NN_samples, ending_thresh,
+             p_value_thresh_for_inputs,
+             neuron_adjustment,
+             hidden_layers,
+             trade_col,
+             threshold)
+
+  accumulating_trades <- list()
+
+  for (i in 1:dim(gernating_params)[1] ) {
+
+    if(skip_NN_generation == FALSE) {
+      check_completion <- generate_NNs_create_preds(
+        copula_data_macro = copula_data[[1]],
+        lm_vars1 = copula_data[[2]],
+        NN_samples = gernating_params$NN_samples[i] %>% as.integer(),
+        dependant_var_name = gernating_params$Asset[i] %>% as.character(),
+        NN_path = NN_path_save_path,
+        training_max_date = date_filter_for_NN,
+        lm_train_prop = 1,
+        trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
+        stop_value_var = stop_value_var,
+        profit_value_var = profit_value_var,
+        max_NNs = 1,
+        hidden_layers = gernating_params$hidden_layers[i] %>% as.integer(),
+        ending_thresh = gernating_params$ending_thresh[i] %>% as.numeric(),
+        run_logit_instead = FALSE,
+        p_value_thresh_for_inputs = gernating_params$p_value_thresh_for_inputs[i] %>% as.numeric(),
+        neuron_adjustment = gernating_params$neuron_adjustment[i] %>% as.numeric(),
+        lag_price_col = "Price"
+      )
+    }
+
+    NN_test_preds <-
+      read_NNs_create_preds(
+        copula_data_macro = copula_data[[1]],
+        lm_vars1 = copula_data[[2]],
+        dependant_var_name = gernating_params$Asset[i] %>% as.character(),
+        NN_path = NN_path_save_path,
+        testing_min_date = as.character(as_date(date_filter_for_NN) - days(testing_min_date_days_lag)),
+        trade_direction_var = gernating_params$trade_col[i] %>% as.character(),
+        NN_index_to_choose = "",
+        stop_value_var = stop_value_var,
+        profit_value_var = profit_value_var,
+        analysis_threshs = c(0.5,0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999),
+        run_logit_instead = FALSE,
+        lag_price_col = "Price",
+        return_tagged_trades = TRUE
+      )
+
+    accumulating_trades[[i]] <-
+      NN_test_preds %>%
+      slice_max(Date) %>%
+      filter(Asset == gernating_params$Asset[i] %>% as.character()) %>%
+      mutate(
+        stop_factor = stop_value_var,
+        profit_factor = profit_value_var
+      ) %>%
+      mutate(
+        pred_min = gernating_params$threshold[i] %>% as.numeric()
+      )
+
+  }
+
+  returned_data <-
+    accumulating_trades %>%
+    map_dfr(bind_rows)
+
+  return(returned_data)
+
+}
