@@ -94,8 +94,11 @@ available_assets <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|X
 METALS_INDICES <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|USB05Y_USD|USB10Y_USD|CH20_CHF|UK100_GBP|JP225Y_JPY|EU50_EUR|FR40_EUR|JP225_USD|AU200_AUD|ESPIX_EUR|SG30_SGD|DE10YB_EUR|WTICO_USD|BCO_USD|NATGAS_USD|XCU_USD"))
 
 actual_wins_losses <- get_ts_trade_actuals_Logit_NN("C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_Daily_Data.db", data_is_daily = TRUE)
-actual_wins_losses <- actual_wins_losses %>%
-  filter(asset %in% available_assets)
+actual_wins_losses <-
+  actual_wins_losses %>%
+  filter(asset %in% available_assets) %>%
+  ungroup() %>%
+  filter(trade_col == "Long")
 
 lm_test_prop <- 1
 accumulating_data <- list()
@@ -140,7 +143,7 @@ params_to_test <-
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 2:dim(params_to_test)[1]) {
+for (j in 3:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -149,7 +152,7 @@ for (j in 2:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 175:length(date_sequence)) {
+  for (k in 283:length(date_sequence)) {
 
     gc()
 
@@ -291,7 +294,7 @@ all_asset_logit_results_sum <-
   mutate(
     outperformance_perc = outperformance_count/simulations
   ) %>%
-  filter(risk_weighted_return_mid > 0.1, edge > 0, simulations > 30, outperformance_perc > 0.55) %>%
+  filter(risk_weighted_return_mid > 0.1, edge > 0, simulations > 50, outperformance_perc > 0.55) %>%
   group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid) %>%
   group_by(Asset) %>%

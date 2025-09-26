@@ -50,8 +50,8 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db"
-start_date = "2011-01-01"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+start_date = "2008-01-01"
 end_date = today() %>% as.character()
 
 #------------------------------------------------------Test with big LM Prop
@@ -66,6 +66,9 @@ AUD_USD_NZD_USD_list <-
     time_frame = "H1"
   )
 
+available_assets <- c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD", "XAU_USD",
+                      "EUR_AUD", "EUR_NZD", "XAG_EUR", "XAU_EUR", "USD_CHF", "XAU_CHF", "XAG_CHF")
+
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
@@ -75,10 +78,19 @@ actual_wins_losses <-
     dates = as_datetime(dates)
   )
 DBI::dbDisconnect(full_ts_trade_db_con)
+actual_wins_losses <-
+  actual_wins_losses %>%
+  filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
+  filter(trade_col == "Long") %>%
+  filter(asset %in% available_assets) %>%
+  filter(dates >= "2012-01-01")
+gc()
+
 rm(full_ts_trade_db_con)
 lm_test_prop <- 1
 accumulating_data <- list()
-available_assets <- c("AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD", "XAU_USD")
+AUD_USD_NZD_USD_list[[1]] %>% pull(Asset) %>% unique()
+
 date_sequence <- seq(as_date("2022-01-01"), as_date("2025-06-01"), "week") %>% sample(size = 10)
 all_results_ts <- list()
 
@@ -103,7 +115,7 @@ min_allowable_date <-
   pull(Date) %>% min()
 
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-06-01"), "week") %>%
+  seq(as_date(min_allowable_date), as_date("2025-06-01"), "2 weeks") %>%
   keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) )
 
 
@@ -121,7 +133,10 @@ params_to_test <-
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 2:dim(params_to_test)[1]) {
+rm(actual_wins_losses)
+gc()
+
+for (j in 3:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -130,7 +145,7 @@ for (j in 2:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 1:length(date_sequence)) {
+  for (k in 286:length(date_sequence)) {
 
     gc()
 
@@ -234,12 +249,14 @@ all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
 
 distinct_params <-
   all_results_ts_dfr %>%
-  distinct(
+  group_by(
     NN_samples, ending_thresh,
     p_value_thresh_for_inputs,
     neuron_adjustment,
-    hidden_layers
-  )
+    hidden_layers,
+    trade_col
+  ) %>%
+  summarise(loop_count = n_distinct(sim_date))
 
 all_asset_logit_results_sum <-
   all_results_ts_dfr %>%
@@ -273,7 +290,7 @@ all_asset_logit_results_sum <-
   # filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
   # group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid, n = 2)
-  filter(simulations >= 100, edge > 0.1, outperformance_count > 0.55, risk_weighted_return_mid > 0.1) %>%
+  filter(simulations >= 20, edge > 0.1, outperformance_count > 0.55, risk_weighted_return_mid > 0.1) %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return_mid)
 # filter(NN_samples == 10000)

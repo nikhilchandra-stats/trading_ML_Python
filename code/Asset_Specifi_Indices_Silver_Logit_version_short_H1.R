@@ -10,7 +10,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
+  start_date = (today() - days(5)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -25,33 +25,36 @@ currency_conversion <-
     tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
   )
 
-asset_list_oanda <- get_oanda_symbols() %>%
-  keep( ~ .x %in% c("HK33_HKD", "USD_JPY","SPX500_USD",
-                    "AUD_NZD", "GBP_CHF",
-                    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
-                    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
-                    "DE30_EUR",
-                    "AUD_CAD",
-                    "XPD_USD",
-                    "UK100_GBP",
-                    "USD_CHF", "GBP_NZD",
-                    "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
-                    "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
-                    "XAU_USD",
-                    "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
-                    "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
-                    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
-                    "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
-                    "EUR_AUD", "SOYBN_USD",
-                    "US2000_USD",
-                    "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD", "AUD_JPY", "AUD_SEK")
-  )
+asset_list_oanda =
+  c("XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
+    "XAG_NZD",
+    "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
+    "XAU_NZD",
+    "BTC_USD", "LTC_USD", "BCH_USD",
+    "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
+    "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
+    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
+    "AUD_USD", "EUR_USD", "GBP_USD", "USD_CHF", "USD_JPY", "USD_MXN", "USD_SEK", "USD_NOK",
+    "NZD_USD", "USD_CAD", "USD_SGD", "ETH_USD", "XPT_USD", "XPD_USD",
+    "USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
+    "DE30_EUR",
+    "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
+    "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+    "XAU_USD",
+    "USD_CZK",  "WHEAT_USD",
+    "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
+    "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+    "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
+    "US2000_USD",
+    "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
+    "JP225_USD", "SPX500_USD") %>%
+  unique()
 
 asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data For EDA.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2011-01-01"
 end_date = today() %>% as.character()
 
@@ -61,14 +64,13 @@ SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
   end_date = today() %>% as.character(),
   time_frame = "H1"
 )
-SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
-SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-stop_value_var = 4
-profit_value_var = 8
+stop_value_var = 2
+profit_value_var = 4
 available_assets <- c("SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD", "XAG_USD", "XAU_USD")
+available_assets <- SPX_US2000_XAG_ALL[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
@@ -79,7 +81,11 @@ actual_wins_losses <-
   )
 
 actual_wins_losses <- actual_wins_losses %>%
-  filter(asset %in% available_assets)
+  filter(asset %in% available_assets) %>%
+  filter(trade_col == "Short") %>%
+  filter(stop_factor == stop_value_var,
+         profit_factor == profit_value_var)
+
 DBI::dbDisconnect(full_ts_trade_db_con)
 rm(full_ts_trade_db_con)
 lm_test_prop <- 1
@@ -101,31 +107,42 @@ copula_data_Indices_Silver <-
     use_PCA_vars = FALSE
   )
 
+gc()
+
 min_allowable_date <-
   copula_data_Indices_Silver[[1]] %>%
   filter(if_all(everything(), ~ !is.na(.))) %>%
   pull(Date) %>% min()
 
+gc()
+
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-06-01"), "week") %>%
+  seq(as_date(min_allowable_date), as_date("2025-06-01"), "3 weeks") %>%
   keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) )
 
+gc()
 
-redo_db = FALSE
+redo_db = TRUE
 stop_value_var <- stop_value_var
 profit_value_var <- profit_value_var
+
+copula_data_Indices_Silver[[1]] <-
+  copula_data_Indices_Silver[[1]] %>%
+  filter(Date >= min_allowable_date)
 
 params_to_test <-
   tibble(
     NN_samples = c(30000, 30000, 30000, 30000, 30000),
     hidden_layers = c(0, 0,0,0, 0),
     ending_thresh = c(0,0,0,0, 0),
-    p_value_thresh_for_inputs = c(0.1, 0.01, 0.001, 0.0001, 0.00001),
+    p_value_thresh_for_inputs = c( 0.001, 0.00001, 0.1, 0.15, 0.4),
     neuron_adjustment = c(0,0,0,0, 0),
     trade_direction_var = c("Short", "Short", "Short", "Short", "Short")
   )
 
-for (j in 3:dim(params_to_test)[1]) {
+gc()
+
+for (j in 1:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -134,22 +151,26 @@ for (j in 3:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 158:length(date_sequence)) {
+  for (k in 1:length(date_sequence)) {
 
     gc()
 
     max_test_date <- (date_sequence[k] + dmonths(1)) %>% as_date() %>% as.character()
     accumulating_data <- list()
 
-    available_assets <- c("SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD")
+    available_assets2 <-
+      available_assets %>%
+      keep(~ !str_detect(.x, "XAU_")) %>%
+      unlist( ) %>%
+      as.character()
 
-    for (i in 1:length(available_assets)) {
+    for (i in 1:length(available_assets2)) {
 
       check_completion <- safely_generate_NN(
         copula_data_macro = copula_data_Indices_Silver[[1]],
         lm_vars1 = copula_data_Indices_Silver[[2]],
         NN_samples = NN_samples,
-        dependant_var_name = available_assets[i],
+        dependant_var_name = available_assets2[i],
         NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_short/",
         training_max_date = date_sequence[k],
         lm_train_prop = 1,
@@ -177,7 +198,7 @@ for (j in 3:dim(params_to_test)[1]) {
             copula_data_macro = copula_data_Indices_Silver[[1]] %>%
               filter(Date <= max_test_date),
             lm_vars1 = copula_data_Indices_Silver[[2]],
-            dependant_var_name = available_assets[i],
+            dependant_var_name = available_assets2[i],
             NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_short/",
             testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
             trade_direction_var = analysis_direction,
@@ -282,7 +303,7 @@ all_asset_logit_results_sum <-
   # filter(hidden_layers == 3, neuron_adjustment == 0, p_value_thresh_for_inputs == 0.3, ending_thresh == 0.02) %>%
   # group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid, n = 2)
-  filter(simulations >= 100, edge > 0.1, outperformance_perc > 0.55, risk_weighted_return_mid > 0.08) %>%
+  filter(simulations >= 50, edge > 0, outperformance_perc > 0.55, risk_weighted_return_mid > 0.05) %>%
   group_by(Asset) %>%
   slice_max(risk_weighted_return_mid)
 # filter(NN_samples == 10000)

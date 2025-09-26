@@ -157,7 +157,8 @@ estimating_dual_copula <- function(
     price_col = "Open",
     rolling_period = 100,
     samples_for_MLE = 0.5,
-    test_samples = 0.4
+    test_samples = 0.4,
+    skip_log = FALSE
 ) {
 
   asset1 <- asset_data_to_use %>%
@@ -170,12 +171,23 @@ estimating_dual_copula <- function(
       !!as.name(asset_to_use[2]) := !!as.name(price_col)
     )
 
-  combined_data <- asset1 %>%
-    left_join(asset2) %>%
-    mutate(
-      log1_price = log(!!as.name(asset_to_use[1])),
-      log2_price = log(!!as.name(asset_to_use[2]))
-    )
+  if(skip_log == FALSE) {
+    combined_data <- asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = log(!!as.name(asset_to_use[1])),
+        log2_price = log(!!as.name(asset_to_use[2]))
+      )
+  }
+
+  if(skip_log == TRUE) {
+    combined_data <- asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = log(!!as.name(asset_to_use[1])),
+        log2_price = log(!!as.name(asset_to_use[2]))
+      )
+  }
 
   asset1_modeling <-combined_data %>%
     slice_head(prop = samples_for_MLE) %>%
@@ -2157,7 +2169,8 @@ create_log_cumulative_returns <- function(
 create_PCA_Asset_Index <- function(
     asset_data_to_use = major_indices_log_cumulative,
     asset_to_use = c("SPX500_USD", "US2000_USD", "NAS100_USD"),
-    price_col = "Return_Index"
+    price_col = "Return_Index",
+    scale_values = FALSE
 ) {
 
   pca_data <-
@@ -2172,7 +2185,7 @@ create_PCA_Asset_Index <- function(
 
   pca_index_dat <- pca_data %>% dplyr::select(-Date)
 
-  pca_calc <- prcomp(pca_index_dat)
+  pca_calc <- prcomp(pca_index_dat, scale = scale_values)
   pca_calc1 <- pca_calc$x %>%
     as_tibble() %>%
     mutate(
@@ -2188,18 +2201,70 @@ create_PCA_Asset_Index <- function(
     geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
     theme_minimal()
 
-  returned_data <-
-    pca_data %>%
-    dplyr::select(Date) %>%
-    mutate(
-      Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
-      PC1 = pca_calc1$PC1 %>% as.numeric(),
-      PC2 = pca_calc1$PC2 %>% as.numeric(),
-      PC3 = pca_calc1$PC3 %>% as.numeric(),
-      PC4 = pca_calc1$PC4 %>% as.numeric(),
-      PC5 = pca_calc1$PC5 %>% as.numeric(),
-      PC6 = pca_calc1$PC6 %>% as.numeric()
-    )
+  if(length(asset_to_use) >= 6) {
+    returned_data <-
+      pca_data %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
+        PC1 = pca_calc1$PC1 %>% as.numeric(),
+        PC2 = pca_calc1$PC2 %>% as.numeric(),
+        PC3 = pca_calc1$PC3 %>% as.numeric(),
+        PC4 = pca_calc1$PC4 %>% as.numeric(),
+        PC5 = pca_calc1$PC5 %>% as.numeric(),
+        PC6 = pca_calc1$PC6 %>% as.numeric()
+      )
+  }
+
+  if(length(asset_to_use) == 5) {
+    returned_data <-
+      pca_data %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
+        PC1 = pca_calc1$PC1 %>% as.numeric(),
+        PC2 = pca_calc1$PC2 %>% as.numeric(),
+        PC3 = pca_calc1$PC3 %>% as.numeric(),
+        PC4 = pca_calc1$PC4 %>% as.numeric(),
+        PC5 = pca_calc1$PC5 %>% as.numeric()
+      )
+  }
+
+  if(length(asset_to_use) == 4) {
+    returned_data <-
+      pca_data %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
+        PC1 = pca_calc1$PC1 %>% as.numeric(),
+        PC2 = pca_calc1$PC2 %>% as.numeric(),
+        PC3 = pca_calc1$PC3 %>% as.numeric(),
+        PC4 = pca_calc1$PC4 %>% as.numeric()
+      )
+  }
+
+  if(length(asset_to_use) == 3) {
+    returned_data <-
+      pca_data %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
+        PC1 = pca_calc1$PC1 %>% as.numeric(),
+        PC2 = pca_calc1$PC2 %>% as.numeric(),
+        PC3 = pca_calc1$PC3 %>% as.numeric()
+      )
+  }
+
+  if(length(asset_to_use) == 2) {
+    returned_data <-
+      pca_data %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Average_PCA = pca_calc1$Average_PCA %>% as.numeric(),
+        PC1 = pca_calc1$PC1 %>% as.numeric(),
+        PC2 = pca_calc1$PC2 %>% as.numeric()
+      )
+  }
 
   return(returned_data)
 

@@ -199,7 +199,7 @@ all_trade_ts_actuals_Logit <-
   bind_rows(
     get_ts_trade_actuals_Logit_NN(
       full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP.db"
-      )
+    )
   )%>%
   bind_rows(
     get_ts_trade_actuals_Logit_NN(
@@ -223,7 +223,7 @@ while (current_time < end_time) {
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
 
   #----------------------Refresh Data Stores and LM model
-  if(current_minute > 0 & current_minute < 3 & data_updated == 0) {
+  if(current_minute > 0 & current_minute < 3 & data_updated == 0 & current_hour != 0) {
 
     update_local_db_file(
       db_location = db_location,
@@ -469,74 +469,15 @@ while (current_time < end_time) {
     gc()
     Sys.sleep(2)
 
-    # commod_log_cumulative <-
-    #   c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD") %>%
-    #   map_dfr(
-    #     ~
-    #       create_log_cumulative_returns(
-    #         asset_data_to_use =
-    #           new_H1_data_ask %>%
-    #           filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")),
-    #         asset_to_use = c(.x[1]),
-    #         price_col = "Open",
-    #         return_long_format = TRUE
-    #       )
-    #   ) %>%
-    #   left_join(
-    #     new_H1_data_ask %>%
-    #       filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")) %>%
-    #       distinct(Date, Asset, Price, Open, High, Low)
-    #   )
-    #
-    # commod_trades <- commod_model_trades_diff_vers(
-    #   commod_data = commod_log_cumulative ,
-    #   PCA_Data = NULL,
-    #   assets_to_use = c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD"),
-    #   samples_for_MLE = 0.5,
-    #   test_samples = 0.45,
-    #   rolling_period = 100,
-    #   date_filter_min = "2011-01-01",
-    #   stop_factor = 12,
-    #   profit_factor = 15
-    # )
-    #
-    # commod_trades_dfr <- commod_trades %>%
-    #   map_dfr(bind_rows) %>%
-    #   group_by(Asset) %>%
-    #   slice_max(Date) %>%
-    #   ungroup() %>%
-    #   dplyr::select(Date, Asset, Price, Open, High, Low, trade_col) %>%
-    #   mutate(
-    #     stop_factor = 12,
-    #     profit_factor = 15
-    #   ) %>%
-    #   get_stops_profs_asset_specific(
-    #     raw_asset_data =
-    #       new_H1_data_bid %>%
-    #       filter(Asset %in% c("BCO_USD", "WTICO_USD" ,"NATGAS_USD", "SOYBN_USD", "SUGAR_USD", "WHEAT_USD", "XAG_USD", "XAU_USD", "XCU_USD")),
-    #     currency_conversion = currency_conversion,
-    #     risk_dollar_value = 5
-    #   ) %>%
-    #   filter(Date >= ((now() %>% as_datetime()) - minutes(60)))
-    #
-    # rm(commod_log_cumulative)
-    # gc()
-
     trades1_dim <- ifelse(!is.null(trades_1), dim(trades_1)[1], 0)
     trades2_dim <- ifelse(!is.null(trades_2), dim(trades_2)[1], 0)
     # trades3_dim <- ifelse(!is.null(trades_3), dim(trades_3)[1], 0)
     trades4_dim <- ifelse(!is.null(trades_4), dim(trades_4)[1], 0)
-    commod_dim <- ifelse(!is.null(commod_trades_dfr), dim(commod_trades_dfr)[1], 0)
+    # commod_dim <- ifelse(!is.null(commod_trades_dfr), dim(commod_trades_dfr)[1], 0)
     trades1_50_dim <- ifelse(!is.null(trades_1_50), dim(trades_1_50)[1], 0)
 
     all_trades_string <-
       glue::glue("Trades 1: {trades1_dim}, Trades 2: {trades2_dim}, Trades 4: {trades4_dim}, Trades 1_50: {trades1_50_dim}") %>%
-      as.character()
-
-    message(all_trades_string)
-
-    all_trades_string <-
-      glue::glue("Trades COMMOD Long and Short Trades: {commod_dim}") %>%
       as.character()
 
     message(all_trades_string)
@@ -574,7 +515,7 @@ while (current_time < end_time) {
     total_trades <-
       list(total_trades
            # commod_trades_dfr
-           ) %>%
+      ) %>%
       map_dfr(bind_rows)
 
     if(dim(total_trades)[1] > 0) {
@@ -590,6 +531,16 @@ while (current_time < end_time) {
         mutate(direction = stringr::str_to_title(direction)) %>%
         rename(Asset = instrument )
 
+      current_trades_long2 <- get_list_of_positions(account_var = long_account_num_equity)
+      current_trades_long2 <- current_trades_long2 %>%
+        mutate(direction = stringr::str_to_title(direction)) %>%
+        rename(Asset = instrument )
+
+      current_trades_short2 <- get_list_of_positions(account_var = short_account_num_equity)
+      current_trades_short2 <- current_trades_short2 %>%
+        mutate(direction = stringr::str_to_title(direction)) %>%
+        rename(Asset = instrument )
+
       total_trades <- total_trades %>%
         filter( (abs(volume_required) >= 0.1 &
                    Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
@@ -601,8 +552,16 @@ while (current_time < end_time) {
         ) %>%
         slice_max(Date)
 
-      current_trades <- current_trades_long %>%
+      current_trades <-
+        current_trades_long %>%
         bind_rows(current_trades_short) %>%
+        bind_rows(current_trades_long2) %>%
+        bind_rows(current_trades_short2) %>%
+        group_by(Asset, direction) %>%
+        summarise(
+          units = sum(units, na.rm = T)
+        ) %>%
+        ungroup() %>%
         mutate(trade_col = direction)
 
       if(dim(total_trades)[1] > 0) {
@@ -627,15 +586,16 @@ while (current_time < end_time) {
                   "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
                   "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
                   "US30_USD", "WTICO_USD"
-                )) & abs(units) >= 15000 ~ TRUE,
-                Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ TRUE,
-                Asset == "XCU_USD" & abs(units)>=1200 ~ TRUE,
-                Asset == "WHEAT_USD" & abs(units)>=600 ~ TRUE,
-                Asset == "CORN_USD" & abs(units)>=600 ~ TRUE,
-                Asset == "NATGAS_USD" & abs(units)>=600 ~ TRUE,
-                Asset == "XAG_USD" & abs(units)>=150 ~ TRUE,
-                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=45 ~ TRUE,
+                )) & abs(units) >= 10000 ~ TRUE,
+                Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "AU200_AUD",
+                             "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 2 ~ TRUE,
+                Asset == "SG30_SGD" & abs(units) >= 16 ~ TRUE,
+                Asset == "XCU_USD" & abs(units)>=450 ~ TRUE,
+                Asset == "WHEAT_USD" & abs(units)>=450 ~ TRUE,
+                Asset == "CORN_USD" & abs(units)>=450 ~ TRUE,
+                Asset == "NATGAS_USD" & abs(units)>=450 ~ TRUE,
+                Asset == "XAG_USD" & abs(units)>=100 ~ TRUE,
+                Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=32 ~ TRUE,
                 TRUE ~ FALSE
               )
           ) %>%
@@ -866,32 +826,32 @@ while (current_time < end_time) {
         use_PCA_vars = FALSE
       )
 
-  AUD_USD_NZD_LOGIT_trades<- get_Logit_trades(
-                    logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-                    Logit_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims.db",
-                    copula_data = copula_data_AUD_USD_NZD,
-                    sim_min = 100,
-                    edge_min = 0.1,
-                    stop_var = 4,
-                    profit_var = 8,
-                    outperformance_count_min = 0.55,
-                    risk_weighted_return_mid_min =  0.1,
-                    sim_table = "AUD_USD_NZD_XCU_NN_sims"
-                    )
-
-  AUD_USD_NZD_LOGIT_trades_short<-
-    get_Logit_trades(
-      logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_short/",
-      Logit_sims_db =  "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims_short.db",
+    AUD_USD_NZD_LOGIT_trades<- get_Logit_trades(
+      logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+      Logit_sims_db = "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims.db",
       copula_data = copula_data_AUD_USD_NZD,
       sim_min = 100,
-      edge_min = 0,
+      edge_min = 0.1,
       stop_var = 4,
       profit_var = 8,
-      outperformance_count_min = 0.51,
-      risk_weighted_return_mid_min =  0.09,
+      outperformance_count_min = 0.55,
+      risk_weighted_return_mid_min =  0.1,
       sim_table = "AUD_USD_NZD_XCU_NN_sims"
     )
+
+    AUD_USD_NZD_LOGIT_trades_short<-
+      get_Logit_trades(
+        logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_short/",
+        Logit_sims_db =  "C:/Users/Nikhil Chandra/Documents/trade_data/AUD_USD_NZD_XCU_Logit_sims_short.db",
+        copula_data = copula_data_AUD_USD_NZD,
+        sim_min = 100,
+        edge_min = 0,
+        stop_var = 4,
+        profit_var = 8,
+        outperformance_count_min = 0.51,
+        risk_weighted_return_mid_min =  0.09,
+        sim_table = "AUD_USD_NZD_XCU_NN_sims"
+      )
 
     rm(copula_data_AUD_USD_NZD)
     gc()
@@ -915,17 +875,17 @@ while (current_time < end_time) {
 
     EUR_GBP_JPY_LOGIT<-
       get_Logit_trades(
-      logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
-      Logit_sims_db =  "C:/Users/Nikhil Chandra/Documents/trade_data/EUR_USD_JPY_GBP_Logit_sims.db",
-      copula_data = copula_data_EUR_GBP_JPY_USD,
-      sim_min = 20,
-      edge_min = 0,
-      stop_var = 4,
-      profit_var = 8,
-      outperformance_count_min = 0.51,
-      risk_weighted_return_mid_min =  0.1,
-      sim_table = "EUR_GBP_JPY_USD_XCU_NN_sims"
-    )
+        logit_path_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+        Logit_sims_db =  "C:/Users/Nikhil Chandra/Documents/trade_data/EUR_USD_JPY_GBP_Logit_sims.db",
+        copula_data = copula_data_EUR_GBP_JPY_USD,
+        sim_min = 20,
+        edge_min = 0,
+        stop_var = 4,
+        profit_var = 8,
+        outperformance_count_min = 0.51,
+        risk_weighted_return_mid_min =  0.1,
+        sim_table = "EUR_GBP_JPY_USD_XCU_NN_sims"
+      )
 
     EUR_GBP_JPY_LOGIT_short<-
       get_Logit_trades(
@@ -951,7 +911,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(75)) )
+    # filter(Date >= (now() - minutes(75)) )
 
     EUR_GBP_JPY_LOGIT_trades <-
       EUR_GBP_JPY_LOGIT %>%
@@ -960,7 +920,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(75)) )
+    # filter(Date >= (now() - minutes(75)) )
 
     AUD_USD_NZD_LOGIT_trades <-
       AUD_USD_NZD_LOGIT_trades %>%
@@ -969,7 +929,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(75)) )
+    # filter(Date >= (now() - minutes(75)) )
 
     AUD_USD_NZD_LOGIT_short_trades <-
       AUD_USD_NZD_LOGIT_trades_short %>%
@@ -978,7 +938,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(75)) )
+    # filter(Date >= (now() - minutes(75)) )
 
     Indices_Silver_LOGIT_trades <- Indices_Silver_LOGIT %>%
       filter(pred >= pred_min) %>%
@@ -986,7 +946,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(75)) )
+    # filter(Date >= (now() - minutes(75)) )
 
     Indices_Silver_LOGIT_short_trades <-
       Indices_Silver_LOGIT_short %>%
@@ -995,7 +955,35 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(75)) )
+    # filter(Date >= (now() - minutes(75)) )
+
+    if(current_hour == 0) {
+      # Daily_DATA_ALGO_ALL_ASSETS <-
+      #     get_DAILY_ALGO_DATA_API_REQUEST()
+      # DAILY_TRADES <- get_ALL_DAILY_TRADES_FOR_ALGO(
+      #   Daily_Data_Trades_ask = Daily_DATA_ALGO_ALL_ASSETS,
+      #   actual_wins_losses_daily = get_ts_trade_actuals_Logit_NN("C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_Daily_Data.db", data_is_daily = TRUE),
+      #   currency_conversion = currency_conversion,
+      #   asset_infor = asset_infor,
+      #   raw_macro_data = raw_macro_data
+      # )
+      # DAILY_TRADES_dfr <-
+      #   DAILY_TRADES %>%
+      #   map_dfr(bind_rows) %>%
+      #   filter(pred >= pred_min) %>%
+      #   filter(pred >= pred_min) %>%
+      #   dplyr::select(-pred, -pred_min)%>%
+      #   group_by(Asset) %>%
+      #   slice_max(Date) %>%
+      #   ungroup()
+      #
+      # rm(Daily_DATA_ALGO_ALL_ASSETS, DAILY_TRADES)
+      gc()
+      Sys.sleep(2)
+
+    } else {
+      DAILY_TRADES_dfr <- NULL
+    }
 
     log_cumulative <-
       c("EU50_EUR", "AU200_AUD" ,"WTICO_USD",
@@ -1038,28 +1026,9 @@ while (current_time < end_time) {
       ungroup() %>%
       dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
 
-    # fib_trades_2 <-
-    #   get_best_pivots_fib_trades(
-    #     .data = log_cumulative %>% filter(Date >= (current_date - days(1500)) ),
-    #     sims_db=
-    #       "C:/Users/Nikhil Chandra/Documents/trade_data/SUP_RES_PERC_MODEL_TRADES.db",
-    #     risk_weighted_return_min = 0.2,
-    #     Trades_min =2000,
-    #     Trades_max = 20000,
-    #     currency_conversion = currency_conversion,
-    #     trade_type = "Line10_Neg",
-    #     how_far_back_var = c(1000, 250)
-    #   )  %>%
-    #   map_dfr(bind_rows) %>%
-    #   group_by(Asset) %>%
-    #   slice_min(profit_factor) %>%
-    #   ungroup() %>%
-    #   dplyr::select(Date, Asset, Price, Open, High, Low, trade_col, profit_factor, stop_factor)
-
     fib_trades <-
       list(fib_trades_1
-           # fib_trades_2
-           ) %>%
+      ) %>%
       map_dfr(bind_rows) %>%
       distinct() %>%
       ungroup() %>%
@@ -1067,7 +1036,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       slice_max(Date) %>%
       ungroup()
-      # filter(Date >= (now() - minutes(150)) )
+    # filter(Date >= (now() - minutes(150)) )
 
     if(dim(fib_trades)[1] > 0) {
       fib_trades <- fib_trades %>%
@@ -1081,21 +1050,70 @@ while (current_time < end_time) {
 
     all_tagged_trades_equity_dfr <-
       list(
-          # all_tagged_trades_equity_dfr1,
-           all_tagged_trades_equity_dfr2,
-           fib_trades,
-           Indices_Silver_LOGIT_trades,
-           Indices_Silver_LOGIT_short_trades,
-           AUD_USD_NZD_LOGIT_trades,
-           AUD_USD_NZD_LOGIT_short_trades,
-           EUR_GBP_JPY_LOGIT_short_trades,
-           EUR_GBP_JPY_LOGIT_trades) %>%
-      map_dfr(bind_rows) %>%
-      filter(
-            # !(Asset %in% c("EUR_JPY", "GBP_JPY") & trade_col == "Long")
-           )
+        all_tagged_trades_equity_dfr2,
+        fib_trades,
+        Indices_Silver_LOGIT_trades,
+        Indices_Silver_LOGIT_short_trades,
+        AUD_USD_NZD_LOGIT_trades,
+        AUD_USD_NZD_LOGIT_short_trades,
+        EUR_GBP_JPY_LOGIT_short_trades,
+        EUR_GBP_JPY_LOGIT_trades,
+        DAILY_TRADES_dfr) %>%
+      map_dfr(bind_rows)
 
     message(glue::glue("Equity Trades: {dim(all_tagged_trades_equity_dfr)[1]}"))
+
+    current_trades_long <- get_list_of_positions(account_var = long_account_num)
+    current_trades_long <- current_trades_long %>%
+      mutate(direction = stringr::str_to_title(direction)) %>%
+      rename(Asset = instrument )
+
+    current_trades_short <- get_list_of_positions(account_var = short_account_num)
+    current_trades_short <- current_trades_short %>%
+      mutate(direction = stringr::str_to_title(direction)) %>%
+      rename(Asset = instrument )
+
+    current_trades_long2 <- get_list_of_positions(account_var = long_account_num_equity)
+    current_trades_long2 <- current_trades_long2 %>%
+      mutate(direction = stringr::str_to_title(direction)) %>%
+      rename(Asset = instrument )
+
+    current_trades_short2 <- get_list_of_positions(account_var = short_account_num_equity)
+    current_trades_short2 <- current_trades_short2 %>%
+      mutate(direction = stringr::str_to_title(direction)) %>%
+      rename(Asset = instrument )
+
+    symbols_to_filter_out <-
+      current_trades_long %>%
+      bind_rows(current_trades_short) %>%
+      bind_rows(current_trades_long2) %>%
+      bind_rows(current_trades_short2) %>%
+      group_by(Asset, direction) %>%
+      summarise(
+        units = sum(units, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(
+        Keep_Or_Remove =
+          case_when(
+            !(Asset %in% c(
+              "SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+              "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
+              "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
+              "US30_USD", "WTICO_USD"
+            )) & abs(units) >= 10000 ~ "Remove",
+            Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "AU200_AUD",
+                         "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 2 ~ "Remove",
+            Asset == "SG30_SGD" & abs(units) >= 21 ~ "Remove",
+            Asset == "XCU_USD" & abs(units)>=450 ~ "Remove",
+            Asset == "WHEAT_USD" & abs(units)>=450 ~ "Remove",
+            Asset == "CORN_USD" & abs(units)>=450 ~ "Remove",
+            Asset == "NATGAS_USD" & abs(units)>=450 ~ "Remove",
+            Asset == "XAG_USD" & abs(units)>=100 ~ "Remove",
+            Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=32 ~ "Remove",
+            TRUE ~ "Keep"
+          )
+      )
 
     if(dim(all_tagged_trades_equity_dfr)[1] > 0 &
        !is.null(all_tagged_trades_equity_dfr) ) {
@@ -1121,8 +1139,25 @@ while (current_time < end_time) {
               trade_return_col = "trade_returns"
             )
         )
+
+      all_tagged_trades_equity_dfr_stops_profs <-
+        all_tagged_trades_equity_dfr_stops_profs %>%
+        left_join(
+          symbols_to_filter_out %>%
+            dplyr::select(-units) %>%
+            rename(trade_col = direction)
+        ) %>%
+        mutate(
+          Keep_Or_Remove =
+            case_when(
+              is.na(Keep_Or_Remove) ~ "Keep",
+              TRUE ~ Keep_Or_Remove
+            )
+        ) %>%
+        filter(Keep_Or_Remove == "Keep")
+
     } else {
-      all_tagged_trades_equity_dfr_stops_profs <- all_tagged_trades_equity_dfr
+      all_tagged_trades_equity_dfr_stops_profs <- NULL
     }
 
 

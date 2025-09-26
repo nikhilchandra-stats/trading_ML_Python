@@ -55,36 +55,38 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2011-01-01"
+start_date = "2023-06-01"
 end_date = today() %>% as.character()
 
-SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
+Indices_Metals_Bonds <- get_Port_Buy_Data(
   db_location = db_location,
-  start_date = "2011-01-01",
+  start_date = start_date,
   end_date = today() %>% as.character(),
   time_frame = "H1"
 )
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-stop_value_var = 2
-profit_value_var = 4
+stop_value_var = 3
+profit_value_var = 15
+period_var = 24
 available_assets <- c("SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD", "XAG_USD", "XAU_USD")
-available_assets <- SPX_US2000_XAG_ALL[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
-full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db"
+available_assets <- Indices_Metals_Bonds[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
+full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
   DBI::dbGetQuery(full_ts_trade_db_con,
                   "SELECT * FROM full_ts_trades_mapped") %>%
   mutate(
-    dates = as_datetime(dates)
+    Date = as_datetime(Date)
   )
 
 actual_wins_losses <- actual_wins_losses %>%
-  filter(asset %in% available_assets) %>%
+  filter(Asset %in% available_assets) %>%
   filter(trade_col == "Long") %>%
   filter(stop_factor == stop_value_var,
-         profit_factor == profit_value_var)
+         profit_factor == profit_value_var,
+         periods_ahead == period_var)
 
 DBI::dbDisconnect(full_ts_trade_db_con)
 rm(full_ts_trade_db_con)
@@ -92,19 +94,20 @@ lm_test_prop <- 1
 accumulating_data <- list()
 all_results_ts <- list()
 
-NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims.db"
+NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims_Daily_Port.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
 
 copula_data_Indices_Silver <-
-  create_NN_Idices_Silver_H1Vers_data(
-    SPX_US2000_XAG = SPX_US2000_XAG_ALL[[1]],
+  create_LM_Hourly_Portfolio_Buy(
+    SPX_US2000_XAG = Indices_Metals_Bonds[[1]],
     raw_macro_data = raw_macro_data,
     actual_wins_losses = actual_wins_losses,
     lag_days = 1,
     stop_value_var = stop_value_var,
     profit_value_var = profit_value_var,
-    use_PCA_vars = FALSE
+    use_PCA_vars = FALSE,
+    period_var = period_var
   )
 
 gc()
@@ -117,12 +120,12 @@ min_allowable_date <-
 gc()
 
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-06-01"), "3 weeks") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(5000) ) )
+  seq(as_date(min_allowable_date), as_date("2025-09-25"), "2 weeks") %>%
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(14000) ) )
 
 gc()
 
-redo_db = FALSE
+redo_db = TRUE
 stop_value_var <- stop_value_var
 profit_value_var <- profit_value_var
 
@@ -132,7 +135,7 @@ copula_data_Indices_Silver[[1]] <-
 
 params_to_test <-
   tibble(
-    NN_samples = c(30000, 30000, 30000, 30000, 30000),
+    NN_samples = c(40000, 40000, 40000, 40000, 40000),
     hidden_layers = c(0, 0,0,0, 0),
     ending_thresh = c(0,0,0,0, 0),
     p_value_thresh_for_inputs = c( 0.001, 0.00001, 0.1, 0.15, 0.4),
@@ -140,7 +143,7 @@ params_to_test <-
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 2:dim(params_to_test)[1]) {
+for (j in 1:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -149,7 +152,7 @@ for (j in 2:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 62:length(date_sequence)) {
+  for (k in 1:length(date_sequence)) {
 
     gc()
 
@@ -158,8 +161,8 @@ for (j in 2:dim(params_to_test)[1]) {
 
     available_assets2 <-
       available_assets %>%
-      keep(~ !str_detect(.x, "XAU_")) %>%
-      unlist( ) %>%
+      # keep(~ !str_detect(.x, "XAU_")) %>%
+      # unlist( ) %>%
       as.character()
 
     for (i in 1:length(available_assets2)) {
@@ -169,7 +172,7 @@ for (j in 2:dim(params_to_test)[1]) {
         lm_vars1 = copula_data_Indices_Silver[[2]],
         NN_samples = NN_samples,
         dependant_var_name = available_assets2[i],
-        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio/",
         training_max_date = date_sequence[k],
         lm_train_prop = 1,
         trade_direction_var = analysis_direction,
@@ -192,18 +195,17 @@ for (j in 2:dim(params_to_test)[1]) {
         gc()
         message("Made it to Prediction, NN generated Success")
         NN_test_preds <-
-          read_NNs_create_preds(
+          read_NNs_create_preds_portfolio(
             copula_data_macro = copula_data_Indices_Silver[[1]] %>%
               filter(Date <= max_test_date),
             lm_vars1 = copula_data_Indices_Silver[[2]],
             dependant_var_name = available_assets2[i],
-            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio/",
             testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
             trade_direction_var = analysis_direction,
             NN_index_to_choose = "",
             stop_value_var = stop_value_var,
             profit_value_var = profit_value_var,
-            analysis_threshs = c(0.5,0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.999),
             run_logit_instead = TRUE,
             lag_price_col = "Price",
             return_tagged_trades = FALSE

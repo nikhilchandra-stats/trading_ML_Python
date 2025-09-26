@@ -94,8 +94,11 @@ available_assets <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|X
 METALS_INDICES <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "XAG|XAU|SPX500|US2000|UK100|AU200_AUD|SG30_SGD|EU50_EUR"))
 
 actual_wins_losses <- get_ts_trade_actuals_Logit_NN("C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_Daily_Data.db", data_is_daily = TRUE)
-actual_wins_losses <- actual_wins_losses %>%
-  filter(asset %in% available_assets)
+actual_wins_losses <-
+  actual_wins_losses %>%
+  filter(asset %in% available_assets) %>%
+  ungroup() %>%
+  filter(trade_col == "Long")
 
 lm_test_prop <- 1
 accumulating_data <- list()
@@ -139,7 +142,7 @@ params_to_test <-
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 4:dim(params_to_test)[1]) {
+for (j in 5:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()

@@ -128,8 +128,8 @@ mean_values_by_asset_for_loop =
 load_custom_functions()
 stop_value_var = 1
 profit_value_var = 2
-available_assets <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "AUD_USD|AUD_NZD|USD_JPY|NZD_USD|USD_CHF|EUR_USD|EUR_AUD|EUR_JPY|GBP_USD|EUR_GBP|GBP_JPY|USD_MXN|USD_NOK|USD_SEK|EUR_SEK|GBP_NZD|USD_ZAR|EUR_ZAR|XAU_|USD_CAD|NZD_CAD|AUD_JPY|GBP_AUD|EUR_NZD|USB05Y_USD|USB10Y_USD")) %>% pull(Asset) %>% unique()
-METALS_INDICES <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "AUD_USD|AUD_NZD|USD_JPY|NZD_USD|USD_CHF|EUR_USD|EUR_AUD|EUR_JPY|GBP_USD|EUR_GBP|GBP_JPY|USD_MXN|USD_NOK|USD_SEK|EUR_SEK|GBP_NZD|USD_ZAR|EUR_ZAR|XAU_|USD_CAD|NZD_CAD|AUD_JPY|GBP_AUD|EUR_NZD|USB05Y_USD|USB10Y_USD"))
+available_assets <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "AUD_USD|EUR_NZD|NZD_JPY|USD_JPY|AUD_NZD|NZD_USD|GBP_NZD|GBP_USD|AUD_CHF|EUR_USD|AUD_SGD|GBP_AUD|NZD_CAD|USD_CAD|EUR_AUD|XAU_USD|XAU_EUR|XAU_AUD|XAU_NZD|XAU_GBP|XAG_USD|XAG_EUR|XAG_AUD|XAG_NZD|EUR_GBP|GBP_USD|USD_NOK|USD_SEK|EUR_SEK|USD_CAD|XAU_CAD|XAG_CAD")) %>% pull(Asset) %>% unique()
+METALS_INDICES <- asset_data_daily_raw_ask %>% filter(str_detect(Asset, "AUD_USD|EUR_NZD|NZD_JPY|USD_JPY|AUD_NZD|NZD_USD|GBP_NZD|GBP_USD|AUD_CHF|EUR_USD|AUD_SGD|GBP_AUD|NZD_CAD|USD_CAD|EUR_AUD|XAU_USD|XAU_EUR|XAU_AUD|XAU_NZD|XAG_USD|XAU_GBP|XAG_EUR|XAG_AUD|XAG_NZD|EUR_GBP|GBP_USD|USD_NOK|USD_SEK|EUR_SEK|USD_CAD|XAU_CAD|XAG_CAD"))
 
 actual_wins_losses <- get_ts_trade_actuals_Logit_NN("C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_Daily_Data.db", data_is_daily = TRUE)
 actual_wins_losses <-
@@ -142,14 +142,14 @@ lm_test_prop <- 1
 accumulating_data <- list()
 all_results_ts <- list()
 
-NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/LOGIT_CURRENCY_DAILY.db"
+NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/LOGIT_AUD_FOCUS_DAILY.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
 safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
 
 metals_indices_Logit_Data <-
-  create_NN_CURRENCY_FOCUS_DAILY_QUANT(
-    METALS_INDICES = asset_data_daily_raw_ask %>% filter(str_detect(Asset, "AUD_USD|AUD_NZD|USD_JPY|NZD_USD|USD_CHF|EUR_USD|EUR_AUD|EUR_JPY|GBP_USD|EUR_GBP|GBP_JPY|USD_MXN|USD_NOK|USD_SEK|EUR_SEK|GBP_NZD|USD_ZAR|EUR_ZAR|XAU_|USD_CAD|NZD_CAD|AUD_JPY|GBP_AUD|EUR_NZD|USB05Y_USD|USB10Y_USD")),
-    raw_macro_data,
+  create_NN_AUD_FOCUS_DAILY_QUANT(
+    METALS_INDICES = asset_data_daily_raw_ask %>% filter(str_detect(Asset, "AUD_USD|EUR_NZD|NZD_JPY|USD_JPY|AUD_NZD|NZD_USD|GBP_NZD|GBP_USD|AUD_CHF|EUR_USD|AUD_SGD|GBP_AUD|NZD_CAD|USD_CAD|EUR_AUD|XAU_USD|XAU_EUR|XAU_AUD|XAU_GBP|XAU_NZD|XAG_USD|XAG_EUR|XAG_AUD|XAG_NZD|EUR_GBP|GBP_USD|USD_NOK|USD_SEK|EUR_SEK|USD_CAD|XAU_CAD|XAG_CAD")),
+    raw_macro_data = raw_macro_data,
     actual_wins_losses = actual_wins_losses,
     lag_days = 1,
     stop_value_var = stop_value_var,
@@ -182,7 +182,7 @@ params_to_test <-
   )
 
 
-for (j in 3:dim(params_to_test)[1]) {
+for (j in 1:dim(params_to_test)[1]) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -191,7 +191,7 @@ for (j in 3:dim(params_to_test)[1]) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 42:length(date_sequence)) {
+  for (k in 214:length(date_sequence)) {
 
     gc()
 
@@ -210,7 +210,7 @@ for (j in 3:dim(params_to_test)[1]) {
         lm_vars1 = metals_indices_Logit_Data[[2]],
         NN_samples = NN_samples,
         dependant_var_name = available_assets[i],
-        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant_4/",
+        NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant_5/",
         training_max_date = date_sequence[k],
         lm_train_prop = 1,
         trade_direction_var = analysis_direction,
@@ -238,7 +238,7 @@ for (j in 3:dim(params_to_test)[1]) {
               filter(Date <= max_test_date),
             lm_vars1 = metals_indices_Logit_Data[[2]],
             dependant_var_name = available_assets[i],
-            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant_4/",
+            NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NN_Daily_Quant_5/",
             testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
             trade_direction_var = analysis_direction,
             NN_index_to_choose = "",
@@ -277,12 +277,12 @@ for (j in 3:dim(params_to_test)[1]) {
 
     if(redo_db == TRUE) {
       write_table_sql_lite(.data = all_asset_logit_results,
-                           table_name = "CURRENCY",
+                           table_name = "AUD_FOCUS",
                            conn = NN_sims_db_con)
       redo_db = FALSE
     } else {
       append_table_sql_lite(.data = all_asset_logit_results,
-                            table_name = "CURRENCY",
+                            table_name = "AUD_FOCUS",
                             conn = NN_sims_db_con)
 
     }
@@ -296,7 +296,7 @@ for (j in 3:dim(params_to_test)[1]) {
 }
 
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
-                                      statement = "SELECT * FROM CURRENCY")
+                                      statement = "SELECT * FROM AUD_FOCUS")
 
 distinct_params <-
   all_results_ts_dfr %>%
@@ -338,7 +338,7 @@ all_asset_logit_results_sum <-
   mutate(
     outperformance_perc = outperformance_count/simulations
   ) %>%
-  filter(risk_weighted_return_mid > 0.1, edge > 0, simulations > 70, outperformance_perc > 0.55) %>%
+  filter(risk_weighted_return_mid > 0.1, edge > 0, simulations > 30, outperformance_perc > 0.55) %>%
   group_by(Asset) %>%
   # slice_max(risk_weighted_return_mid) %>%
   group_by(Asset) %>%

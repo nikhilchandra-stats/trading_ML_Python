@@ -242,11 +242,11 @@ run_LM_join_to_H1 <- function(
 #' @examples
 updated_data_internal <-
   function(
-    starting_asset_data = starting_asset_data_ask_daily,
-    end_date_day = end_date_day,
-    time_frame = "D",
-    bid_or_ask = "ask",
-    db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
+    starting_asset_data,
+    end_date_day,
+    time_frame,
+    bid_or_ask,
+    db_location
   ) {
 
     latest_data_in_start_asset <-
@@ -258,7 +258,8 @@ updated_data_internal <-
       latest_data_in_start_asset %>%
       ungroup() %>%
       pull(Date) %>%
-      min(na.rm = T)
+      min(na.rm = T) %>%
+      as_date()
 
     new_data <-
       get_db_price(
@@ -271,6 +272,8 @@ updated_data_internal <-
 
     returned <-
       starting_asset_data %>%
+      ungroup() %>%
+      anti_join(new_data %>% ungroup() %>%  dplyr::select(Date, Asset)) %>%
       bind_rows(new_data) %>%
       distinct()
 
