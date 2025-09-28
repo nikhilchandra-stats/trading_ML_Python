@@ -8350,7 +8350,8 @@ create_LM_Hourly_Portfolio_Buy <-
            stop_value_var = 15,
            profit_value_var = 20,
            use_PCA_vars = FALSE,
-           period_var) {
+           period_var,
+           bin_factor = 1) {
 
     # assets_to_return <- dependant_var_name
 
@@ -9377,10 +9378,14 @@ create_LM_Hourly_Portfolio_Buy <-
       filter(profit_factor == profit_value_var)%>%
       filter(stop_factor == stop_value_var) %>%
       filter(periods_ahead == period_var) %>%
+      group_by(Asset) %>%
+      mutate(max_win = max(trade_return_dollar_aud, na.rm=T),
+             max_loss = min(trade_return_dollar_aud, na.rm=T)) %>%
+      ungroup() %>%
       mutate(
         bin_var =
           case_when(
-            trade_return_dollar_aud >0  ~ "win",
+            trade_return_dollar_aud > abs(bin_factor*max_loss)  ~ "win",
             trade_return_dollar_aud <=0~ "loss"
 
           )

@@ -67,8 +67,8 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-stop_value_var = 1.5
-profit_value_var = 15
+stop_value_var = 2
+profit_value_var = 4
 period_var = 8
 available_assets <- Indices_Metals_Bonds[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
@@ -121,7 +121,8 @@ copula_data_Indices_Silver <-
     stop_value_var = stop_value_var,
     profit_value_var = profit_value_var,
     use_PCA_vars = FALSE,
-    period_var = period_var
+    period_var = period_var,
+    bin_factor = 1
   )
 
 gc()
@@ -154,7 +155,7 @@ params_to_test <-
     NN_samples = c(45000, 45000, 45000, 45000, 45000),
     hidden_layers = c(0, 0,0,0, 0),
     ending_thresh = c(0,0,0,0, 0),
-    p_value_thresh_for_inputs = c(0.5 , 0.000001, 0.25, 0.01, 0.1),
+    p_value_thresh_for_inputs = c(0.01 , 0.000001, 0.1, 0.15, 0.25),
     neuron_adjustment = c(0,0,0,0, 0),
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
@@ -172,7 +173,7 @@ for (j in 1:dim(params_to_test)[1] ) {
 
     gc()
 
-    max_test_date <- (date_sequence[k] + dmonths(36)) %>% as_date() %>% as.character()
+    max_test_date <- (date_sequence[k] + dmonths(35)) %>% as_date() %>% as.character()
     accumulating_data <- list()
 
     available_assets2 <-
