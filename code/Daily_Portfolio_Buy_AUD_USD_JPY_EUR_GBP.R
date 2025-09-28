@@ -67,7 +67,7 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-stop_value_var = 1.5
+stop_value_var = 2
 profit_value_var = 15
 period_var = 8
 available_assets <- Indices_Metals_Bonds[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
@@ -75,11 +75,11 @@ full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_t
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
   DBI::dbGetQuery(full_ts_trade_db_con,
-                 glue::glue("SELECT * FROM full_ts_trades_mapped
+                  glue::glue("SELECT * FROM full_ts_trades_mapped
                   WHERE trade_col = 'Long' AND stop_factor = {stop_value_var} AND
                         periods_ahead = {period_var} AND Asset <> 'WTICO_USD' AND
                         Asset <> 'BCO_USD' AND Asset <> 'XCU_USD' ")
-                 ) %>%
+  ) %>%
   mutate(
     Date = as_datetime(Date)
   )
@@ -154,12 +154,12 @@ params_to_test <-
     NN_samples = c(45000, 45000, 45000, 45000, 45000),
     hidden_layers = c(0, 0,0,0, 0),
     ending_thresh = c(0,0,0,0, 0),
-    p_value_thresh_for_inputs = c(0.5 , 0.000001, 0.25, 0.01, 0.1),
+    p_value_thresh_for_inputs = c(0.1, 0.1, 0.2, 0.0001, 0.5),
     neuron_adjustment = c(0,0,0,0, 0),
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
   )
 
-for (j in 1:dim(params_to_test)[1] ) {
+for (j in 1:1) {
 
   NN_samples = params_to_test$NN_samples[j] %>% as.numeric()
   hidden_layers = params_to_test$hidden_layers[j] %>% as.numeric()
@@ -168,7 +168,7 @@ for (j in 1:dim(params_to_test)[1] ) {
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
 
-  for (k in 1:length(date_sequence)) {
+  for (k in 1) {
 
     gc()
 
@@ -183,7 +183,7 @@ for (j in 1:dim(params_to_test)[1] ) {
 
     for (i in 1:length(available_assets2)) {
 
-      # if(k == 1) {
+      if(k == 1) {
         check_completion <- safely_generate_NN(
           copula_data_macro = copula_data_Indices_Silver[[1]],
           lm_vars1 = copula_data_Indices_Silver[[2]],
@@ -204,7 +204,7 @@ for (j in 1:dim(params_to_test)[1] ) {
           lag_price_col = "Price"
         ) %>%
           pluck('result')
-      # }
+      }
       gc()
 
       if(!is.null(check_completion)) {

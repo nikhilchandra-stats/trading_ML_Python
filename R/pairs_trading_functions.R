@@ -181,11 +181,12 @@ estimating_dual_copula <- function(
   }
 
   if(skip_log == TRUE) {
-    combined_data <- asset1 %>%
+    combined_data <-
+      asset1 %>%
       left_join(asset2) %>%
       mutate(
-        log1_price = log(!!as.name(asset_to_use[1])),
-        log2_price = log(!!as.name(asset_to_use[2]))
+        log1_price = !!as.name(asset_to_use[1]),
+        log2_price = !!as.name(asset_to_use[2])
       )
   }
 
