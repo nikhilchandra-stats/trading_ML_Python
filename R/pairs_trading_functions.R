@@ -303,6 +303,171 @@ estimating_dual_copula <- function(
 
 }
 
+#' estimating_dual_copula
+#'
+#' @param asset_data_to_use
+#' @param asset_to_use
+#' @param price_col
+#' @param rolling_period
+#' @param samples_for_MLE
+#' @param test_samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+estimating_dual_copula_gauss <- function(
+    asset_data_to_use = starting_asset_data_bid_15,
+    asset_to_use = c("AUD_USD", "NZD_USD"),
+    price_col = "Open",
+    rolling_period = 100,
+    samples_for_MLE = 0.5,
+    test_samples = 0.4,
+    skip_log = FALSE
+) {
+
+  asset1 <- asset_data_to_use %>%
+    filter(Asset == asset_to_use[1]) %>% distinct(Date, !!as.name(price_col)) %>%
+    rename(
+      !!as.name(asset_to_use[1]) := !!as.name(price_col)
+    )
+  asset2 <- asset_data_to_use %>% filter(Asset == asset_to_use[2]) %>% distinct(Date, !!as.name(price_col))%>%
+    rename(
+      !!as.name(asset_to_use[2]) := !!as.name(price_col)
+    )
+
+  if(skip_log == FALSE) {
+    combined_data <- asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = log(!!as.name(asset_to_use[1])),
+        log2_price = log(!!as.name(asset_to_use[2]))
+      )
+  }
+
+  if(skip_log == TRUE) {
+    combined_data <-
+      asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = !!as.name(asset_to_use[1]),
+        log2_price = !!as.name(asset_to_use[2])
+      )
+  }
+
+  asset1_modeling <-combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    pull(log1_price)
+
+  asset2_modeling <-combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    pull(log2_price)
+
+  mle1 <- fitdistrplus::fitdist(asset1_modeling %>% keep(~ !is.na(.x) & !is.nan(.x)) , distr = "norm")
+  mle1_1 <- mle1$estimate[1] %>% as.numeric()
+  mle1_2 <- mle1$estimate[2] %>% as.numeric()
+  mle2 <- fitdistrplus::fitdist(asset2_modeling %>% keep(~ !is.na(.x) & !is.nan(.x)) , distr = "norm")
+  mle2_1 <- mle2$estimate[1] %>% as.numeric()
+  mle2_2 <- mle2$estimate[2] %>% as.numeric()
+
+  quantiles_1_LM = pnorm(asset1_modeling, mean = mle1_1, sd = mle1_2)
+  quantiles_2_LM = pnorm(asset2_modeling, mean = mle2_1, sd = mle2_2)
+
+  temp_LM_tibble <- tibble(y = quantiles_1_LM, x = quantiles_2_LM)
+  temp_LM <- lm(data = temp_LM_tibble, formula = y ~ x)
+
+  combined_data2 <- combined_data %>%
+    mutate(
+      quantiles_1 = pnorm(log1_price, mean = mle1_1, sd = mle1_2),
+      quantiles_2 = pnorm(log2_price, mean = mle2_1, sd = mle2_2)
+    )
+
+  dual_quantile_LM_pred =
+    predict.lm(temp_LM,
+               newdata = combined_data2 %>% dplyr::select(x = quantiles_2)) %>%
+    as.numeric()
+
+  rm(quantiles_1_LM, quantiles_2_LM, temp_LM_tibble, temp_LM, mle1, mle1_1, mle1_2, mle2, mle2_1, mle2_1, mle2_2)
+  gc()
+
+  combined_data2 <- combined_data2 %>%
+    mutate(quant_lm_pred = dual_quantile_LM_pred) %>%
+    filter(!is.na(log1_price), !is.na(log2_price)) %>%
+    mutate(
+      correlation_vars =
+        slider::slide2_dbl(.x = !!as.name(asset_to_use[1]), .y = !!as.name(asset_to_use[2]),
+                           .f = ~ cor(.x,.y), .before = rolling_period),
+      tangent_angle1 = atan(
+        (!!as.name(asset_to_use[1]) - lag(!!as.name(asset_to_use[1]), rolling_period))/rolling_period
+      ),
+      tangent_angle2 = atan(
+        (!!as.name(asset_to_use[2]) - lag(!!as.name(asset_to_use[2]), rolling_period))/rolling_period
+      )
+    )
+
+  if(!is.null(test_samples)) {
+    returned <- combined_data2 %>%
+      slice_tail(prop = test_samples)
+  } else {
+    returned <- combined_data2
+  }
+
+  rm(combined_data2)
+  gc()
+
+  returned <- returned %>%
+    mutate(across(.cols = !matches("Date", ignore.case = FALSE),
+                  .fns = ~ lag(.))) %>%
+    mutate(
+      correlation_vars_mean =
+        slider::slide_dbl(.x = correlation_vars, .f = ~ mean(., na.rm = T), .before = rolling_period),
+      correlation_vars_sd =
+        slider::slide_dbl(.x = correlation_vars, .f = ~ sd(., na.rm = T), .before = rolling_period),
+      quant_lm_mean =
+        slider::slide_dbl(.x = quant_lm_pred, .f = ~ mean(., na.rm = T), .before = rolling_period),
+      quant_lm_sd =
+        slider::slide_dbl(.x = quant_lm_pred, .f = ~ sd(., na.rm = T), .before = rolling_period),
+    )
+
+  gc()
+
+  new_names <-
+    names(returned) %>%
+    map(
+      ~
+        case_when(
+          .x != "Date" &
+            .x != asset_to_use[1] &
+            .x != asset_to_use[2] &
+            str_detect(.x, "1") &
+            !str_detect(.x, "0") ~ paste0(asset_to_use[1], "_",.x),
+          .x != "Date" &
+            .x != asset_to_use[1] &
+            .x != asset_to_use[2] &
+            str_detect(.x, "2") &
+            !str_detect(.x, "0") ~ paste0(asset_to_use[2], "_",.x),
+          .x == "correlation_vars" & !str_detect(.x, "_mean|_sd") ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","cor"),
+          .x == "correlation_vars_mean" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","cor_mean"),
+          .x == "correlation_vars_sd" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","cor_sd"),
+
+          .x == "quant_lm_pred" & !str_detect(.x, "_mean|_sd") ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","quant_lm"),
+          .x == "quant_lm_mean" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","quant_lm_mean"),
+          .x == "quant_lm_sd" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","quant_lm_sd"),
+
+          .x == "Date" ~ "Date",
+          .x == asset_to_use[1] ~ asset_to_use[1],
+          .x == asset_to_use[2] ~ asset_to_use[2]
+
+        )
+    ) %>%
+    unlist()
+
+  names(returned) <-new_names
+
+  return(returned)
+
+}
+
 
 #' get_correlation_data_set
 #'

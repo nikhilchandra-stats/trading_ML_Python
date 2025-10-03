@@ -55,10 +55,10 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2012-01-01"
+start_date = "2011-01-01"
 end_date = today() %>% as.character()
 
-Indices_Metals_Bonds <- get_Port_Buy_Data(
+Indices_Metals_Bonds <- get_Port_Buy_SPX_Focus_Data(
   db_location = db_location,
   start_date = start_date,
   end_date = today() %>% as.character(),
@@ -67,6 +67,7 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
+bin_factor = 0.5
 stop_value_var = 2
 profit_value_var = 4
 period_var = 8
@@ -78,7 +79,7 @@ actual_wins_losses <-
                  glue::glue("SELECT * FROM full_ts_trades_mapped
                   WHERE trade_col = 'Long' AND stop_factor = {stop_value_var} AND
                         periods_ahead = {period_var} AND Asset <> 'WTICO_USD' AND
-                        Asset <> 'BCO_USD' AND Asset <> 'XCU_USD' ")
+                        Asset <> 'BCO_USD' AND Asset <> 'XCU_USD' AND Date >= {start_date}")
                  ) %>%
   mutate(
     Date = as_datetime(Date)
@@ -87,7 +88,6 @@ actual_wins_losses <-
 actual_wins_losses <-
   actual_wins_losses %>%
   filter(Asset %in% available_assets) %>%
-  filter(!(Asset %in% c("WTICO_USD", "BCO_USD", "XCU_USD", "XAG_JPY", "XAU_JPY", "USD_JPY") )) %>%
   filter(trade_col == "Long") %>%
   filter(stop_factor == stop_value_var,
          profit_factor == profit_value_var,
@@ -102,10 +102,8 @@ gc()
 
 NN_sims_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims_Daily_Port.db"
 NN_sims_db_con <- connect_db(path = NN_sims_db)
-safely_generate_NN <- safely(generate_NNs_create_preds, otherwise = NULL)
+safely_generate_NN <- safely(generate_Logit_gen_model_create_preds, otherwise = NULL)
 
-Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>%
-  filter(!(Asset %in% c("WTICO_USD", "BCO_USD", "XCU_USD", "XAG_JPY", "XAU_JPY", "USD_JPY")))
 gc()
 Indices_Metals_Bonds[[2]] <- NULL
 gc()
@@ -113,7 +111,7 @@ Sys.sleep(5)
 gc()
 
 copula_data_Indices_Silver <-
-  create_LM_Hourly_Portfolio_Buy(
+  create_LM_Hourly_SPX_Focus(
     SPX_US2000_XAG = Indices_Metals_Bonds[[1]] ,
     raw_macro_data = raw_macro_data,
     actual_wins_losses = actual_wins_losses,
@@ -122,7 +120,7 @@ copula_data_Indices_Silver <-
     profit_value_var = profit_value_var,
     use_PCA_vars = FALSE,
     period_var = period_var,
-    bin_factor = 1
+    bin_factor = NULL
   )
 
 gc()
@@ -135,8 +133,8 @@ min_allowable_date <-
 gc()
 
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-09-25"), "4 weeks") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(45000) ) )
+  seq(as_date(min_allowable_date), as_date("2025-09-25"), "20 weeks") %>%
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(25000) ) )
 
 gc()
 
@@ -152,13 +150,14 @@ gc()
 
 params_to_test <-
   tibble(
-    NN_samples = c(45000, 45000, 45000, 45000, 45000),
-    hidden_layers = c(0, 0,0,0, 0),
-    ending_thresh = c(0,0,0,0, 0),
-    p_value_thresh_for_inputs = c(0.01 , 0.000001, 0.1, 0.15, 0.25),
-    neuron_adjustment = c(0,0,0,0, 0),
-    trade_direction_var = c("Long", "Long", "Long", "Long", "Long")
+    NN_samples = c(25000, 25000, 25000, 25000, 25000, 25000),
+    hidden_layers = c(0, 0,0,0, 0, 0),
+    ending_thresh = c(0,0,0,0, 0, 0),
+    p_value_thresh_for_inputs = c(10^-10 , 0.99, 0.1, 0.01, 0.25, 10^-11),
+    neuron_adjustment = c(0,0,0,0, 0, 0),
+    trade_direction_var = c("Long", "Long", "Long", "Long", "Long", "Long")
   )
+
 
 for (j in 1:dim(params_to_test)[1] ) {
 
@@ -173,64 +172,50 @@ for (j in 1:dim(params_to_test)[1] ) {
 
     gc()
 
-    max_test_date <- (date_sequence[k] + dmonths(35)) %>% as_date() %>% as.character()
+    max_test_date <- (date_sequence[k] + dmonths(7)) %>% as_date() %>% as.character()
     accumulating_data <- list()
 
     available_assets2 <-
       available_assets %>%
-      keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
+      keep(~ str_detect(.x, "SPX500")) %>%
+      # keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
       # unlist( ) %>%
       as.character()
 
     for (i in 1:length(available_assets2)) {
 
-      # if(k == 1) {
-        check_completion <- safely_generate_NN(
-          copula_data_macro = copula_data_Indices_Silver[[1]],
-          lm_vars1 = copula_data_Indices_Silver[[2]],
-          NN_samples = NN_samples,
-          dependant_var_name = available_assets2[i],
-          NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio/",
-          training_max_date = date_sequence[k],
-          lm_train_prop = 1,
-          trade_direction_var = analysis_direction,
-          stop_value_var = stop_value_var,
-          profit_value_var = profit_value_var,
-          max_NNs = 1,
-          hidden_layers = hidden_layers,
-          ending_thresh = ending_thresh,
-          run_logit_instead = TRUE,
-          p_value_thresh_for_inputs = p_value_thresh_for_inputs,
-          neuron_adjustment = neuron_adjustment,
-          lag_price_col = "Price"
-        ) %>%
-          pluck('result')
-      # }
-      gc()
-
-      if(!is.null(check_completion)) {
-        rm(check_completion)
-        gc()
-        message("Made it to Prediction, NN generated Success")
-        NN_test_preds <-
-          read_NNs_create_preds_portfolio(
+        check_completion <-
+          safely_generate_NN(
             copula_data_macro = copula_data_Indices_Silver[[1]] %>%
               filter(Date <= max_test_date),
             lm_vars1 = copula_data_Indices_Silver[[2]],
+            NN_samples = NN_samples,
             dependant_var_name = available_assets2[i],
             NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio/",
-            testing_min_date = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
+            training_max_date = date_sequence[k],
+            lm_train_prop = 1,
             trade_direction_var = analysis_direction,
-            NN_index_to_choose = "",
             stop_value_var = stop_value_var,
             profit_value_var = profit_value_var,
+            max_NNs = 1,
+            hidden_layers = hidden_layers,
+            ending_thresh = ending_thresh,
             run_logit_instead = TRUE,
+            p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+            neuron_adjustment = neuron_adjustment,
             lag_price_col = "Price",
+            testing_min_date_p1 = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
+            phase_1_testing_weeks = 24,
+            period_var= period_var,
             return_tagged_trades = FALSE
-          )
+        ) %>%
+          pluck('result')
+      gc()
+
+      if(!is.null(check_completion)) {
 
         accumulating_data[[i]] <-
-          NN_test_preds %>%
+          check_completion %>%
           mutate(
             NN_samples = NN_samples,
             hidden_layers = hidden_layers,
@@ -238,6 +223,9 @@ for (j in 1:dim(params_to_test)[1] ) {
             p_value_thresh_for_inputs = p_value_thresh_for_inputs,
             neuron_adjustment = neuron_adjustment
           )
+
+        rm(check_completion)
+
       }
 
     }
@@ -249,15 +237,19 @@ for (j in 1:dim(params_to_test)[1] ) {
         sim_date = date_sequence[k],
         max_test_date = max_test_date,
         profit_factor = profit_value_var,
-        stop_factor = stop_value_var
+        stop_factor = stop_value_var,
+        bin_factor = bin_factor
       )
 
     all_results_ts[[k]] <- all_asset_logit_results
 
     if(redo_db == TRUE) {
+      DBI::dbDisconnect(NN_sims_db_con)
+      NN_sims_db_con <- connect_db(path = NN_sims_db)
       write_table_sql_lite(.data = all_asset_logit_results,
                            table_name = "Indices_Silver_Logit_sims",
                            conn = NN_sims_db_con, overwrite_true = TRUE)
+      # DBI::dbDisconnect(NN_sims_db_con)
       redo_db = FALSE
     } else {
       append_table_sql_lite(.data = all_asset_logit_results,
@@ -274,14 +266,27 @@ for (j in 1:dim(params_to_test)[1] ) {
 
 }
 
+NN_sims_db_con <- connect_db(NN_sims_db)
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                                       statement = "SELECT * FROM Indices_Silver_Logit_sims") %>%
-  filter(!str_detect(Asset, "XAU"))
+  filter(Asset == "SPX500_USD") %>%
+  filter(
+    p_value_thresh_for_inputs == 0.99
+  ) %>%
+  mutate(
+    Date = as_datetime(Date)
+  ) %>%
+  group_by(Date, Asset) %>%
+  summarise(
+    pred = mean(pred, na.rm = T),
+    trade_returns_AUD = mean(trade_returns_AUD,na.rm = T)
+  ) %>%
+  ungroup()
 
 acumulating_summary <- list()
 c = 0
-for (i in c(0, 0.5,0.6,0.7,0.8,0.9)) {
-
+# for (i in c(0, 0.1, 0.2,0.3, 0.4,0.5,0.6,0.7,0.8,0.9)) {
+for (i in c(1, 0.9, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)) {
   #
   c = c + 1
   acumulating_summary[[c]] <-
@@ -290,7 +295,7 @@ for (i in c(0, 0.5,0.6,0.7,0.8,0.9)) {
     mutate(
       Returns =
         case_when(
-          pred >= i  ~ trade_returns_AUD,
+          pred <= i  ~ trade_returns_AUD,
           TRUE ~ 0
         )
     ) %>%
@@ -320,11 +325,70 @@ all_results_ts_dfr_sum %>%
 
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                                       statement = "SELECT * FROM Indices_Silver_Logit_sims") %>%
-  filter(!str_detect(Asset, "XAU"))
+  mutate(
+    Date = as_datetime(Date),
+    sim_date = as_datetime(sim_date)
+  ) %>%
+  mutate(
+    Returns_Pred_0 =
+      case_when(
+        pred >= 0  ~ trade_returns_AUD,
+        TRUE ~ 0
+      )
+  ) %>%
+  mutate(
+    Returns_Pred_10 =
+      case_when(
+        pred >= 0.1  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_20 =
+      case_when(
+        pred >= 0.2  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_30 =
+      case_when(
+        pred >= 0.3  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_40 =
+      case_when(
+        pred >= 0.4  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_50 =
+      case_when(
+        pred >= 0.5  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_60 =
+      case_when(
+        pred >= 0.6  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_70 =
+      case_when(
+        pred >= 0.7  ~ trade_returns_AUD,
+        TRUE ~ 0
+      ),
+    Returns_Pred_80 =
+      case_when(
+        pred >= 0.8  ~ trade_returns_AUD,
+        TRUE ~ 0
+      )
+  ) %>%
+  group_by(sim_date, Asset, p_value_thresh_for_inputs) %>%
+  summarise(
+    across(.cols = contains("Returns_Pred"), ~ sum(., na.rm = T))
+  ) %>%
+  ungroup() %>%
+  group_by(Asset, p_value_thresh_for_inputs) %>%
+  summarise(across(.cols = contains("Returns_Pred"), ~ sum(., na.rm = T)))
 
 acumulating_summary <- list()
 c = 0
-for (i in c(0, 0.5,0.6,0.7,0.8,0.9)) {
+for (i in c(0,0.2,0.3 ,0.4 ,0.5, 0.6, 0.7, 0.8, 0.9)) {
 
   #
   c = c + 1
@@ -338,7 +402,7 @@ for (i in c(0, 0.5,0.6,0.7,0.8,0.9)) {
           TRUE ~ 0
         )
     ) %>%
-    mutate(pred_thresh = as.character(i) ) %>%
+    mutate(pred_thresh = as.numeric(i) ) %>%
     group_by(Date, pred_thresh, Asset) %>%
     summarise(Returns = sum(Returns, na.rm = T)) %>%
     ungroup() %>%
@@ -347,12 +411,14 @@ for (i in c(0, 0.5,0.6,0.7,0.8,0.9)) {
     mutate(
       Cumulative_Return = cumsum(Returns)
     ) %>%
-    group_by(Asset) %>%
+    group_by(Asset, pred_thresh) %>%
     summarise(
       Mean_Returns = mean(Returns, na.rm = T),
       Returns_75 = quantile(Returns, 0.75, na.rm = T),
       Returns_25 = quantile(Returns, 0.25, na.rm = T),
-      Final_returns = sum(Returns, na.rm = T)
+      Final_returns = sum(Returns, na.rm = T),
+      TS_Cumulative_25_quantile = quantile(Cumulative_Return, 0.25, na.rm = T),
+      TS_Cumulative_75_quantile = quantile(Cumulative_Return, 0.75, na.rm = T)
     )
 
 }
@@ -360,3 +426,44 @@ for (i in c(0, 0.5,0.6,0.7,0.8,0.9)) {
 acumulating_summary_sum <-
   acumulating_summary %>%
   map_dfr(bind_rows)
+
+control_data <-
+  all_results_ts_dfr %>%
+  filter(pred_thresh == 0) %>%
+  mutate(Date = as_datetime(Date)) %>%
+  mutate(
+    Returns =
+      case_when(
+        pred <= 10000  ~ trade_returns_AUD,
+        TRUE ~ 0
+      )
+  ) %>%
+  group_by(Date, Asset) %>%
+  summarise(Returns = sum(Returns, na.rm = T)) %>%
+  ungroup() %>%
+  group_by(Asset) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  mutate(
+    Cumulative_Return = cumsum(Returns)
+  ) %>%
+  group_by(Asset) %>%
+  summarise(
+    Mean_Returns = mean(Returns, na.rm = T),
+    Returns_75 = quantile(Returns, 0.75, na.rm = T),
+    Returns_25 = quantile(Returns, 0.25, na.rm = T),
+    Final_returns = sum(Returns, na.rm = T),
+    TS_Cumulative_25_quantile = quantile(Cumulative_Return, 0.25, na.rm = T),
+    TS_Cumulative_75_quantile = quantile(Cumulative_Return, 0.75, na.rm = T)
+  ) %>%
+  rename(
+    Control_Mean_Returns = Mean_Returns,
+    Control_Returns_75 = Returns_75,
+    Control_Returns_25 = Returns_25,
+    Control_Final_returns = Final_returns,
+    Control_TS_Cumulative_25_quantile = TS_Cumulative_25_quantile,
+    Control_TS_Cumulative_75_quantile = TS_Cumulative_75_quantile
+  )
+
+analysis_by_sym <-
+  acumulating_summary_sum %>%
+  left_join(control_data)

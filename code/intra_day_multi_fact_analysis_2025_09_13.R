@@ -3,26 +3,33 @@ one_drive_path <- helperfunctions35South::create_one_drive_path(
   path_extension = "raw data")
 library(neuralnet)
 raw_macro_data <- get_macro_event_data()
-eur_data <- get_EUR_exports()
-AUD_exports_total <- get_AUS_exports()  %>%
-  pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
-  rename(date = TIME_PERIOD) %>%
-  group_by(date) %>%
-  summarise(Aus_Export = sum(Aus_Export, na.rm = T))
-USD_exports_total <- get_US_exports()  %>%
-  pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
-  group_by(date) %>%
-  summarise(US_Export = sum(US_Export, na.rm = T)) %>%
-  left_join(AUD_exports_total) %>%
-  ungroup()
-USD_exports_total <- USD_exports_total %>%
-  mutate(
-    month_date = lubridate::floor_date(date, "month")
-  )
-AUD_exports_total <- AUD_exports_total %>%
-  mutate(
-    month_date = lubridate::floor_date(date, "month")
-  )
+# eur_data <- get_EUR_exports()
+# AUD_exports_total <- get_AUS_exports()  %>%
+#   pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
+#   rename(date = TIME_PERIOD) %>%
+#   group_by(date) %>%
+#   summarise(Aus_Export = sum(Aus_Export, na.rm = T))
+# USD_exports_total <- get_US_exports()  %>%
+#   pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
+#   group_by(date) %>%
+#   summarise(US_Export = sum(US_Export, na.rm = T)) %>%
+#   left_join(AUD_exports_total) %>%
+#   ungroup()
+# USD_exports_total <- USD_exports_total %>%
+#   mutate(
+#     month_date = lubridate::floor_date(date, "month")
+#   )
+# AUD_exports_total <- AUD_exports_total %>%
+#   mutate(
+#     month_date = lubridate::floor_date(date, "month")
+#   )
+
+eur_data <- NULL
+AUD_exports_total <- NULL
+USD_exports_total <- NULL
+USD_exports_total <- NULL
+AUD_exports_total <- NULL
+
 all_aud_symbols <- get_oanda_symbols() %>%
   keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
 asset_infor <- get_instrument_info()
@@ -76,7 +83,8 @@ asset_list_oanda =
     "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
     "US2000_USD",
     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
-    "JP225_USD", "SPX500_USD") %>%
+    "JP225_USD", "SPX500_USD",
+    "UK10YB_GBP") %>%
   unique()
 
 end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
@@ -110,13 +118,13 @@ update_local_db_file(
   db_location = db_location,
   time_frame = "D",
   bid_or_ask = "ask",
-  how_far_back = 15
+  how_far_back = 25
 )
 update_local_db_file(
   db_location = db_location,
   time_frame = "H1",
   bid_or_ask = "ask",
-  how_far_back = 15
+  how_far_back = 25
 )
 
 update_local_db_file(
@@ -124,14 +132,14 @@ update_local_db_file(
   time_frame = "D",
   bid_or_ask = "bid",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 15
+  how_far_back = 25
 )
 update_local_db_file(
   db_location = db_location,
   time_frame = "H1",
   bid_or_ask = "bid",
   asset_list_oanda = asset_list_oanda,
-  how_far_back = 15
+  how_far_back = 25
 )
 
 starting_asset_data_ask_daily <-

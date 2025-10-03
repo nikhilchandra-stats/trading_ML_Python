@@ -9380,14 +9380,14 @@ create_LM_Hourly_Portfolio_Buy <-
       filter(periods_ahead == period_var) %>%
       group_by(Asset) %>%
       mutate(max_win = max(trade_return_dollar_aud, na.rm=T),
-             max_loss = min(trade_return_dollar_aud, na.rm=T)) %>%
+             max_loss = min(trade_return_dollar_aud, na.rm=T),
+             quantile_bin = quantile(trade_return_dollar_aud, bin_factor, na.rm = T) ) %>%
       ungroup() %>%
       mutate(
         bin_var =
           case_when(
-            trade_return_dollar_aud > abs(bin_factor*max_loss)  ~ "win",
-            trade_return_dollar_aud <=0~ "loss"
-
+            trade_return_dollar_aud >= abs(quantile_bin)  ~ "win",
+            trade_return_dollar_aud < abs(quantile_bin)~ "loss"
           )
       ) %>%
       dplyr::select(Date, bin_var, Asset, trade_col,
@@ -9649,7 +9649,9 @@ read_NNs_create_preds_portfolio <- function(
     profit_value_var = 20,
     run_logit_instead = FALSE,
     lag_price_col = "Price",
-    return_tagged_trades = FALSE
+    return_tagged_trades = FALSE,
+    model_type = "logit",
+    LM_interval = "fit"
 ) {
 
   set.seed(round(runif(n = 1, min = 0, max = 100000)))
@@ -9773,39 +9775,78 @@ read_NNs_create_preds_portfolio <- function(
           tibble( pred = predict(object = readRDS(.x$path[1]),newdata = testing_data) %>%
                     as.numeric()) %>%
           mutate(
-            # pred = if_else(pred < 0, 0, pred),
             index = row_number()
           )
       )
   } else {
 
-    NNs_compiled <-
-      fs::dir_info(NN_path)  %>%
-      filter(str_detect(path, as.character(glue::glue("{dependant_var_name}_GLM_{NN_index_to_choose}")) )) %>%
-      split(.$path, drop = FALSE) %>%
-      map_dfr(
-        ~
-          tibble( pred = predict.glm(object = readRDS(.x$path[1]),newdata = testing_data, type = "response") %>%
-                    as.numeric()) %>%
-          mutate(
-            # pred = if_else(pred < 0, 0, pred),
-            index = row_number()
-          )
-      )
+
+    if(model_type %in% c("logit", "probit")) {
+      NNs_compiled <-
+        fs::dir_info(NN_path)  %>%
+        filter(str_detect(path, as.character(glue::glue("{dependant_var_name}_GLM_{NN_index_to_choose}")) )) %>%
+        split(.$path, drop = FALSE) %>%
+        map_dfr(
+          ~
+            tibble( pred = predict.glm(object = readRDS(.x$path[1]),newdata = testing_data, type = "response") %>%
+                      as.numeric()) %>%
+            mutate(
+              index = row_number()
+            )
+        )
+    }
+
+    if(model_type == "LM") {
+      NNs_compiled <-
+        fs::dir_info(NN_path)  %>%
+        filter(str_detect(path, as.character(glue::glue("{dependant_var_name}_LM_{NN_index_to_choose}")) )) %>%
+        split(.$path, drop = FALSE) %>%
+        map_dfr(
+          ~
+            predict(object = readRDS(.x$path[1]),
+                    newdata = testing_data,
+                    interval = "confidence")%>%
+            as_tibble() %>%
+            mutate(
+              pred := !!as.name(LM_interval)
+            ) %>%
+            mutate(
+              index = row_number()
+            )
+        )
+    }
 
   }
 
   message("Done NN's")
   message(dim(NNs_compiled))
 
-  NNs_compiled2 <-
-    NNs_compiled %>%
-    group_by(index) %>%
-    summarise(
-      pred = mean(pred, na.rm = T)
-    )
+  if(model_type != "LM") {
+    NNs_compiled2 <-
+      NNs_compiled %>%
+      group_by(index) %>%
+      summarise(
+        pred = mean(pred, na.rm = T)
+      )
+  }
+
+  if(model_type == "LM") {
+    NNs_compiled2 <-
+      NNs_compiled %>%
+      group_by(index) %>%
+      summarise(
+        pred = mean(pred, na.rm = T),
+        lwr = mean(lwr, na.rm = T),
+        upr = mean(upr, na.rm = T)
+      )
+  }
 
   pred_NN  <- NNs_compiled2 %>% pull(pred) %>% as.numeric()
+
+  if(model_type == "LM") {
+    pred_NN_lwr  <- NNs_compiled2 %>% pull(lwr) %>% as.numeric()
+    pred_NN_upr  <- NNs_compiled2 %>% pull(upr) %>% as.numeric()
+  }
 
   check_preds <-
     pred_NN %>% keep(~ !is.na(.x)) %>% length()
@@ -9815,11 +9856,23 @@ read_NNs_create_preds_portfolio <- function(
 
   message(glue::glue("Number of Non-NA NN preds: {check_preds}"))
 
-  post_testing_data <-
-    testing_data %>%
-    mutate(
-      pred = pred_NN
-    )
+  if(model_type == "LM") {
+    post_testing_data <-
+      testing_data %>%
+      mutate(
+        pred = pred_NN,
+        pred_lwr = pred_NN_lwr,
+        pred_upr  = pred_NN_upr
+      )
+  } else {
+    post_testing_data <-
+      testing_data %>%
+      mutate(
+        pred = pred_NN,
+        pred_lwr = pred_NN,
+        pred_upr  = pred_NN
+      )
+  }
 
   pred_at_max_date <-
     post_testing_data %>%
@@ -9841,10 +9894,11 @@ read_NNs_create_preds_portfolio <- function(
   trade_dollar_returns <-
     testing_data %>%
     filter(!is.na(bin_var)) %>%
-    left_join(post_testing_data %>% dplyr::select(Date, Asset, pred)) %>%
+    left_join(post_testing_data %>% dplyr::select(Date, Asset, pred, pred_lwr, pred_upr)) %>%
     dplyr::select(Date, Asset, profit_factor, stop_factor,
                   trade_returns_AUD = trade_return_dollar_aud,
-                  trade_col, periods_ahead, pred) %>%
+                  trade_col, periods_ahead, pred, trade_start_prices ,
+                  trade_end_prices, bin_var, pred_lwr, pred_upr ) %>%
     filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
     filter(Asset == dependant_var_name) %>%
     mutate(minimal_loss = min(trade_returns_AUD, na.rm = T),
@@ -9854,7 +9908,10 @@ read_NNs_create_preds_portfolio <- function(
            high_quantile_win = quantile(trade_returns_AUD,0.75 ,na.rm = T)  ) %>%
     dplyr::select(Date, trade_returns_AUD, Asset,
                   profit_factor , stop_factor, maximum_win, minimal_loss,
-                  average_win, low_quantile_win, high_quantile_win, pred) %>%
+                  average_win, low_quantile_win, high_quantile_win, pred,
+                  pred_lwr, pred_upr,
+                  trade_start_prices , trade_end_prices, bin_var,
+                  trade_col, periods_ahead) %>%
     distinct() %>%
     arrange(Date) %>%
     mutate(
@@ -10969,3 +11026,1855 @@ create_LM_Hourly_USD_GBP_EUR_Portfolio_Buy <-
     )
 
   }
+
+#' generate_GLM_AUD_create_preds
+#'
+#' @param copula_data_macro
+#' @param NN_samples
+#' @param dependant_var_name
+#' @param NN_path
+#' @param training_max_date
+#' @param lm_train_prop
+#' @param trade_direction_var
+#'
+#' @return
+#' @export
+#'
+#' @examples
+generate_GLM_AUD_create_preds <- function(
+    copula_data_macro = copula_data_macro,
+    lm_vars1 = lm_vars1,
+    NN_samples = NN_samples,
+    dependant_var_name = "AUD_USD",
+    NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs/",
+    training_max_date = "2021-01-01",
+    lm_train_prop = lm_train_prop,
+    trade_direction_var = "Long",
+    stop_value_var = 15,
+    profit_value_var = 20,
+    max_NNs = 30,
+    hidden_layers = 3,
+    ending_thresh = 0.09,
+    run_logit_instead = FALSE,
+    p_value_thresh_for_inputs = 0.05,
+    neuron_adjustment = 0.25,
+    lag_price_col = "Price"
+) {
+
+  set.seed(round(runif(n = 1, min = 0, max = 100000)))
+  training_data <-
+    copula_data_macro %>%
+    ungroup() %>%
+    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
+    filter(Date < as_date(training_max_date)) %>%
+    filter(Asset == dependant_var_name) %>%
+    filter(trade_col == trade_direction_var) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    mutate(
+      lagged_var_1 = lag(!!as.name(lag_price_col), 1) - lag(!!as.name(lag_price_col), 2),
+      lagged_var_2 = lag(lagged_var_1, 2),
+      lagged_var_3 = lag(lagged_var_1, 3),
+      lagged_var_5 = lag(lagged_var_1, 5),
+      lagged_var_8 = lag(lagged_var_1, 8),
+      lagged_var_13 = lag(lagged_var_1, 13),
+      lagged_var_21 = lag(lagged_var_1, 21),
+
+      fib_1 = lagged_var_1 + lagged_var_2,
+      fib_2 = lagged_var_2 + lagged_var_3,
+      fib_3 = lagged_var_3 + lagged_var_5,
+      fib_4 = lagged_var_5 + lagged_var_8,
+      fib_5 = lagged_var_8 + lagged_var_13,
+      fib_6 = lagged_var_13 + lagged_var_21,
+
+      lagged_var_3_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 3),
+
+      lagged_var_5_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 5),
+
+      lagged_var_8_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 8),
+
+      lagged_var_13_ma = slider::slide_dbl(.x = lagged_var_1,
+                                           .f = ~ mean(.x, na.rm = T),
+                                           .before = 13),
+
+      lagged_var_21_ma = slider::slide_dbl(.x = lagged_var_1,
+                                           .f = ~ mean(.x, na.rm = T),
+                                           .before = 21)
+    ) %>%
+    ungroup() %>%
+    distinct()
+
+  gc()
+  message("Made it past first training data wrangle")
+
+  training_data <-
+    training_data %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(!matches(c("bin_var","trade_col"), ignore.case = FALSE), .direction = "down") %>%
+    ungroup() %>%
+    filter(if_all(everything() ,.fns = ~ !is.na(.)))
+
+  max_date_in_testing_data <- training_data %>% pull(Date) %>% max(na.rm = T)
+  message(glue::glue("Max date in Training data: {max_date_in_testing_data}"))
+
+  NN_form <-  create_lm_formula(dependant = "trade_return_dollar_aud", independant = lm_vars1)
+
+  if(run_logit_instead == FALSE) {
+    for (i in 1:max_NNs) {
+      set.seed(round(runif(1,2,10000)))
+
+      glm_model_1 <- glm(formula = NN_form,
+                         data = training_data ,
+                         family = binomial("logit"))
+
+      all_coefs <- glm_model_1 %>% jtools::j_summ() %>% pluck(1)
+      coef_names <- row.names(all_coefs) %>% as.character()
+
+      filtered_coefs <-
+        all_coefs %>%
+        as_tibble() %>%
+        mutate(all_vars = coef_names) %>%
+        filter(p <= p_value_thresh_for_inputs) %>%
+        filter(!str_detect(all_vars, "Intercep")) %>%
+        pull(all_vars) %>%
+        as.character()
+
+      message(length(filtered_coefs))
+
+      NN_form <-  create_lm_formula(dependant = "trade_return_dollar_aud", independant = filtered_coefs)
+
+      hidden_layers <- rep(
+        (length(filtered_coefs) + round(length(filtered_coefs)*neuron_adjustment)),
+        hidden_layers
+      )
+
+      message("Made Formula")
+
+      NN_model_1 <- neuralnet::neuralnet(formula = NN_form,
+                                         hidden = hidden_layers,
+                                         data = training_data %>% slice_sample(n = NN_samples),
+                                         lifesign = 'full',
+                                         rep = 1,
+                                         stepmax = 1000000,
+                                         threshold = ending_thresh)
+
+      saveRDS(object = NN_model_1,
+              file =
+                glue::glue("{NN_path}/{dependant_var_name}_NN_{i}.rds")
+      )
+
+    }
+  } else {
+    for (i in 1:max_NNs) {
+      set.seed(round(runif(1,2,10000)))
+
+      glm_model_1 <- glm(formula = NN_form,
+                         data = training_data ,
+                         family = gaussian)
+
+      all_coefs <- glm_model_1 %>% jtools::j_summ() %>% pluck(1)
+      coef_names <- row.names(all_coefs) %>% as.character()
+
+      filtered_coefs <-
+        all_coefs %>%
+        as_tibble() %>%
+        mutate(all_vars = coef_names) %>%
+        filter(p <= p_value_thresh_for_inputs) %>%
+        filter(!str_detect(all_vars, "Intercep")) %>%
+        pull(all_vars) %>%
+        as.character()
+
+      NN_form <-  create_lm_formula(dependant = "trade_return_dollar_aud", independant = filtered_coefs)
+
+      NN_model_1 <- glm(formula = NN_form,
+                        data = training_data ,
+                        family = gaussian)
+
+      saveRDS(object = NN_model_1,
+              file =
+                glue::glue("{NN_path}/{dependant_var_name}_GLM_{i}.rds")
+      )
+    }
+
+  }
+
+  return(NN_model_1)
+
+}
+
+#' get_SPX_US2000_XAG_XAU
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_Port_Buy_SPX_Focus_Data <- function(
+    db_location = db_location,
+    start_date = "2016-01-01",
+    end_date = today() %>% as.character(),
+    time_frame = "H1"
+) {
+
+  SPX <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "SPX500_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  US2000 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "US2000_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR50 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "EU50_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  AU200_AUD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "AU200_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
+  UK100_GBP <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "UK100_GBP",
+    keep_bid_to_ask = TRUE
+  )
+
+  JP225Y_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "JP225Y_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  FR40_EUR <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "FR40_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  CH20_CHF <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "CH20_CHF",
+    keep_bid_to_ask = TRUE
+  )
+
+  USB10Y_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "USB10Y_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  USB02Y_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "USB02Y_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  USB05Y_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "USB05Y_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  HK33_HKD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "HK33_HKD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "XAU_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_EUR <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "XAU_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_GBP <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "XAU_GBP",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "XAU_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_AUD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "XAU_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG_SPX_US2000_USD <-
+    SPX %>%
+    bind_rows(US2000) %>%
+    bind_rows(EUR50) %>%
+    bind_rows(AU200_AUD) %>%
+    bind_rows(XAU) %>%
+    bind_rows(UK100_GBP) %>%
+    bind_rows(JP225Y_JPY) %>%
+    bind_rows(FR40_EUR) %>%
+    bind_rows(CH20_CHF) %>%
+    bind_rows(USB10Y_USD) %>%
+    bind_rows(USB02Y_USD) %>%
+    bind_rows(USB05Y_USD) %>%
+    bind_rows(HK33_HKD) %>%
+    bind_rows(XAU_EUR) %>%
+    bind_rows(XAU_GBP) %>%
+    bind_rows(XAU_JPY)%>%
+    bind_rows(XAU_AUD)
+
+  rm(SPX, US2000,EUR50, AU200_AUD, SG30_SGD, XAG, XAU, UK100_GBP, JP225Y_JPY, FR40_EUR, CH20_CHF,
+     USB10Y_USD, USB02Y_USD, EUR_USD, GBP_USD,XAU_EUR, XAG_EUR, XAU_EUR, XAU_GBP, XAG_GBP, EUR_GBP,
+     WTICO_USD, BCO_USD, XCU_USD, XAG_JPY, XAU_JPY,XAU_AUD, XAG_AUD, AUD_USD, USD_JPY )
+  gc()
+
+  SPX <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "SPX500_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  US2000 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "US2000_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR50 <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "EU50_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  AU200_AUD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "AU200_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
+  UK100_GBP <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "UK100_GBP",
+    keep_bid_to_ask = TRUE
+  )
+
+  JP225Y_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "JP225Y_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  FR40_EUR <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "FR40_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  CH20_CHF <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "CH20_CHF",
+    keep_bid_to_ask = TRUE
+  )
+
+  USB10Y_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "USB10Y_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  USB02Y_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "USB02Y_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  USB05Y_USD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "USB05Y_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  HK33_HKD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "HK33_HKD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "XAU_USD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_EUR <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "XAU_EUR",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_GBP <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "XAU_GBP",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_JPY <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "XAU_JPY",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAU_AUD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "XAU_AUD",
+    keep_bid_to_ask = TRUE
+  )
+
+  XAG_SPX_US2000_USD_short <-
+    SPX %>%
+    bind_rows(US2000) %>%
+    bind_rows(EUR50) %>%
+    bind_rows(AU200_AUD) %>%
+    bind_rows(XAU) %>%
+    bind_rows(UK100_GBP) %>%
+    bind_rows(JP225Y_JPY) %>%
+    bind_rows(FR40_EUR) %>%
+    bind_rows(CH20_CHF) %>%
+    bind_rows(USB10Y_USD) %>%
+    bind_rows(USB02Y_USD) %>%
+    bind_rows(USB05Y_USD) %>%
+    bind_rows(HK33_HKD) %>%
+    bind_rows(XAU_EUR) %>%
+    bind_rows(XAU_GBP) %>%
+    bind_rows(XAU_JPY)%>%
+    bind_rows(XAU_AUD)
+
+  rm(SPX, US2000,EUR50, AU200_AUD, SG30_SGD, XAG, XAU, UK100_GBP, JP225Y_JPY, FR40_EUR, CH20_CHF,
+     USB10Y_USD, USB02Y_USD, EUR_USD, GBP_USD,XAU_EUR, XAG_EUR, XAU_EUR, XAU_GBP, XAG_GBP, EUR_GBP,
+     WTICO_USD, BCO_USD, XCU_USD, XAG_JPY, XAU_JPY,XAU_AUD, XAG_AUD, AUD_USD, USD_JPY )
+  gc()
+
+  return(
+    list(
+      XAG_SPX_US2000_USD,
+      XAG_SPX_US2000_USD_short
+    )
+  )
+
+}
+
+#' create_NN_Idices_Silver_H1Vers_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_LM_Hourly_SPX_Focus <-
+  function(SPX_US2000_XAG = Indices_Metals_Bonds[[1]],
+           raw_macro_data,
+           actual_wins_losses = actual_wins_losses,
+           lag_days = 1,
+           stop_value_var = 15,
+           profit_value_var = 20,
+           use_PCA_vars = FALSE,
+           period_var,
+           bin_factor = 1) {
+
+    # assets_to_return <- dependant_var_name
+
+    # aus_macro_data <-
+    #   get_AUS_Indicators(raw_macro_data,
+    #                      lag_days = lag_days,
+    #                      first_difference = TRUE
+    #   ) %>%
+    #   janitor::clean_names()
+    #
+    # # nzd_macro_data <-
+    # #   get_NZD_Indicators(raw_macro_data,
+    # #                      lag_days = lag_days,
+    # #                      first_difference = TRUE
+    # #   ) %>%
+    # #   janitor::clean_names()
+    #
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+    #
+    # cny_macro_data <-
+    #   get_CNY_Indicators(raw_macro_data,
+    #                      lag_days = lag_days,
+    #                      first_difference = TRUE
+    #   ) %>%
+    #   janitor::clean_names()
+    #
+    # eur_macro_data <-
+    #   get_EUR_Indicators(raw_macro_data,
+    #                      lag_days = lag_days,
+    #                      first_difference = TRUE
+    #   ) %>%
+    #   janitor::clean_names()
+    #
+    # aud_macro_vars <- names(aus_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    # # nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    # cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    # eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    all_macro_vars <- c(
+      # aud_macro_vars,
+      # nzd_macro_vars,
+      usd_macro_vars
+      # cny_macro_vars,
+      # eur_macro_vars
+      )
+
+    major_indices_log_cumulative <-
+      c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+        "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              SPX_US2000_XAG %>%
+              filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+                                  "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        SPX_US2000_XAG %>%
+          filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+                              "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_equities_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_indices_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+                          "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      )
+
+    rm(major_indices_log_cumulative)
+
+    pc_equities_global <-
+      pc_equities_global %>%
+      arrange(Date) %>%
+      mutate(
+        across(matches("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Global_Equities = PC1,
+             PC2_Global_Equities = PC2,
+             PC3_Global_Equities = PC3,
+             PC4_Global_Equities = PC4) %>%
+      dplyr::select(-PC5, -PC6)
+
+    major_bonds_log_cumulative <-
+      c("USB05Y_USD", "USB10Y_USD", "USB02Y_USD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              SPX_US2000_XAG %>%
+              filter(Asset %in% c("USB05Y_USD", "USB10Y_USD", "USB02Y_USD")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        SPX_US2000_XAG %>%
+          filter(Asset %in% c("USB05Y_USD", "USB10Y_USD", "USB02Y_USD")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_bonds_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_bonds_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("USB05Y_USD", "USB10Y_USD", "USB02Y_USD"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Bonds_Equities = PC1,
+             PC2_Bonds_Equities = PC2,
+             PC3_Bonds_Equities = PC3)
+
+    rm(major_bonds_log_cumulative)
+    gc()
+
+
+    major_gold_log_cumulative <-
+      c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              SPX_US2000_XAG %>%
+              filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        SPX_US2000_XAG %>%
+          filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_gold_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_gold_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Gold_Equities = PC1,
+             PC2_Gold_Equities = PC2,
+             PC3_Gold_Equities = PC3) %>%
+      dplyr::select(-PC4, -PC5)
+
+    rm(major_gold_log_cumulative)
+    gc()
+
+    #   bind_rows(XAU_AUD)
+
+    copula_data <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "US2000_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      )
+
+    copula_data_SPX500_USD_USB10Y_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "USB10Y_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+      # dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    # copula_data_SPX500_USD_USB02Y_USD <-
+    #   estimating_dual_copula_gauss(
+    #     asset_data_to_use = SPX_US2000_XAG,
+    #     asset_to_use = c("SPX500_USD", "USB02Y_USD"),
+    #     price_col = "Open",
+    #     rolling_period = 100,
+    #     samples_for_MLE = 0.15,
+    #     test_samples = 0.85
+    #   ) %>%
+    #   dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+    # dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_SPX500_USD_USB05Y_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "USB05Y_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+    # dplyr::select(-EU50_EUR, -EU50_EUR_log2_price, -EU50_EUR_quantiles_2, -EU50_EUR_tangent_angle2)
+
+    copula_data_SPX500_USD_EU50_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "EU50_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_AU200_AUD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "AU200_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_AU200_AUD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "AU200_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_XAU_USD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_USD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_UK100_GBP <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "UK100_GBP"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_FR40_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "FR40_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_CH20_CHF <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "CH20_CHF"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_HK33_HKD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "HK33_HKD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_XAU_EUR <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_EUR"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_XAU_GBP <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_GBP"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_XAU_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_XAU_JPY <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_JPY"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    copula_data_SPX500_USD_XAU_AUD <-
+      estimating_dual_copula(
+        asset_data_to_use = SPX_US2000_XAG,
+        asset_to_use = c("SPX500_USD", "XAU_AUD"),
+        price_col = "Open",
+        rolling_period = 100,
+        samples_for_MLE = 0.15,
+        test_samples = 0.85
+      ) %>%
+      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
+
+    if(!is.null(bin_factor)) {
+      binary_data_for_post_model <-
+        actual_wins_losses %>%
+        filter(profit_factor == profit_value_var)%>%
+        filter(stop_factor == stop_value_var) %>%
+        filter(periods_ahead == period_var) %>%
+        group_by(Asset) %>%
+        mutate(max_win = max(trade_return_dollar_aud, na.rm=T),
+               max_loss = min(trade_return_dollar_aud, na.rm=T),
+               quantile_bin = quantile(trade_return_dollar_aud, bin_factor, na.rm = T) ) %>%
+        ungroup() %>%
+        mutate(
+          bin_var =
+            case_when(
+              trade_return_dollar_aud > 0  ~ "win",
+              trade_return_dollar_aud <= 0~ "loss"
+            )
+        ) %>%
+        dplyr::select(Date, bin_var, Asset, trade_col,
+                      profit_factor, stop_factor, periods_ahead, trade_return_dollar_aud, estimated_margin)
+    } else {
+      binary_data_for_post_model <-
+        actual_wins_losses %>%
+        filter(profit_factor == profit_value_var)%>%
+        filter(stop_factor == stop_value_var) %>%
+        mutate(
+          bin_var =
+            case_when(
+              trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
+              trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
+
+              trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
+              trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
+
+            )
+        ) %>%
+        dplyr::select(Date, bin_var, Asset, trade_col,
+                      profit_factor, stop_factor,
+                      trade_start_prices, trade_end_prices,
+                      starting_stop_value, starting_profit_value,
+                      trade_return_dollar_aud, periods_ahead)
+    }
+
+    gc()
+
+    mean_sd_values <-
+      wrangle_asset_data(SPX_US2000_XAG, summarise_means = TRUE)
+
+    copula_data_macro <-
+      SPX_US2000_XAG %>%
+      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
+      find_pivots_fib_max_min(how_far_back = 100) %>%
+      rename(line_1_100 = line_1,
+             line_10_100 = line_10,
+             line_1_max_100 = line_1_max,
+             line_10_max_100 = line_10_max,
+             perc_line_1_100 = perc_line_1,
+             perc_line_10_100 = perc_line_10,
+             perc_line_1_to_10_100 = perc_line_1_to_10,
+             perc_line_1_mean_100 = perc_line_1_mean,
+             perc_line_1_sd_100 = perc_line_1_sd,
+             perc_line_10_mean_100 = perc_line_10_mean,
+             perc_line_10_sd_100 = perc_line_10_sd,
+             perc_line_1_to_10_mean_100 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_100 = perc_line_1_to_10_sd) %>%
+      find_pivots_fib_max_min(how_far_back = 50)%>%
+        rename(line_1_50 = line_1,
+               line_10_50 = line_10,
+               line_1_max_50 = line_1_max,
+               line_10_max_50 = line_10_max,
+               perc_line_1_50 = perc_line_1,
+               perc_line_10_50 = perc_line_10,
+               perc_line_1_to_10_50 = perc_line_1_to_10,
+               perc_line_1_mean_50 = perc_line_1_mean,
+               perc_line_1_sd_50 = perc_line_1_sd,
+               perc_line_10_mean_50 = perc_line_10_mean,
+               perc_line_10_sd_50 = perc_line_10_sd,
+               perc_line_1_to_10_mean_50 = perc_line_1_to_10_mean,
+               perc_line_1_to_10_sd_50 = perc_line_1_to_10_sd)%>%
+      find_pivots_fib_max_min(how_far_back = 10)%>%
+      rename(line_1_10 = line_1,
+             line_10_10 = line_10,
+             line_1_max_10 = line_1_max,
+             line_10_max_10 = line_10_max,
+             perc_line_1_10 = perc_line_1,
+             perc_line_10_10 = perc_line_10,
+             perc_line_1_to_10_10 = perc_line_1_to_10,
+             perc_line_1_mean_10 = perc_line_1_mean,
+             perc_line_1_sd_10 = perc_line_1_sd,
+             perc_line_10_mean_10 = perc_line_10_mean,
+             perc_line_10_sd_10 = perc_line_10_sd,
+             perc_line_1_to_10_mean_10 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_10 = perc_line_1_to_10_sd)
+
+    rm(SPX_US2000_XAG)
+    gc()
+    Sys.sleep(2)
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      mutate(
+        temp_high_to_low = High - Low,
+        temp_high_to_price = High - Price,
+        temp_price_to_low = Price - Low,
+        temp_price_to_open = abs(Price - Open)
+      ) %>%
+      group_by(Asset) %>%
+      mutate(
+        temp_high_to_low_mean = mean(temp_high_to_low, na.rm = T),
+        temp_high_to_price_mean = mean(temp_high_to_price, na.rm = T),
+        temp_price_to_low_mean = mean(temp_price_to_low, na.rm = T),
+        temp_price_to_open_mean = mean(temp_price_to_open, na.rm = T),
+
+        temp_high_to_low_sd = sd(temp_high_to_low, na.rm = T),
+        temp_high_to_price_sd = sd(temp_high_to_price, na.rm = T),
+        temp_price_to_low_sd = sd(temp_price_to_low, na.rm = T),
+        temp_price_to_open_sd = sd(temp_price_to_open, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(
+        High_Support =
+          ifelse(
+          temp_high_to_price/temp_high_to_low <= 0.15 &
+          Price > Open &
+          abs(temp_price_to_open/temp_high_to_low) <= 0.15,
+          1,
+          0
+          ),
+
+        High_Resistance =
+          ifelse(
+            temp_price_to_low/temp_high_to_low <= 0.15 &
+              Price < Open &
+              temp_price_to_open/temp_high_to_low <= 0.15,
+            1,
+            0
+          ),
+        High_Support2 =
+          ifelse(
+            temp_high_to_low >= temp_high_to_low_mean + temp_high_to_low_sd*1.5 &
+              temp_price_to_open <= temp_price_to_open_mean - temp_price_to_open_sd*1.5 &
+              Price > Open,
+            1,
+            0
+          ),
+        High_Resistance2 =
+          ifelse(
+            temp_high_to_low >= temp_high_to_low_mean + temp_high_to_low_sd*1.5 &
+              temp_price_to_open <= temp_price_to_open_mean - temp_price_to_open_sd*1.5 &
+              Price < Open,
+            1,
+            0
+          )
+      ) %>%
+      group_by(Asset) %>%
+      mutate(
+        Bull_3 =
+          ifelse(
+            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) ,
+            1,
+            0
+          ),
+
+        Bear_3 =
+          ifelse(
+            Price < Open & lag(Price) < lag(Open) & lag(Price,2) < lag(Open,2) ,
+            1,
+            0
+          ),
+
+        Bull_3 =
+          ifelse(
+            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) ,
+            1,
+            0
+          ),
+
+        Bull_3_strong =
+          ifelse(
+            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) &
+              temp_price_to_open > lag(temp_price_to_open) &
+              lag(temp_price_to_open) > lag(temp_price_to_open, 2),
+            1,
+            0
+          ),
+
+        Bear_3_strong =
+          ifelse(
+            Price < Open & lag(Price) < lag(Open) & lag(Price,2) < lag(Open,2) &
+              temp_price_to_open < lag(temp_price_to_open) &
+              lag(temp_price_to_open) < lag(temp_price_to_open, 2),
+            1,
+            0
+          )
+      ) %>%
+      dplyr::select(
+        -c(
+          temp_high_to_low_mean,
+          temp_high_to_price_mean,
+          temp_price_to_low_mean,
+          temp_price_to_open_mean,
+
+          temp_high_to_low_sd,
+          temp_high_to_price_sd,
+          temp_price_to_low_sd ,
+          temp_price_to_open_sd,
+
+          temp_high_to_low ,
+          temp_high_to_price,
+          temp_price_to_low ,
+          temp_price_to_open
+        )
+      )
+
+    gc()
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      left_join(copula_data) %>%
+      left_join(copula_data_SPX500_USD_USB10Y_USD) %>%
+      # left_join(copula_data_SPX500_USD_USB02Y_USD) %>%
+      left_join(copula_data_SPX500_USD_USB05Y_USD) %>%
+      left_join(copula_data_SPX500_USD_EU50_EUR) %>%
+      left_join(copula_data_SPX500_USD_AU200_AUD) %>%
+      left_join(copula_data_SPX500_USD_XAU_USD) %>%
+      left_join(copula_data_SPX500_USD_UK100_GBP) %>%
+      left_join(copula_data_SPX500_USD_FR40_EUR) %>%
+      left_join(copula_data_SPX500_USD_CH20_CHF) %>%
+      left_join(copula_data_SPX500_USD_HK33_HKD) %>%
+      left_join(copula_data_SPX500_USD_XAU_EUR) %>%
+      left_join(copula_data_SPX500_USD_XAU_GBP) %>%
+      left_join(copula_data_SPX500_USD_XAU_JPY) %>%
+      left_join(copula_data_SPX500_USD_XAU_AUD)
+
+    gc()
+    rm(copula_data ,
+               copula_data_SPX500_USD_USB10Y_USD ,
+               copula_data_SPX500_USD_USB02Y_USD ,
+               copula_data_SPX500_USD_USB05Y_USD ,
+               copula_data_SPX500_USD_EU50_EUR ,
+               copula_data_SPX500_USD_AU200_AUD ,
+               copula_data_SPX500_USD_XAU_USD ,
+               copula_data_SPX500_USD_UK100_GBP ,
+               copula_data_SPX500_USD_FR40_EUR ,
+               copula_data_SPX500_USD_CH20_CHF ,
+               copula_data_SPX500_USD_HK33_HKD ,
+               copula_data_SPX500_USD_XAU_EUR ,
+               copula_data_SPX500_USD_XAU_GBP ,
+               copula_data_SPX500_USD_XAU_JPY ,
+               copula_data_SPX500_USD_XAU_AUD
+             )
+    gc()
+
+    message("Made it to first rm()")
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      left_join(pc_equities_global %>% dplyr::select(-Average_PCA)) %>%
+      left_join(pc_bonds_global %>% dplyr::select(-Average_PCA)) %>%
+      left_join(pc_gold_global %>% dplyr::select(-Average_PCA))  %>%
+      # mutate(Date_for_join = as_date(Date)) %>%
+      # left_join(
+      #   usd_macro_data %>%
+      #     rename(Date_for_join = date)
+      # ) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      ungroup()
+
+    gc()
+    rm(pc_equities_global, pc_bonds_global, pc_gold_global)
+    gc()
+
+    message("Made it to second rm()")
+
+    min_allowable_date <-
+      copula_data_macro %>%
+      ungroup() %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
+      pull(Date) %>% min()
+    copula_data_macro <-
+      copula_data_macro %>%
+      ungroup() %>%
+      filter(Date >= min_allowable_date)
+    gc()
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      left_join(binary_data_for_post_model)
+    gc()
+    rm(binary_data_for_post_model)
+    gc()
+
+    message("Made it to third rm() left join of actuals")
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      # group_by(Asset) %>%
+      # fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      ungroup()
+
+    message("Made it to to arrangement of copula_data by Date")
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      group_by(Asset) %>%
+      fill(contains("quantiles"), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(contains("tangent"), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(contains("cor"), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(contains("PC"), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(contains("AUD|XAG|XAU|SPX|US2000|FR40|EUR|USD|JPY|HK33"), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      # fill(everything(), .direction = "down") %>%
+      ungroup()
+
+    gc()
+
+    message("Made it to finish creating data")
+
+    max_date_in_testing_data <- copula_data_macro %>%
+      distinct(Date) %>% pull(Date) %>% max(na.rm = T)
+    message(glue::glue("Max date in Complete data: {max_date_in_testing_data}"))
+
+    min_allowable_date <-
+      copula_data_macro %>%
+      ungroup() %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
+      pull(Date) %>% min()
+
+    gc()
+
+    copula_data_macro <-
+      copula_data_macro %>%
+      ungroup() %>%
+      filter(Date >= min_allowable_date)
+
+    gc()
+
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor|PC|perc_|line_|Support|Resistance|Bear|Bull"))
+
+    if(use_PCA_vars == TRUE) {
+      lm_vars1 <- c(
+        # PC_macro_vars,
+        lm_quant_vars,
+        "lagged_var_13",
+        "lagged_var_21",
+        "lagged_var_3_ma",
+        # "hour_of_day", "day_of_week"
+      )
+    } else {
+      lm_vars1 <- c(
+        # all_macro_vars,
+        lm_quant_vars,
+        "lagged_var_13",
+        "lagged_var_3_ma",
+        "lagged_var_21_ma"
+        # "hour_of_day", "day_of_week"
+      )
+    }
+
+    return(
+      list(
+        "copula_data_macro" = copula_data_macro,
+        "lm_vars1" =
+          lm_vars1 %>%
+          keep( ~ !str_detect(.x, "sd") & !str_detect(.x, "tangent") )
+      )
+    )
+
+  }
+
+#' generate_Logit_gen_model_create_preds
+#'
+#' @param copula_data_macro
+#' @param NN_samples
+#' @param dependant_var_name
+#' @param NN_path
+#' @param training_max_date
+#' @param lm_train_prop
+#' @param trade_direction_var
+#'
+#' @return
+#' @export
+#'
+#' @examples
+generate_Logit_gen_model_create_preds <- function(
+    copula_data_macro = copula_data_Indices_Silver[[1]],
+    lm_vars1 = copula_data_Indices_Silver[[2]],
+    NN_samples = NN_samples,
+    dependant_var_name = available_assets2[i],
+    NN_path = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio/",
+    training_max_date = date_sequence[k],
+    lm_train_prop = 1,
+    trade_direction_var = analysis_direction,
+    stop_value_var = stop_value_var,
+    profit_value_var = profit_value_var,
+    max_NNs = 1,
+    hidden_layers = hidden_layers,
+    ending_thresh = ending_thresh,
+    run_logit_instead = TRUE,
+    p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+    neuron_adjustment = neuron_adjustment,
+    lag_price_col = "Price",
+    testing_min_date_p1 = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
+    phase_1_testing_weeks = 4,
+    period_var= period_var,
+    return_tagged_trades = FALSE
+) {
+
+  set.seed(round(runif(n = 1, min = 0, max = 100000)))
+  training_data <-
+    copula_data_macro %>%
+    ungroup() %>%
+    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
+    filter(Date < as_date(training_max_date)) %>%
+    filter(Asset == dependant_var_name) %>%
+    filter(trade_col == trade_direction_var) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    mutate(
+      lagged_var_1 = lag(!!as.name(lag_price_col), 1) - lag(!!as.name(lag_price_col), 2),
+      lagged_var_2 = lag(lagged_var_1, 2),
+      lagged_var_3 = lag(lagged_var_1, 3),
+      lagged_var_5 = lag(lagged_var_1, 5),
+      lagged_var_8 = lag(lagged_var_1, 8),
+      lagged_var_13 = lag(lagged_var_1, 13),
+      lagged_var_21 = lag(lagged_var_1, 21),
+
+      fib_1 = lagged_var_1 + lagged_var_2,
+      fib_2 = lagged_var_2 + lagged_var_3,
+      fib_3 = lagged_var_3 + lagged_var_5,
+      fib_4 = lagged_var_5 + lagged_var_8,
+      fib_5 = lagged_var_8 + lagged_var_13,
+      fib_6 = lagged_var_13 + lagged_var_21,
+
+      lagged_var_3_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 3),
+
+      lagged_var_5_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 5),
+
+      lagged_var_8_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 8),
+
+      lagged_var_13_ma = slider::slide_dbl(.x = lagged_var_1,
+                                           .f = ~ mean(.x, na.rm = T),
+                                           .before = 13),
+
+      lagged_var_21_ma = slider::slide_dbl(.x = lagged_var_1,
+                                           .f = ~ mean(.x, na.rm = T),
+                                           .before = 21)
+    ) %>%
+    ungroup() %>%
+    distinct()
+
+  gc()
+  message("Made it past first training data wrangle")
+
+  training_data <-
+    training_data %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    fill(!matches(c("bin_var","trade_col"), ignore.case = FALSE), .direction = "down") %>%
+    ungroup() %>%
+    filter(if_all(everything() ,.fns = ~ !is.na(.)))
+
+  max_date_in_testing_data <- training_data %>% pull(Date) %>% max(na.rm = T)
+  message(glue::glue("Max date in Training data: {max_date_in_testing_data}"))
+
+  NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = lm_vars1)
+  glm_model_1 <- glm(formula = NN_form,
+                         data = training_data ,
+                         family = binomial("logit"))
+
+  all_coefs <- glm_model_1 %>% jtools::j_summ() %>% pluck(1)
+  coef_names <- row.names(all_coefs) %>% as.character()
+  filtered_coefs <-
+        all_coefs %>%
+        as_tibble() %>%
+        mutate(all_vars = coef_names) %>%
+        filter(p <= p_value_thresh_for_inputs) %>%
+        filter(!str_detect(all_vars, "Intercep")) %>%
+        pull(all_vars) %>%
+        as.character()
+  NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = filtered_coefs)
+  NN_model_1 <- glm(formula = NN_form,
+                        data = training_data ,
+                        family = binomial("logit"))
+  saveRDS(object = NN_model_1,
+          file =glue::glue("{NN_path}/{dependant_var_name}_GLM_{1}.rds"))
+
+
+  gauss_form <-  create_lm_formula(dependant = "trade_return_dollar_aud", independant = lm_vars1)
+  gauss_model_1 <- lm(formula = gauss_form,
+                          data = training_data)
+  all_coefs_gauss <- gauss_model_1 %>% jtools::j_summ() %>% pluck(1)
+  coef_names_gauss <- row.names(all_coefs_gauss) %>% as.character()
+  filtered_coefs_gauss <-
+        all_coefs_gauss %>%
+        as_tibble() %>%
+        mutate(all_vars = coef_names_gauss) %>%
+        filter(p <= p_value_thresh_for_inputs) %>%
+        filter(!str_detect(all_vars, "Intercep")) %>%
+        pull(all_vars) %>%
+        as.character()
+  gauss_form <-  create_lm_formula(dependant = "trade_return_dollar_aud", independant = filtered_coefs_gauss)
+  gauss_model_1 <- lm(formula = gauss_form,
+                          data = training_data)
+
+  saveRDS(object = gauss_model_1,
+          file = glue::glue("{NN_path}/{dependant_var_name}_LM_{1}.rds"))
+
+  max_test_date <- (date_sequence[k] + dweeks(phase_1_testing_weeks)) %>% as_date() %>% as.character()
+
+  post_P1_testing_data <-
+    copula_data_macro %>%
+    ungroup() %>%
+    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
+    filter(Asset == dependant_var_name) %>%
+    filter(trade_col == trade_direction_var) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    group_by(Asset) %>%
+    mutate(
+      lagged_var_1 = lag(!!as.name(lag_price_col), 1) - lag(!!as.name(lag_price_col), 2),
+      lagged_var_2 = lag(lagged_var_1, 2),
+      lagged_var_3 = lag(lagged_var_1, 3),
+      lagged_var_5 = lag(lagged_var_1, 5),
+      lagged_var_8 = lag(lagged_var_1, 8),
+      lagged_var_13 = lag(lagged_var_1, 13),
+      lagged_var_21 = lag(lagged_var_1, 21),
+
+      fib_1 = lagged_var_1 + lagged_var_2,
+      fib_2 = lagged_var_2 + lagged_var_3,
+      fib_3 = lagged_var_3 + lagged_var_5,
+      fib_4 = lagged_var_5 + lagged_var_8,
+      fib_5 = lagged_var_8 + lagged_var_13,
+      fib_6 = lagged_var_13 + lagged_var_21,
+
+      lagged_var_3_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 3),
+
+      lagged_var_5_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 5),
+
+      lagged_var_8_ma = slider::slide_dbl(.x = lagged_var_1,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = 8),
+
+      lagged_var_13_ma = slider::slide_dbl(.x = lagged_var_1,
+                                           .f = ~ mean(.x, na.rm = T),
+                                           .before = 13),
+
+      lagged_var_21_ma = slider::slide_dbl(.x = lagged_var_1,
+                                           .f = ~ mean(.x, na.rm = T),
+                                           .before = 21)
+    ) %>%
+    ungroup() %>%
+    distinct() %>%
+    dplyr::select(Date, Asset, matches(filtered_coefs) )
+
+
+  p1_testing <-
+    read_NNs_create_preds_portfolio(
+      copula_data_macro = copula_data_macro,
+      lm_vars1 = lm_vars1,
+      dependant_var_name = dependant_var_name,
+      NN_path = NN_path,
+      testing_min_date = testing_min_date_p1,
+      trade_direction_var = analysis_direction,
+      NN_index_to_choose = "",
+      stop_value_var = stop_value_var,
+      profit_value_var = profit_value_var,
+      run_logit_instead = run_logit_instead,
+      lag_price_col = lag_price_col,
+      return_tagged_trades = FALSE,
+      model_type = "logit",
+      LM_interval = "fit"
+    ) %>%
+    dplyr::select(-pred_upr, -pred_lwr)
+
+
+  p1_testing_gauss <-
+    read_NNs_create_preds_portfolio(
+      copula_data_macro = copula_data_macro,
+      lm_vars1 = lm_vars1,
+      dependant_var_name = dependant_var_name,
+      NN_path = NN_path,
+      testing_min_date = testing_min_date_p1,
+      trade_direction_var = analysis_direction,
+      NN_index_to_choose = "",
+      stop_value_var = stop_value_var,
+      profit_value_var = profit_value_var,
+      run_logit_instead = run_logit_instead,
+      lag_price_col = lag_price_col,
+      return_tagged_trades = FALSE,
+      model_type = "LM",
+      LM_interval = "fit"
+    ) %>%
+    dplyr::select(Date, Asset,
+                  gauss_pred = pred,
+                  gauss_pred_upr = pred_upr,
+                  gauss_pred_lwr = pred_lwr)
+
+  p1_testing <-
+    p1_testing%>%
+    mutate(
+      NN_samples = NN_samples,
+      hidden_layers = hidden_layers,
+      ending_thresh = ending_thresh,
+      p_value_thresh_for_inputs = p_value_thresh_for_inputs,
+      neuron_adjustment = neuron_adjustment
+    ) %>%
+    left_join(p1_testing_gauss)
+
+  p2_training <-
+    p1_testing %>%
+    filter(Date <= max_test_date) %>%
+    left_join( post_P1_testing_data %>%
+                 dplyr::select(Date, Asset, matches(filtered_coefs) ) ) %>%
+    mutate(win_or_loss_prev =
+             case_when(
+               trade_returns_AUD > 0 ~ 1,
+               TRUE ~ 0
+             ),
+           win_or_loss_prev = lag(win_or_loss_prev, period_var),
+           prev_pred_current = pred,
+           prev_pred = lag(pred),
+           prev_pred_gauss = lag(gauss_pred),
+           prev_pred_gauss_lwr = lag(gauss_pred_lwr),
+
+           pred_MA_5 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 5),
+           pred_MA_10 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_10 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_15 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 15),
+           pred_MA_20 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 20),
+           pred_MA_25 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 25),
+           pred_MA_30 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 30),
+
+           pred_MA_5_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 5),
+           pred_MA_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_15_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 15),
+           pred_MA_20_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 20),
+           pred_MA_25_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 25),
+           pred_MA_30_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 30),
+
+           pred_MA_5_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 5),
+           pred_MA_10_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_10_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_15_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 15),
+           pred_MA_20_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 20),
+           pred_MA_25_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 25),
+           pred_MA_30_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 30),
+
+
+           pred_SD_5 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 5),
+           pred_SD_10 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_10 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_15 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 15),
+           pred_SD_20 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 20),
+           pred_SD_25 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 25),
+           pred_SD_30 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 30),
+
+           pred_SD_5_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 5),
+           pred_SD_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_15_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 15),
+           pred_SD_20_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 20),
+           pred_SD_25_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 25),
+           pred_SD_30_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 30)
+    )
+
+  pred_ma_cols <- names(p2_training) %>%
+    keep(~ str_detect(.x, "pred_MA|prev_pred|pred_SD")) %>%
+    unlist() %>%
+    as.character()
+
+  NN_form <-  create_lm_formula(dependant = "bin_var=='win'",
+                                independant =
+                                  c(filtered_coefs, "prev_pred",
+                                    "prev_pred_current", pred_ma_cols) )
+
+  glm_model_1 <- glm(formula = NN_form,
+                     data = p2_training ,
+                     family = binomial("probit"))
+
+
+  p2_testing <-
+    p1_testing %>%
+    filter(Date > max_test_date) %>%
+    left_join(post_P1_testing_data %>%
+                dplyr::select(Date, Asset, matches(filtered_coefs) ) ) %>%
+    mutate(win_or_loss_prev =
+             case_when(
+               trade_returns_AUD > 0 ~ 1,
+               TRUE ~ 0
+             ),
+           win_or_loss_prev = lag(win_or_loss_prev, period_var),
+           prev_pred_current = pred,
+           prev_pred = lag(pred),
+           prev_pred_gauss = lag(gauss_pred),
+           prev_pred_gauss_lwr = lag(gauss_pred_lwr),
+
+           pred_MA_5 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 5),
+           pred_MA_10 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_10 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_15 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 15),
+           pred_MA_20 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 20),
+           pred_MA_25 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 25),
+           pred_MA_30 = slider::slide_dbl(.x = prev_pred, .f = ~ mean(.x, na.rm = T), .before = 30),
+
+           pred_MA_5_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 5),
+           pred_MA_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_15_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 15),
+           pred_MA_20_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 20),
+           pred_MA_25_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 25),
+           pred_MA_30_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ mean(.x, na.rm = T), .before = 30),
+
+           pred_MA_5_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 5),
+           pred_MA_10_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_10_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 10),
+           pred_MA_15_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 15),
+           pred_MA_20_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 20),
+           pred_MA_25_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 25),
+           pred_MA_30_gauss_lwr = slider::slide_dbl(.x = prev_pred_gauss_lwr, .f = ~ mean(.x, na.rm = T), .before = 30),
+
+
+           pred_SD_5 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 5),
+           pred_SD_10 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_10 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_15 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 15),
+           pred_SD_20 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 20),
+           pred_SD_25 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 25),
+           pred_SD_30 = slider::slide_dbl(.x = prev_pred, .f = ~ sd(.x, na.rm = T), .before = 30),
+
+           pred_SD_5_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 5),
+           pred_SD_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_10_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 10),
+           pred_SD_15_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 15),
+           pred_SD_20_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 20),
+           pred_SD_25_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 25),
+           pred_SD_30_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 30)
+    )
+
+  NNs_compiled <-
+    tibble( pred = predict.glm(object = glm_model_1,
+                               newdata = p2_testing,
+                               type = "response") %>%
+              as.numeric()) %>%
+    mutate(
+      index = row_number()
+    )
+
+  NNs_compiled2 <-
+    NNs_compiled %>%
+    group_by(index) %>%
+    summarise(
+      pred = mean(pred, na.rm = T)
+    )
+
+  pred_NN  <- NNs_compiled2 %>% pull(pred) %>% as.numeric()
+
+  check_preds <-
+    pred_NN %>% keep(~ !is.na(.x)) %>% length()
+
+  max_preds <-
+    pred_NN %>% max(na.rm = T)
+
+  message(glue::glue("Number of Non-NA NN preds: {check_preds}"))
+
+  post_testing_data <-
+    p2_testing %>%
+    mutate(
+      pred = pred_NN
+    )
+
+  pred_at_max_date <-
+    post_testing_data %>%
+    ungroup() %>%
+    slice_max(Date) %>%
+    pull(pred) %>%
+    as.numeric()
+
+  max_date_in_post_testing_data <-
+    post_testing_data %>%
+    filter(!is.na(pred)) %>%
+    pull(Date) %>%
+    max(na.rm = T) %>%
+    as.character()
+
+  message(glue::glue("Date in Post-NN Prediction Data: {max_date_in_post_testing_data}"))
+  message(glue::glue("Pred at max Date: {pred_at_max_date}"))
+
+  periods_ahead <- period_var
+
+  trade_dollar_returns <-
+    p2_testing %>%
+    dplyr::rename(pred_original = pred) %>%
+    filter(!is.na(bin_var)) %>%
+    left_join(post_testing_data %>% dplyr::select(Date, Asset, pred)) %>%
+    dplyr::select(Date, Asset, profit_factor, stop_factor,
+                  trade_returns_AUD,
+                  trade_col, periods_ahead, pred, trade_start_prices , trade_end_prices, bin_var ) %>%
+    filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
+    filter(Asset == dependant_var_name) %>%
+    mutate(minimal_loss = min(trade_returns_AUD, na.rm = T),
+           maximum_win = max(trade_returns_AUD, na.rm = T),
+           average_win = mean(trade_returns_AUD, na.rm = T),
+           low_quantile_win = quantile(trade_returns_AUD,0.25 ,na.rm = T),
+           high_quantile_win = quantile(trade_returns_AUD,0.75 ,na.rm = T)  ) %>%
+    dplyr::select(Date, trade_returns_AUD, Asset,
+                  profit_factor , stop_factor, maximum_win, minimal_loss,
+                  average_win, low_quantile_win, high_quantile_win, pred,
+                  trade_start_prices , trade_end_prices, bin_var) %>%
+    distinct() %>%
+    mutate(
+      phase_1_testing_weeks = phase_1_testing_weeks
+    ) %>%
+    arrange(Date) %>%
+    mutate(
+      return_50_thresh = case_when(pred >= 0.5 ~ trade_returns_AUD, TRUE ~ 0),
+      return_60_thresh = case_when(pred >= 0.6 ~ trade_returns_AUD, TRUE ~ 0),
+      return_70_thresh = case_when(pred >= 0.7 ~ trade_returns_AUD, TRUE ~ 0),
+      return_80_thresh = case_when(pred >= 0.8 ~ trade_returns_AUD, TRUE ~ 0),
+      return_90_thresh = case_when(pred >= 0.9 ~ trade_returns_AUD, TRUE ~ 0),
+      return_95_thresh = case_when(pred >= 0.95 ~ trade_returns_AUD, TRUE ~ 0),
+      control_cumsum = cumsum(trade_returns_AUD),
+      return_50_thresh_cumsum = cumsum(return_50_thresh),
+      return_60_thresh_cumsum = cumsum(return_60_thresh),
+      return_80_thresh_cumsum = cumsum(return_80_thresh)
+    )
+
+  if(return_tagged_trades == TRUE) {
+    return(  tagged_trades <- post_testing_data %>%
+               dplyr::select(Date, Asset, Price, Open, Low, High,profit_factor,
+                             stop_factor,trade_col, pred))
+  } else {
+    return(trade_dollar_returns)
+  }
+
+}
+
