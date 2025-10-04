@@ -8497,12 +8497,6 @@ create_LM_Hourly_Portfolio_Buy <-
     rm(major_bonds_log_cumulative)
     gc()
 
-    # left_join(WTICO_USD) %>%
-    #   left_join(BCO_USD) %>%
-    #   left_join(XCU_USD) %>%
-    #   left_join(XAU_JPY)%>%
-    #   left_join(XAG_JPY)
-
     major_gold_log_cumulative <-
       c("XAU_USD", "XAU_EUR", "XAU_GBP") %>%
       map_dfr(
@@ -8589,49 +8583,49 @@ create_LM_Hourly_Portfolio_Buy <-
     rm(major_silver_log_cumulative)
     gc()
 
-    # major_commod_log_cumulative <-
-    #   c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD") %>%
-    #   map_dfr(
-    #     ~
-    #       create_log_cumulative_returns(
-    #         asset_data_to_use =
-    #           SPX_US2000_XAG %>%
-    #           filter(Asset %in% c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD")),
-    #         asset_to_use = c(.x[1]),
-    #         price_col = "Open",
-    #         return_long_format = TRUE
-    #       )
-    #   ) %>%
-    #   left_join(
-    #     SPX_US2000_XAG %>%
-    #       filter(Asset %in% c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD")) %>%
-    #       dplyr::select(Date, Asset, Price, Open)
-    #   )
-    #
-    # pc_commod_global <-
-    #   create_PCA_Asset_Index(
-    #     asset_data_to_use = major_commod_log_cumulative %>%
-    #       group_by(Asset) %>%
-    #       mutate(
-    #         Return_Index_Diff = ((Price - Open)/Open)*100
-    #       ) %>%
-    #       ungroup() %>%
-    #       filter(!is.na(Return_Index_Diff)),
-    #     asset_to_use =  c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD"),
-    #     price_col = "Return_Index_Diff",
-    #     scale_values = TRUE
-    #   ) %>%
-    #   arrange(Date) %>%
-    #   mutate(
-    #     across(contains("PC[0-9]"), ~cumsum(.))
-    #   ) %>%
-    #   rename(PC1_Commod = PC1,
-    #          PC2_Commod = PC2,
-    #          PC3_Commod = PC3,
-    #          PC4_Commod = PC4)
-    #
-    # rm(major_commod_log_cumulative)
-    # gc()
+    major_commod_log_cumulative <-
+      c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              SPX_US2000_XAG %>%
+              filter(Asset %in% c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        SPX_US2000_XAG %>%
+          filter(Asset %in% c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_commod_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_commod_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("XAU_USD", "XAG_USD", "XCU_USD", "WTICO_USD", "BCO_USD"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Commod = PC1,
+             PC2_Commod = PC2,
+             PC3_Commod = PC3,
+             PC4_Commod = PC4)
+
+    rm(major_commod_log_cumulative)
+    gc()
 
     copula_data <-
       estimating_dual_copula(
@@ -9373,35 +9367,102 @@ create_LM_Hourly_Portfolio_Buy <-
 
     gc()
 
-    binary_data_for_post_model <-
-      actual_wins_losses %>%
-      filter(profit_factor == profit_value_var)%>%
-      filter(stop_factor == stop_value_var) %>%
-      filter(periods_ahead == period_var) %>%
-      group_by(Asset) %>%
-      mutate(max_win = max(trade_return_dollar_aud, na.rm=T),
-             max_loss = min(trade_return_dollar_aud, na.rm=T),
-             quantile_bin = quantile(trade_return_dollar_aud, bin_factor, na.rm = T) ) %>%
-      ungroup() %>%
-      mutate(
-        bin_var =
-          case_when(
-            trade_return_dollar_aud >= abs(quantile_bin)  ~ "win",
-            trade_return_dollar_aud < abs(quantile_bin)~ "loss"
-          )
-      ) %>%
-      dplyr::select(Date, bin_var, Asset, trade_col,
-                    profit_factor, stop_factor, periods_ahead, trade_return_dollar_aud, estimated_margin)
+    if(!is.null(bin_factor)) {
+      binary_data_for_post_model <-
+        actual_wins_losses %>%
+        filter(profit_factor == profit_value_var)%>%
+        filter(stop_factor == stop_value_var) %>%
+        filter(periods_ahead == period_var) %>%
+        group_by(Asset) %>%
+        mutate(max_win = max(trade_return_dollar_aud, na.rm=T),
+               max_loss = min(trade_return_dollar_aud, na.rm=T),
+               quantile_bin = quantile(trade_return_dollar_aud, bin_factor, na.rm = T) ) %>%
+        ungroup() %>%
+        mutate(
+          bin_var =
+            case_when(
+              trade_return_dollar_aud > 0  ~ "win",
+              trade_return_dollar_aud <= 0~ "loss"
+            )
+        ) %>%
+        dplyr::select(Date, bin_var, Asset, trade_col,
+                      profit_factor, stop_factor, periods_ahead, trade_return_dollar_aud, estimated_margin)
+    } else {
+      binary_data_for_post_model <-
+        actual_wins_losses %>%
+        filter(profit_factor == profit_value_var)%>%
+        filter(stop_factor == stop_value_var) %>%
+        mutate(
+          bin_var =
+            case_when(
+              trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
+              trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
+
+              trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
+              trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
+
+            )
+        ) %>%
+        dplyr::select(Date, bin_var, Asset, trade_col,
+                      profit_factor, stop_factor,
+                      trade_start_prices, trade_end_prices,
+                      starting_stop_value, starting_profit_value,
+                      trade_return_dollar_aud, periods_ahead)
+    }
+
 
     gc()
 
     copula_data_macro <-
       SPX_US2000_XAG %>%
-      dplyr::select(Date,Asset, Price, High, Low, Open )
+      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
+      find_pivots_fib_max_min(how_far_back = 100) %>%
+      rename(line_1_100 = line_1,
+             line_10_100 = line_10,
+             line_1_max_100 = line_1_max,
+             line_10_max_100 = line_10_max,
+             perc_line_1_100 = perc_line_1,
+             perc_line_10_100 = perc_line_10,
+             perc_line_1_to_10_100 = perc_line_1_to_10,
+             perc_line_1_mean_100 = perc_line_1_mean,
+             perc_line_1_sd_100 = perc_line_1_sd,
+             perc_line_10_mean_100 = perc_line_10_mean,
+             perc_line_10_sd_100 = perc_line_10_sd,
+             perc_line_1_to_10_mean_100 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_100 = perc_line_1_to_10_sd) %>%
+      find_pivots_fib_max_min(how_far_back = 50)%>%
+      rename(line_1_50 = line_1,
+             line_10_50 = line_10,
+             line_1_max_50 = line_1_max,
+             line_10_max_50 = line_10_max,
+             perc_line_1_50 = perc_line_1,
+             perc_line_10_50 = perc_line_10,
+             perc_line_1_to_10_50 = perc_line_1_to_10,
+             perc_line_1_mean_50 = perc_line_1_mean,
+             perc_line_1_sd_50 = perc_line_1_sd,
+             perc_line_10_mean_50 = perc_line_10_mean,
+             perc_line_10_sd_50 = perc_line_10_sd,
+             perc_line_1_to_10_mean_50 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_50 = perc_line_1_to_10_sd)%>%
+      find_pivots_fib_max_min(how_far_back = 10)%>%
+      rename(line_1_10 = line_1,
+             line_10_10 = line_10,
+             line_1_max_10 = line_1_max,
+             line_10_max_10 = line_10_max,
+             perc_line_1_10 = perc_line_1,
+             perc_line_10_10 = perc_line_10,
+             perc_line_1_to_10_10 = perc_line_1_to_10,
+             perc_line_1_mean_10 = perc_line_1_mean,
+             perc_line_1_sd_10 = perc_line_1_sd,
+             perc_line_10_mean_10 = perc_line_10_mean,
+             perc_line_10_sd_10 = perc_line_10_sd,
+             perc_line_1_to_10_mean_10 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_10 = perc_line_1_to_10_sd)
 
     rm(SPX_US2000_XAG)
     gc()
     Sys.sleep(2)
+    gc()
 
     copula_data_macro <-
       copula_data_macro %>%
@@ -9482,7 +9543,7 @@ create_LM_Hourly_Portfolio_Buy <-
       left_join(pc_bonds_global %>% dplyr::select(-Average_PCA)) %>%
       left_join(pc_gold_global %>% dplyr::select(-Average_PCA)) %>%
       left_join(pc_silver_global %>% dplyr::select(-Average_PCA)) %>%
-      # left_join(pc_commod_global %>% dplyr::select(-Average_PCA)) %>%
+      left_join(pc_commod_global %>% dplyr::select(-Average_PCA)) %>%
       left_join(copula_data_SPX500_USD_PC1_Global_Equities) %>%
       left_join(copula_data_US2000_USD_PC1_Global_Equities) %>%
       left_join(copula_data_EU50_EUR_PC1_Global_Equities)
@@ -9586,7 +9647,7 @@ create_LM_Hourly_Portfolio_Buy <-
 
     gc()
 
-    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor|PC"))
+    lm_quant_vars <- names(copula_data_macro) %>% keep(~ str_detect(.x,"quantiles|tangent|cor|PC|perc_|line_|Support|Resistance|Bear|Bull") )
 
     if(use_PCA_vars == TRUE) {
       lm_vars1 <- c(
@@ -11897,17 +11958,6 @@ create_LM_Hourly_SPX_Focus <-
       ) %>%
       dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
 
-    copula_data_SPX500_USD_AU200_AUD <-
-      estimating_dual_copula(
-        asset_data_to_use = SPX_US2000_XAG,
-        asset_to_use = c("SPX500_USD", "AU200_AUD"),
-        price_col = "Open",
-        rolling_period = 100,
-        samples_for_MLE = 0.15,
-        test_samples = 0.85
-      ) %>%
-      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
-
     copula_data_SPX500_USD_XAU_USD <-
       estimating_dual_copula(
         asset_data_to_use = SPX_US2000_XAG,
@@ -11978,17 +12028,6 @@ create_LM_Hourly_SPX_Focus <-
       estimating_dual_copula(
         asset_data_to_use = SPX_US2000_XAG,
         asset_to_use = c("SPX500_USD", "XAU_GBP"),
-        price_col = "Open",
-        rolling_period = 100,
-        samples_for_MLE = 0.15,
-        test_samples = 0.85
-      ) %>%
-      dplyr::select(-SPX500_USD, -SPX500_USD_log1_price, -SPX500_USD_quantiles_1, -SPX500_USD_tangent_angle1)
-
-    copula_data_SPX500_USD_XAU_JPY <-
-      estimating_dual_copula(
-        asset_data_to_use = SPX_US2000_XAG,
-        asset_to_use = c("SPX500_USD", "XAU_JPY"),
         price_col = "Open",
         rolling_period = 100,
         samples_for_MLE = 0.15,

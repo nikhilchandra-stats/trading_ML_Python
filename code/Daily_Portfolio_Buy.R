@@ -55,10 +55,10 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2011-01-01"
+start_date = "2016-01-01"
 end_date = today() %>% as.character()
 
-Indices_Metals_Bonds <- get_Port_Buy_SPX_Focus_Data(
+Indices_Metals_Bonds <- get_Port_Buy_Data(
   db_location = db_location,
   start_date = start_date,
   end_date = today() %>% as.character(),
@@ -67,7 +67,7 @@ Indices_Metals_Bonds <- get_Port_Buy_SPX_Focus_Data(
 
 #------------------------------------------------------Test with big LM Prop
 load_custom_functions()
-bin_factor = 0.5
+bin_factor = NULL
 stop_value_var = 2
 profit_value_var = 4
 period_var = 8
@@ -111,7 +111,7 @@ Sys.sleep(5)
 gc()
 
 copula_data_Indices_Silver <-
-  create_LM_Hourly_SPX_Focus(
+  create_LM_Hourly_Portfolio_Buy(
     SPX_US2000_XAG = Indices_Metals_Bonds[[1]] ,
     raw_macro_data = raw_macro_data,
     actual_wins_losses = actual_wins_losses,
@@ -133,8 +133,8 @@ min_allowable_date <-
 gc()
 
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-09-25"), "20 weeks") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(25000) ) )
+  seq(as_date(min_allowable_date), as_date("2025-09-25"), "30 weeks") %>%
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(20000) ) )
 
 gc()
 
@@ -150,12 +150,13 @@ gc()
 
 params_to_test <-
   tibble(
-    NN_samples = c(25000, 25000, 25000, 25000, 25000, 25000),
+    NN_samples = c(20000, 20000, 20000, 20000, 20000, 20000),
     hidden_layers = c(0, 0,0,0, 0, 0),
     ending_thresh = c(0,0,0,0, 0, 0),
     p_value_thresh_for_inputs = c(10^-10 , 0.99, 0.1, 0.01, 0.25, 10^-11),
     neuron_adjustment = c(0,0,0,0, 0, 0),
-    trade_direction_var = c("Long", "Long", "Long", "Long", "Long", "Long")
+    trade_direction_var = c("Long", "Long", "Long", "Long", "Long", "Long"),
+    phase_1_testing_weeks = c(35, 35, 35, 35, 35, 35)
   )
 
 
@@ -167,18 +168,19 @@ for (j in 1:dim(params_to_test)[1] ) {
   p_value_thresh_for_inputs = params_to_test$p_value_thresh_for_inputs[j] %>% as.numeric()
   neuron_adjustment = params_to_test$neuron_adjustment[j] %>% as.numeric()
   analysis_direction <- params_to_test$trade_direction_var[j] %>% as.character()
+  phase_1_testing_weeks <- params_to_test$phase_1_testing_weeks[j]
 
   for (k in 1:length(date_sequence)) {
 
     gc()
 
-    max_test_date <- (date_sequence[k] + dmonths(7)) %>% as_date() %>% as.character()
+    max_test_date <- (date_sequence[k] + dmonths(14)) %>% as_date() %>% as.character()
     accumulating_data <- list()
 
     available_assets2 <-
       available_assets %>%
-      keep(~ str_detect(.x, "SPX500")) %>%
-      # keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
+      # keep(~ str_detect(.x, "SPX500")) %>%
+      keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
       # unlist( ) %>%
       as.character()
 
@@ -205,7 +207,7 @@ for (j in 1:dim(params_to_test)[1] ) {
             neuron_adjustment = neuron_adjustment,
             lag_price_col = "Price",
             testing_min_date_p1 = (as_date(date_sequence[k]) + days(1)) %>% as.character(),
-            phase_1_testing_weeks = 24,
+            phase_1_testing_weeks = phase_1_testing_weeks,
             period_var= period_var,
             return_tagged_trades = FALSE
         ) %>%
@@ -221,7 +223,8 @@ for (j in 1:dim(params_to_test)[1] ) {
             hidden_layers = hidden_layers,
             ending_thresh = ending_thresh,
             p_value_thresh_for_inputs = p_value_thresh_for_inputs,
-            neuron_adjustment = neuron_adjustment
+            neuron_adjustment = neuron_adjustment,
+            phase_1_testing_weeks = phase_1_testing_weeks
           )
 
         rm(check_completion)
