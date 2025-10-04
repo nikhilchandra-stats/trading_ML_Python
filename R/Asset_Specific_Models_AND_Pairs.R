@@ -12559,9 +12559,12 @@ generate_Logit_gen_model_create_preds <- function(
   NN_model_1 <- glm(formula = NN_form,
                         data = training_data ,
                         family = binomial("logit"))
+
   saveRDS(object = NN_model_1,
           file =glue::glue("{NN_path}/{dependant_var_name}_GLM_{1}.rds"))
 
+  rm(NN_model_1)
+  gc()
 
   gauss_form <-  create_lm_formula(dependant = "trade_return_dollar_aud", independant = lm_vars1)
   gauss_model_1 <- lm(formula = gauss_form,
@@ -12584,6 +12587,9 @@ generate_Logit_gen_model_create_preds <- function(
           file = glue::glue("{NN_path}/{dependant_var_name}_LM_{1}.rds"))
 
   max_test_date <- (date_sequence[k] + dweeks(phase_1_testing_weeks)) %>% as_date() %>% as.character()
+
+  rm(gauss_model_1)
+  gc()
 
   post_P1_testing_data <-
     copula_data_macro %>%
@@ -12634,7 +12640,6 @@ generate_Logit_gen_model_create_preds <- function(
     distinct() %>%
     dplyr::select(Date, Asset, matches(filtered_coefs) )
 
-
   p1_testing <-
     read_NNs_create_preds_portfolio(
       copula_data_macro = copula_data_macro,
@@ -12654,6 +12659,7 @@ generate_Logit_gen_model_create_preds <- function(
     ) %>%
     dplyr::select(-pred_upr, -pred_lwr)
 
+  gc()
 
   p1_testing_gauss <-
     read_NNs_create_preds_portfolio(
@@ -12677,6 +12683,8 @@ generate_Logit_gen_model_create_preds <- function(
                   gauss_pred_upr = pred_upr,
                   gauss_pred_lwr = pred_lwr)
 
+  gc()
+
   p1_testing <-
     p1_testing%>%
     mutate(
@@ -12687,6 +12695,9 @@ generate_Logit_gen_model_create_preds <- function(
       neuron_adjustment = neuron_adjustment
     ) %>%
     left_join(p1_testing_gauss)
+
+  rm(p1_testing_gauss)
+  gc()
 
   p2_training <-
     p1_testing %>%
@@ -12745,6 +12756,9 @@ generate_Logit_gen_model_create_preds <- function(
            pred_SD_25_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 25),
            pred_SD_30_gauss = slider::slide_dbl(.x = prev_pred_gauss, .f = ~ sd(.x, na.rm = T), .before = 30)
     )
+
+  rm(p1_testing)
+  gc()
 
   pred_ma_cols <- names(p2_training) %>%
     keep(~ str_detect(.x, "pred_MA|prev_pred|pred_SD")) %>%

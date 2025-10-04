@@ -55,7 +55,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2016-01-01"
+start_date = "2018-01-01"
 end_date = today() %>% as.character()
 
 Indices_Metals_Bonds <- get_Port_Buy_Data(
@@ -70,7 +70,7 @@ load_custom_functions()
 bin_factor = NULL
 stop_value_var = 2
 profit_value_var = 4
-period_var = 8
+period_var = 24
 available_assets <- Indices_Metals_Bonds[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
@@ -133,7 +133,7 @@ min_allowable_date <-
 gc()
 
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-09-25"), "30 weeks") %>%
+  seq(as_date(min_allowable_date), as_date("2025-09-25"), "12 weeks") %>%
   keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(20000) ) )
 
 gc()
