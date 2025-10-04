@@ -694,6 +694,7 @@ convert_stop_profit_AUD <- function(trade_data = trade_data,
     left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
     left_join(asset_infor_internal) %>%
     mutate(
+      minimumTradeSize_OG = as.numeric(minimumTradeSize),
       minimumTradeSize = abs(log10(as.numeric(minimumTradeSize))),
       marginRate = as.numeric(marginRate),
       pipLocation = as.numeric(pipLocation),
@@ -731,7 +732,11 @@ convert_stop_profit_AUD <- function(trade_data = trade_data,
           TRUE ~ (risk_dollar_value/stop_value)/adjusted_conversion
         ),
       volume_required = volume_unadj,
-      volume_adj = round(volume_unadj, minimumTradeSize),
+      volume_adj =
+        case_when(
+          round(volume_unadj, minimumTradeSize) == 0 ~ minimumTradeSize_OG,
+          round(volume_unadj, minimumTradeSize) != 0 ~ round(volume_unadj, minimumTradeSize)
+          ),
       minimal_loss =
         case_when(
           str_detect(Asset,"SEK|NOK|ZAR|MXN|CNH") ~ ((risk_dollar_value/stop_value)/adjusted_conversion)*stop_value_AUD,
@@ -947,3 +952,164 @@ get_intra_day_asset_data <- function(
   return(data_list_dfr)
 
 }
+
+#' get_Open_positions
+#'
+#' @param save_csv
+#' @param account_var
+#' @param asset
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_Open_positions <- function(save_csv = FALSE,
+                               account_var = 1){
+
+  headers = c(
+    `Content-Type` = 'application/json',
+    `Authorization` = get_oanda_from_sys()
+  )
+
+
+  res <- httr::GET(url = paste0(get_oanda_url(account = account_var),"/openTrades"),
+                   httr::add_headers(.headers=headers))
+
+  returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
+
+  # returned_value$trades <-  returned_value$trades
+
+  complete_frame <- returned_value$trades  %>%
+    select(-takeProfitOrder,-stopLossOrder) %>%
+    mutate(
+      date_open = as_datetime(openTime)
+    )  %>%
+    mutate(
+      account_var = account_var
+    ) %>%
+    rename(Asset =instrument)
+
+  return(complete_frame)
+
+}
+
+
+#' oanda_store_executed_trade
+#'
+#' @param asset
+#' @param volume
+#' @param stopLoss
+#' @param takeProfit
+#' @param type
+#' @param timeinForce
+#' @param acc_name
+#' @param position_fill
+#' @param price
+#'
+#' @return
+#' @export
+#'
+#' @examples
+oanda_store_executed_trade <-
+  function(
+    asset = 'AUD_USD',
+    volume = 1,
+    stopLoss = 0.001,
+    takeProfit = 0.001,
+    type = "MARKET",
+    timeinForce = "FOK",
+    acc_name = "equity_long",
+    position_fill = "OPEN_ONLY" ,
+    price
+  ) {
+
+    http_return <- oanda_place_order_pip_stop(
+      asset = asset,
+      volume = volume,
+      stopLoss = stopLoss,
+      takeProfit = takeProfit,
+      type = "MARKET",
+      timeinForce = "FOK",
+      acc_name = acc_name,
+      position_fill = "OPEN_ONLY" ,
+      price
+    )
+
+    returned_response <- jsonlite::fromJSON( jsonlite::prettify(http_return))
+    trade_Id_Details <-
+      returned_response$orderFillTransaction
+
+    trade_Id_Details2 <- trade_Id_Details$tradeOpened
+    trade_Id_Details_tibble <-
+      tibble(Price = as.numeric(trade_Id_Details2$price),
+             tradeID = as.character(trade_Id_Details2$tradeID),
+             units = as.numeric(trade_Id_Details2$units)
+      )
+
+    return(trade_Id_Details_tibble)
+
+  }
+
+#' extract_put_request_return
+#'
+#' @param http_return_var
+#'
+#' @return
+#' @export
+#'
+#' @examples
+extract_put_request_return <-
+  function(http_return_var = http_return) {
+
+    returned_response <- jsonlite::fromJSON( jsonlite::prettify(http_return))
+    trade_Id_Details <-
+      returned_response$orderFillTransaction
+
+    trade_Id_Details2 <- trade_Id_Details$tradeOpened
+    trade_Id_Details_tibble <-
+      tibble(Price = as.numeric(trade_Id_Details2$price),
+             tradeID = as.character(trade_Id_Details2$tradeID),
+             units = as.numeric(trade_Id_Details2$units)
+      )
+
+    return(trade_Id_Details_tibble)
+
+  }
+
+#' Title
+#'
+#' @param tradeID
+#'
+#' @return
+#' @export
+#'
+#' @examples
+oanda_close_trade_ID <-
+  function(tradeID = "4337",
+           units = 1,
+           account = "equity_long") {
+
+    headers = c(
+      `Content-Type` = 'application/json',
+      `Authorization` = get_oanda_from_sys()
+    )
+
+    params = list(
+      `units` = glue::glue("{volume}")
+    )
+
+    json_body <- rjson::toJSON(params)
+
+    account_number <- get_oanda_account_number(account_name = account)
+
+    returned_response <-
+      httr::PUT(url = glue::glue('https://api-fxtrade.oanda.com/v3/accounts/{account_number}/trades/{tradeID}/close'),
+                httr::add_headers(.headers=headers),
+                body = json_body,
+                encode = "raw")
+
+    return(returned_response)
+
+  }
+
+

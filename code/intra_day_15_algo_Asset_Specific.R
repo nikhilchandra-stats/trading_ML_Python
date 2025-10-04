@@ -50,7 +50,7 @@ asset_list_oanda <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 
 db_location <- "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data Asset Algo Use.db"
-start_date_day_15M = "2024-06-01"
+start_date_day_15M = "2021-01-01"
 end_date_day = today() %>% as.character()
 
 starting_asset_data_ask_15M <-
@@ -135,82 +135,44 @@ actual_wins_losses <-
 DBI::dbDisconnect(trade_actual_db_con)
 rm(trade_actual_db_con)
 
-gc()
-c = 0
-db_loc_tracking_algo_path <- "C:/Users/nikhi/Documents/trade_data/ALGO_TRACKING_INDICES.db"
-db_loc_tracking_algo <- connect_db(db_loc_tracking_algo_path)
 
 gc()
 c = 1
+
+stop_value_var = 10
+profit_value_var = 15
+
+actual_wins_losses <-
+  actual_wins_losses %>%
+  filter(profit_factor == profit_value_var, stop_factor == stop_value_var) %>%
+  filter(Date >= "2022-01-01") %>%
+  filter(Asset %in% c("SPX500_USD", "EU50_EUR", "US2000_USD", "AU200_AUD", "XAG_USD", "XAU_USD"))
+
 while(current_time < end_time) {
 
   current_time <- now() %>% as_datetime()
   current_minute <- lubridate::minute(current_time)
   current_hour <- lubridate::hour(current_time)
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
-
-  if((current_minute > 30 & current_minute < 32 & (current_hour == 11) )) {
-
-    SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
-      db_location = db_location,
-      start_date = "2016-01-01",
-      end_date = today() %>% as.character()
-    )
-    SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
-    SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
-
-    copula_data_Indices <-
-      create_NN_Indices_data(
-        SPX_US2000_XAG = SPX_US2000_XAG_ALL[[1]],
-        raw_macro_data = raw_macro_data,
-        actual_wins_losses = actual_wins_losses,
-        lag_days = 1,
-        stop_value_var = 10,
-        profit_value_var = 15,
-        use_PCA_vars = FALSE,
-        rolling_period_index_PCA_cor = 15
-      )
-
-    SPX_US2000_XAG_NN_analysis <-
-      get_NN_trades_Asset_Specific(
-        NN_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
-        copula_data = copula_data_Indices,
-        stop_value_var = 10,
-        profit_value_var = 15,
-        NN_path_save_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
-        NN_sims_db = "C:/Users/nikhi/Documents/trade_data/INDICES_15M_NN_sims.db",
-        table_name = "INDICES_15_NN_sims",
-        skip_NN_generation = FALSE,
-        testing_min_date_days_lag = 1000,
-        sim_min = 30,
-        edge_min = 0,
-        outperformance_count_min = 0.50 ,
-        risk_weighted_return_mid_min = 0.14
-      )
-
-    rm(SPX_US2000_XAG_ALL, copula_data_Indices, SPX_US2000_XAG, SPX_US2000_XAG_short)
-    gc()
-    Sys.sleep(10)
-    gc()
-
-  }
+  gc()
 
 
-  if( (current_minute > 0 & current_minute < 2 & data_updated == 0)|
+  if(
+      # (current_minute > 0 & current_minute < 2 & data_updated == 0)|
       (current_minute > 15 & current_minute < 17 & data_updated == 0)|
-      (current_minute > 30 & current_minute < 32 & data_updated == 0 & current_hour != 23 )|
+      (current_minute > 30 & current_minute < 32 & data_updated == 0 )|
       (current_minute > 45 & current_minute < 47 & data_updated == 0)  ) {
 
     gc()
 
-    tictoc::tic()
+    Sys.sleep(10)
 
     update_local_db_file(
       db_location = db_location,
       time_frame = "M15",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 4
+      how_far_back = 5
     )
 
     update_local_db_file(
@@ -218,30 +180,18 @@ while(current_time < end_time) {
       time_frame = "M15",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 4
+      how_far_back = 5
     )
 
     data_updated <- 1
 
     raw_macro_data <- get_macro_event_data()
 
-    # EUR_USD_GBP_USD_ALL <- get_EUR_GBP_USD_pairs_data(
-    #   db_location = db_location,
-    #   start_date = "2016-01-01",
-    #   end_date = today() %>% as.character()
-    # )
-    #
-    # EUR_USD_GBP_USD <-EUR_USD_GBP_USD_ALL[[1]]
-    # EUR_USD_GBP_USD_short <- EUR_USD_GBP_USD_ALL[[2]]
-    # rm(EUR_USD_GBP_USD_ALL)
-
     SPX_US2000_XAG_ALL <- get_SPX_US2000_XAG_XAU(
       db_location = db_location,
-      start_date = "2020-06-01",
+      start_date = "2022-01-01",
       end_date = today() %>% as.character()
     )
-    SPX_US2000_XAG <-SPX_US2000_XAG_ALL[[1]]
-    SPX_US2000_XAG_short <- SPX_US2000_XAG_ALL[[2]]
 
     copula_data_Indices <-
       create_NN_Indices_data(
@@ -255,22 +205,22 @@ while(current_time < end_time) {
         rolling_period_index_PCA_cor = 15
       )
 
-    SPX_US2000_XAG_NN_analysis <-
-      get_NN_trades_Asset_Specific(
-      NN_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
-      copula_data = copula_data_Indices,
-      stop_value_var = 10,
-      profit_value_var = 15,
-      NN_path_save_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
-      NN_sims_db = "C:/Users/nikhi/Documents/trade_data/INDICES_15M_NN_sims.db",
-      table_name = "INDICES_15_NN_sims",
-      skip_NN_generation = TRUE,
-      testing_min_date_days_lag = 1000,
-      sim_min = 30,
-      edge_min = 0,
-      outperformance_count_min = 0.50 ,
-      risk_weighted_return_mid_min = 0.14
-    )
+    # SPX_US2000_XAG_NN_analysis <-
+    #   get_NN_trades_Asset_Specific(
+    #   NN_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
+    #   copula_data = copula_data_Indices,
+    #   stop_value_var = 10,
+    #   profit_value_var = 15,
+    #   NN_path_save_path = "C:/Users/nikhi/Documents/trade_data/asset_specific_NNs/",
+    #   NN_sims_db = "C:/Users/nikhi/Documents/trade_data/INDICES_15M_NN_sims.db",
+    #   table_name = "INDICES_15_NN_sims",
+    #   skip_NN_generation = TRUE,
+    #   testing_min_date_days_lag = 1000,
+    #   sim_min = 30,
+    #   edge_min = 0,
+    #   outperformance_count_min = 0.50 ,
+    #   risk_weighted_return_mid_min = 0.14
+    # )
 
     SPX_US2000_XAG_logit_analysis <-
       get_Logit_trades(
@@ -282,8 +232,9 @@ while(current_time < end_time) {
         stop_var = 10,
         profit_var = 15,
         outperformance_count_min = 0.55,
-        risk_weighted_return_mid_min =  0.1,
-        sim_table = "INDICES_15_NN_sims"
+        risk_weighted_return_mid_min =  0.13,
+        sim_table = "INDICES_15_NN_sims",
+        combined_filter_n = 10
       )
 
     SPX_US2000_XAG_logit_analysis_short <-
@@ -297,35 +248,35 @@ while(current_time < end_time) {
         profit_var = 15,
         outperformance_count_min = 0.55,
         risk_weighted_return_mid_min =  0.1,
-        sim_table = "INDICES_15_NN_sims"
+        sim_table = "INDICES_15_NN_sims",
+        combined_filter_n = 10
       )
 
-
-    SPX_XAG_US2000_Long_trades_NN <-
-      SPX_US2000_XAG_NN_analysis %>%
-      ungroup() %>%
-      mutate(kk = row_number()) %>%
-      split(.$kk) %>%
-      map_dfr(
-        ~
-          get_stops_profs_volume_trades(
-            tagged_trades = .x,
-            mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
-            trade_col = "trade_col",
-            currency_conversion = currency_conversion,
-            risk_dollar_value = 5,
-            stop_factor = .x$stop_factor[1] %>% as.numeric(),
-            profit_factor = .x$profit_factor[1] %>% as.numeric(),
-            asset_col = "Asset",
-            stop_col = "stop_value",
-            profit_col = "profit_value",
-            price_col = "Price",
-            trade_return_col = "trade_returns"
-          )
-      ) %>%
-      # filter(Date >= (current_time + dminutes(35))) %>%
-      filter(pred >= pred_min) %>%
-      dplyr::select(-pred, -pred_min)
+    # SPX_XAG_US2000_Long_trades_NN <-
+    #   SPX_US2000_XAG_NN_analysis %>%
+    #   ungroup() %>%
+    #   mutate(kk = row_number()) %>%
+    #   split(.$kk) %>%
+    #   map_dfr(
+    #     ~
+    #       get_stops_profs_volume_trades(
+    #         tagged_trades = .x,
+    #         mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
+    #         trade_col = "trade_col",
+    #         currency_conversion = currency_conversion,
+    #         risk_dollar_value = 5,
+    #         stop_factor = .x$stop_factor[1] %>% as.numeric(),
+    #         profit_factor = .x$profit_factor[1] %>% as.numeric(),
+    #         asset_col = "Asset",
+    #         stop_col = "stop_value",
+    #         profit_col = "profit_value",
+    #         price_col = "Price",
+    #         trade_return_col = "trade_returns"
+    #       )
+    #   ) %>%
+    #   # filter(Date >= (current_time + dminutes(35))) %>%
+    #   filter(pred >= pred_min) %>%
+    #   dplyr::select(-pred, -pred_min)
 
     SPX_XAG_US2000_Long_trades_logit <-
       SPX_US2000_XAG_logit_analysis %>%
@@ -380,39 +331,37 @@ while(current_time < end_time) {
       dplyr::select(-pred, -pred_min)
 
     All_trades_list <-
-      list(SPX_XAG_US2000_Long_trades_NN,
+      list(
+          # SPX_XAG_US2000_Long_trades_NN,
            SPX_XAG_US2000_Long_trades_logit,
            SPX_XAG_US2000_Long_trades_logit_short
            ) %>%
       map_dfr(bind_rows)
 
-    if(c == 0) {
-      write_table_sql_lite(conn = db_loc_tracking_algo,
-                           .data = SPX_US2000_XAG_NN_analysis %>%
-                             bind_rows(SPX_US2000_XAG_logit_analysis_short) %>%
-                             bind_rows(SPX_US2000_XAG_logit_analysis),
-                           table_name = "INDICES_logit_analysis",
-                           overwrite_true = TRUE)
+    current_trades_long <- get_list_of_positions(account_var = long_account_num)
+    current_trades_long <- current_trades_long %>%
+      mutate(direction = stringr::str_to_title(direction)) %>%
+      rename(Asset = instrument )
 
-      write_table_sql_lite(conn = db_loc_tracking_algo,
-                           .data = SPX_XAG_US2000_Long_trades_NN %>%
-                             bind_rows(SPX_XAG_US2000_Long_trades_logit) %>%
-                             bind_rows(SPX_XAG_US2000_Long_trades_logit_short),
-                           table_name = "INDICES_logit_analysis_Trades",
-                           overwrite_true = TRUE)
-    } else {
-      append_table_sql_lite(conn = db_loc_tracking_algo,
-                            .data = SPX_US2000_XAG_NN_analysis %>%
-                              bind_rows(SPX_US2000_XAG_logit_analysis_short) %>%
-                              bind_rows(SPX_US2000_XAG_logit_analysis),
-                            table_name = "INDICES_logit_analysis")
+    current_trades_short <- get_list_of_positions(account_var = short_account_num)
+    current_trades_short <- current_trades_short %>%
+      mutate(direction = stringr::str_to_title(direction)) %>%
+      rename(Asset = instrument )
 
-      append_table_sql_lite(conn = db_loc_tracking_algo,
-                           .data = SPX_XAG_US2000_Long_trades_NN %>%
-                             bind_rows(SPX_XAG_US2000_Long_trades_logit) %>%
-                             bind_rows(SPX_XAG_US2000_Long_trades_logit_short),
-                           table_name = "INDICES_logit_analysis_Trades")
-    }
+    symbols_to_keep <-
+      current_trades_long %>%
+      bind_rows(current_trades_short) %>%
+      mutate(
+        syms_to_remove =
+          case_when(
+            Asset %in% c("SPX500_USD",  "EU50_EUR") &  units >= 2 ~ "Remove",
+            Asset %in% c("US2000_USD", "AU200_AUD") &  units >= 2 ~ "Remove" ,
+            Asset %in% c("XAG_USD") &  units >= 250/1.25 ~ "Remove",
+            TRUE ~ "Keep"
+          )
+      ) %>%
+      filter(syms_to_remove == "Remove") %>%
+      dplyr::select(Asset, trade_col = direction, syms_to_remove)
 
     rm(SPX_US2000_XAG_ALL)
     rm(copula_data_Indices)
@@ -422,7 +371,7 @@ while(current_time < end_time) {
 
     message(glue::glue("Long Trades SPX, XAG, US2000: {dim(All_trades_list)[1]}"))
 
-    tictoc::toc()
+    # tictoc::toc()
 
     All_trades <-
       list(
@@ -447,14 +396,34 @@ while(current_time < end_time) {
       total_trades <- NULL
     }
 
-    message(glue::glue("Long Trades SPX, XAG, US2000: {!is.null(total_trades)}"))
+    if(!is.null(total_trades)) {
+      total_trades <-
+        total_trades %>%
+        left_join(
+          symbols_to_keep
+        ) %>%
+        mutate(
+          syms_to_remove =
+            case_when(
+              is.na(syms_to_remove) ~ "Keep",
+              TRUE ~ syms_to_remove
+            )
+        ) %>%
+        dplyr::filter(syms_to_remove == "Keep")%>%
+        dplyr::select(-syms_to_remove)
 
-    # if(!is.null(total_trades)) {
-    #   if(dim(total_trades)[1] > 0) {
-    #     check_timing <- difftime(current_time, total_trades$Date[1], units = "mins") %>% as.numeric()
-    #     if( abs(check_timing) > 25) {total_trades = NULL}
-    #   }
-    # }
+      message(glue::glue("Long Trades SPX, XAG, US2000: {dim(total_trades)[1]}"))
+
+      if(dim(total_trades)[1] < 1) {
+        total_trades <- NULL
+      }
+
+    } else {
+      total_trades <- NULL
+    }
+
+
+    message(glue::glue("Long Trades SPX, XAG, US2000: {!is.null(total_trades)}"))
 
     message(glue::glue("Long Trades SPX, XAG, US2000: {!is.null(total_trades)}"))
 
@@ -479,39 +448,40 @@ while(current_time < end_time) {
           mutate(direction = stringr::str_to_title(direction)) %>%
           rename(Asset = instrument )
 
-        total_trades <- total_trades %>%
-          filter( (abs(volume_required) >= 0.1 &
-                     Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                                  "NAS100_USD", "DE30_EUR", "HK33_HKD")) |
-                    (abs(volume_required) >= 1 &
-                       !(Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
-                                      "NAS100_USD", "DE30_EUR", "HK33_HKD"))
-                    )
-          ) %>%
+        total_trades <-
+          total_trades %>%
+          # filter( (abs(volume_required) >= 0.1 &
+          #            Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+          #                         "NAS100_USD", "DE30_EUR", "HK33_HKD")) |
+          #           (abs(volume_required) >= 1 &
+          #              !(Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "SG30_SGD", "AU200_AUD",
+          #                             "NAS100_USD", "DE30_EUR", "HK33_HKD"))
+          #           )
+          # ) %>%
           slice_max(Date)
 
-        current_trades <- current_trades_long %>%
-          bind_rows(current_trades_short) %>%
-          mutate(trade_col = direction)
+        # current_trades <- current_trades_long %>%
+        #   bind_rows(current_trades_short) %>%
+        #   mutate(trade_col = direction)
 
-        if(dim(total_trades)[1] > 0) {
-
-          total_trades <-
-            total_trades %>%
-            left_join(current_trades) %>%
-            mutate(
-              std_units = case_when(
-                # type == "CURRENCY" ~ units/1000,
-                Asset %in% c("WHEAT_USD", "SOYBN_USD", "XCU_USD", "XAG_USD") ~ units*100,
-                Asset %in% c("SG30_SGD", "SPX500_USD", "AU200_AUD",
-                             "JP225_USD", "DE30_EUR", "US2000_USD", "XAU_USD") ~ units*1000,
-                TRUE ~ units
-              )
-            ) %>%
-            arrange(std_units) %>%
-            dplyr::select(-std_units, -direction, -units)
-
-        }
+        # if(dim(total_trades)[1] > 0) {
+        #
+        #   total_trades <-
+        #     total_trades %>%
+        #     left_join(current_trades) %>%
+        #     mutate(
+        #       std_units = case_when(
+        #         # type == "CURRENCY" ~ units/1000,
+        #         Asset %in% c("WHEAT_USD", "SOYBN_USD", "XCU_USD", "XAG_USD") ~ units*100,
+        #         Asset %in% c("SG30_SGD", "SPX500_USD", "AU200_AUD",
+        #                      "JP225_USD", "DE30_EUR", "US2000_USD", "XAU_USD") ~ units*1000,
+        #         TRUE ~ units
+        #       )
+        #     ) %>%
+        #     arrange(std_units) %>%
+        #     dplyr::select(-std_units, -direction, -units)
+        #
+        # }
 
         for (i in 1:dim(total_trades)[1]) {
 
