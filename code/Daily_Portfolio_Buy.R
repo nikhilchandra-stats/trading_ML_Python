@@ -55,10 +55,10 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2018-01-01"
+start_date = "2016-01-01"
 end_date = today() %>% as.character()
 
-Indices_Metals_Bonds <- get_Port_Buy_Data(
+Indices_Metals_Bonds <- get_Port_Buy_SPX_Focus_Data(
   db_location = db_location,
   start_date = start_date,
   end_date = today() %>% as.character(),
@@ -69,8 +69,8 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
 load_custom_functions()
 bin_factor = NULL
 stop_value_var = 2
-profit_value_var = 4
-period_var = 24
+profit_value_var = 15
+period_var = 48
 available_assets <- Indices_Metals_Bonds[[1]] %>% distinct(Asset) %>% pull(Asset) %>% unique()
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
@@ -111,7 +111,7 @@ Sys.sleep(5)
 gc()
 
 copula_data_Indices_Silver <-
-  create_LM_Hourly_Portfolio_Buy(
+  create_LM_Hourly_SPX_Focus(
     SPX_US2000_XAG = Indices_Metals_Bonds[[1]] ,
     raw_macro_data = raw_macro_data,
     actual_wins_losses = actual_wins_losses,
@@ -134,7 +134,7 @@ gc()
 
 date_sequence <-
   seq(as_date(min_allowable_date), as_date("2025-09-25"), "12 weeks") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(20000) ) )
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(2000) ) )
 
 gc()
 
@@ -150,15 +150,17 @@ gc()
 
 params_to_test <-
   tibble(
-    NN_samples = c(20000, 20000, 20000, 20000, 20000, 20000),
+    NN_samples = c(2000, 30000, 30000, 30000, 30000, 30000),
     hidden_layers = c(0, 0,0,0, 0, 0),
     ending_thresh = c(0,0,0,0, 0, 0),
-    p_value_thresh_for_inputs = c(10^-10 , 0.99, 0.1, 0.01, 0.25, 10^-11),
+    p_value_thresh_for_inputs = c(0.15 , 0.99, 0.1, 0.01, 0.25, 10^-11),
     neuron_adjustment = c(0,0,0,0, 0, 0),
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long", "Long"),
-    phase_1_testing_weeks = c(35, 35, 35, 35, 35, 35)
+    phase_1_testing_weeks = c(52, 52, 52, 52, 52, 52)
   )
 
+# rm(actual_wins_losses)
+gc()
 
 for (j in 1:dim(params_to_test)[1] ) {
 
@@ -174,13 +176,13 @@ for (j in 1:dim(params_to_test)[1] ) {
 
     gc()
 
-    max_test_date <- (date_sequence[k] + dmonths(14)) %>% as_date() %>% as.character()
+    max_test_date <- (date_sequence[k] + dmonths(62)) %>% as_date() %>% as.character()
     accumulating_data <- list()
 
     available_assets2 <-
       available_assets %>%
-      # keep(~ str_detect(.x, "SPX500")) %>%
-      keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
+      keep(~ str_detect(.x, "SPX500|XAG|AUD_USD|EUR_USD|USD_JPY|GBP_USD|US2000")) %>%
+      # keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
       # unlist( ) %>%
       as.character()
 
@@ -272,9 +274,9 @@ for (j in 1:dim(params_to_test)[1] ) {
 NN_sims_db_con <- connect_db(NN_sims_db)
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                                       statement = "SELECT * FROM Indices_Silver_Logit_sims") %>%
-  filter(Asset == "SPX500_USD") %>%
+  filter(Asset == "XAG_EUR") %>%
   filter(
-    p_value_thresh_for_inputs == 0.99
+    p_value_thresh_for_inputs == 0.15
   ) %>%
   mutate(
     Date = as_datetime(Date)
@@ -288,8 +290,8 @@ all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
 
 acumulating_summary <- list()
 c = 0
-# for (i in c(0, 0.1, 0.2,0.3, 0.4,0.5,0.6,0.7,0.8,0.9)) {
-for (i in c(1, 0.9, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)) {
+for (i in c(0, 0.1, 0.2,0.3, 0.4,0.5,0.6,0.7,0.8,0.9)) {
+# for (i in c(1, 0.9, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)) {
   #
   c = c + 1
   acumulating_summary[[c]] <-
@@ -298,7 +300,7 @@ for (i in c(1, 0.9, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1)) {
     mutate(
       Returns =
         case_when(
-          pred <= i  ~ trade_returns_AUD,
+          pred >= i  ~ trade_returns_AUD,
           TRUE ~ 0
         )
     ) %>%
@@ -330,7 +332,7 @@ all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                                       statement = "SELECT * FROM Indices_Silver_Logit_sims") %>%
   mutate(
     Date = as_datetime(Date),
-    sim_date = as_datetime(sim_date)
+    sim_date = as_date(sim_date)
   ) %>%
   mutate(
     Returns_Pred_0 =
@@ -383,9 +385,9 @@ all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
   ) %>%
   group_by(sim_date, Asset, p_value_thresh_for_inputs) %>%
   summarise(
-    across(.cols = contains("Returns_Pred"), ~ sum(., na.rm = T))
+    across(.cols = contains("Returns_Pred"), ~ round(sum(., na.rm = T)))
   ) %>%
-  ungroup() %>%
+  ungroup()
   group_by(Asset, p_value_thresh_for_inputs) %>%
   summarise(across(.cols = contains("Returns_Pred"), ~ sum(., na.rm = T)))
 
