@@ -261,7 +261,6 @@ all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
 
 gc()
 
-
 #------------------------------------------------------------Loop
 #------------------------------------------------------------
 while (current_time < end_time) {

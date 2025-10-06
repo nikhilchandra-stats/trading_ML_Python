@@ -11952,24 +11952,33 @@ create_LM_Hourly_SPX_Focus <-
     #   ) %>%
     #   janitor::clean_names()
     #
-    # eur_macro_data <-
-    #   get_EUR_Indicators(raw_macro_data,
-    #                      lag_days = lag_days,
-    #                      first_difference = TRUE
-    #   ) %>%
-    #   janitor::clean_names()
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    gbp_macro_data <-
+      get_GBP_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
     #
     # aud_macro_vars <- names(aus_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     # # nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     # cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
-    # eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    gbp_macro_vars <- names(gbp_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
     all_macro_vars <- c(
       # aud_macro_vars,
       # nzd_macro_vars,
-      usd_macro_vars
+      usd_macro_vars,
       # cny_macro_vars,
-      # eur_macro_vars
+      eur_macro_vars,
+      gbp_macro_vars
       )
 
     major_indices_log_cumulative <-
@@ -12783,19 +12792,19 @@ create_LM_Hourly_SPX_Focus <-
         usd_macro_data %>%
           rename(Date_for_join = date)
       ) %>%
-      # left_join(
-      #   eur_macro_data %>%
-      #     rename(Date_for_join = date)
-      # ) %>%
-      # left_join(
-      #   aus_macro_data %>%
-      #     rename(Date_for_join = date)
-      # ) %>%
+      left_join(
+        eur_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
+      left_join(
+        gbp_macro_data %>%
+          rename(Date_for_join = date)
+      ) %>%
       dplyr::select(-Date_for_join) %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE)
 
-    rm(usd_macro_data, eur_macro_data, aus_macro_data, raw_macro_data)
+    rm(usd_macro_data, eur_macro_data, aus_macro_data, raw_macro_data, gbp_macro_data)
     gc()
     Sys.sleep(2)
     gc()
@@ -12805,12 +12814,12 @@ create_LM_Hourly_SPX_Focus <-
 
     copula_data_macro <-
       copula_data_macro %>%
-      # group_by(Asset) %>%
-      # fill(matches(aud_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(matches(gbp_macro_vars, ignore.case = FALSE), .direction = "down") %>%
       group_by(Asset) %>%
       fill(matches(usd_macro_vars, ignore.case = FALSE), .direction = "down") %>%
-      # group_by(Asset) %>%
-      # fill(matches(eur_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      group_by(Asset) %>%
+      fill(matches(eur_macro_vars, ignore.case = FALSE), .direction = "down") %>%
       ungroup()
 
     message("Made it to second rm()")
@@ -12820,6 +12829,7 @@ create_LM_Hourly_SPX_Focus <-
       ungroup() %>%
       filter(if_all(everything(), ~ !is.na(.))) %>%
       pull(Date) %>% min()
+
     copula_data_macro <-
       copula_data_macro %>%
       ungroup() %>%
@@ -12839,8 +12849,6 @@ create_LM_Hourly_SPX_Focus <-
       copula_data_macro %>%
       group_by(Asset) %>%
       arrange(Date, .by_group = TRUE) %>%
-      # group_by(Asset) %>%
-      # fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
       ungroup()
 
     message("Made it to to arrangement of copula_data by Date")
@@ -12857,9 +12865,6 @@ create_LM_Hourly_SPX_Focus <-
       fill(contains("PC"), .direction = "down") %>%
       group_by(Asset) %>%
       fill(contains("AUD|XAG|XAU|SPX|US2000|FR40|EUR|USD|JPY|HK33|CHF|USB0|US2000|AU200|UK100"), .direction = "down") %>%
-      group_by(Asset) %>%
-      fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
-      # fill(everything(), .direction = "down") %>%
       ungroup()
 
     gc()
@@ -12911,8 +12916,7 @@ create_LM_Hourly_SPX_Focus <-
       list(
         "copula_data_macro" = copula_data_macro,
         "lm_vars1" =
-          lm_vars1 %>%
-          keep( ~ !str_detect(.x, "sd") & !str_detect(.x, "tangent") )
+          lm_vars1
       )
     )
 
@@ -13390,3 +13394,999 @@ generate_Logit_gen_model_create_preds <- function(
 
 }
 
+
+
+#' generate_Logit_single_asset_model
+#'
+#' @param actual_wins_losses
+#' @param raw_macro_data
+#' @param countries_to_use
+#' @param asset_var
+#' @param pred_filter
+#'
+#' @return
+#' @export
+#'
+#' @examples
+generate_Logit_single_asset_model <-
+  function(
+    actual_wins_losses,
+    raw_macro_data,
+    countries_to_use = c("eur", "usd"),
+    asset_var = "EUR_USD",
+    pred_filter = 0.5,
+    train_split_date = "2022-03-01",
+    lag_days= 1,
+    profit_value_var = profit_value_var,
+    stop_value_var = stop_value_var,
+    p_value_thresh_for_inputs = 0.15,
+    periods_ahead_var = periods_ahead_var,
+    trade_direction = "Long",
+    save_model_location = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio_macro_only"
+  ) {
+
+    model_data <-
+      actual_wins_losses %>%
+      filter(profit_factor == profit_value_var)%>%
+      filter(stop_factor == stop_value_var) %>%
+      filter(Asset == asset_var) %>%
+      filter(periods_ahead == periods_ahead_var) %>%
+      filter(trade_col == trade_direction) %>%
+      mutate(
+        bin_var =
+          case_when(
+            trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
+            trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
+
+            trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
+            trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
+
+          )
+      ) %>%
+      dplyr::select(Date, bin_var, Asset, trade_col,
+                    profit_factor, stop_factor,
+                    trade_start_prices, trade_end_prices,
+                    starting_stop_value, starting_profit_value,
+                    trade_return_dollar_aud, periods_ahead, End_Date)
+
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    aud_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    cad_macro_data <-
+      get_CAD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    nzd_macro_data <-
+      get_NZD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    gbp_macro_data <-
+      get_GBP_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    jpy_macro_data <-
+      get_JPY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = TRUE
+      ) %>%
+      janitor::clean_names()
+
+    usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    aud_macro_vars <- names(aud_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    cad_macro_vars <- names(cad_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    gbp_macro_vars <- names(gbp_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+    jpy_macro_vars <- names(jpy_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+
+    countries_to_use <-
+      countries_to_use %>%
+      map(~ paste0(.x, "_")) %>%
+      unlist() %>%
+      paste(collapse = "|")
+
+    all_macro_vars <- c(
+      usd_macro_vars,
+      eur_macro_vars,
+      aud_macro_vars,
+      cad_macro_vars,
+      nzd_macro_vars,
+      gbp_macro_vars,
+      cny_macro_vars,
+      jpy_macro_vars
+    ) %>%
+      keep(
+        ~ str_detect(.x, countries_to_use)
+      ) %>%
+      unlist() %>%
+      as.character()
+
+    model_data_wrangle <-
+      model_data %>%
+      mutate(Date_for_join = as_date(Date)) %>%
+      left_join(
+        eur_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      left_join(
+        usd_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      left_join(
+        aud_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      left_join(
+        cad_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      left_join(
+        gbp_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      left_join(
+        cny_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      left_join(
+        jpy_macro_data %>%
+          rename(Date_for_join = date)
+      )   %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+      ungroup()
+
+    train_data <-
+      model_data_wrangle %>%
+      filter(Date <= train_split_date) %>%
+      ungroup() %>%
+      filter(if_all(everything() ,.fns = ~ !is.na(.)))
+
+    test_data <-
+      model_data_wrangle %>%
+      filter(Date > train_split_date)
+
+    NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = all_macro_vars)
+    logit_model_1 <- glm(formula = NN_form,
+                         data = train_data ,
+                         family = binomial("logit"))
+    summary(logit_model_1)
+    all_coefs <- logit_model_1 %>% jtools::j_summ() %>% pluck(1)
+    coef_names <- row.names(all_coefs) %>% as.character()
+    filtered_coefs <-
+      all_coefs %>%
+      as_tibble() %>%
+      mutate(all_vars = coef_names) %>%
+      filter(p <= p_value_thresh_for_inputs) %>%
+      filter(!str_detect(all_vars, "Intercep")) %>%
+      pull(all_vars) %>%
+      as.character()
+    NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = filtered_coefs)
+    logit_model_1 <- glm(formula = NN_form,
+                         data = train_data ,
+                         family = binomial("logit"))
+    summary(logit_model_1)
+
+    NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = all_macro_vars)
+    probit_model_1 <- glm(formula = NN_form,
+                          data = train_data ,
+                          family = binomial("probit"))
+    summary(logit_model_1)
+    all_coefs <- probit_model_1 %>% jtools::j_summ() %>% pluck(1)
+    coef_names <- row.names(all_coefs) %>% as.character()
+    filtered_coefs <-
+      all_coefs %>%
+      as_tibble() %>%
+      mutate(all_vars = coef_names) %>%
+      filter(p <= p_value_thresh_for_inputs) %>%
+      filter(!str_detect(all_vars, "Intercep")) %>%
+      pull(all_vars) %>%
+      as.character()
+    NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = filtered_coefs)
+    probit_model_1 <- glm(formula = NN_form,
+                          data = train_data ,
+                          family = binomial("logit"))
+    summary(probit_model_1)
+
+    if(!is.null(save_model_location)) {
+      saveRDS(object = logit_model_1,
+              file = glue::glue("{save_model_location}/Logit_Model_{asset_var}_{periods_ahead_var}_{trade_direction}.rds") )
+      saveRDS(object = probit_model_1,
+              file = glue::glue("{save_model_location}/Probit_Model_{asset_var}_{periods_ahead_var}_{trade_direction}.rds") )
+    }
+
+    predicted_values_logit <-
+      predict.glm(logit_model_1,
+                  newdata = test_data,
+                  type = "response") %>%
+      as.numeric()
+
+    predicted_values_probit <-
+      predict.glm(probit_model_1,
+                  newdata = test_data,
+                  type = "response")%>%
+      as.numeric()
+
+    review_returns <-
+      test_data %>%
+      dplyr::select(Date, bin_var, Asset, trade_col,
+                    profit_factor, stop_factor,
+                    trade_start_prices, trade_end_prices,
+                    starting_stop_value, starting_profit_value,
+                    trade_return_dollar_aud, periods_ahead, End_Date) %>%
+      mutate(
+        Logit_Pred = predicted_values_logit,
+        Probit_Pred = predicted_values_probit
+      )
+
+    review_returns_filt <-
+      review_returns %>%
+      filter(Logit_Pred > pred_filter) %>%
+      arrange(Date) %>%
+      mutate(
+        Cumulative_EUR_USD = cumsum(trade_return_dollar_aud)
+      )
+
+    return(list(review_returns, review_returns_filt))
+
+  }
+
+
+#' get_Port_Buy_Data_remaining_assets
+#'
+#' @param db_location
+#' @param start_date
+#' @param end_date
+#' @param time_frame
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_Port_Buy_Data_remaining_assets <- function(
+    db_location = db_location,
+    start_date = "2016-01-01",
+    end_date = today() %>% as.character(),
+    time_frame = "H1"
+) {
+
+  USD_CAD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "USD_CAD",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "EUR_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NZD_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "NZD_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "EUR_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  AUD_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "AUD_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "GBP_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "GBP_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_CAD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "GBP_CAD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "GBP_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "USD_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "EUR_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  BTC_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "BTC_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  ETH_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "ETH_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NATGAS_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "NATGAS_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_SEK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "EUR_SEK",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_SEK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "USD_SEK",
+      keep_bid_to_ask = TRUE
+    )
+
+  LTC_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "LTC_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "XAG_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = "XAG_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  all_assets_long <-
+    USD_CAD %>%
+    bind_rows(EUR_AUD) %>%
+    bind_rows(NZD_USD) %>%
+    bind_rows(EUR_NZD) %>%
+    bind_rows(AUD_NZD) %>%
+    bind_rows(GBP_AUD) %>%
+    bind_rows(GBP_NZD) %>%
+    bind_rows(GBP_CAD) %>%
+    bind_rows(GBP_JPY) %>%
+    bind_rows(USD_SGD) %>%
+    bind_rows(EUR_JPY) %>%
+    bind_rows(BTC_USD) %>%
+    bind_rows(ETH_USD) %>%
+    bind_rows(NATGAS_USD) %>%
+    bind_rows(EUR_SEK) %>%
+    bind_rows(USD_SEK) %>%
+    bind_rows(LTC_USD) %>%
+    bind_rows(XAG_AUD) %>%
+    bind_rows(XAG_NZD)
+
+  rm( USD_CAD,
+      EUR_AUD,
+      NZD_USD,
+      EUR_NZD,
+      AUD_NZD,
+      GBP_AUD,
+      GBP_NZD,
+      GBP_CAD,
+      GBP_JPY,
+      USD_SGD,
+      EUR_JPY,
+      BTC_USD,
+      ETH_USD,
+      NATGAS_USD,
+      EUR_SEK,
+      USD_SEK,
+      LTC_USD,
+      XAG_AUD,
+      XAG_NZD)
+  gc()
+
+
+  USD_CAD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "bid",
+    time_frame = time_frame,
+    asset = "USD_CAD",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "EUR_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NZD_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "NZD_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "EUR_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  AUD_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "AUD_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "GBP_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "GBP_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_CAD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "GBP_CAD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "GBP_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "USD_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "EUR_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  BTC_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "BTC_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  ETH_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "ETH_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NATGAS_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "NATGAS_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_SEK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "EUR_SEK",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_SEK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "USD_SEK",
+      keep_bid_to_ask = TRUE
+    )
+
+  LTC_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "LTC_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "XAG_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = "XAG_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  all_assets_short <-
+    USD_CAD %>%
+    bind_rows(EUR_AUD) %>%
+    bind_rows(NZD_USD) %>%
+    bind_rows(EUR_NZD) %>%
+    bind_rows(AUD_NZD) %>%
+    bind_rows(GBP_AUD) %>%
+    bind_rows(GBP_NZD) %>%
+    bind_rows(GBP_CAD) %>%
+    bind_rows(GBP_JPY) %>%
+    bind_rows(USD_SGD) %>%
+    bind_rows(EUR_JPY) %>%
+    bind_rows(BTC_USD) %>%
+    bind_rows(ETH_USD) %>%
+    bind_rows(NATGAS_USD) %>%
+    bind_rows(EUR_SEK) %>%
+    bind_rows(USD_SEK) %>%
+    bind_rows(LTC_USD) %>%
+    bind_rows(XAG_AUD) %>%
+    bind_rows(XAG_NZD)
+
+  rm( USD_CAD,
+      EUR_AUD,
+      NZD_USD,
+      EUR_NZD,
+      AUD_NZD,
+      GBP_AUD,
+      GBP_NZD,
+      GBP_CAD,
+      GBP_JPY,
+      USD_SGD,
+      EUR_JPY,
+      BTC_USD,
+      ETH_USD,
+      NATGAS_USD,
+      EUR_SEK,
+      USD_SEK,
+      LTC_USD,
+      XAG_AUD,
+      XAG_NZD)
+  gc()
+
+  return(
+    list(
+      all_assets_long,
+      all_assets_short
+    )
+  )
+
+}
+
+
+#' get_X_hours_port_trades
+#'
+#' @param raw_macro_data
+#' @param daily_port_best_results_store
+#' @param save_model_location
+#' @param start_date
+#' @param lag_days
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_X_hours_port_trades <- function(raw_macro_data = raw_macro_data,
+                                    daily_port_best_results_store =
+                                      "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims_Daily_Port_best_results.db",
+                                    save_model_location = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio_macro_only",
+                                    start_date = "2023-02-01",
+                                    lag_days = 0
+) {
+
+  daily_port_best_results_store_con <- connect_db(path = daily_port_best_results_store)
+  assets_to_use <- DBI::dbGetQuery(conn = daily_port_best_results_store_con,
+                                   statement = "SELECT * FROM Indices_Silver_Logit_sims_Daily_Port_best_results")
+  DBI::dbDisconnect(daily_port_best_results_store_con)
+
+  eur_macro_data <-
+    get_EUR_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  usd_macro_data <-
+    get_USD_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  aud_macro_data <-
+    get_AUS_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  cad_macro_data <-
+    get_CAD_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  nzd_macro_data <-
+    get_NZD_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  gbp_macro_data <-
+    get_GBP_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  cny_macro_data <-
+    get_CNY_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  jpy_macro_data <-
+    get_JPY_Indicators(raw_macro_data,
+                       lag_days = lag_days,
+                       first_difference = TRUE
+    ) %>%
+    janitor::clean_names()
+
+  usd_macro_vars <- names(usd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  eur_macro_vars <- names(eur_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  aud_macro_vars <- names(aud_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  cad_macro_vars <- names(cad_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  nzd_macro_vars <- names(nzd_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  gbp_macro_vars <- names(gbp_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  cny_macro_vars <- names(cny_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+  jpy_macro_vars <- names(jpy_macro_data) %>% keep(~ .x != "date") %>% unlist() %>% as.character()
+
+  all_macro_vars <- c(
+    usd_macro_vars,
+    eur_macro_vars,
+    aud_macro_vars,
+    cad_macro_vars,
+    nzd_macro_vars,
+    gbp_macro_vars,
+    cny_macro_vars,
+    jpy_macro_vars
+  )
+
+  model_data_wrangle <-
+    tibble(Date = seq( as_date(start_date), today(), "day" ) ) %>%
+    mutate(Date_for_join = as_date(Date)) %>%
+    left_join(
+      eur_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    left_join(
+      usd_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    left_join(
+      aud_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    left_join(
+      cad_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    left_join(
+      gbp_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    left_join(
+      cny_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    left_join(
+      jpy_macro_data %>%
+        rename(Date_for_join = date)
+    )   %>%
+    arrange(Date, .by_group = TRUE) %>%
+    fill(matches(all_macro_vars, ignore.case = FALSE), .direction = "down") %>%
+    ungroup()
+
+  accumulation_list <- list()
+
+  for (i in 1:dim(assets_to_use)[1] ) {
+
+    asset_to_get_model_for <-
+      assets_to_use$Asset[i] %>% as.character()
+
+    periods_ahead_var <-
+      assets_to_use$period_var[i] %>% as.character()
+
+    trade_direction <-
+      assets_to_use$trade_col[i] %>% as.character()
+
+    pred_thresh <-
+      assets_to_use$Pred_Thresh[i] %>% as.numeric()
+
+    stop_value_var <-
+      assets_to_use$stop_factor[i] %>% as.numeric()
+
+    profit_value_var <-
+      assets_to_use$profit_factor[i] %>% as.numeric()
+
+    logit_model_to_use <-
+      readRDS(glue::glue("{save_model_location}/Logit_Model_{asset_to_get_model_for}_{periods_ahead_var}_{trade_direction}.rds") )
+
+    predicted_values <-
+      predict.glm(logit_model_to_use,
+                  newdata = model_data_wrangle,
+                  type = "response") %>%
+      as.numeric()
+
+    accumulation_list[[i]] <-
+      model_data_wrangle %>%
+      dplyr::select(Date) %>%
+      mutate(
+        Logit_Pred = predicted_values,
+        Asset = asset_to_get_model_for,
+        trade_col = trade_direction,
+        pred_thresh = pred_thresh,
+        periods_ahead = periods_ahead_var,
+        stop_factor = stop_value_var,
+        profit_factor = profit_value_var
+      )
+
+  }
+
+  returned_value <-
+    accumulation_list %>%
+    map_dfr(bind_rows) %>%
+    group_by(Asset) %>%
+    slice_max(Date) %>%
+    ungroup()
+
+  return(returned_value)
+
+}

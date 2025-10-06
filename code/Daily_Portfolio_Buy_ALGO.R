@@ -28,11 +28,6 @@ currency_conversion <-
     tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
   )
 
-#---------------------------------------------Daily Regression Join
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db"
-start_date_day = "2011-01-01"
-end_date_day = today() %>% as.character()
-
 #-------------------------------Trade Loop
 asset_list_oanda =
   c("XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
@@ -56,7 +51,8 @@ asset_list_oanda =
     "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
     "US2000_USD",
     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
-    "JP225_USD", "SPX500_USD") %>%
+    "JP225_USD", "SPX500_USD", "EUR_AUD", "EUR_NZD",
+    "GBP_AUD", "GBP_CAD", "GBP_NZD", "UK10YB_GBP") %>%
   unique()
 
 end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
@@ -81,118 +77,32 @@ short_account_num_equity <- 5
 account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date_day = "2011-01-01"
-end_date_day = today() %>% as.character()
-
-#-----Upload new Data to DB
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "ask",
-  how_far_back = 15
-)
-
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda,
-  how_far_back = 15
-)
-
-starting_asset_data_ask_H1 <-
-  get_db_price(
-    db_location = db_location,
-    start_date = "2016-01-01",
-    end_date = end_date_day,
-    bid_or_ask = "ask",
-    time_frame = "H1"
-  )
-
-starting_asset_data_bid_daily <-
-  get_db_price(
-    db_location = db_location,
-    start_date = start_date_day,
-    end_date = end_date_day,
-    bid_or_ask = "bid",
-    time_frame = "D"
-  )
-
-starting_asset_data_bid_H1 <-
-  get_db_price(
-    db_location = db_location,
-    start_date = "2016-01-01",
-    end_date = end_date_day,
-    bid_or_ask = "bid",
-    time_frame = "H1"
-  )
-
-mean_values_by_asset_for_loop_H1_bid =
-  wrangle_asset_data(
-    asset_data_daily_raw = starting_asset_data_bid_H1,
-    summarise_means = TRUE
-  )
-
-mean_values_by_asset_for_loop_H1_ask =
-  wrangle_asset_data(
-    asset_data_daily_raw = starting_asset_data_ask_H1,
-    summarise_means = TRUE
-  )
-
-all_trade_ts_actuals_Logit <-
-  get_ts_trade_actuals_Logit_NN(
-    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
-  ) %>%
-  bind_rows(
-    get_ts_trade_actuals_Logit_NN(
-      full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP.db"
-    )
-  )%>%
-  bind_rows(
-    get_ts_trade_actuals_Logit_NN(
-      full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped.db"
-    )
-  )
-
-all_trade_ts_actuals_Logit1 <-
-  all_trade_ts_actuals_Logit %>%
-  filter(profit_factor == 8, stop_factor == 4) %>%
-  filter(
-    asset %in%
-      c("EUR_USD", "EUR_GBP", "GBP_USD", "GBP_JPY", "EUR_JPY", "USD_JPY",
-        "SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD", "XAG_USD", "XAU_USD",
-        "AUD_USD", "NZD_USD", "XCU_USD", "NZD_CHF", "XAG_USD", "XAU_USD",
-        "EUR_AUD", "EUR_NZD", "XAG_EUR", "XAU_EUR", "USD_CHF", "XAU_CHF", "XAG_CHF"
-      )
-  )
-
-all_trade_ts_actuals_Logit2 <-
-  all_trade_ts_actuals_Logit %>%
-  filter(profit_factor == 4, stop_factor == 2) %>%
-  filter(
-    asset %in%
-      c("EUR_USD", "GBP_USD",
-        "SPX500_USD", "US2000_USD", "EU50_EUR", "AU200_AUD", "SG30_SGD", "XAG_USD", "XAU_USD",
-        "UK100_GBP", "JP225Y_JPY", "FR40_EUR", "CH20_CHF", "USB10Y_USD", "USB02Y_USD", "UK10YB_GBP",
-        "HK33_HKD"
-      )
-  )
-
-all_trade_ts_actuals_Logit <-
-  all_trade_ts_actuals_Logit1 %>%
-  bind_rows(all_trade_ts_actuals_Logit2)
-
-rm(all_trade_ts_actuals_Logit1, all_trade_ts_actuals_Logit2)
-
-all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
-  filter(dates >= "2016-01-01")
-
-gc()
-
 trade_tracker_DB_path <-
   "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_daily_buy_close.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
+
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+end_date_day = today() %>% as.character()
+
+mean_values_by_asset_for_loop_H1_ask <-
+  wrangle_asset_data(
+    asset_data_daily_raw =
+      get_db_price(
+        db_location = db_location,
+        start_date = "2016-01-01",
+        end_date = end_date_day,
+        bid_or_ask = "ask",
+        time_frame = "H1"
+      ),
+    summarise_means = TRUE
+  )
+
+rm(starting_asset_data_ask_H1)
+trades_opened <- 0
+trades_closed <- 0
+
+gc()
+load_custom_functions()
 
 while (current_time < end_time) {
 
@@ -202,17 +112,108 @@ while (current_time < end_time) {
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
 
   #----------------------Refresh Data Stores and LM model
-  if(current_minute > 0 & current_minute < 7 & current_hour == 0) {
+  if(current_minute > 0 & current_minute < 7 & trades_opened == 0 & ( (current_hour %% 2) == 0) ) {
+
+    gc()
+    Sys.sleep(2)
+    gc()
+    raw_macro_data <- get_macro_event_data()
+    trades_opened <- 1
+
+    total_trades_macro_only_port <-
+      get_X_hours_port_trades(
+        raw_macro_data = raw_macro_data,
+        daily_port_best_results_store =
+          "C:/Users/Nikhil Chandra/Documents/trade_data/Indices_Silver_Logit_sims_Daily_Port_best_results.db",
+        save_model_location = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_NNs_Portfolio_macro_only",
+        start_date = "2023-02-01",
+        lag_days = 0
+      )
+
+    current_prices_ask <-
+      read_all_asset_data_intra_day(
+        asset_list_oanda = asset_list_oanda,
+        save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+        read_csv_or_API = "API",
+        time_frame = "H1",
+        bid_or_ask = "ask",
+        how_far_back = 30,
+        start_date = as.character(current_date - days(1))
+      )%>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+
+    current_prices_bid <-
+      read_all_asset_data_intra_day(
+        asset_list_oanda = asset_list_oanda,
+        save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+        read_csv_or_API = "API",
+        time_frame = "H1",
+        bid_or_ask = "bid",
+        how_far_back = 30,
+        start_date = as.character(current_date - days(1))
+      ) %>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+
+    total_trades_macro_only_port_stops_long <-
+      total_trades_macro_only_port %>%
+      dplyr::select(-Date) %>%
+      filter(trade_col == "Long") %>%
+      left_join(
+        current_prices_ask %>%
+          dplyr::select(-Vol.) %>%
+          mutate(trade_col = "Long") %>%
+          slice_max(Date)
+      )
+
+    total_trades_macro_only_port_stops_short <-
+      total_trades_macro_only_port %>%
+      dplyr::select(-Date) %>%
+      filter(trade_col == "Short") %>%
+      left_join(
+        current_prices_bid %>%
+          dplyr::select(-Vol.) %>%
+          mutate(trade_col = "Short") %>%
+          slice_max(Date)
+      )
+
+    total_trades_macro_only_port_stops <-
+      total_trades_macro_only_port_stops_long %>%
+      bind_rows(total_trades_macro_only_port_stops_short) %>%
+      filter(!is.na(Price))  %>%
+      ungroup() %>%
+      mutate(kk = row_number()) %>%
+      split(.$kk) %>%
+      map_dfr(
+        ~
+          get_stops_profs_volume_trades(
+            tagged_trades = .x,
+            mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
+            trade_col = "trade_col",
+            currency_conversion = currency_conversion,
+            risk_dollar_value = 4,
+            stop_factor = .x$stop_factor[1] %>% as.numeric(),
+            profit_factor = .x$profit_factor[1] %>% as.numeric(),
+            asset_col = "Asset",
+            stop_col = "stop_value",
+            profit_col = "profit_value",
+            price_col = "Price",
+            trade_return_col = "trade_returns"
+          )
+      )
+
+    total_trades_macro_only_port_stops <-
+      total_trades_macro_only_port_stops %>%
+      filter(Logit_Pred >= pred_thresh)
 
     total_trades <-
-      tibble(
-        Asset  = c("AUD_USD", "EUR_USD"),
-        volume_required = c(1,1),
-        trade_col = c("Long", "Long"),
-        stop_value = c(0.001, 0.001),
-        profit_value = c(0.001, 0.001),
-        periods_ahead = 24
-      )
+      list(total_trades_macro_only_port_stops) %>%
+      map_dfr(bind_rows)
 
     if(dim(total_trades)[1] > 0) {
 
@@ -291,7 +292,7 @@ while (current_time < end_time) {
                  status = "OPEN",
                  periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
 
-        write_table_sql_lite(.data = cleaned_trade_details,
+        append_table_sql_lite(.data = cleaned_trade_details,
                              table_name = "trade_tracker",
                              conn = trade_tracker_DB)
 
@@ -302,7 +303,9 @@ while (current_time < end_time) {
 
   }
 
-  if(current_minute > 0 & current_minute < 7 & current_hour != 0) {
+  if(current_minute > 0 & current_minute < 30 & trades_closed == 0 ) {
+
+    trades_closed <- 1
 
     trades_from_DB <-
       DBI::dbGetQuery(conn = trade_tracker_DB,
@@ -320,6 +323,18 @@ while (current_time < end_time) {
       filter(account_var == long_account_num_equity) %>%
       dplyr::select(tradeID, Asset, periods_ahead, account_name)
 
+    account_Short_1_Ids <-
+      trades_from_DB %>%
+      filter(status == "OPEN") %>%
+      filter(account_var == short_account_num) %>%
+      dplyr::select(tradeID, Asset, periods_ahead, account_name)
+
+    account_Short_2_Ids <-
+      trades_from_DB %>%
+      filter(status == "OPEN") %>%
+      filter(account_var == short_account_num_equity) %>%
+      dplyr::select(tradeID, Asset, periods_ahead, account_name)
+
     open_positions_account_long1 <-
       get_Open_positions(account_var = long_account_num) %>%
       mutate(id = as.character(id)) %>%
@@ -328,6 +343,8 @@ while (current_time < end_time) {
       ) %>%
       filter(!is.na(periods_ahead))
 
+    message(open_positions_account_long1)
+
     open_positions_account_long2 <-
       get_Open_positions(account_var = long_account_num_equity)  %>%
       mutate(id = as.character(id)) %>%
@@ -335,6 +352,28 @@ while (current_time < end_time) {
         account_Long_2_Ids, by = c("id" = "tradeID", "Asset")
       ) %>%
       filter(!is.na(periods_ahead))
+
+    message(open_positions_account_long2)
+
+    open_positions_account_short1 <-
+      get_Open_positions(account_var = short_account_num) %>%
+      mutate(id = as.character(id)) %>%
+      left_join(
+        account_Short_1_Ids, by = c("id" = "tradeID", "Asset")
+      ) %>%
+      filter(!is.na(periods_ahead))
+
+    message(open_positions_account_short1)
+
+    open_positions_account_short2 <-
+      get_Open_positions(account_var = short_account_num_equity)  %>%
+      mutate(id = as.character(id)) %>%
+      left_join(
+        account_Short_2_Ids, by = c("id" = "tradeID", "Asset")
+      ) %>%
+      filter(!is.na(periods_ahead))
+
+    message(open_positions_account_short2)
 
     positions_tagged_as_part_of_algo <-
       open_positions_account_long1 %>%
@@ -346,7 +385,20 @@ while (current_time < end_time) {
           mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
                  time_in_process =  as.numeric(current_time - openTime, units = "hours"),
                  flagged_for_close = time_in_process >= periods_ahead)
-      )
+      )%>%
+      bind_rows(
+        open_positions_account_short1 %>%
+          mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
+                 time_in_process =  as.numeric(current_time - openTime, units = "hours"),
+                 flagged_for_close = time_in_process >= periods_ahead)
+      )%>%
+      bind_rows(
+        open_positions_account_short2 %>%
+          mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
+                 time_in_process =  as.numeric(current_time - openTime, units = "hours"),
+                 flagged_for_close = time_in_process >= periods_ahead)
+      ) %>%
+      filter(flagged_for_close  == TRUE)
 
 
     if(dim(positions_tagged_as_part_of_algo)[1] > 0) {
@@ -371,6 +423,12 @@ while (current_time < end_time) {
     }
 
 
+  }
+
+
+  if( current_minute >= 50 & current_minute <= 59 ) {
+    trades_opened <- 0
+    trades_closed <- 0
   }
 
 }

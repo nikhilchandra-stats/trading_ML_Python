@@ -133,8 +133,8 @@ min_allowable_date <-
 gc()
 
 date_sequence <-
-  seq(as_date(min_allowable_date), as_date("2025-09-25"), "12 weeks") %>%
-  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(2000) ) )
+  seq(as_date(min_allowable_date), as_date("2025-09-25"), "20 weeks") %>%
+  keep(~ as_date(.x) >= (as_date(min_allowable_date) + lubridate::dhours(30000) ) )
 
 gc()
 
@@ -150,10 +150,10 @@ gc()
 
 params_to_test <-
   tibble(
-    NN_samples = c(2000, 30000, 30000, 30000, 30000, 30000),
+    NN_samples = c(30000, 30000, 30000, 30000, 30000, 30000),
     hidden_layers = c(0, 0,0,0, 0, 0),
     ending_thresh = c(0,0,0,0, 0, 0),
-    p_value_thresh_for_inputs = c(0.15 , 0.99, 0.1, 0.01, 0.25, 10^-11),
+    p_value_thresh_for_inputs = c(0.15 ,0.01 , 0.1, 0.99, 0.25, 10^-11),
     neuron_adjustment = c(0,0,0,0, 0, 0),
     trade_direction_var = c("Long", "Long", "Long", "Long", "Long", "Long"),
     phase_1_testing_weeks = c(52, 52, 52, 52, 52, 52)
@@ -176,14 +176,12 @@ for (j in 1:dim(params_to_test)[1] ) {
 
     gc()
 
-    max_test_date <- (date_sequence[k] + dmonths(62)) %>% as_date() %>% as.character()
+    max_test_date <- (date_sequence[k] + dmonths(24)) %>% as_date() %>% as.character()
     accumulating_data <- list()
 
     available_assets2 <-
       available_assets %>%
-      keep(~ str_detect(.x, "SPX500|XAG|AUD_USD|EUR_USD|USD_JPY|GBP_USD|US2000")) %>%
-      # keep(~ !str_detect(.x, "WTI|BCO|XCU")) %>%
-      # unlist( ) %>%
+      keep(~ str_detect(.x, "SPX500|XAG|AUD_USD|EUR_USD|GBP_USD|US2000|GBP_USD|USB0|EU50_EUR|AU200_AUD|UK100_GBP|USD_CHF") & !str_detect(.x, "JPY")) %>%
       as.character()
 
     for (i in 1:length(available_assets2)) {
@@ -274,14 +272,14 @@ for (j in 1:dim(params_to_test)[1] ) {
 NN_sims_db_con <- connect_db(NN_sims_db)
 all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
                                       statement = "SELECT * FROM Indices_Silver_Logit_sims") %>%
-  filter(Asset == "XAG_EUR") %>%
+  filter(Asset == "SPX500_USD") %>%
   filter(
-    p_value_thresh_for_inputs == 0.15
+    p_value_thresh_for_inputs == 0.01
   ) %>%
   mutate(
     Date = as_datetime(Date)
   ) %>%
-  group_by(Date, Asset) %>%
+  group_by(Date, Asset, p_value_thresh_for_inputs) %>%
   summarise(
     pred = mean(pred, na.rm = T),
     trade_returns_AUD = mean(trade_returns_AUD,na.rm = T)
@@ -390,85 +388,3 @@ all_results_ts_dfr <- DBI::dbGetQuery(conn = NN_sims_db_con,
   ungroup()
   group_by(Asset, p_value_thresh_for_inputs) %>%
   summarise(across(.cols = contains("Returns_Pred"), ~ sum(., na.rm = T)))
-
-acumulating_summary <- list()
-c = 0
-for (i in c(0,0.2,0.3 ,0.4 ,0.5, 0.6, 0.7, 0.8, 0.9)) {
-
-  #
-  c = c + 1
-  acumulating_summary[[c]] <-
-    all_results_ts_dfr %>%
-    mutate(Date = as_datetime(Date)) %>%
-    mutate(
-      Returns =
-        case_when(
-          pred >= i  ~ trade_returns_AUD,
-          TRUE ~ 0
-        )
-    ) %>%
-    mutate(pred_thresh = as.numeric(i) ) %>%
-    group_by(Date, pred_thresh, Asset) %>%
-    summarise(Returns = sum(Returns, na.rm = T)) %>%
-    ungroup() %>%
-    group_by(Asset) %>%
-    arrange(Date, .by_group = TRUE) %>%
-    mutate(
-      Cumulative_Return = cumsum(Returns)
-    ) %>%
-    group_by(Asset, pred_thresh) %>%
-    summarise(
-      Mean_Returns = mean(Returns, na.rm = T),
-      Returns_75 = quantile(Returns, 0.75, na.rm = T),
-      Returns_25 = quantile(Returns, 0.25, na.rm = T),
-      Final_returns = sum(Returns, na.rm = T),
-      TS_Cumulative_25_quantile = quantile(Cumulative_Return, 0.25, na.rm = T),
-      TS_Cumulative_75_quantile = quantile(Cumulative_Return, 0.75, na.rm = T)
-    )
-
-}
-
-acumulating_summary_sum <-
-  acumulating_summary %>%
-  map_dfr(bind_rows)
-
-control_data <-
-  all_results_ts_dfr %>%
-  filter(pred_thresh == 0) %>%
-  mutate(Date = as_datetime(Date)) %>%
-  mutate(
-    Returns =
-      case_when(
-        pred <= 10000  ~ trade_returns_AUD,
-        TRUE ~ 0
-      )
-  ) %>%
-  group_by(Date, Asset) %>%
-  summarise(Returns = sum(Returns, na.rm = T)) %>%
-  ungroup() %>%
-  group_by(Asset) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  mutate(
-    Cumulative_Return = cumsum(Returns)
-  ) %>%
-  group_by(Asset) %>%
-  summarise(
-    Mean_Returns = mean(Returns, na.rm = T),
-    Returns_75 = quantile(Returns, 0.75, na.rm = T),
-    Returns_25 = quantile(Returns, 0.25, na.rm = T),
-    Final_returns = sum(Returns, na.rm = T),
-    TS_Cumulative_25_quantile = quantile(Cumulative_Return, 0.25, na.rm = T),
-    TS_Cumulative_75_quantile = quantile(Cumulative_Return, 0.75, na.rm = T)
-  ) %>%
-  rename(
-    Control_Mean_Returns = Mean_Returns,
-    Control_Returns_75 = Returns_75,
-    Control_Returns_25 = Returns_25,
-    Control_Final_returns = Final_returns,
-    Control_TS_Cumulative_25_quantile = TS_Cumulative_25_quantile,
-    Control_TS_Cumulative_75_quantile = TS_Cumulative_75_quantile
-  )
-
-analysis_by_sym <-
-  acumulating_summary_sum %>%
-  left_join(control_data)
