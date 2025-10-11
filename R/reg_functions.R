@@ -743,7 +743,8 @@ get_NZD_Indicators <- function(
           str_detect(event, "Exports")  ~ "NZD Exports",
           str_detect(event, "Imports")  ~ "NZD Imports",
           str_detect(event, "Trade Balance NZD \\(MoM\\)")  ~ "NZD Trade Balance NZD",
-          str_detect(event, "NZIER Business Confidence \\(QoQ\\)")  ~ "NZIER Business Confidence"
+          str_detect(event, "NZIER Business Confidence \\(QoQ\\)")  ~ "NZIER Business Confidence",
+          str_detect(event, "Consumer Price Index \\(QoQ\\)") ~ "NZD Consumer Price Index"
 
         )
     ) %>%
@@ -2313,3 +2314,322 @@ run_reg_daily_variant_Quant_vers <- function(
   )
 
 }
+
+#' get_interest_rates
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#' @param first_difference
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_interest_rates <-
+  function(
+    raw_macro_data = get_macro_event_data(),
+    lag_days = 3
+  ) {
+
+    interest_rates <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+            str_detect(event, "RBA Interest Rate Decision") & symbol == "AUD" ~ "AUD Interest Rate",
+            str_detect(event, "Fed Interest Rate Decision") & symbol == "USD" ~ "USD Interest Rate",
+            str_detect(event, "ECB Interest Rate Decision") & symbol == "EUR" ~ "EUR Interest Rate",
+            str_detect(event, "BoJ Interest Rate Decision")  & symbol == "JPY"~ "JPY BoJ Interest Rate Decision",
+            str_detect(event, "PBoC Interest Rate Decision") & symbol == "CNY"  ~ "CNY Interest Rate",
+            str_detect(event, "BoE Interest Rate Decision") & symbol == "GBP"   ~ "GBP Interest Rate",
+            str_detect(event, "BoC Interest Rate Decision") & symbol == "CAD"  ~ "CAD Interest Rate",
+            str_detect(event, "Interest Rate Decision") & symbol == "NZD"  ~ "NZD Interest Rate"
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.) )) %>%
+      mutate(
+        Global_Average_Rate =(`AUD Interest Rate` + `USD Interest Rate` + `EUR Interest Rate` +
+          `JPY BoJ Interest Rate Decision` + `CNY Interest Rate` + `GBP Interest Rate` +
+          `CAD Interest Rate` + `NZD Interest Rate`)/8
+      )
+
+    for (i in 2:length(interest_rates) ) {
+      for (j in 2:length(interest_rates) ) {
+
+        if(i != j) {
+
+          base_col <-
+            names(interest_rates)[i]
+          asset_1 <- base_col %>%
+            str_extract("AUD|USD|CAD|GBP|JPY|EUR|CNY|NZD|Global") %>%
+            unlist() %>% as.character()
+          compare_col <- names(interest_rates)[j]
+          asset_2 <-compare_col  %>%
+            str_extract("AUD|USD|CAD|GBP|JPY|EUR|CNY|NZD|Global")  %>%
+            unlist() %>% as.character()
+
+          interest_rates <-
+            interest_rates %>%
+            mutate(
+              !!as.name(paste0(asset_1, "_",asset_2,"_Interest_Diff")) :=
+                !!as.name(base_col) - !!as.name(compare_col)
+            )
+
+        }
+
+      }
+    }
+
+
+    final_tibble <-
+      tibble(
+        Date = seq(as_date("2010-01-01"), today(), "day" )
+      ) %>%
+      left_join(interest_rates, by = c("Date" = "date")) %>%
+      fill( everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+
+    return(final_tibble)
+
+  }
+
+
+#' get_interest_rates
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#' @param first_difference
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_cpi <-
+  function(
+    raw_macro_data = get_macro_event_data(),
+    lag_days = 3
+  ) {
+
+    cpi_data <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+            str_detect(event, "Consumer Price Index \\(QoQ\\)") & symbol == "AUD" ~ "AUD CPI",
+            str_detect(event, "Consumer Price Index \\(MoM\\)") & symbol == "USD" ~ "USD CPI",
+            str_detect(event, "Consumer Price Index \\(EU norm\\)") & symbol == "EUR" ~ "EUR CPI",
+            str_detect(event, "Tokyo Consumer Price Index") & symbol == "JPY" ~ "JPY CPI",
+            str_detect(event, "Consumer Price Index \\(YoY\\)") & symbol == "CNY"  ~ "CNY CPI",
+            str_detect(event, "Consumer Price Index \\(MoM\\)") & symbol == "GBP"   ~ "GBP CPI",
+            str_detect(event, "Consumer Price Index \\(YoY\\)") & symbol == "CAD"  ~ "CAD CPI",
+            str_detect(event, "Consumer Price Index \\(QoQ\\)") & symbol == "NZD" ~ "NZD CPI"
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.) )) %>%
+      mutate(
+        Global_CPI =(`AUD CPI` + `USD CPI` + `EUR CPI` +
+                                `JPY CPI` + `CNY CPI` + `GBP CPI` +
+                                `CAD CPI` + `NZD CPI`)/8
+      )
+
+    for (i in 2:length(cpi_data) ) {
+      for (j in 2:length(cpi_data) ) {
+
+        if(i != j) {
+
+          base_col <-
+            names(cpi_data)[i]
+          asset_1 <- base_col %>%
+            str_extract("AUD|USD|CAD|GBP|JPY|EUR|CNY|NZD|Global") %>%
+            unlist() %>% as.character()
+          compare_col <- names(cpi_data)[j]
+          asset_2 <-compare_col  %>%
+            str_extract("AUD|USD|CAD|GBP|JPY|EUR|CNY|NZD|Global")  %>%
+            unlist() %>% as.character()
+
+          cpi_data <-
+            cpi_data %>%
+            mutate(
+              !!as.name(paste0(asset_1, "_",asset_2,"_CPI_Diff")) :=
+                !!as.name(base_col) - !!as.name(compare_col)
+            )
+
+        }
+
+      }
+    }
+
+    final_tibble <-
+      tibble(
+        Date = seq(as_date("2010-01-01"), today(), "day" )
+      ) %>%
+      left_join(cpi_data, by = c("Date" = "date")) %>%
+      fill( everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+
+    return(final_tibble)
+
+  }
+
+#' get_Interest_Rate_strength
+#'
+#' @param interest_rates
+#' @param countries
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_Interest_Rate_strength <-
+  function(
+    interest_rates =
+      get_interest_rates(raw_macro_data = get_macro_event_data(),
+              lag_days = 3),
+    countries = c("AUD", "USD")
+    ) {
+
+    accumulation_list <- list()
+
+    for (i in 1:length(countries)) {
+
+      asset_int_vars <-
+        interest_rates %>%
+        dplyr::select(Date, contains(countries[i]) & !contains("Global"))
+
+      PCA_interest <-
+        prcomp(asset_int_vars %>% dplyr::select(-Date)) %>%
+        pluck("x") %>%
+        as_tibble() %>%
+        mutate(
+          Date = asset_int_vars$Date
+        ) %>%
+        dplyr::select(Date,
+                      !!as.name(paste0(countries[i],"_","Interest_Rate_Strength_PC1")) := PC1,
+                      !!as.name(paste0(countries[i],"_","Interest_Rate_Strength_PC2")) := PC2,
+                      !!as.name(paste0(countries[i],"_","Interest_Rate_Strength_PC3")) := PC3)
+
+      Average_Strength <-
+        interest_rates %>%
+        dplyr::select(Date, contains(countries[i]) & !contains("Global")) %>%
+        pivot_longer(-Date, names_to = "variable", values_to = "value") %>%
+        group_by(Date) %>%
+        summarise(
+          !!as.name(paste0(countries[i],"_","Average_Strength_Interest")) := mean(value, na.rm = T)
+        )
+
+      accumulation_list[[i]] <-
+        PCA_interest %>%
+        left_join(Average_Strength)
+
+
+    }
+
+    returned_tibble <-
+      accumulation_list %>%
+      reduce(left_join)
+
+    return(returned_tibble)
+
+  }
+
+
+#' get_Interest_Rate_strength
+#'
+#' @param interest_rates
+#' @param countries
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_CPI_Rate_strength <-
+  function(
+    cpi_data =
+      get_cpi(raw_macro_data = get_macro_event_data(),
+              lag_days = 3),
+    countries = c("AUD", "USD")
+  ) {
+
+    accumulation_list <- list()
+
+    for (i in 1:length(countries)) {
+
+      asset_int_vars <-
+        cpi_data %>%
+        dplyr::select(Date, contains(countries[i]) & !contains("Global"))
+
+      PCA_interest <-
+        prcomp(asset_int_vars %>% dplyr::select(-Date)) %>%
+        pluck("x") %>%
+        as_tibble() %>%
+        mutate(
+          Date = asset_int_vars$Date
+        ) %>%
+        dplyr::select(Date,
+                      !!as.name(paste0(countries[i],"_","CPI_Strength_PC1")) := PC1,
+                      !!as.name(paste0(countries[i],"_","CPI_Strength_PC2")) := PC2,
+                      !!as.name(paste0(countries[i],"_","CPI_Strength_PC3")) := PC3)
+
+      Average_Strength <-
+        cpi_data %>%
+        dplyr::select(Date, contains(countries[i]) & !contains("Global")) %>%
+        pivot_longer(-Date, names_to = "variable", values_to = "value") %>%
+        group_by(Date) %>%
+        summarise(
+          !!as.name(paste0(countries[i],"_","Average_Strength_CPI")) := mean(value, na.rm = T)
+        )
+
+      accumulation_list[[i]] <-
+        PCA_interest %>%
+        left_join(Average_Strength)
+
+
+    }
+
+    returned_tibble <-
+      accumulation_list %>%
+      reduce(left_join)
+
+    return(returned_tibble)
+
+  }

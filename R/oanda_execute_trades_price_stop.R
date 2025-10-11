@@ -259,7 +259,8 @@ extract_put_request_return <-
 oanda_close_trade_ID <-
   function(tradeID = "4337",
            units = 1,
-           account = "equity_long") {
+           account = "equity_long",
+           volume = NULL) {
 
     headers = c(
       `Content-Type` = 'application/json',
@@ -267,7 +268,7 @@ oanda_close_trade_ID <-
     )
 
     params = list(
-      `units` = glue::glue("{volume}")
+      `units` = glue::glue("{units}")
     )
 
     json_body <- rjson::toJSON(params)
@@ -277,7 +278,7 @@ oanda_close_trade_ID <-
     returned_response <-
       httr::PUT(url = glue::glue('https://api-fxtrade.oanda.com/v3/accounts/{account_number}/trades/{tradeID}/close'),
                httr::add_headers(.headers=headers),
-               body = json_body,
+               # body = json_body,
                encode = "raw")
 
     return(returned_response)

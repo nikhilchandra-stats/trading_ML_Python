@@ -154,7 +154,7 @@ starting_asset_data_ask_daily <-
 starting_asset_data_ask_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2016-01-01",
+    start_date = "2016-06-01",
     end_date = end_date_day,
     bid_or_ask = "ask",
     time_frame = "H1"
@@ -184,7 +184,7 @@ starting_asset_data_bid_daily <-
 starting_asset_data_bid_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2016-01-01",
+    start_date = "2016-06-01",
     end_date = end_date_day,
     bid_or_ask = "bid",
     time_frame = "H1"
@@ -257,7 +257,7 @@ all_trade_ts_actuals_Logit <-
 rm(all_trade_ts_actuals_Logit1, all_trade_ts_actuals_Logit2)
 
 all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
-  filter(dates >= "2016-01-01")
+  filter(dates >= "2016-06-01")
 
 gc()
 

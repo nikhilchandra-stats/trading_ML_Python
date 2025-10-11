@@ -55,7 +55,7 @@ asset_list_oanda =
     "GBP_AUD", "GBP_CAD", "GBP_NZD", "UK10YB_GBP") %>%
   unique()
 
-end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
+end_time <- glue::glue("{floor_date(now(), 'week')} 04:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
 current_time <- now()
 trade_taken_this_hour <- 0
 data_updated <- 0
@@ -100,6 +100,7 @@ mean_values_by_asset_for_loop_H1_ask <-
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
 trades_closed <- 0
+risk_dollar_value = 4
 
 gc()
 load_custom_functions()
@@ -117,7 +118,7 @@ while (current_time < end_time) {
     gc()
     Sys.sleep(2)
     gc()
-    raw_macro_data <- get_macro_event_data()
+    raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
 
     total_trades_macro_only_port <-
@@ -137,8 +138,8 @@ while (current_time < end_time) {
         read_csv_or_API = "API",
         time_frame = "H1",
         bid_or_ask = "ask",
-        how_far_back = 30,
-        start_date = as.character(current_date - days(1))
+        how_far_back = 60,
+        start_date = as.character(current_date - days(2))
       )%>%
       map_dfr(bind_rows) %>%
       group_by(Asset) %>%
@@ -152,8 +153,8 @@ while (current_time < end_time) {
         read_csv_or_API = "API",
         time_frame = "H1",
         bid_or_ask = "bid",
-        how_far_back = 30,
-        start_date = as.character(current_date - days(1))
+        how_far_back = 60,
+        start_date = as.character(current_date - days(2))
       ) %>%
       map_dfr(bind_rows) %>%
       group_by(Asset) %>%
@@ -196,7 +197,7 @@ while (current_time < end_time) {
             mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
             trade_col = "trade_col",
             currency_conversion = currency_conversion,
-            risk_dollar_value = 4,
+            risk_dollar_value = risk_dollar_value,
             stop_factor = .x$stop_factor[1] %>% as.numeric(),
             profit_factor = .x$profit_factor[1] %>% as.numeric(),
             asset_col = "Asset",
@@ -262,6 +263,19 @@ while (current_time < end_time) {
             price
           )
 
+          cleaned_trade_details <-
+            extract_put_request_return(http_return) %>%
+            mutate(Asset = asset,
+                   trade_col = trade_direction,
+                   account_var = long_account_num,
+                   account_name = account_name_long,
+                   status = "OPEN",
+                   periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+
+          append_table_sql_lite(.data = cleaned_trade_details,
+                                table_name = "trade_tracker",
+                                conn = trade_tracker_DB)
+
         }
 
         if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
@@ -281,20 +295,20 @@ while (current_time < end_time) {
             price
           )
 
+          cleaned_trade_details <-
+            extract_put_request_return(http_return) %>%
+            mutate(Asset = asset,
+                   trade_col = trade_direction,
+                   account_var = short_account_num,
+                   account_name = account_name_short,
+                   status = "OPEN",
+                   periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+
+          append_table_sql_lite(.data = cleaned_trade_details,
+                                table_name = "trade_tracker",
+                                conn = trade_tracker_DB)
+
         }
-
-        cleaned_trade_details <-
-          extract_put_request_return(http_return) %>%
-          mutate(Asset = asset,
-                 trade_col = trade_direction,
-                 account_var = long_account_num,
-                 account_name = account_name_long,
-                 status = "OPEN",
-                 periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
-
-        append_table_sql_lite(.data = cleaned_trade_details,
-                             table_name = "trade_tracker",
-                             conn = trade_tracker_DB)
 
       }
 
@@ -303,7 +317,9 @@ while (current_time < end_time) {
 
   }
 
-  if(current_minute > 0 & current_minute < 30 & trades_closed == 0 ) {
+  if(trades_closed == 0 ) {
+
+    rm(positions_tagged_as_part_of_algo)
 
     trades_closed <- 1
 
@@ -343,7 +359,7 @@ while (current_time < end_time) {
       ) %>%
       filter(!is.na(periods_ahead))
 
-    message(open_positions_account_long1)
+    # message(open_positions_account_long1)
 
     open_positions_account_long2 <-
       get_Open_positions(account_var = long_account_num_equity)  %>%
@@ -353,7 +369,7 @@ while (current_time < end_time) {
       ) %>%
       filter(!is.na(periods_ahead))
 
-    message(open_positions_account_long2)
+    # message(open_positions_account_long2)
 
     open_positions_account_short1 <-
       get_Open_positions(account_var = short_account_num) %>%
@@ -363,7 +379,7 @@ while (current_time < end_time) {
       ) %>%
       filter(!is.na(periods_ahead))
 
-    message(open_positions_account_short1)
+    # message(open_positions_account_short1)
 
     open_positions_account_short2 <-
       get_Open_positions(account_var = short_account_num_equity)  %>%
@@ -373,32 +389,49 @@ while (current_time < end_time) {
       ) %>%
       filter(!is.na(periods_ahead))
 
-    message(open_positions_account_short2)
+    # message(open_positions_account_short2)
 
-    positions_tagged_as_part_of_algo <-
+    positions_tagged_as_part_of_algo_raw <-
       open_positions_account_long1 %>%
       mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
-             time_in_process =  as.numeric(current_time - openTime, units = "hours"),
+             time_in_process =  abs(as.numeric(current_time - openTime, units = "hours")),
              flagged_for_close = time_in_process >= periods_ahead) %>%
       bind_rows(
         open_positions_account_long2 %>%
           mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
-                 time_in_process =  as.numeric(current_time - openTime, units = "hours"),
+                 time_in_process =  abs(as.numeric(current_time - openTime, units = "hours")),
                  flagged_for_close = time_in_process >= periods_ahead)
       )%>%
       bind_rows(
         open_positions_account_short1 %>%
           mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
-                 time_in_process =  as.numeric(current_time - openTime, units = "hours"),
+                 time_in_process =  abs(as.numeric(current_time - openTime, units = "hours")),
                  flagged_for_close = time_in_process >= periods_ahead)
       )%>%
       bind_rows(
         open_positions_account_short2 %>%
           mutate(openTime = as_datetime(openTime, tz = "Australia/Canberra"),
-                 time_in_process =  as.numeric(current_time - openTime, units = "hours"),
+                 time_in_process =  abs(as.numeric(current_time - openTime, units = "hours")),
                  flagged_for_close = time_in_process >= periods_ahead)
       ) %>%
-      filter(flagged_for_close  == TRUE)
+      mutate(time_in_process = as.numeric(time_in_process))
+
+    estimated_running_profit <-
+      positions_tagged_as_part_of_algo_raw %>%
+      mutate(unrealizedPL = as.numeric(unrealizedPL)) %>%
+      summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
+                EstimatedTotal_risk = risk_dollar_value*n())
+
+    if(estimated_running_profit$unrealizedPL[1] < 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      positions_tagged_as_part_of_algo <-
+        positions_tagged_as_part_of_algo_raw %>%
+        filter(flagged_for_close  == TRUE| time_in_process >= periods_ahead | time_in_process >= 48)
+    }
+
+    if(estimated_running_profit$unrealizedPL[1] >= 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      positions_tagged_as_part_of_algo <-
+        positions_tagged_as_part_of_algo_raw
+    }
 
 
     if(dim(positions_tagged_as_part_of_algo)[1] > 0) {
@@ -407,6 +440,8 @@ while (current_time < end_time) {
 
         account_name_for_close <-
           positions_tagged_as_part_of_algo$account_name[i] %>% as.character()
+        account_num_for_close <-
+          positions_tagged_as_part_of_algo$account_var[i] %>% as.character()
         id_for_close <-
           positions_tagged_as_part_of_algo$id[i] %>% as.character()
         units_for_close <-
@@ -418,17 +453,76 @@ while (current_time < end_time) {
           account = account_name_for_close
         )
 
+        check_if_position_still_open <-
+          get_Open_positions(account_var = account_num_for_close) %>%
+          mutate(id = as.character(id)) %>%
+          filter(id == id_for_close )
+
+        Sys.sleep(1)
+
+        if(dim(check_if_position_still_open)[1] > 0) {
+          oanda_close_trade_ID(
+            tradeID = id_for_close,
+            units = units_for_close,
+            account = account_name_for_close
+          )
+        }
+
+        Sys.sleep(2)
+
       }
 
     }
+
+    rm(positions_tagged_as_part_of_algo, check_if_position_still_open)
 
 
   }
 
 
-  if( current_minute >= 50 & current_minute <= 59 ) {
+  if( current_minute >= 59 & current_minute <= 59 ) {
     trades_opened <- 0
     trades_closed <- 0
+  }
+
+  if( current_minute >= 15 & current_minute <= 15 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 20 & current_minute <= 20 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 25 & current_minute <= 25 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 30 & current_minute <= 30 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 35 & current_minute <= 35 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 40 & current_minute <= 40 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 45 & current_minute <= 45 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
+  }
+
+  if( current_minute >= 55 & current_minute <= 55 ) {
+    trades_closed <- 0
+    Sys.sleep(60)
   }
 
 }
