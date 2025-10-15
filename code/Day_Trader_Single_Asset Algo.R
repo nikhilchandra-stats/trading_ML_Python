@@ -1,10 +1,7 @@
-helperfunctions35South::load_custom_functions()
-one_drive_path <- helperfunctions35South::create_one_drive_path(
-  path_extension = "raw data")
-library(neuralnet)
+helpeR::load_custom_functions()
 
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CNH"))
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
@@ -13,7 +10,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(5)) %>% as.character()
+  start_date = (today() - days(2)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -28,32 +25,105 @@ currency_conversion <-
     tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
   )
 
-#-------------------------------Trade Loop
 asset_list_oanda =
-  c("XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
+  c("HK33_HKD", "USD_JPY",
+    "BTC_USD",
+    "AUD_NZD", "GBP_CHF",
+    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
+    "USB02Y_USD",
+    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
+    "DE30_EUR",
+    "AUD_CAD",
+    "UK10YB_GBP",
+    "XPD_USD",
+    "UK100_GBP",
+    "USD_CHF", "GBP_NZD",
+    "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
+    "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+    "XAU_USD",
+    "DE10YB_EUR",
+    "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+    "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
+    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+    "USB10Y_USD",
+    "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
+    "CH20_CHF", "ESPIX_EUR",
+    "XPT_USD",
+    "EUR_AUD", "SOYBN_USD",
+    "US2000_USD",
+    "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
     "XAG_NZD",
     "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
     "XAU_NZD",
     "BTC_USD", "LTC_USD", "BCH_USD",
     "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
     "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
-    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
-    "AUD_USD", "EUR_USD", "GBP_USD", "USD_CHF", "USD_JPY", "USD_MXN", "USD_SEK", "USD_NOK",
-    "NZD_USD", "USD_CAD", "USD_SGD", "ETH_USD", "XPT_USD", "XPD_USD",
-    "USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
-    "DE30_EUR",
-    "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
-    "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
-    "XAU_USD",
-    "USD_CZK",  "WHEAT_USD",
-    "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
-    "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
-    "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
-    "US2000_USD",
-    "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
-    "JP225_USD", "SPX500_USD", "EUR_AUD", "EUR_NZD",
-    "GBP_AUD", "GBP_CAD", "GBP_NZD", "UK10YB_GBP") %>%
+    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP") %>%
   unique()
+
+asset_infor <- get_instrument_info()
+raw_macro_data <- get_macro_event_data()
+#---------------------Data
+load_custom_functions()
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+start_date = "2022-01-01"
+end_date = today() %>% as.character()
+
+bin_factor = NULL
+stop_value_var = 2
+profit_value_var = 15
+period_var = 48
+full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+actual_wins_losses <-
+  DBI::dbGetQuery(full_ts_trade_db_con,
+                  glue::glue("SELECT * FROM full_ts_trades_mapped
+                  WHERE stop_factor = {stop_value_var} AND
+                        periods_ahead = {period_var} AND Date >= {start_date}")
+  ) %>%
+  mutate(
+    Date = as_datetime(Date)
+  )
+
+actual_wins_losses <-
+  actual_wins_losses %>%
+  filter(stop_factor == stop_value_var,
+         profit_factor == profit_value_var,
+         periods_ahead == period_var)
+
+DBI::dbDisconnect(full_ts_trade_db_con)
+rm(full_ts_trade_db_con)
+gc()
+
+All_Daily_Data <-
+  get_DAILY_ALGO_DATA_API_REQUEST()
+
+Indices_Metals_Bonds <- get_Port_Buy_Data(
+  db_location = db_location,
+  start_date = start_date,
+  end_date = today() %>% as.character(),
+  time_frame = "H1"
+)
+
+missing_assets <- get_Port_Buy_Data_remaining_assets(
+  db_location = db_location,
+  start_date = start_date,
+  end_date = today() %>% as.character(),
+  time_frame = "H1"
+)
+
+Indices_Metals_Bonds[[1]] <-
+  Indices_Metals_Bonds[[1]] %>%
+  bind_rows(missing_assets[[1]] %>%
+              filter(Asset != "XAG_AUD"))
+
+Indices_Metals_Bonds[[2]] <- NULL
+
+gc()
+rm(missing_assets)
+gc()
+
+#-------------Indicator Inputs
 
 end_time <- glue::glue("{floor_date(now(), 'week')} 04:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
 current_time <- now()
@@ -105,6 +175,8 @@ risk_dollar_value = 4
 gc()
 load_custom_functions()
 
+
+
 while (current_time < end_time) {
 
   current_time <- now() %>% as_datetime()
@@ -117,7 +189,7 @@ while (current_time < end_time) {
      current_minute < 7 &
      trades_opened == 0
      # ( (current_hour) == 0)
-     ) {
+  ) {
 
     gc()
     Sys.sleep(2)
@@ -423,19 +495,25 @@ while (current_time < end_time) {
     estimated_running_profit <-
       positions_tagged_as_part_of_algo_raw %>%
       mutate(unrealizedPL = as.numeric(unrealizedPL)) %>%
-      group_by(Asset) %>%
       summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
-                EstimatedTotal_risk = risk_dollar_value*n()) %>%
-      filter(unrealizedPL > 3*EstimatedTotal_risk) %>%
-      pull(Asset)
+                EstimatedTotal_risk = risk_dollar_value*n())
 
-    positions_tagged_as_part_of_algo <-
-      positions_tagged_as_part_of_algo_raw %>%
-      filter(
-        (flagged_for_close  == TRUE| time_in_process >= periods_ahead | time_in_process >= 48|
-           Asset %in% estimated_running_profit) &
+    if(estimated_running_profit$unrealizedPL[1] < 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      positions_tagged_as_part_of_algo <-
+        positions_tagged_as_part_of_algo_raw %>%
+        filter(
+          (flagged_for_close  == TRUE| time_in_process >= periods_ahead | time_in_process >= 48) &
+            id != "18487"
+        )
+    }
+
+    if(estimated_running_profit$unrealizedPL[1] >= 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      positions_tagged_as_part_of_algo <-
+        positions_tagged_as_part_of_algo_raw %>%
+        filter(
           id != "18487"
-      )
+        )
+    }
 
 
     if(dim(positions_tagged_as_part_of_algo)[1] > 0) {
