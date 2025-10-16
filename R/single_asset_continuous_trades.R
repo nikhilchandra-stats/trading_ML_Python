@@ -743,7 +743,7 @@ single_asset_Logit_run_and_save_models <-
 
     saveRDS(object = daily_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_daily_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_daily_indicator_model.RDS"))
 
     message("Passed Daily Model")
 
@@ -788,7 +788,7 @@ single_asset_Logit_run_and_save_models <-
 
     saveRDS(object = copula_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_copula_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_copula_indicator_model.RDS"))
 
     summary(copula_indicator_model)
     message("Passed Copula Model")
@@ -833,7 +833,7 @@ single_asset_Logit_run_and_save_models <-
 
     saveRDS(object = macro_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_macro_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_macro_indicator_model.RDS"))
 
     message("Passed Macro Model")
 
@@ -877,7 +877,7 @@ single_asset_Logit_run_and_save_models <-
 
     saveRDS(object = indexes_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_indexes_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_indexes_indicator_model.RDS"))
 
     message("Passed Indicator Model")
 
@@ -930,7 +930,7 @@ single_asset_Logit_run_and_save_models <-
 
     saveRDS(object = technical_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_technical_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_technical_indicator_model.RDS"))
 
     message("Passed Technical Model")
 
@@ -1033,7 +1033,7 @@ single_asset_Logit_run_and_save_models <-
 
     saveRDS(object = logit_combined_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_logit_combined_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_logit_combined_indicator_model.RDS"))
 
     message("Created Combined Model")
 
@@ -1232,7 +1232,7 @@ single_asset_Logit_run_local_models <-
       create_lm_formula(dependant = "bin_var=='win'",
                         independant = daily_vars_for_indicator)
     daily_indicator_model <-
-      readRDS(glue::glue("{save_path}/{Asset_of_interest}_daily_indicator_model.RDS"))
+      readRDS(glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_daily_indicator_model.RDS"))
     summary(daily_indicator_model)
 
     message("Passed Daily Model")
@@ -1248,6 +1248,9 @@ single_asset_Logit_run_local_models <-
           sd( ifelse(Date <= pre_train_date_end, daily_indicator_pred, NA), na.rm = T )
       )
     message("Passed Daily Prediction")
+
+    rm(daily_indicator_model)
+    gc()
 
 
     copula_for_join_model <-
@@ -1267,7 +1270,8 @@ single_asset_Logit_run_local_models <-
       create_lm_formula(dependant = "bin_var=='win'",
                         independant = copula_vars_for_indicator)
 
-    copula_indicator_model <- readRDS(glue::glue("{save_path}/{Asset_of_interest}_copula_indicator_model.RDS"))
+    copula_indicator_model <-
+      readRDS(glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_copula_indicator_model.RDS"))
 
     summary(copula_indicator_model)
     message("Passed Copula Model")
@@ -1283,6 +1287,9 @@ single_asset_Logit_run_local_models <-
           sd( ifelse(Date <= pre_train_date_end, copula_indicator_pred, NA), na.rm = T )
       )
     message("Passed Copula Prediction")
+
+    rm(copula_indicator_model)
+    gc()
 
     macro_for_join_model <-
       macro_for_join %>%
@@ -1300,7 +1307,7 @@ single_asset_Logit_run_local_models <-
       create_lm_formula(dependant = "bin_var=='win'",
                         independant = macro_vars_for_indicator)
     macro_indicator_model <-
-      readRDS(glue::glue("{save_path}/{Asset_of_interest}_macro_indicator_model.RDS"))
+      readRDS(glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_macro_indicator_model.RDS"))
 
     message("Passed Macro Model")
 
@@ -1315,6 +1322,9 @@ single_asset_Logit_run_local_models <-
           sd( ifelse(Date <= pre_train_date_end, macro_indicator_pred, NA), na.rm = T )
       )
     message("Passed Macro Pred")
+
+    rm(macro_indicator_model)
+    gc()
 
     indexes_for_join_model <-
       indexes_data_for_join %>%
@@ -1332,7 +1342,7 @@ single_asset_Logit_run_local_models <-
       create_lm_formula(dependant = "bin_var=='win'",
                         independant = indexes_vars_for_indicator)
     indexes_indicator_model <-
-      readRDS(glue::glue("{save_path}/{Asset_of_interest}_indexes_indicator_model.RDS"))
+      readRDS(glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_indexes_indicator_model.RDS"))
 
     message("Passed Indicator Model")
 
@@ -1348,6 +1358,8 @@ single_asset_Logit_run_local_models <-
       )
 
     message("Passed Indicator Pred")
+    rm(indexes_indicator_model)
+    gc()
 
     technical_asset_data <- asset_data %>% filter(Asset == Asset_of_interest)
     technical_data <-
@@ -1372,7 +1384,7 @@ single_asset_Logit_run_local_models <-
                         independant = technical_vars_for_indicator)
 
     technical_indicator_model <-
-      readRDS(glue::glue("{save_path}/{Asset_of_interest}_technical_indicator_model.RDS"))
+      readRDS(glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_technical_indicator_model.RDS"))
 
     message("Passed Technical Model")
 
@@ -1390,31 +1402,46 @@ single_asset_Logit_run_local_models <-
       )
 
     message("Passed Technical Pred")
+    rm(technical_indicator_model)
+    gc()
 
 
     combined_indicator_NN <-
       macro_indicator_pred %>%
-      dplyr::select(Date, Asset, bin_var,
+      mutate(Asset = Asset_of_interest) %>%
+      mutate(Date = as_datetime(Date)) %>%
+      dplyr::select(Date, Asset,
                     contains("pred") ,
                     contains("PC1"), contains("Sentiment")  ) %>%
       distinct() %>%
       left_join(
         indexes_indicator_pred %>%
+          mutate(Asset = Asset_of_interest) %>%
+          mutate(Date = as_datetime(Date)) %>%
           dplyr::select(Date, Asset,
                         contains("pred"),
                         contains("PC1")  ) %>%
           distinct()
       ) %>%
       left_join(copula_indicator_pred %>%
+                  mutate(Asset = Asset_of_interest) %>%
+                  mutate(Date = as_datetime(Date)) %>%
                   dplyr::select(Date, Asset,
                                 contains("pred"),
                                 contains("cor"),
                                 contains("lm")  ) %>%
                   distinct()) %>%
       left_join(
-        technical_indicator_pred %>% dplyr::select(-bin_var)
+        technical_indicator_pred %>%
+          mutate(Asset = Asset_of_interest) %>%
+          mutate(Date = as_datetime(Date)) %>%
+          distinct()
       ) %>%
-      left_join(daily_indicator_pred %>% dplyr::select(-bin_var) %>% distinct()) %>%
+      left_join(daily_indicator_pred %>%
+                  mutate(Asset = Asset_of_interest) %>%
+                  mutate(Date = as_datetime(Date)) %>%
+                  distinct()
+                ) %>%
       janitor::clean_names() %>%
       filter(if_all(everything() ,~!is.na(.))) %>%
       mutate(
@@ -1466,7 +1493,7 @@ single_asset_Logit_run_local_models <-
     NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = NN_indcator_coefs)
 
     logit_combined_indicator_model <-
-      readRDS(glue::glue("{save_path}/{Asset_of_interest}_logit_combined_indicator_model.RDS"))
+      readRDS(glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_logit_combined_indicator_model.RDS"))
 
     message("Created Combined Model")
 
@@ -1493,13 +1520,30 @@ single_asset_Logit_run_local_models <-
 
       ) %>%
       dplyr::select(Date, Asset, contains("pred")) %>%
-      filter(Date >= test_date_start)
+      slice_max(Date)
+
+    rm(logit_combined_indicator_model)
+    gc()
 
     return(logit_combined_pred)
 
   }
 
 
+#' single_asset_model_loop_and_trade
+#'
+#' @param Indices_Metals_Bonds
+#' @param All_Daily_Data
+#' @param pre_train_date_end
+#' @param post_train_date_start
+#' @param test_date_start
+#' @param test_end_date
+#' @param raw_macro_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
 single_asset_model_loop_and_trade <-
   function(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
@@ -1509,7 +1553,12 @@ single_asset_model_loop_and_trade <-
     post_train_date_start = today() - months(12),
     test_date_start = today() - week(1),
     test_end_date = today() + week(1),
-    raw_macro_data = raw_macro_data
+    raw_macro_data = raw_macro_data,
+    stop_value_var = 1.5,
+    profit_value_var = 15,
+    period_var = 48,
+    start_index = 1,
+    end_index = 20
   ) {
 
     #-------------Indicator Inputs
@@ -1558,17 +1607,17 @@ single_asset_model_loop_and_trade <-
                 "AUD_USD", #7
                 "EUR_GBP", #8
                 "AU200_AUD" ,#9
-                "EUR_AUD", #10
+                "GBP_AUD", #10
                 "WTICO_USD", #11
                 "UK100_GBP", #12
-                "USD_CAD", #12
-                "GBP_USD", #13
-                "GBP_CAD", #14
-                "EUR_JPY", #15
-                "EUR_AUD", #16
-                "EUR_NZD", #17
-                "XAG_USD", #18
-                "XAG_EUR" #19
+                "USD_CAD", #13
+                "GBP_USD", #14
+                "GBP_CAD", #15
+                "EUR_JPY", #16
+                "EUR_AUD", #17
+                "EUR_NZD", #18
+                "XAG_USD", #19
+                "XAG_EUR" #20
       ),
       couplua_assets =
         list( c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP"), #1
@@ -1579,18 +1628,18 @@ single_asset_model_loop_and_trade <-
               c("EUR_JPY", "XAU_JPY", "XAG_JPY", "GBP_JPY", "XAU_USD", "SPX500_USD"), #6
               c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #7
               c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_GBP", "GBP_JPY", "EUR_JPY"), #8
-              c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #9
-              c("EUR_USD", "EUR_GBP", "XAU_AUD", "GBP_AUD", "XAU_AUD", "AUD_USD", "XAU_EUR"), #10
+              c("XCU_USD", "SPX500_USD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #9
+              c("EUR_USD", "EUR_GBP", "XAU_AUD", "EUR_AUD", "XAU_AUD", "AUD_USD", "XAU_EUR"), #10
               c("NATGAS_USD", "XAG_USD", "BCO_USD", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "UK100_GBP"), #11
               c("GBP_USD", "XAG_GBP", "EU50_EUR", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "XAU_GBP"), #12
-              c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #12
-              c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #13
-              c("GBP_JPY", "GBP_USD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
-              c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #15
-              c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #16
-              c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #17
-              c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #18
-              c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD") #19
+              c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #13
+              c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
+              c("GBP_JPY", "GBP_USD", "GBP_AUD", "USD_CAD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #15
+              c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #16
+              c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #17
+              c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #18
+              c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #19
+              c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD") #20
 
         ),
       countries_for_int_strength =
@@ -1613,7 +1662,8 @@ single_asset_model_loop_and_trade <-
           c("GBP", "USD", "EUR", "AUD"), #16
           c("GBP", "USD", "EUR", "AUD", "NZD"), #17
           c("GBP", "USD", "EUR", "AUD", "JPY"), #18
-          c("GBP", "USD", "EUR", "AUD", "JPY") #19
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #19
+          c("GBP", "USD", "EUR", "AUD", "JPY") #20
         )
     )
 
@@ -1621,15 +1671,17 @@ single_asset_model_loop_and_trade <-
       safely(single_asset_Logit_run_local_models, otherwise = NULL)
 
     accumulator <- list()
+    gc()
 
-    for (j in 1:length(indicator_mapping$Asset) ) {
+    for (j in start_index:end_index ) {
 
+      tictoc::tic()
       countries_for_int_strength <-
         unlist(indicator_mapping$countries_for_int_strength[j])
       couplua_assets = unlist(indicator_mapping$couplua_assets[j])
       Asset_of_interest = unlist(indicator_mapping$Asset[j])
 
-      accumulator[[j]] <-
+      longs <-
         safely_find_preds(
           asset_data = Indices_Metals_Bonds,
           All_Daily_Data = All_Daily_Data,
@@ -1641,26 +1693,78 @@ single_asset_model_loop_and_trade <-
           interest_rates = interest_rates,
           cpi_data = cpi_data,
           sentiment_index = sentiment_index,
-          countries_for_int_strength = c("EUR", "USD"),
-          couplua_assets = c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP"),
-          pre_train_date_end = "2023-01-01",
-          post_train_date_start = "2023-02-01",
-          test_date_start = "2025-01-01",
+          countries_for_int_strength = countries_for_int_strength,
+          couplua_assets = couplua_assets,
+          pre_train_date_end = pre_train_date_end,
+          post_train_date_start = post_train_date_start,
+          test_date_start = test_date_start,
           neuron_adjustment = 1.1,
           hidden_layers_var= 2,
           ending_thresh = 0.02,
           trade_direction = "Long",
-          stop_value_var = 1.5,
-          profit_value_var = 15,
-          period_var = 48,
+          stop_value_var = stop_value_var,
+          profit_value_var = profit_value_var,
+          period_var = period_var,
           save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/") %>%
-        pluck('result')
+        pluck('result') %>%
+        mutate(
+          trade_col = "Long"
+        )
+
+      shorts <-
+        safely_find_preds(
+          asset_data = Indices_Metals_Bonds,
+          All_Daily_Data = All_Daily_Data,
+          Asset_of_interest = Asset_of_interest,
+          equity_index = equity_index,
+          gold_index = gold_index,
+          silver_index = silver_index,
+          bonds_index = bonds_index,
+          interest_rates = interest_rates,
+          cpi_data = cpi_data,
+          sentiment_index = sentiment_index,
+          countries_for_int_strength = countries_for_int_strength,
+          couplua_assets = couplua_assets,
+          pre_train_date_end = pre_train_date_end,
+          post_train_date_start = post_train_date_start,
+          test_date_start = test_date_start,
+          neuron_adjustment = 1.1,
+          hidden_layers_var= 2,
+          ending_thresh = 0.02,
+          trade_direction = "Short",
+          stop_value_var = stop_value_var,
+          profit_value_var = profit_value_var,
+          period_var = period_var,
+          save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/") %>%
+        pluck('result') %>%
+        mutate(
+          trade_col = "Short"
+        )
+
+      accumulator[[j]] <-
+        list(longs, shorts) %>%
+        map_dfr(bind_rows)
+
+      rm(longs, shorts)
+      gc()
+      Sys.sleep(1)
+      gc()
+
+      tictoc::toc()
 
     }
 
     accumulator_dfr <-
       accumulator %>%
       map_dfr(bind_rows) %>%
-      slice_max(Date)
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      mutate(
+        periods_ahead = period_var,
+        stop_factor = stop_value_var,
+        profit_factor = profit_value_var
+      )
+
+    return(accumulator_dfr)
 
   }

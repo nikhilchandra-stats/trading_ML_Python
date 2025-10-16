@@ -2786,14 +2786,14 @@ get_all_commod_USD <- function(
 get_equity_index <-
   function(index_data) {
     major_indices_log_cumulative <-
-      c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR", "SG30_SGD",
+      c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR", "SG30_SGD",
         "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD") %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+              filter(Asset %in% c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR",
                                   "SG30_SGD", "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD")),
             asset_to_use = c(.x[1]),
             price_col = "Open",
@@ -2802,7 +2802,7 @@ get_equity_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+          filter(Asset %in% c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR",
                               "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD")) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
@@ -2816,7 +2816,7 @@ get_equity_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  c("SPX500_USD", "US2000_USD", "NAS100_USD", "AU200_AUD", "EU50_EUR", "DE30_EUR",
+        asset_to_use =  c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR",
                           "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE

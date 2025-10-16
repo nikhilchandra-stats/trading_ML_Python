@@ -7590,7 +7590,7 @@ get_DAILY_ALGO_DATA_API_REQUEST <-
                         "BTC_USD", "LTC_USD", "BCH_USD",
                         "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
                         "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
-                        "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP"))
+                        "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP", "GBP_CAD"))
       )
 
     asset_infor <- get_instrument_info()

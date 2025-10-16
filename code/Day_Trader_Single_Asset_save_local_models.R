@@ -105,25 +105,16 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
   time_frame = "H1"
 )
 
-missing_assets <- get_Port_Buy_Data_remaining_assets(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1"
-)
-
-Indices_Metals_Bonds[[1]] <-
-  Indices_Metals_Bonds[[1]] %>%
-  bind_rows(missing_assets[[1]] %>%
-              filter(Asset != "XAG_AUD"))
-
-Indices_Metals_Bonds[[2]] <-
-  Indices_Metals_Bonds[[2]] %>%
-  bind_rows(missing_assets[[2]] %>%
-              filter(Asset != "XAG_AUD"))
-
+Indices_Metals_Bonds[[2]] <- NULL
+gc()
 rm(missing_assets)
 gc()
+
+asset_list_oanda <-
+  Indices_Metals_Bonds %>%
+  distinct(Asset) %>%
+  pull(Asset) %>%
+  as.character()
 
 #-------------Indicator Inputs
 
@@ -171,17 +162,17 @@ indicator_mapping <- list(
             "AUD_USD", #7
             "EUR_GBP", #8
             "AU200_AUD" ,#9
-            "EUR_AUD", #10
+            "GBP_AUD", #10
             "WTICO_USD", #11
             "UK100_GBP", #12
-            "USD_CAD", #12
-            "GBP_USD", #13
-            "GBP_CAD", #14
-            "EUR_JPY", #15
-            "EUR_AUD", #16
-            "EUR_NZD", #17
-            "XAG_USD", #18
-            "XAG_EUR" #19
+            "USD_CAD", #13
+            "GBP_USD", #14
+            "GBP_CAD", #15
+            "EUR_JPY", #16
+            "EUR_AUD", #17
+            "EUR_NZD", #18
+            "XAG_USD", #19
+            "XAG_EUR" #20
   ),
   couplua_assets =
     list( c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP"), #1
@@ -192,18 +183,18 @@ indicator_mapping <- list(
           c("EUR_JPY", "XAU_JPY", "XAG_JPY", "GBP_JPY", "XAU_USD", "SPX500_USD"), #6
           c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #7
           c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_GBP", "GBP_JPY", "EUR_JPY"), #8
-          c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #9
-          c("EUR_USD", "EUR_GBP", "XAU_AUD", "GBP_AUD", "XAU_AUD", "AUD_USD", "XAU_EUR"), #10
+          c("XCU_USD", "SPX500_USD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #9
+          c("EUR_USD", "EUR_GBP", "XAU_AUD", "EUR_AUD", "XAU_AUD", "AUD_USD", "XAU_EUR"), #10
           c("NATGAS_USD", "XAG_USD", "BCO_USD", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "UK100_GBP"), #11
           c("GBP_USD", "XAG_GBP", "EU50_EUR", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "XAU_GBP"), #12
-          c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #12
-          c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #13
-          c("GBP_JPY", "GBP_USD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
-          c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #15
-          c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #16
-          c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #17
-          c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #18
-          c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD") #19
+          c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #13
+          c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
+          c("GBP_JPY", "GBP_USD", "GBP_AUD", "USD_CAD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #15
+          c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #16
+          c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #17
+          c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #18
+          c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #19
+          c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD") #20
 
     ),
   countries_for_int_strength =
@@ -226,16 +217,17 @@ indicator_mapping <- list(
       c("GBP", "USD", "EUR", "AUD"), #16
       c("GBP", "USD", "EUR", "AUD", "NZD"), #17
       c("GBP", "USD", "EUR", "AUD", "JPY"), #18
-      c("GBP", "USD", "EUR", "AUD", "JPY") #19
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #19
+      c("GBP", "USD", "EUR", "AUD", "JPY") #20
     )
 )
 
-for (j in 1:length(indicator_mapping$Asset) ) {
+pre_train_date_end = today() - months(12)
+post_train_date_start = today() - months(12)
+test_date_start = today() - weeks(1)
+test_end_date = today() + weeks(1)
 
-  pre_train_date_end = as_date("2024-01-01")
-  post_train_date_start = as_date("2024-01-01")
-  test_date_start = today()
-  test_end_date = today()
+for (j in 15:length(indicator_mapping$Asset) ) {
 
   countries_for_int_strength <-
     unlist(indicator_mapping$countries_for_int_strength[j])

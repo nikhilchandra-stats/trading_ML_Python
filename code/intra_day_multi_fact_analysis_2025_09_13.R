@@ -84,7 +84,42 @@ asset_list_oanda =
     "US2000_USD",
     "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
     "JP225_USD", "SPX500_USD",
-    "UK10YB_GBP") %>%
+    "UK10YB_GBP",
+    "HK33_HKD", "USD_JPY",
+        "BTC_USD",
+        "AUD_NZD", "GBP_CHF",
+        "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
+        "USB02Y_USD",
+        "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
+        "DE30_EUR",
+        "AUD_CAD", "NZD_USD", "ETH_USD","BCO_USD", "AUD_USD",
+        "UK10YB_GBP",
+        "XPD_USD",
+        "UK100_GBP",
+        "USD_CHF", "GBP_NZD",
+        "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
+        "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+        "XAU_USD",
+        "DE10YB_EUR",
+        "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+        "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
+        "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+        "USB10Y_USD",
+        "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
+        "CH20_CHF", "ESPIX_EUR",
+        "XPT_USD",
+        "EUR_AUD", "SOYBN_USD",
+        "US2000_USD",
+        "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
+        "XAG_NZD",
+        "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
+        "XAU_NZD",
+        "BTC_USD", "LTC_USD", "BCH_USD",
+        "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
+        "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
+        "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
+        "GBP_CAD"
+    ) %>%
   unique()
 
 end_time <- glue::glue("{floor_date(now(), 'week')} 23:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(5)
@@ -154,7 +189,7 @@ starting_asset_data_ask_daily <-
 starting_asset_data_ask_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2016-06-01",
+    start_date = "2020-06-01",
     end_date = end_date_day,
     bid_or_ask = "ask",
     time_frame = "H1"
@@ -184,7 +219,7 @@ starting_asset_data_bid_daily <-
 starting_asset_data_bid_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2016-06-01",
+    start_date = "2020-06-01",
     end_date = end_date_day,
     bid_or_ask = "bid",
     time_frame = "H1"
@@ -257,7 +292,7 @@ all_trade_ts_actuals_Logit <-
 rm(all_trade_ts_actuals_Logit1, all_trade_ts_actuals_Logit2)
 
 all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
-  filter(dates >= "2016-06-01")
+  filter(dates >= "2020-06-01")
 
 gc()
 

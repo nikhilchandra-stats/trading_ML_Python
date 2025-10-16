@@ -142,7 +142,7 @@ while (current_time < end_time) {
         read_csv_or_API = "API",
         time_frame = "H1",
         bid_or_ask = "ask",
-        how_far_back = 60,
+        how_far_back = 500,
         start_date = as.character(current_date - days(4))
       )%>%
       map_dfr(bind_rows) %>%
@@ -157,7 +157,7 @@ while (current_time < end_time) {
         read_csv_or_API = "API",
         time_frame = "H1",
         bid_or_ask = "bid",
-        how_far_back = 60,
+        how_far_back = 500,
         start_date = as.character(current_date - days(4))
       ) %>%
       map_dfr(bind_rows) %>%
@@ -173,7 +173,8 @@ while (current_time < end_time) {
         current_prices_ask %>%
           dplyr::select(-Vol.) %>%
           mutate(trade_col = "Long") %>%
-          slice_max(Date)
+          slice_max(Date) %>%
+          ungroup()
       )
 
     total_trades_macro_only_port_stops_short <-
@@ -184,7 +185,8 @@ while (current_time < end_time) {
         current_prices_bid %>%
           dplyr::select(-Vol.) %>%
           mutate(trade_col = "Short") %>%
-          slice_max(Date)
+          slice_max(Date) %>%
+          ungroup()
       )
 
     total_trades_macro_only_port_stops <-
@@ -426,7 +428,7 @@ while (current_time < end_time) {
       group_by(Asset) %>%
       summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                 EstimatedTotal_risk = risk_dollar_value*n()) %>%
-      filter(unrealizedPL > 3*EstimatedTotal_risk) %>%
+      filter(unrealizedPL > 4*EstimatedTotal_risk) %>%
       pull(Asset)
 
     positions_tagged_as_part_of_algo <-
