@@ -161,7 +161,7 @@ while(current_time < end_time) {
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 10
+      how_far_back = 12
     )
 
     update_local_db_file(
@@ -169,7 +169,7 @@ while(current_time < end_time) {
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 10
+      how_far_back = 12
     )
 
     data_updated <- 1
@@ -312,7 +312,7 @@ while(current_time < end_time) {
             Asset %in% c("US2000_USD", "AU200_AUD") &  units >= 5/1.5 ~ "Remove" ,
             Asset %in% c("XAG_USD", "XAG_EUR", "XAG_JPY", "XAG_AUD", "XAG_NZD", "XAG_GBP") &  units >= 200/1.5 ~ "Remove",
             Asset %in% c("USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD") &  units >= 114 ~ "Remove",
-            Asset %in% c("XAU_USD", "XAU_EUR", "XAU_JPY", "XAU_AUD", "XAU_NZD", "XAU_GBP") &  units >= 0.9 ~ "Remove",
+            Asset %in% c("XAU_USD", "XAU_EUR", "XAU_JPY", "XAU_AUD", "XAU_NZD", "XAU_GBP") &  units >= 0 ~ "Remove",
             TRUE ~ "Keep"
           )
       ) %>%
@@ -365,8 +365,7 @@ while(current_time < end_time) {
               TRUE ~ syms_to_remove
             )
         ) %>%
-        dplyr::filter(syms_to_remove == "Keep") %>%
-        # dplyr::filter(!stringr::str_detect(Asset, "XAU_")) %>%
+        dplyr::filter(syms_to_remove == "Keep" & !stringr::str_detect(Asset, "XAU_")) %>%
         dplyr::select(-syms_to_remove)
 
       if(dim(total_trades)[1] < 1) {

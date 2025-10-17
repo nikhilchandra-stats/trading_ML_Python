@@ -174,7 +174,7 @@ while(current_time < end_time) {
       time_frame = "M15",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 4
+      how_far_back = 7
     )
 
     update_local_db_file(
@@ -182,7 +182,7 @@ while(current_time < end_time) {
       time_frame = "M15",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 4
+      how_far_back = 7
     )
 
     data_updated <- 1

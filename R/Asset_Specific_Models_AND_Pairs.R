@@ -9915,7 +9915,8 @@ create_LM_Hourly_Portfolio_Buy <-
              perc_line_10_mean_200 = perc_line_10_mean,
              perc_line_10_sd_200 = perc_line_10_sd,
              perc_line_1_to_10_mean_200 = perc_line_1_to_10_mean,
-             perc_line_1_to_10_sd_200 = perc_line_1_to_10_sd)
+             perc_line_1_to_10_sd_200 = perc_line_1_to_10_sd) %>%
+      ungroup() %>%
       find_pivots_fib_max_min(how_far_back = 100) %>%
       ungroup() %>%
       rename(line_1_100 = line_1,
