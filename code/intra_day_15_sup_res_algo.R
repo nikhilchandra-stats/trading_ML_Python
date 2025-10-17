@@ -136,6 +136,7 @@ new_15_data_ask <-
                         db_location = db_location)%>%
   distinct()
 
+gc()
 
 while(current_time < end_time) {
 
@@ -154,7 +155,7 @@ while(current_time < end_time) {
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 5
+      how_far_back = 7
     )
 
     update_local_db_file(
@@ -162,7 +163,7 @@ while(current_time < end_time) {
       time_frame = "M15",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 5
+      how_far_back = 7
     )
 
     new_H1_data_ask <-
@@ -249,7 +250,7 @@ while(current_time < end_time) {
               mean_values_by_asset = mean_values_by_asset_for_loop_15_ask,
               trade_col = "trade_col",
               currency_conversion = currency_conversion,
-              risk_dollar_value = 10,
+              risk_dollar_value = 5,
               stop_factor = .x$stop_factor[1] %>% as.numeric(),
               profit_factor = .x$profit_factor[1] %>% as.numeric(),
               asset_col = "Asset",
