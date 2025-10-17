@@ -189,7 +189,7 @@ starting_asset_data_ask_daily <-
 starting_asset_data_ask_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2020-06-01",
+    start_date = "2021-01-01",
     end_date = end_date_day,
     bid_or_ask = "ask",
     time_frame = "H1"
@@ -219,7 +219,7 @@ starting_asset_data_bid_daily <-
 starting_asset_data_bid_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2020-06-01",
+    start_date = "2021-01-01",
     end_date = end_date_day,
     bid_or_ask = "bid",
     time_frame = "H1"
@@ -292,7 +292,7 @@ all_trade_ts_actuals_Logit <-
 rm(all_trade_ts_actuals_Logit1, all_trade_ts_actuals_Logit2)
 
 all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
-  filter(dates >= "2020-06-01")
+  filter(dates >= "2021-01-01")
 
 gc()
 
@@ -963,7 +963,7 @@ while (current_time < end_time) {
       outperformance_count_min = 0.5,
       risk_weighted_return_mid_min =  0.05,
       sim_table = "Indices_Silver_Logit_sims",
-      combined_filter_n = 3
+      combined_filter_n = 1
     )
 
     Indices_Silver_LOGIT_short <- get_Logit_trades(
@@ -977,7 +977,7 @@ while (current_time < end_time) {
       outperformance_count_min = 0.5,
       risk_weighted_return_mid_min =  0.08,
       sim_table = "Indices_Silver_Logit_sims",
-      combined_filter_n = 5
+      combined_filter_n = 1
     )
 
     rm(copula_data_Indices_Silver)
@@ -1018,7 +1018,7 @@ while (current_time < end_time) {
       outperformance_count_min = 0.55,
       risk_weighted_return_mid_min =  0.12,
       sim_table = "AUD_USD_NZD_XCU_NN_sims",
-      combined_filter_n = 4
+      combined_filter_n = 1
     )
 
     AUD_USD_NZD_LOGIT_trades_short<-
@@ -1033,7 +1033,7 @@ while (current_time < end_time) {
         outperformance_count_min = 0.51,
         risk_weighted_return_mid_min =  0.09,
         sim_table = "AUD_USD_NZD_XCU_NN_sims",
-        combined_filter_n = 4
+        combined_filter_n = 1
       )
 
     rm(copula_data_AUD_USD_NZD)
@@ -1071,7 +1071,7 @@ while (current_time < end_time) {
         outperformance_count_min = 0.51,
         risk_weighted_return_mid_min =  0.1,
         sim_table = "EUR_GBP_JPY_USD_XCU_NN_sims",
-        combined_filter_n = 4
+        combined_filter_n = 1
       )
 
     EUR_GBP_JPY_LOGIT_short<-
@@ -1086,7 +1086,7 @@ while (current_time < end_time) {
         outperformance_count_min = 0.51,
         risk_weighted_return_mid_min =  0.1,
         sim_table = "EUR_GBP_JPY_USD_XCU_NN_sims",
-        combined_filter_n = 4
+        combined_filter_n = 1
       )
 
     rm(copula_data_EUR_GBP_JPY_USD)

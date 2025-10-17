@@ -1405,6 +1405,9 @@ single_asset_Logit_run_local_models <-
     rm(technical_indicator_model)
     gc()
 
+    # max_dates_macro <- macro_indicator_pred %>% ungroup() %>% slice_max(Date) %>% pull(Date)
+    # max_dates_index <- indexes_indicator_pred %>% ungroup() %>% slice_max(Date) %>% pull(Date)
+    # max_dates_copula <- copula_indicator_pred %>% ungroup() %>% slice_max(Date) %>% pull(Date)
 
     combined_indicator_NN <-
       macro_indicator_pred %>%
@@ -1431,6 +1434,7 @@ single_asset_Logit_run_local_models <-
                                 contains("cor"),
                                 contains("lm")  ) %>%
                   distinct()) %>%
+      fill(contains("pred")|contains("cor")|contains("lm")|contains("copula_pred"), .direction = "down") %>%
       left_join(
         technical_indicator_pred %>%
           mutate(Asset = Asset_of_interest) %>%
@@ -1442,6 +1446,7 @@ single_asset_Logit_run_local_models <-
                   mutate(Date = as_datetime(Date)) %>%
                   distinct()
                 ) %>%
+      fill(contains("daily_indicator_pred")|contains("Daily_")|contains("daily_"), .direction = "down") %>%
       janitor::clean_names() %>%
       filter(if_all(everything() ,~!is.na(.))) %>%
       mutate(
@@ -1763,7 +1768,8 @@ single_asset_model_loop_and_trade <-
         periods_ahead = period_var,
         stop_factor = stop_value_var,
         profit_factor = profit_value_var
-      )
+      ) %>%
+      ungroup()
 
     return(accumulator_dfr)
 
