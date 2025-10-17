@@ -1,17 +1,38 @@
 trade_results_upload <- function(position_date_min = "2025-05-01",
                            assets_to_analyse =
-                             c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
+                             c("HK33_HKD", "USD_JPY",
+                               "BTC_USD",
+                               "AUD_NZD", "GBP_CHF",
+                               "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
+                               "USB02Y_USD",
+                               "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
                                "DE30_EUR",
-                               "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
-                               "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+                               "AUD_CAD",
+                               "UK10YB_GBP",
+                               "XPD_USD",
+                               "UK100_GBP",
+                               "USD_CHF", "GBP_NZD",
+                               "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
+                               "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
                                "XAU_USD",
-                               "USD_CZK",  "WHEAT_USD",
-                               "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
-                               "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
-                               "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
+                               "DE10YB_EUR",
+                               "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+                               "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
+                               "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+                               "USB10Y_USD",
+                               "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
+                               "CH20_CHF", "ESPIX_EUR",
+                               "XPT_USD",
+                               "EUR_AUD", "SOYBN_USD",
                                "US2000_USD",
-                               "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
-                               "JP225_USD", "SPX500_USD"),
+                               "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
+                               "XAG_NZD",
+                               "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
+                               "XAU_NZD",
+                               "BTC_USD", "LTC_USD", "BCH_USD",
+                               "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
+                               "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
+                               "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP"),
                            db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_results.db"
                            ) {
 
@@ -145,7 +166,7 @@ analyse_trade_results <- function(
   title_var <-
     glue::glue("Trade Performance Over Time: Total % Return: {percent_return_string}")
   subtitle_var <-
-    glue::glue("Total Deposits: {total_deposits_string}, Returns - {total_return_string}, Daily Income:{daily_income_string}")
+    glue::glue("Total Deposits: {total_deposits_string},        Returns: {total_return_string},          Daily Income:{daily_income_string}")
 
   p1 <- total_by_date %>%
     ggplot(aes(x = date_closed, y = cumulative_returns)) +

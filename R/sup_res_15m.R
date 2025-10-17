@@ -556,3 +556,221 @@ get_sup_res_trades_to_take <- function(db_path = glue::glue("C:/Users/Nikhil Cha
 
 }
 
+
+#' create_technical_indicators
+#'
+#' @param asset_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_technical_indicators <-
+  function(asset_data = asset_data %>% filter(Asset == "EUR_USD")) {
+
+    returned <-
+      asset_data %>%
+      dplyr::select(Date,Asset, Price, High, Low, Open ) %>%
+      find_pivots_fib_max_min(how_far_back = 200) %>%
+      rename(line_1_200 = line_1,
+             line_10_200 = line_10,
+             line_1_max_200 = line_1_max,
+             line_10_max_200 = line_10_max,
+             perc_line_1_200 = perc_line_1,
+             perc_line_10_200 = perc_line_10,
+             perc_line_1_to_10_200 = perc_line_1_to_10,
+             perc_line_1_mean_200 = perc_line_1_mean,
+             perc_line_1_sd_200 = perc_line_1_sd,
+             perc_line_10_mean_200 = perc_line_10_mean,
+             perc_line_10_sd_200 = perc_line_10_sd,
+             perc_line_1_to_10_mean_200 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_200 = perc_line_1_to_10_sd) %>%
+
+      find_pivots_fib_max_min(how_far_back = 100) %>%
+      rename(line_1_100 = line_1,
+             line_10_100 = line_10,
+             line_1_max_100 = line_1_max,
+             line_10_max_100 = line_10_max,
+             perc_line_1_100 = perc_line_1,
+             perc_line_10_100 = perc_line_10,
+             perc_line_1_to_10_100 = perc_line_1_to_10,
+             perc_line_1_mean_100 = perc_line_1_mean,
+             perc_line_1_sd_100 = perc_line_1_sd,
+             perc_line_10_mean_100 = perc_line_10_mean,
+             perc_line_10_sd_100 = perc_line_10_sd,
+             perc_line_1_to_10_mean_100 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_100 = perc_line_1_to_10_sd) %>%
+      find_pivots_fib_max_min(how_far_back = 50)%>%
+      rename(line_1_50 = line_1,
+             line_10_50 = line_10,
+             line_1_max_50 = line_1_max,
+             line_10_max_50 = line_10_max,
+             perc_line_1_50 = perc_line_1,
+             perc_line_10_50 = perc_line_10,
+             perc_line_1_to_10_50 = perc_line_1_to_10,
+             perc_line_1_mean_50 = perc_line_1_mean,
+             perc_line_1_sd_50 = perc_line_1_sd,
+             perc_line_10_mean_50 = perc_line_10_mean,
+             perc_line_10_sd_50 = perc_line_10_sd,
+             perc_line_1_to_10_mean_50 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_50 = perc_line_1_to_10_sd)%>%
+      find_pivots_fib_max_min(how_far_back = 10)%>%
+      rename(line_1_10 = line_1,
+             line_10_10 = line_10,
+             line_1_max_10 = line_1_max,
+             line_10_max_10 = line_10_max,
+             perc_line_1_10 = perc_line_1,
+             perc_line_10_10 = perc_line_10,
+             perc_line_1_to_10_10 = perc_line_1_to_10,
+             perc_line_1_mean_10 = perc_line_1_mean,
+             perc_line_1_sd_10 = perc_line_1_sd,
+             perc_line_10_mean_10 = perc_line_10_mean,
+             perc_line_10_sd_10 = perc_line_10_sd,
+             perc_line_1_to_10_mean_10 = perc_line_1_to_10_mean,
+             perc_line_1_to_10_sd_10 = perc_line_1_to_10_sd)
+
+    gc()
+    Sys.sleep(2)
+
+    returned <-
+      returned %>%
+      mutate(
+        temp_high_to_low = High - Low,
+        temp_high_to_price = High - Price,
+        temp_price_to_low = Price - Low,
+        temp_price_to_open = abs(Price - Open)
+      ) %>%
+      group_by(Asset) %>%
+      mutate(
+        temp_high_to_low_mean = mean(temp_high_to_low, na.rm = T),
+        temp_high_to_price_mean = mean(temp_high_to_price, na.rm = T),
+        temp_price_to_low_mean = mean(temp_price_to_low, na.rm = T),
+        temp_price_to_open_mean = mean(temp_price_to_open, na.rm = T),
+
+        temp_high_to_low_sd = sd(temp_high_to_low, na.rm = T),
+        temp_high_to_price_sd = sd(temp_high_to_price, na.rm = T),
+        temp_price_to_low_sd = sd(temp_price_to_low, na.rm = T),
+        temp_price_to_open_sd = sd(temp_price_to_open, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(
+        High_Support =
+          ifelse(
+            temp_high_to_price/temp_high_to_low <= 0.15 &
+              Price > Open &
+              abs(temp_price_to_open/temp_high_to_low) <= 0.15,
+            1,
+            0
+          ),
+
+        High_Resistance =
+          ifelse(
+            temp_price_to_low/temp_high_to_low <= 0.15 &
+              Price < Open &
+              temp_price_to_open/temp_high_to_low <= 0.15,
+            1,
+            0
+          ),
+        High_Support2 =
+          ifelse(
+            temp_high_to_low >= temp_high_to_low_mean + temp_high_to_low_sd*1.5 &
+              temp_price_to_open <= temp_price_to_open_mean - temp_price_to_open_sd*1.5 &
+              Price > Open,
+            1,
+            0
+          ),
+        High_Resistance2 =
+          ifelse(
+            temp_high_to_low >= temp_high_to_low_mean + temp_high_to_low_sd*1.5 &
+              temp_price_to_open <= temp_price_to_open_mean - temp_price_to_open_sd*1.5 &
+              Price < Open,
+            1,
+            0
+          )
+      ) %>%
+      group_by(Asset) %>%
+      mutate(
+        Bull_3 =
+          ifelse(
+            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) ,
+            1,
+            0
+          ),
+
+        Bear_3 =
+          ifelse(
+            Price < Open & lag(Price) < lag(Open) & lag(Price,2) < lag(Open,2) ,
+            1,
+            0
+          ),
+
+        Bull_3 =
+          ifelse(
+            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) ,
+            1,
+            0
+          ),
+
+        Bull_3_strong =
+          ifelse(
+            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) &
+              temp_price_to_open > lag(temp_price_to_open) &
+              lag(temp_price_to_open) > lag(temp_price_to_open, 2),
+            1,
+            0
+          ),
+
+        Bear_3_strong =
+          ifelse(
+            Price < Open & lag(Price) < lag(Open) & lag(Price,2) < lag(Open,2) &
+              temp_price_to_open < lag(temp_price_to_open) &
+              lag(temp_price_to_open) < lag(temp_price_to_open, 2),
+            1,
+            0
+          )
+      ) %>%
+      dplyr::select(
+        -c(
+          temp_high_to_low_mean,
+          temp_high_to_price_mean,
+          temp_price_to_low_mean,
+          temp_price_to_open_mean,
+
+          temp_high_to_low_sd,
+          temp_high_to_price_sd,
+          temp_price_to_low_sd ,
+          temp_price_to_open_sd,
+
+          temp_high_to_low ,
+          temp_high_to_price,
+          temp_price_to_low ,
+          temp_price_to_open
+        )
+      )
+
+    returned %>%
+      filter(if_all(everything(),~!is.na(.))) %>%
+      pull(Date) %>% max()
+
+    markov_data <-
+      get_markov_cols_for_trading(
+        asset_data_combined = asset_data,
+        training_perc = 1,
+        sd_divides = seq(0.25,2.5,0.25),
+        rolling_period = 50,
+        markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
+        markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
+        sum_sd_cut_off = ""
+      ) %>%
+      pluck(1)
+
+    markov_data <- markov_data %>%
+      dplyr::select(Date, Asset, contains("Markov"))
+
+    final_tibble <-
+      returned %>%
+      left_join(markov_data)
+
+    return(final_tibble)
+
+  }

@@ -2375,6 +2375,11 @@ get_Indices_GLM_analysis <-
                                              .f = ~ mean(.x, na.rm = T),
                                              .before = 21)
       ) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(everything(), .direction = "down") %>%
+      ungroup() %>%
       filter(if_all(everything() ,.fns = ~ !is.na(.)))
 
     lm_quant_vars <- names(asset_filtered_data) %>% keep(~ str_detect(.x,"quantiles|tangent|cor"))
