@@ -230,7 +230,7 @@ while (current_time < end_time) {
                           end_date_day = now() + days(1),
                           time_frame = "H1",
                           bid_or_ask = "ask",
-                          db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db") %>%
+                          db_location = db_location) %>%
       distinct() %>%
       filter(Asset %in% asset_list_oanda_single_asset)
 
@@ -240,7 +240,7 @@ while (current_time < end_time) {
       end_date_day = now() + days(1),
       time_frame = "D",
       bid_or_ask = "ask",
-      db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db") %>%
+      db_location = db_location) %>%
       distinct() %>%
       filter(Asset %in% asset_list_oanda_single_asset)
 
@@ -360,7 +360,7 @@ while (current_time < end_time) {
           profit_value_var = 15,
           period_var = 48,
           start_index = 1,
-          end_index = 15
+          end_index = 10
         )
       tictoc::toc()
 
@@ -380,18 +380,42 @@ while (current_time < end_time) {
           stop_value_var = 2,
           profit_value_var = 15,
           period_var = 48,
-          start_index = 5,
+          start_index = 10,
           end_index = 20
         )
       tictoc::toc()
     }
 
+    asset_optimisation_store_path =
+      "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+
+    all_model_results <-
+      DBI::dbGetQuery(conn = asset_optimisation_store_db,
+                      statement = "SELECT * FROM single_asset_improved_asset_optimisation")
+    DBI::dbDisconnect(asset_optimisation_store_db)
+    gc()
+
+    best_results <-
+      all_model_results %>%
+      filter(pred_thresh != "control") %>%
+      group_by(Asset, trade_col) %>%
+      slice_max(Win_Perc_mean, n = 1) %>%
+      group_by(Asset, trade_col) %>%
+      slice_max(total_trades_mean, n = 1)
 
     single_asset_model_trades_filt <-
       single_asset_model_trades %>%
+      left_join(
+        best_results %>%
+          ungroup() %>%
+          dplyr::select(Asset, trade_col, pred_thresh) %>%
+          mutate(pred_thresh = as.numeric(pred_thresh))
+      ) %>%
       filter(
-        logit_combined_pred >= mean_logit_combined_pred + 0*sd_logit_combined_pred &
-          averaged_pred >= sd_averaged_pred*0 + mean_averaged_pred
+        (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+           averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
+          (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+             averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
       ) %>%
       dplyr::select(Date, Asset, trade_col, stop_factor, profit_factor, periods_ahead) %>%
       left_join(current_prices_ask %>% dplyr::select(Asset, Price, Open, High, Low)) %>%
