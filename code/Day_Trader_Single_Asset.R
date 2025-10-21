@@ -511,6 +511,12 @@ for (j in 1:length(pred_thresh)) {
 
 }
 
+asset_optimisation_store_path =
+  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+
+asset_optimisation_store_db <-
+  connect_db(asset_optimisation_store_path)
+
 all_model_results <-
   DBI::dbGetQuery(conn = asset_optimisation_store_db,
                   statement = "SELECT * FROM single_asset_improved_asset_optimisation")
@@ -520,8 +526,9 @@ gc()
 best_results <-
   all_model_results %>%
   filter(pred_thresh != "control") %>%
+  filter(lower > 0) %>%
   group_by(Asset, trade_col) %>%
-  slice_max(Win_Perc_mean, n = 1) %>%
+  slice_max(Win_Perc_mean, n = 10) %>%
   group_by(Asset, trade_col) %>%
   slice_max(total_trades_mean, n = 1)
 
