@@ -167,7 +167,7 @@ mean_values_by_asset_for_loop_H1_ask <-
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
 trades_closed <- 0
-risk_dollar_value = 4
+risk_dollar_value = 7
 
 gc()
 load_custom_functions()
