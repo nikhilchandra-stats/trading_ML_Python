@@ -346,7 +346,7 @@ while (current_time < end_time) {
 
     #-----------Single Asset Model
 
-    if((current_hour) %% 2 == 0) {
+    if( current_hour %in% seq(1,24,3) ) {
       tictoc::tic()
       single_asset_model_trades <-
         single_asset_model_loop_and_trade(
@@ -359,7 +359,7 @@ while (current_time < end_time) {
           raw_macro_data = raw_macro_data,
           stop_value_var = 2,
           profit_value_var = 15,
-          period_var = 48,
+          period_var = 24,
           start_index = 1,
           end_index = 10
         )
@@ -367,7 +367,7 @@ while (current_time < end_time) {
 
     }
 
-    if((current_hour) %% 2 != 0) {
+    if(current_hour %in% seq(2,24,3)) {
       tictoc::tic()
       single_asset_model_trades <-
         single_asset_model_loop_and_trade(
@@ -380,9 +380,29 @@ while (current_time < end_time) {
           raw_macro_data = raw_macro_data,
           stop_value_var = 2,
           profit_value_var = 15,
-          period_var = 48,
+          period_var = 24,
           start_index = 10,
           end_index = 20
+        )
+      tictoc::toc()
+    }
+
+    if(current_hour %in% seq(3,24,3)) {
+      tictoc::tic()
+      single_asset_model_trades <-
+        single_asset_model_loop_and_trade(
+          Indices_Metals_Bonds = Indices_Metals_Bonds,
+          All_Daily_Data = All_Daily_Data,
+          pre_train_date_end = today() - months(12),
+          post_train_date_start = today() - months(12),
+          test_date_start = today() - weeks(1),
+          test_end_date = today() + weeks(1),
+          raw_macro_data = raw_macro_data,
+          stop_value_var = 2,
+          profit_value_var = 15,
+          period_var = 24,
+          start_index = 20,
+          end_index = 30
         )
       tictoc::toc()
     }
@@ -677,7 +697,7 @@ while (current_time < end_time) {
       summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                 EstimatedTotal_risk = risk_dollar_value*n())
 
-    if(estimated_running_profit$unrealizedPL[1] < 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+    if(estimated_running_profit$unrealizedPL[1] < 3.5*estimated_running_profit$EstimatedTotal_risk[1] ) {
       positions_tagged_as_part_of_algo <-
         positions_tagged_as_part_of_algo_raw %>%
         filter(
@@ -686,7 +706,7 @@ while (current_time < end_time) {
         )
     }
 
-    if(estimated_running_profit$unrealizedPL[1] >= 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+    if(estimated_running_profit$unrealizedPL[1] >= 3.5*estimated_running_profit$EstimatedTotal_risk[1] ) {
       positions_tagged_as_part_of_algo <-
         positions_tagged_as_part_of_algo_raw %>%
         filter(
