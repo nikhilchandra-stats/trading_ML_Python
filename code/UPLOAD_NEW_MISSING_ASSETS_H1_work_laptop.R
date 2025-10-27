@@ -28,6 +28,7 @@ table_name <-
   )
 
 
+
 current_latest_date <- starting_date
 data_to_Update <-
   read_all_asset_data_intra_day(

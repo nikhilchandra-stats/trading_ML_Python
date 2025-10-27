@@ -65,283 +65,317 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2021-01-01"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
+start_date = "2015-01-01"
 end_date = today() %>% as.character()
 
-bin_factor = NULL
-stop_value_var = 2
-profit_value_var = 4
-period_var = 24
-full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
-full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
-actual_wins_losses <-
-  DBI::dbGetQuery(full_ts_trade_db_con,
-                  glue::glue("SELECT * FROM full_ts_trades_mapped
-                  WHERE stop_factor = {stop_value_var} AND
-                        periods_ahead = {period_var} AND Date >= {start_date}")
+model_data_store_path <-
+  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
+model_data_store_db <-
+  connect_db(model_data_store_path)
+
+indicator_data <-
+  DBI::dbGetQuery(conn = model_data_store_db,
+                  statement = "SELECT * FROM single_asset_improved") %>%
+  distinct() %>%
+  group_by(sim_index, Asset) %>%
+  mutate(Date = as_datetime(Date),
+         test_date_start = as_date(test_date_start),
+         test_end_date = as_date(test_end_date),
+         Date_filt = as_date(Date))
+DBI::dbDisconnect(model_data_store_db)
+rm(model_data_store_db)
+gc()
+
+Indices_Metals_Bonds <-
+  get_Port_Buy_Data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = today() %>% as.character(),
+    time_frame = "H1"
+  )
+
+asset_of_interest <- "EUR_JPY"
+asset_data = Indices_Metals_Bonds
+stop_factor = 2
+profit_factor = 15
+risk_dollar_value = 4
+
+indicator_data_asset_data_long <-
+  indicator_data %>%
+  ungroup() %>%
+  filter(Asset == asset_of_interest, trade_col == "Long") %>%
+  select(Date, Asset, contains("pred")) %>%
+  distinct() %>%
+  group_by(Date, Asset) %>%
+  summarise(
+    across(contains("pred"), .fns = ~ mean(., na.rm = T))
   ) %>%
+  ungroup() %>%
   mutate(
     Date = as_datetime(Date)
+  ) %>%
+  dplyr::select(Date, Asset,
+                logit_combined_pred_long = logit_combined_pred,
+                mean_logit_combined_pred_long = mean_logit_combined_pred,
+                sd_logit_combined_pred_long = sd_logit_combined_pred,
+                averaged_pred_long = averaged_pred,
+                mean_averaged_pred_long = mean_averaged_pred,
+                sd_averaged_pred_long = sd_averaged_pred)
+
+indicator_data_asset_data_short <-
+  indicator_data %>%
+  ungroup() %>%
+  filter(Asset == asset_of_interest, trade_col == "Short") %>%
+  select(Date, Asset, contains("pred")) %>%
+  distinct() %>%
+  group_by(Date, Asset) %>%
+  summarise(
+    across(contains("pred"), .fns = ~ mean(., na.rm = T))
+  ) %>%
+  ungroup() %>%
+  mutate(
+    Date = as_datetime(Date)
+  ) %>%
+  dplyr::select(Date, Asset,
+                logit_combined_pred_short = logit_combined_pred,
+                mean_logit_combined_pred_short = mean_logit_combined_pred,
+                sd_logit_combined_pred_short = sd_logit_combined_pred,
+                averaged_pred_short = averaged_pred,
+                mean_averaged_pred_short = mean_averaged_pred,
+                sd_averaged_pred_short = sd_averaged_pred)
+
+indicator_max_date <- indicator_data_asset_data_long %>% pull(Date) %>% max() %>% as_datetime(tz = "Australia/Canberra")
+indicator_min_date <- indicator_data_asset_data_long %>% pull(Date) %>% min() %>% as_datetime(tz = "Australia/Canberra")
+
+bid_price <-
+  asset_data[[2]] %>%
+  filter(Asset == asset_of_interest) %>%
+  dplyr::select(Date, Asset,
+                Bid_Price = Price,
+                Ask_High = High,
+                Ask_Low = Low)
+
+asset_data_with_indicator <-
+  asset_data[[1]] %>%
+  filter(Asset == asset_of_interest) %>%
+  dplyr::select(Date, Asset,
+                Ask_Price = Price,
+                Bid_High = High,
+                Bid_Low = Low) %>%
+  left_join(
+    bid_price
+  ) %>%
+  ungroup() %>%
+  mutate(
+    Date = as_datetime(Date)
+  ) %>%
+  left_join(indicator_data_asset_data_long) %>%
+  left_join(indicator_data_asset_data_short) %>%
+  filter(Date >= indicator_min_date) %>%
+  mutate(
+      trade_col =
+        case_when(
+          logit_combined_pred_long >= mean_logit_combined_pred_long + 2*sd_logit_combined_pred_long &
+        averaged_pred_long >= sd_averaged_pred_long*2 + mean_averaged_pred_long ~ "Long"
+        ),
+      trade_col =
+        case_when(
+          logit_combined_pred_short <= mean_logit_combined_pred_short - 1*sd_logit_combined_pred_short &
+            averaged_pred_short <= mean_averaged_pred_short - sd_averaged_pred_short*1 &
+            is.na(trade_col) ~ "Short",
+          TRUE ~ trade_col
+        )
+  ) %>%
+  mutate(
+
+    mean_movement = mean(Ask_Price - lag(Ask_Price), na.rm = T),
+    sd_movement = sd(Ask_Price - lag(Ask_Price), na.rm = T),
+    stop_value = stop_factor*sd_movement + mean_movement,
+    profit_value = profit_factor*sd_movement + mean_movement,
+    stop_point =
+      case_when(
+        trade_col == "Long" ~ lead(Ask_Price) - stop_value,
+        trade_col == "Short" ~ lead(Bid_Price) + stop_value
+      )
+
+  ) %>%
+  mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]"),
+         ending_value = str_remove_all(ending_value, "_")
+  ) %>%
+  left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
+  left_join(asset_infor%>%
+              rename(Asset = name) %>%
+              dplyr::select(Asset,
+                            minimumTradeSize,
+                            marginRate,
+                            pipLocation,
+                            displayPrecision) ) %>%
+  mutate(
+    minimumTradeSize_OG = as.numeric(minimumTradeSize),
+    minimumTradeSize = abs(log10(as.numeric(minimumTradeSize))),
+    marginRate = as.numeric(marginRate),
+    pipLocation = as.numeric(pipLocation),
+    displayPrecision = as.numeric(displayPrecision)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    stop_value = round(stop_value, abs(pipLocation) ),
+    profit_value = round(profit_value, abs(pipLocation) )
+  )  %>%
+  mutate(
+    volume_unadj =
+      case_when(
+        str_detect(Asset,"SEK|NOK|ZAR|MXN|CNH") ~ (risk_dollar_value/stop_value)*adjusted_conversion,
+        TRUE ~ (risk_dollar_value/stop_value)/adjusted_conversion
+      ),
+    volume_required = volume_unadj,
+    volume_adj =
+      case_when(
+        round(volume_unadj, minimumTradeSize) == 0 ~  minimumTradeSize_OG,
+        round(volume_unadj, minimumTradeSize) != 0 ~  round(volume_unadj, minimumTradeSize)
+      )
+  ) %>%
+  group_by(Asset) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  ungroup() %>%
+  mutate(
+    # period_return_1_high =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_High,2) - lead(Ask_Price)),
+    #     trade_col == "Short" ~ adjusted_conversion*volume_adj*(-1*(lead(Bid_Price) - lead(Ask_Low, 2))),
+    #   ),
+    # period_return_1_low =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(-1*( lead(Ask_Price)-  lead(Bid_Low, 2) )),
+    #     trade_col == "Short" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Low, 2)),
+    #   ),
+    period_return_1_Price =
+      case_when(
+        trade_col == "Long" & lead(Bid_Low,2) > stop_point~
+          adjusted_conversion*volume_adj*( (lead(Bid_Price, 2) - lead(Ask_Price)) ),
+        trade_col == "Long" & lead(Bid_Low,2) <= stop_point ~ -1*risk_dollar_value
+
+        trade_col == "Short" & lead(Ask_High,2) < stop_point ~
+          adjusted_conversion*volume_adj*(lead(Ask_Price,2) - lead(Bid_Price) ),
+        trade_col == "Short" & lead(Ask_High,2) >= stop_point
+      ),
+
+
+    # period_return_2_high =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_High,3) - lead(Ask_Price)),
+    #     trade_col == "Short" ~ adjusted_conversion*volume_adj*(-1*(lead(Bid_Price) - lead(Ask_Low, 3))),
+    #   ),
+    # period_return_2_low =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(-1*( lead(Ask_Price)-  lead(Bid_Low, 3) )),
+    #     trade_col == "Short" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Low, 3)),
+    #   ),
+    period_return_2_Price =
+      case_when(
+        trade_col == "Long" ~
+          adjusted_conversion*volume_adj*( (lead(Bid_Price, 3) - lead(Ask_Price)) ),
+        trade_col == "Short" ~
+          adjusted_conversion*volume_adj*(lead(Ask_Price,3) - lead(Bid_Price) ),
+      ),
+
+    # period_return_3_high =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_High,4) - lead(Ask_Price)),
+    #     trade_col == "Short" ~ adjusted_conversion*volume_adj*(-1*(lead(Bid_Price) - lead(Ask_Low, 4))),
+    #   ),
+    # period_return_3_low =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(-1*( lead(Ask_Price)-  lead(Bid_Low, 4) )),
+    #     trade_col == "Short" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Low, 4)),
+    #   ),
+    period_return_3_Price =
+      case_when(
+        trade_col == "Long" ~
+          adjusted_conversion*volume_adj*( (lead(Bid_Price, 4) - lead(Ask_Price)) ),
+        trade_col == "Short" ~
+          adjusted_conversion*volume_adj*(lead(Ask_Price,4) - lead(Bid_Price) ),
+      ),
+
+    # period_return_4_high =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_High,5) - lead(Ask_Price)),
+    #     trade_col == "Short" ~ adjusted_conversion*volume_adj*(-1*(lead(Bid_Price) - lead(Ask_Low,5))),
+    #   ),
+    # period_return_4_low =
+    #   case_when(
+    #     trade_col == "Long" ~
+    #       adjusted_conversion*volume_adj*(-1*( lead(Ask_Price)-  lead(Bid_Low,5) )),
+    #     trade_col == "Short" ~
+    #       adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Low,5)),
+    #   ),
+    period_return_4_Price =
+      case_when(
+        trade_col == "Long" ~
+          adjusted_conversion*volume_adj*( (lead(Bid_Price,5) - lead(Ask_Price)) ),
+        trade_col == "Short" ~
+          adjusted_conversion*volume_adj*(lead(Ask_Price,5) - lead(Bid_Price) ),
+      ),
+
+    period_return_5_Price =
+      case_when(
+        trade_col == "Long" ~
+          adjusted_conversion*volume_adj*( (lead(Bid_Price,6) - lead(Ask_Price)) ),
+        trade_col == "Short" ~
+          adjusted_conversion*volume_adj*(lead(Ask_Price,6) - lead(Bid_Price) ),
+      ),
+
+    period_return_24_Price =
+      case_when(
+        trade_col == "Long" ~
+          adjusted_conversion*volume_adj*( (lead(Bid_Price,25) - lead(Ask_Price)) ),
+        trade_col == "Short" ~
+          adjusted_conversion*volume_adj*(lead(Ask_Price,25) - lead(Bid_Price) ),
+      )
+
   )
 
-DBI::dbDisconnect(full_ts_trade_db_con)
-rm(full_ts_trade_db_con)
-gc()
 
-All_Daily_Data <-
-  get_DAILY_ALGO_DATA_API_REQUEST()
+asset_data_with_indicator %>%
+  dplyr::select(Asset, trade_col,
+                period_return_1_Price,
+                period_return_2_Price,
+                period_return_3_Price,
+                period_return_4_Price,
+                period_return_5_Price) %>%
+  pivot_longer(-c(Asset, trade_col), names_to = "Period", values_to = "Values") %>%
+  ggplot(aes(x = Values, fill = Period)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(.~Period) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 
-Indices_Metals_Bonds <- get_Port_Buy_Data(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1"
-)
-
-missing_assets <- get_Port_Buy_Data_remaining_assets(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1"
-)
-
-Indices_Metals_Bonds[[1]] <-
-  Indices_Metals_Bonds[[1]] %>%
-  bind_rows(missing_assets[[1]] %>%
-              filter(Asset != "XAG_AUD"))
-
-Indices_Metals_Bonds[[2]] <-
-  Indices_Metals_Bonds[[2]] %>%
-  bind_rows(missing_assets[[2]] %>%
-              filter(Asset != "XAG_AUD"))
-
-rm(missing_assets)
-gc()
-asset_of_interest = "HK33_HKD"
-
-create_daily_indicator_model <-
-  function(
-    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest),
-    actual_wins_losses = actual_wins_losses,
-    All_Daily_Data = All_Daily_Data,
-    Asset_of_interest = "HK33_HKD",
-    pre_train_date_end = "2023-01-01",
-    trade_direction = "Long",
-    stop_value_var = stop_value_var,
-    profit_value_var = profit_value_var,
-    period_var = period_var,
-    model_save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_Daily_Indicator_Model"
-    ) {
-
-    actual_bins <-
-      actual_wins_losses %>%
-      filter(trade_col == trade_direction) %>%
-      filter(
-        stop_factor == stop_value_var,
-        profit_factor == profit_value_var,
-        periods_ahead == period_var,
-        Asset == Asset_of_interest
-      ) %>%
-      mutate(
-        bin_var =
-          case_when(
-            trade_start_prices > trade_end_prices & trade_col == "Short" ~ "win",
-            trade_start_prices <= trade_end_prices & trade_col == "Short" ~ "loss",
-
-            trade_start_prices < trade_end_prices & trade_col == "Long" ~ "win",
-            trade_start_prices >= trade_end_prices & trade_col == "Long" ~ "loss"
-
-          )
-      )
-
-    daily_indicator <-
-      get_daily_indicators(
-        Daily_Data = All_Daily_Data,
-        asset_data = asset_data,
-        Asset_of_interest = Asset_of_interest
-      )
-
-    daily_indicator <-
-      daily_indicator %>%
-      dplyr::select(-Price, -Open, -Low, -High, -Vol., -Date_for_join) %>%
-      mutate(
-        across(.cols = !contains("Date") & !contains("Asset"),
-               .fns = ~ lag(.))
-      ) %>%
-      filter(if_all(everything(), ~ !is.na(.))) %>%
-      mutate(
-        Date = as_datetime(Date, tz = "Australia/Canberra")
-      )
-
-    daily_join_model <-
-      actual_bins %>%
-      dplyr::select(Date, Asset ,bin_var) %>%
-      filter(
-        Asset == Asset_of_interest
-      ) %>%
-      left_join(daily_indicator) %>%
-      filter(if_all(everything(),~!is.na(.)))
-
-    daily_vars_for_indicator <-
-      names(daily_join_model) %>%
-      keep(~ !str_detect(.x, "Date") &
-             !str_detect(.x, "bin_var") &
-             !str_detect(.x, "Asset")) %>%
-      unlist() %>%
-      as.character()
-
-    daily_indicator_formula <-
-      create_lm_formula(dependant = "bin_var=='win'",
-                        independant = daily_vars_for_indicator)
-    daily_indicator_model <-
-      glm(formula = daily_indicator_formula,
-          data = daily_join_model %>% filter(Date <=pre_train_date_end),
-          family = binomial("logit"))
-    summary(daily_indicator_model)
-    message("Passed Daily Model")
-
-    daily_indicator_pred <-
-      daily_join_model %>%
-      mutate(
-        daily_indicator_pred = predict.glm(daily_indicator_model,
-                                           newdata = daily_join_model, type = "response"),
-        mean_daily_pred =
-          mean( ifelse(Date <= pre_train_date_end, daily_indicator_pred, NA), na.rm = T ),
-        sd_daily_pred =
-          sd( ifelse(Date <= pre_train_date_end, daily_indicator_pred, NA), na.rm = T )
-      )
-    message("Passed Daily Prediction")
-
-    saveRDS(object = daily_indicator_model,
-            file = glue::glue("{model_save_location}/Daily_Indicator_{Asset_of_interest}_{period_var}_{stop_value_var}_{profit_value_var}.RDS"))
-
-    return(daily_indicator_pred)
-
-  }
-
-
-daily_indicator_data <-
-  create_daily_indicator_model(
-    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest),
-    actual_wins_losses = actual_wins_losses,
-    All_Daily_Data = All_Daily_Data,
-    Asset_of_interest = asset_of_interest,
-    pre_train_date_end = "2023-01-01",
-    trade_direction = "Long",
-    stop_value_var = stop_value_var,
-    profit_value_var = profit_value_var,
-    period_var = period_var,
-    model_save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/asset_specific_Daily_Indicator_Model"
-  )
-
-daily_trader <- function(
-  asset_data_ask = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest),
-  asset_data_bid = Indices_Metals_Bonds[[2]] %>% filter(Asset == asset_of_interest),
-  asset_of_interest = asset_of_interest,
-  train_date_for_indicator = "2023-01-01",
-  daily_indicator_data = daily_indicator_data,
-  currency_conversion = currency_conversion,
-  asset_infor = asset_infor,
-  sd_factor = 0.5
-  ) {
-
-  ask_data_with_indicator <-
-    asset_data_ask %>%
-    left_join(
-      daily_indicator_data %>%
-        distinct()
-    ) %>%
-    mutate(
-
-      daily_indicator_pred_ma_15 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~mean(.x, na.rm = T), .before = 15 ),
-      daily_indicator_pred_ma_10 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~mean(.x, na.rm = T), .before = 10 ),
-      daily_indicator_pred_ma_5 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~mean(.x, na.rm = T), .before = 5 ),
-
-      daily_indicator_pred_sd_15 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~sd(.x, na.rm = T), .before = 15 ),
-      daily_indicator_pred_sd_10 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~sd(.x, na.rm = T), .before = 10 ),
-      daily_indicator_pred_sd_5 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~sd(.x, na.rm = T), .before = 5 )
-    ) %>%
-    filter(Date >= train_date_for_indicator)
-
-  bid_data_with_indicator <-
-    asset_data_bid %>%
-    left_join(
-      daily_indicator_data %>%
-        distinct()
-    ) %>%
-    mutate(
-      daily_indicator_pred_ma_15 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~mean(.x, na.rm = T), .before = 15 ),
-      daily_indicator_pred_ma_10 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~mean(.x, na.rm = T), .before = 10 ),
-      daily_indicator_pred_ma_5 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~mean(.x, na.rm = T), .before = 5 ),
-
-      daily_indicator_pred_sd_15 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~sd(.x, na.rm = T), .before = 15 ),
-      daily_indicator_pred_sd_10 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~sd(.x, na.rm = T), .before = 10 ),
-      daily_indicator_pred_sd_5 =
-        slider::slide_dbl(.x = daily_indicator_pred, .f =~sd(.x, na.rm = T), .before = 5 )
-    ) %>%
-    filter(Date >= train_date_for_indicator)
-
-  overall_sd <- ask_data_with_indicator$sd_daily_pred[1]
-  overall_mean <- ask_data_with_indicator$mean_daily_pred[1]
-  threshold_point <- overall_mean + sd_factor*overall_sd
-
-  trade_tracker <-
-    tibble(
-      start_price = rep(0, 20000),
-      current_price = rep(0, 20000),
-      Asset = rep("a", 20000),
-      running_PL = rep(0, 20000),
-      starting_pred = rep(0, 20000),
-      starting_pred_15 = rep(0, 20000),
-
-      current_pred = rep(0, 20000),
-      current_pred_15 = rep(0, 20000),
-
-      trade_id = rep(0, 20000)
-    )
-  c = 0
-
-  for (i in 1:dim(ask_data_with_indicator)[1] ) {
-
-    current_pred<- ask_data_with_indicator$daily_indicator_pred[i]
-    current_pred_15<- ask_data_with_indicator$daily_indicator_pred_ma_15[i]
-    current_pred_10<- ask_data_with_indicator$daily_indicator_pred_ma_10[i]
-
-    current_pred_15_sd<- ask_data_with_indicator$daily_indicator_pred_sd_15[i]
-    current_pred_10_sd <- ask_data_with_indicator$daily_indicator_pred_sd_10[i]
-
-    current_price <- ask_data_with_indicator$Price[i]
-    current_High <- ask_data_with_indicator$High[i]
-    current_Low <- ask_data_with_indicator$Low[i]
-    current_asset <- ask_data_with_indicator$Asset[i]
-
-    if(threshold_point <= current_pred) {
-      c = c + 1
-      trade_tracker$start_price[c] <- current_price
-      trade_tracker$current_price[c] <- current_price
-      trade_tracker$Asset[c] <- current_asset
-
-      trade_tracker$starting_pred[c] <- current_pred
-      trade_tracker$trade_id[c] <- c
-
-    }
-
-    active_trades <-
-      trade_tracker %>%
-      filter(Asset != "a")
-
-  }
-
-}
+summary_values <-
+  asset_data_with_indicator %>%
+  dplyr::select(Asset, trade_col,
+                period_return_1_Price,
+                period_return_2_Price,
+                period_return_3_Price,
+                period_return_4_Price,
+                period_return_5_Price,
+                period_return_24_Price) %>%
+  pivot_longer(-c(Asset, trade_col), names_to = "Period", values_to = "Values") %>%
+  group_by(trade_col, Asset, Period) %>%
+  summarise(
+    mean_return = mean(Values, na.rm = T),
+    quant_25_return = quantile(Values,0.25, na.rm = T),
+    median_return = median(Values, na.rm = T),
+    quant_75_return = quantile(Values,0.75, na.rm = T)
+  ) %>%
+  filter(if_all(everything(),~!is.nan(.)))

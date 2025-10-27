@@ -1283,10 +1283,10 @@ while (current_time < end_time) {
               "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
               "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
               "US30_USD", "WTICO_USD"
-            )) & abs(units) >= 10000 ~ "Remove",
+            )) & abs(units) >= 16000 ~ "Remove",
             Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "AU200_AUD",
-                         "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 3 ~ "Remove",
-            Asset == "SG30_SGD" & abs(units) >= 28 ~ "Remove",
+                         "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ "Remove",
+            Asset == "SG30_SGD" & abs(units) >= 35 ~ "Remove",
             Asset == "XCU_USD" & abs(units)>=450 ~ "Remove",
             Asset == "WHEAT_USD" & abs(units)>=450 ~ "Remove",
             Asset == "CORN_USD" & abs(units)>=450 ~ "Remove",

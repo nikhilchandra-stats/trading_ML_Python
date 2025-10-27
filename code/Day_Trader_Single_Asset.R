@@ -72,7 +72,7 @@ end_date = today() %>% as.character()
 bin_factor = NULL
 stop_value_var = 2
 profit_value_var = 15
-period_var = 48
+period_var = 24
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
@@ -105,24 +105,6 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
   time_frame = "H1"
 )
 
-missing_assets <- get_Port_Buy_Data_remaining_assets(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1"
-)
-
-Indices_Metals_Bonds[[1]] <-
-  Indices_Metals_Bonds[[1]] %>%
-  bind_rows(missing_assets[[1]] %>%
-              filter(Asset != "XAG_AUD"))
-
-Indices_Metals_Bonds[[2]] <-
-  Indices_Metals_Bonds[[2]] %>%
-  bind_rows(missing_assets[[2]] %>%
-              filter(Asset != "XAG_AUD"))
-
-rm(missing_assets)
 gc()
 
 #-------------Indicator Inputs
@@ -174,36 +156,56 @@ indicator_mapping <- list(
             "EUR_AUD", #10
             "WTICO_USD", #11
             "UK100_GBP", #12
-            "USD_CAD", #12
-            "GBP_USD", #13
-            "GBP_CAD", #14
-            "EUR_JPY", #15
-            "EUR_AUD", #16
-            "EUR_NZD", #17
-            "XAG_USD", #18
-            "XAG_EUR" #19
+            "USD_CAD", #13
+            "GBP_USD", #14
+            "GBP_CAD", #15
+            "EUR_JPY", #16
+            "EUR_AUD", #17
+            "EUR_NZD", #18
+            "XAG_USD", #19
+            "XAG_EUR", #20
+            "XAG_AUD", #21
+            "XAG_NZD", #22
+            "HK33_HKD", #23
+            "FR40_EUR", #24
+            "BTC_USD", #25
+            "XAG_GBP", #26
+            "GBP_AUD", #27
+            "USD_SEK", #28
+            "ETH_USD", #29
+            "USD_SGD" #30
             ),
   couplua_assets =
     list( c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP"), #1
-          c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EUR_USD", "EUR_AUD", "EUR_GBP"), #2
+          c("XAU_EUR", "XAG_EUR", "XAU_USD", "UK100_GBP", "EUR_AUD", "EUR_GBP", "SPX500_USD"), #2
           c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR"), #3
           c("SPX500_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR"), #4
           c("SPX500_USD", "AU200_AUD", "US2000_USD", "UK100_GBP", "XAU_USD", "EU50_EUR"), #5
           c("EUR_JPY", "XAU_JPY", "XAG_JPY", "GBP_JPY", "XAU_USD", "SPX500_USD"), #6
           c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #7
           c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_GBP", "GBP_JPY", "EUR_JPY"), #8
-          c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #9
-          c("EUR_USD", "EUR_GBP", "XAU_AUD", "GBP_AUD", "XAU_AUD", "AUD_USD", "XAU_EUR"), #10
+          c("XCU_USD", "SPX500_USD", "XAU_AUD", "GBP_AUD", "XAU_USD", "UK100_GBP"), #9
+          c("EUR_USD", "EUR_GBP", "XAU_AUD", "GBP_AUD", "AUD_USD", "XAU_EUR"), #10
           c("NATGAS_USD", "XAG_USD", "BCO_USD", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "UK100_GBP"), #11
           c("GBP_USD", "XAG_GBP", "EU50_EUR", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "XAU_GBP"), #12
-          c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #12
-          c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #13
-          c("GBP_JPY", "GBP_USD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
-          c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #15
-          c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #16
-          c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #17
-          c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #18
-          c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD") #19
+          c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #13
+          c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
+          c("GBP_JPY", "GBP_USD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #15
+          c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #16
+          c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #17
+          c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #18
+          c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #19
+          c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #20
+          c("XAG_JPY", "EUR_AUD", "XAG_USD", "XAG_NZD", "XAU_USD", "AUD_USD", "SPX500_USD"), #21
+          c("XAG_JPY", "EUR_NZD", "XAG_USD", "XAG_AUD", "XAU_USD", "NZD_USD", "SPX500_USD"), #22
+          c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD", "XAU_USD", "USB10Y_USD", "SPX500_USD"), #23
+          c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD", "XAU_USD", "USB10Y_USD", "SPX500_USD"), #24
+          c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD", "XAU_USD", "USB10Y_USD", "SPX500_USD"), #25
+          c("UK100_GBP", "XAU_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "XAG_AUD", "SPX500_USD"), #26
+          c("AUD_USD", "EUR_AUD", "XAG_USD", "XAG_GBP", "XAU_USD", "XAG_AUD", "GBP_JPY"), #27
+          c("AUD_USD", "EUR_USD", "GBP_USD", "USD_JPY", "XAU_USD", "USD_CAD", "NZD_USD"), #28
+          c("XAU_USD", "XAG_USD", "SPX500_USD", "USB10Y_USD", "EU50_EUR", "UK100_GBP"), #29
+          c("AUD_USD", "EUR_USD", "GBP_USD", "USD_JPY", "XAU_USD", "USD_CAD", "NZD_USD") #30
 
           ),
   countries_for_int_strength =
@@ -226,7 +228,18 @@ indicator_mapping <- list(
       c("GBP", "USD", "EUR", "AUD"), #16
       c("GBP", "USD", "EUR", "AUD", "NZD"), #17
       c("GBP", "USD", "EUR", "AUD", "JPY"), #18
-      c("GBP", "USD", "EUR", "AUD", "JPY") #19
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #19
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #20
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #21
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #22
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #23
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #24
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #25
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #26
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #27
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #28
+      c("GBP", "USD", "EUR", "AUD", "JPY"), #29
+      c("GBP", "USD", "EUR", "AUD", "JPY") #30
     )
   )
 indicator_mapping_accumulator_long <- list()
@@ -237,21 +250,15 @@ model_data_store_path <-
   "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
 model_data_store_db <-
   connect_db(model_data_store_path)
-# date_seq_simulations <-
-#   seq(as_date("2019-01-01"), as_date("2023-01-01"), "month")
 
 date_seq_simulations <-
-  seq(as_date("2019-01-01"), as_date("2023-07-01"), "month")
+  seq(as_date("2019-01-01"), as_date("2024-07-01"), "month")
 c = 0
 redo_db = FALSE
 
-for (k in 54:length(date_seq_simulations)) {
+for (k in 19:length(date_seq_simulations)) {
 
-  for (j in 1:length(indicator_mapping$Asset) ) {
-
-    # pre_train_date_end = "2021-01-01"
-    # post_train_date_start = "2021-01-01"
-    # test_date_start = "2023-01-01"
+  for (j in 16:length(indicator_mapping$Asset) ) {
 
     pre_train_date_end = date_seq_simulations[k]
     post_train_date_start = date_seq_simulations[k]
@@ -363,115 +370,255 @@ for (k in 54:length(date_seq_simulations)) {
 
 }
 
-test <- DBI::dbGetQuery(conn = model_data_store_db,
-                        statement = "SELECT * FROM single_asset_improved") %>%
+model_data_store_path <-
+  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
+model_data_store_db <-
+  connect_db(model_data_store_path)
+
+indicator_data <-
+  DBI::dbGetQuery(conn = model_data_store_db,
+                  statement = "SELECT * FROM single_asset_improved") %>%
   distinct() %>%
   group_by(sim_index, Asset) %>%
   mutate(Date = as_datetime(Date),
          test_date_start = as_date(test_date_start),
          test_end_date = as_date(test_end_date),
-         Date_filt = as_date(Date)) %>%
-  # group_by(sim_index, Asset) %>%
+         Date_filt = as_date(Date))
+DBI::dbDisconnect(model_data_store_db)
+rm(model_data_store_db)
+gc()
+
+indicator_data <-
+  indicator_data %>%
+  filter(periods_ahead == period_var, stop_factor == stop_value_var)
+
+asset_optimisation_store_path <-
+  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+asset_optimisation_store_db <-
+  connect_db(asset_optimisation_store_path)
+
+pred_thresh <- seq(-2,2, 0.1)
+
+control_results <-
+  indicator_data %>%
   ungroup() %>%
+  mutate(
+
+    trade_return_dollar_aud =
+      case_when(
+        str_detect(Asset, "JPY") ~ trade_return_dollar_aud/1000,
+        TRUE ~ trade_return_dollar_aud
+      )
+
+  ) %>%
+  mutate(
+    wins =
+      case_when(
+        trade_return_dollar_aud > 0 ~ 1,
+        TRUE ~ 0
+      )
+  ) %>%
+  group_by(Asset, sim_index, trade_col) %>%
+  summarise(
+    trade_return_dollar_aud = sum(trade_return_dollar_aud, na.rm = T),
+    wins = sum(wins, na.rm = T),
+    total_trades = n()
+  ) %>%
+  ungroup() %>%
+  mutate(
+    Win_Perc = wins/total_trades
+  ) %>%
+  group_by(Asset, trade_col) %>%
+  summarise(
+    Mid = mean(trade_return_dollar_aud, na.rm = T),
+    lower = quantile(trade_return_dollar_aud, 0.25 ,na.rm = T),
+    upper = quantile(trade_return_dollar_aud, 0.75 ,na.rm = T),
+    simulations = n_distinct(sim_index),
+    pred_thresh = "control",
+    Win_Perc_mean = mean(Win_Perc, na.rm = T),
+    wins_mean = mean(wins, na.rm = T),
+    total_trades_mean = mean(total_trades, na.rm = T)
+
+  )
+
+write_table_sql_lite(.data = control_results,
+                     table_name = "single_asset_improved_asset_optimisation",
+                     conn = asset_optimisation_store_db,
+                     overwrite_true = TRUE)
+
+# DBI::dbDisconnect(asset_optimisation_store_db)
+# gc()
+
+for (j in 1:length(pred_thresh)) {
+
+  current_pred <- pred_thresh[j]
+
+  if(current_pred < 0) {
+    model_results <-
+      indicator_data %>%
+      ungroup() %>%
+      filter(
+        logit_combined_pred <= mean_logit_combined_pred + current_pred*sd_logit_combined_pred &
+          averaged_pred <=  mean_averaged_pred + sd_averaged_pred*current_pred
+      )
+  }
+
+  if(current_pred >= 0) {
+    model_results <-
+      indicator_data %>%
+      ungroup() %>%
+      filter(
+        logit_combined_pred >= mean_logit_combined_pred + current_pred*sd_logit_combined_pred &
+          averaged_pred >=  mean_averaged_pred + sd_averaged_pred*current_pred
+      )
+  }
+
+  model_results <-
+    model_results %>%
+    ungroup() %>%
+    mutate(
+
+      trade_return_dollar_aud =
+        case_when(
+          str_detect(Asset, "JPY") ~ trade_return_dollar_aud/1000,
+          TRUE ~ trade_return_dollar_aud
+        )
+
+    ) %>%
+    mutate(
+      wins =
+        case_when(
+          trade_return_dollar_aud > 0 ~ 1,
+          TRUE ~ 0
+        )
+    ) %>%
+    group_by(Asset, sim_index, trade_col) %>%
+    summarise(
+      trade_return_dollar_aud = sum(trade_return_dollar_aud, na.rm = T),
+      wins = sum(wins, na.rm = T),
+      total_trades = n()
+    ) %>%
+    ungroup() %>%
+    mutate(
+      Win_Perc = wins/total_trades
+    ) %>%
+    group_by(Asset, trade_col) %>%
+    summarise(
+      Mid = mean(trade_return_dollar_aud, na.rm = T),
+      lower = quantile(trade_return_dollar_aud, 0.25 ,na.rm = T),
+      upper = quantile(trade_return_dollar_aud, 0.75 ,na.rm = T),
+      simulations = n_distinct(sim_index),
+      pred_thresh = as.character(current_pred),
+      Win_Perc_mean = mean(Win_Perc, na.rm = T),
+      wins_mean = mean(wins, na.rm = T),
+      total_trades_mean = mean(total_trades, na.rm = T)
+    )
+
+  append_table_sql_lite(.data = model_results,
+                        table_name = "single_asset_improved_asset_optimisation",
+                        conn = asset_optimisation_store_db)
+
+  rm(model_results)
+
+}
+
+asset_optimisation_store_path =
+  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+
+asset_optimisation_store_db <-
+  connect_db(asset_optimisation_store_path)
+
+all_model_results <-
+  DBI::dbGetQuery(conn = asset_optimisation_store_db,
+                  statement = "SELECT * FROM single_asset_improved_asset_optimisation")
+DBI::dbDisconnect(asset_optimisation_store_db)
+gc()
+
+best_results <-
+  all_model_results %>%
+  filter(pred_thresh != "control") %>%
+  filter(lower > 0) %>%
+  group_by(Asset, trade_col) %>%
+  slice_max(Win_Perc_mean, n = 10) %>%
+  group_by(Asset, trade_col) %>%
+  slice_max(total_trades_mean, n = 1)
+
+best_overall_thresh <-
+  all_model_results %>%
+  filter(pred_thresh != "control") %>%
+  group_by(trade_col, pred_thresh) %>%
+  summarise(Mid = median(Mid, na.rm= T),
+            lower = median(lower, na.rm= T),
+            Win_Perc_mean = median(Win_Perc_mean, na.rm = T),
+            wins_mean = sum(wins_mean),
+            total_trades_mean = sum(total_trades_mean) ) %>%
+  group_by(trade_col) %>%
+  slice_max(Win_Perc_mean, n = 10) %>%
+  group_by(Asset, trade_col) %>%
+  slice_max(total_trades_mean, n = 1)
+
+
+
+longs <-
+  indicator_data %>%
+  filter(trade_col == "Long") %>%
+  left_join(
+    best_results %>%
+      ungroup() %>%
+      dplyr::select(Asset, trade_col, pred_thresh) %>%
+      mutate(pred_thresh = as.numeric(pred_thresh))
+  ) %>%
+  filter(
+    (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+      averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
+      (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+         averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
+  )
+
+shorts <-
+  indicator_data %>%
+  filter(trade_col == "Short") %>%
+  left_join(
+    best_results %>%
+      ungroup() %>%
+      dplyr::select(Asset, trade_col, pred_thresh) %>%
+      mutate(pred_thresh = as.numeric(pred_thresh))
+  ) %>%
+  filter(
+    (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+       averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
+      (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+         averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
+  )
+
+all_trades <-
+  shorts %>%
+  bind_rows(longs) %>%
   mutate(
     trade_return_dollar_aud =
       case_when(
-        str_detect(Asset, "JPY") ~ trade_return_dollar_aud/100,
+        str_detect(Asset, "JPY") ~ trade_return_dollar_aud/1000,
         TRUE ~ trade_return_dollar_aud
       )
   ) %>%
-  # filter(Date_filt >= test_date_start, Date_filt <= test_end_date) %>%
+  mutate(
+    trade_end_date = as_datetime(Date, tz = "Australia/Canberra") + dhours(Time_Periods),
+    Date = trade_end_date
+  ) %>%
+  group_by(Date, Asset, trade_col ) %>%
+  summarise(trade_return_dollar_aud = mean(trade_return_dollar_aud, na.rm = T)) %>%
+  mutate(
+    Date = as_datetime(Date, tz = "Australia/Canberra")
+  ) %>%
+  group_by(Date) %>%
+  summarise(trade_return_dollar_aud = sum(trade_return_dollar_aud, na.rm = T)) %>%
   ungroup() %>%
-  filter(logit_combined_pred >= mean_logit_combined_pred + 0*sd_logit_combined_pred &
-           averaged_pred >= sd_averaged_pred*0 + mean_averaged_pred
-           # macro_indicator_pred_50 >= mean_macro_pred + sd_macro_pred*0 &
-         # copula_indicator_pred_ma_5 >= mean_copula_pred + sd_copula_pred*0 &
-         # macro_indicator_pred_50 >= macro_indicator_pred_100 &
-           # daily_indicator_pred_ma_5  >= daily_indicator_pred_ma_10 &
-           # daily_indicator_pred_ma_5  >= daily_indicator_pred_ma_10 &
-           # technical_indicator_pred_ma_5 >= technical_indicator_pred_ma_10
-         ) %>%
-  # filter(averaged_pred > sd_averaged_pred*1.5 + mean_averaged_pred) %>%
-  dplyr::distinct(Date, Date_filt, test_date_start,
-                test_end_date, Asset, sim_index, trade_return_dollar_aud ) %>%
-  group_by(sim_index, Asset, test_end_date, test_date_start) %>%
-  summarise(trade_return_dollar_aud = sum(trade_return_dollar_aud)) %>%
-  group_by(Asset) %>%
-  summarise(
-    median_return = median(trade_return_dollar_aud),
-    return_25 = quantile(trade_return_dollar_aud, 0.25),
-    return_75 = quantile(trade_return_dollar_aud, 0.75),
-    simulations = n_distinct(sim_index),
-    test_dates = paste(test_date_start, collapse = ",")
+  arrange(Date) %>%
+  mutate(
+    cumulative_returns = cumsum(trade_return_dollar_aud)
   )
 
-
-
-construct_returns_series_from_sims <-
-  function(pred_thresh = 0){
-
-    simulation_data <-
-      DBI::dbGetQuery(conn = model_data_store_db,
-                    statement = "SELECT * FROM single_asset_improved") %>%
-      mutate(
-        trade_return_dollar_aud =
-          case_when(
-            str_detect(Asset, "JPY") ~ trade_return_dollar_aud/100,
-            TRUE ~ trade_return_dollar_aud
-          )
-      )
-
-    control_data <- simulation_data %>%
-      group_by(Date, Asset, trade_col ) %>%
-      summarise(trade_return_dollar_aud = mean(trade_return_dollar_aud, na.rm = T)) %>%
-      mutate(
-        Date = as_datetime(Date, tz = "Australia/Canberra")
-      ) %>%
-      group_by(Date) %>%
-      summarise(trade_return_dollar_aud = sum(trade_return_dollar_aud, na.rm = T)) %>%
-      ungroup() %>%
-      arrange(Date) %>%
-      mutate(
-        cumulative_returns = cumsum(trade_return_dollar_aud)
-      )
-
-    pred_analysis <-
-      simulation_data %>%
-      ungroup() %>%
-      filter(logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-               averaged_pred >= sd_averaged_pred*pred_thresh + mean_averaged_pred
-             ) %>%
-      group_by(Date, Asset, trade_col ) %>%
-      summarise(trade_return_dollar_aud = mean(trade_return_dollar_aud, na.rm = T)) %>%
-      mutate(
-        Date = as_datetime(Date, tz = "Australia/Canberra")
-      ) %>%
-      group_by(Date) %>%
-      summarise(trade_return_dollar_aud = sum(trade_return_dollar_aud, na.rm = T)) %>%
-      ungroup() %>%
-      arrange(Date) %>%
-      mutate(
-        cumulative_returns = cumsum(trade_return_dollar_aud)
-      )
-
-
-    analysis_complete_frame <-
-      control_data %>%
-      mutate(
-        category = "control"
-      ) %>%
-      bind_rows(
-        pred_analysis %>%
-          mutate(
-            category = "pred"
-          )
-      )
-
-    analysis_complete_frame %>%
-      ggplot(aes(x = Date,  y= cumulative_returns)) +
-      geom_line() +
-      facet_wrap(.~category, scales = "free") +
-      theme_minimal()
-
-  }
-
+all_trades %>%
+  ggplot(aes(x = Date, y = cumulative_returns)) +
+  geom_line() +
+  theme_minimal()

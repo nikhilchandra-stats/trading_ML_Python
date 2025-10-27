@@ -421,7 +421,8 @@ get_closed_positions <- function(save_csv = FALSE,
         date_open = as_datetime(openTime),
         date_closed = as_datetime(closeTime)
       )  %>%
-      distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits) %>%
+      distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits,
+               financing, dividendAdjustment) %>%
       mutate(
         account_var = account_var
       ) %>%
