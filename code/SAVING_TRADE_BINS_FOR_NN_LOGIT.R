@@ -512,6 +512,334 @@ upload_trade_actuals_period_version_to_db(
   asset_infor = asset_infor
 )
 
+
+#---------------------------------------------------------Metals
+db_location = "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
+full_ts_trade_db_location = "C:/Users/Nikhil/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+start_date = "2020-01-01"
+end_date = "2025-10-30"
+
+asset_list_oanda =
+  get_oanda_symbols() %>%
+  keep( ~ str_detect(.x, "XAU|XAG|ETH|BCH|BTC|LTC")) %>%
+  unlist() %>%
+  unique()
+db_location_data = "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
+
+Indices_Metals_Bonds <- list()
+Indices_Metals_Bonds[[1]] <-
+  get_db_price(
+    db_location = db_location_data,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "M15",
+    bid_or_ask = "ask"
+  ) %>%
+  filter(Asset %in% asset_list_oanda)
+
+
+Indices_Metals_Bonds[[2]] <-
+  get_db_price(
+    db_location = db_location_data,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "M15",
+    bid_or_ask = "bid"
+  ) %>%
+  filter(Asset %in% asset_list_oanda)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 4,
+  risk_dollar_value = 10,
+  periods_ahead = 24,
+  append_or_write = "write",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 3,
+  profit_factor = 6,
+  risk_dollar_value = 10,
+  periods_ahead = 24,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 1.5,
+  profit_factor = 3,
+  risk_dollar_value = 10,
+  periods_ahead = 24,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 4,
+  profit_factor = 8,
+  risk_dollar_value = 10,
+  periods_ahead = 24,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 4,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 3,
+  profit_factor = 6,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 1.5,
+  profit_factor = 3,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 4,
+  profit_factor = 8,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 3,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 1.5,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 4,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 3,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 1.5,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 4,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 4,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 3,
+  profit_factor = 6,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 1.5,
+  profit_factor = 3,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 4,
+  profit_factor = 8,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+
+#-------------------Upload other assets
+helpeR::load_custom_functions()
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+start_date = "2013-06-01"
+end_date = "2025-09-20"
+
+Indices_Metals_Bonds <-
+  get_Port_Buy_Data_remaining_assets(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "H1"
+  )
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+
 #------------------------------------------------------------------------------
 full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_ALL_EUR_USD_JPY_GBP.db"
 EUR_USD_JPY_GBP_list <-

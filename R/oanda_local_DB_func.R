@@ -35,6 +35,7 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
 
   query_data <-
     DBI::dbGetQuery(conn = db_con, statement = db_query) %>%
+    distinct() %>%
     mutate(Date = as_datetime(Date, tz = "Australia/Sydney")) %>%
     group_by(Asset, Date) %>%
     mutate(
@@ -95,6 +96,7 @@ get_db_price_asset <- function(db_location = "C:/Users/Nikhil Chandra/Documents/
 
   query_data <-
     DBI::dbGetQuery(conn = db_con, statement = db_query) %>%
+    distinct() %>%
     mutate(Date = as_datetime(Date, tz = "Australia/Sydney")) %>%
     group_by(Asset, Date) %>%
     mutate(

@@ -1,40 +1,18 @@
 helpeR::load_custom_functions()
+db_location = "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
 
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 all_aud_symbols <- get_oanda_symbols()
 asset_list_oanda =
-  c("XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
-    "XAG_NZD",
-    "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
-    "XAU_NZD",
-    "BTC_USD", "LTC_USD", "BCH_USD",
-    "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
-    "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
-    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
-    "AUD_USD", "EUR_USD", "GBP_USD", "USD_CHF", "USD_JPY", "USD_MXN", "USD_SEK", "USD_NOK",
-    "NZD_USD", "USD_CAD", "USD_SGD", "ETH_USD", "XPT_USD", "XPD_USD",
-    "USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
-    "DE30_EUR",
-    "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
-    "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
-    "XAU_USD",
-    "USD_CZK",  "WHEAT_USD",
-    "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
-    "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
-    "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
-    "US2000_USD",
-    "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
-    "JP225_USD", "SPX500_USD",
-    "EUR_AUD", "EUR_NZD", "EUR_CHF", "ESPIX_EUR" ,"EUR_NZD" ,
-    "GBP_AUD", "GBP_NZD", "UK100_GBP", "UK10YB_GBP", "GBP_CHF", "GBP_CAD",
-    "NL25_EUR") %>%
+  get_oanda_symbols() %>%
+  keep( ~ str_detect(.x, "XAU|XAG|ETH|BCH|BTC|LTC") & .x != "XAU_USD" & .x != "XAG_USD") %>%
+  unlist() %>%
   unique()
 
-time_frame = "H1"
+time_frame = "M15"
 bid_or_ask = "bid"
 how_far_back = 10
 ending_date = "2025-09-12"
-starting_date = "2008-01-01"
+starting_date = "2016-01-01"
 
 db_con <- connect_db(path = db_location)
 table_name <-
@@ -66,7 +44,7 @@ data_to_Update_dfr <-
   data_to_Update %>%
   map_dfr(bind_rows)
 
-write_table_sql_lite(.data = data_to_Update_dfr,
+append_table_sql_lite(.data = data_to_Update_dfr,
                       table_name = table_name,
                       conn = db_con)
 
