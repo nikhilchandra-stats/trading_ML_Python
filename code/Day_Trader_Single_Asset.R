@@ -256,9 +256,13 @@ date_seq_simulations <-
 c = 0
 redo_db = FALSE
 
-for (k in 19:length(date_seq_simulations)) {
+for (k in 40:length(date_seq_simulations)) {
 
-  for (j in 16:length(indicator_mapping$Asset) ) {
+# for (k in 19:34) {
+
+  for (j in 1:length(indicator_mapping$Asset) ) {
+
+  # for (j in 1:16 ) {
 
     pre_train_date_end = date_seq_simulations[k]
     post_train_date_start = date_seq_simulations[k]
@@ -380,6 +384,7 @@ indicator_data <-
                   statement = "SELECT * FROM single_asset_improved") %>%
   distinct() %>%
   group_by(sim_index, Asset) %>%
+  filter(periods_ahead == period_var, stop_factor == stop_value_var) %>%
   mutate(Date = as_datetime(Date),
          test_date_start = as_date(test_date_start),
          test_end_date = as_date(test_end_date),
@@ -388,9 +393,6 @@ DBI::dbDisconnect(model_data_store_db)
 rm(model_data_store_db)
 gc()
 
-indicator_data <-
-  indicator_data %>%
-  filter(periods_ahead == period_var, stop_factor == stop_value_var)
 
 asset_optimisation_store_path <-
   "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
