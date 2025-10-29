@@ -1,17 +1,38 @@
 trade_results_upload <- function(position_date_min = "2025-05-01",
                            assets_to_analyse =
-                             c("USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
+                             c("HK33_HKD", "USD_JPY",
+                               "BTC_USD",
+                               "AUD_NZD", "GBP_CHF",
+                               "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
+                               "USB02Y_USD",
+                               "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
                                "DE30_EUR",
-                               "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
-                               "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+                               "AUD_CAD",
+                               "UK10YB_GBP",
+                               "XPD_USD",
+                               "UK100_GBP",
+                               "USD_CHF", "GBP_NZD",
+                               "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
+                               "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
                                "XAU_USD",
-                               "USD_CZK",  "WHEAT_USD",
-                               "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
-                               "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
-                               "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
+                               "DE10YB_EUR",
+                               "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
+                               "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
+                               "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+                               "USB10Y_USD",
+                               "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
+                               "CH20_CHF", "ESPIX_EUR",
+                               "XPT_USD",
+                               "EUR_AUD", "SOYBN_USD",
                                "US2000_USD",
-                               "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
-                               "JP225_USD", "SPX500_USD"),
+                               "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
+                               "XAG_NZD",
+                               "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
+                               "XAU_NZD",
+                               "BTC_USD", "LTC_USD", "BCH_USD",
+                               "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
+                               "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
+                               "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP"),
                            db_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_results.db"
                            ) {
 
@@ -145,7 +166,7 @@ analyse_trade_results <- function(
   title_var <-
     glue::glue("Trade Performance Over Time: Total % Return: {percent_return_string}")
   subtitle_var <-
-    glue::glue("Total Deposits: {total_deposits_string}, Returns - {total_return_string}, Daily Income:{daily_income_string}")
+    glue::glue("Total Deposits: {total_deposits_string},        Returns: {total_return_string},          Daily Income:{daily_income_string}")
 
   p1 <- total_by_date %>%
     ggplot(aes(x = date_closed, y = cumulative_returns)) +
@@ -160,3 +181,155 @@ analyse_trade_results <- function(
 }
 
 
+#' analyse_new_algos
+#'
+#' @param trade_tracker_DB_path
+#' @param realised_DB_path
+#' @param algo_start_date
+#'
+#' @return
+#' @export
+#'
+#' @examples
+analyse_new_algos <-
+  function(
+    trade_tracker_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_daily_buy_close.db",
+    realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
+    algo_start_date = "2025-10-13"
+  ) {
+
+    realised_DB_path_con <- connect_db(realised_DB_path)
+    all_db_data <-
+      DBI::dbGetQuery(conn = realised_DB_path_con,
+                      statement = "SELECT * FROM trade_tracker_realised")
+
+    DBI::dbDisconnect(realised_DB_path_con)
+
+    all_db_data <-
+      all_db_data %>%
+      mutate(
+        date_closed = as_datetime(date_closed, tz = "Australia/Canberra"),
+        date_open = as_datetime(date_open, tz = "Australia/Canberra")
+      )
+
+    trade_tracker_DB <- connect_db(trade_tracker_DB_path)
+    all_trades_so_far <-
+      DBI::dbGetQuery(conn = trade_tracker_DB,
+                      "SELECT * FROM trade_tracker")
+    DBI::dbDisconnect(trade_tracker_DB)
+    gc()
+
+    distinct_assets <-
+      all_trades_so_far %>%
+      distinct(Asset, account_var)
+
+    asset_accumulator <- list()
+
+    for (i in 1:dim(distinct_assets)[1] ) {
+
+      current_asset = distinct_assets$Asset[i] %>% as.character()
+      current_account = distinct_assets$account_var[i] %>% as.numeric()
+
+      realised_trades_asset <-
+        get_closed_positions(account_var = current_account,
+                             asset = current_asset)
+
+      realised_trades_asset_filt <-
+        realised_trades_asset %>%
+        filter((date_open) >= as_datetime(algo_start_date, tz = "Australia/Canberra"))
+
+      asset_accumulator[[i]] <- realised_trades_asset_filt
+
+    }
+
+    asset_accumulator_dfr <-
+      asset_accumulator %>%
+      map_dfr(bind_rows) %>%
+      mutate(
+        across(
+          .cols = c(financing, realizedPL, dividendAdjustment, initialUnits),
+          .fns = ~ as.numeric(.)
+        )
+      )
+
+    asset_accumulator_dfr_upload <-
+      asset_accumulator_dfr %>%
+      left_join(
+        all_db_data %>%
+          distinct(Asset, date_open, date_closed, account_var) %>%
+          mutate(
+            already_in_db = TRUE
+          )
+      ) %>%
+      filter(is.na(already_in_db))
+
+    if(dim(asset_accumulator_dfr_upload)[1] > 1) {
+      asset_accumulator_dfr_upload <-
+        asset_accumulator_dfr_upload %>%
+        mutate(
+          already_in_db = NA
+        ) %>%
+        left_join(
+          all_trades_so_far %>%
+            dplyr::select(id = tradeID, Asset, account_var) %>%
+            mutate(
+              tradeID_filt = id
+            )
+        ) %>%
+        filter(!is.na(tradeID_filt)) %>%
+        dplyr::select(-tradeID_filt)
+    }
+
+    if(dim(asset_accumulator_dfr_upload)[1] > 1 ) {
+      realised_DB_path_con <- connect_db(realised_DB_path)
+      append_table_sql_lite(.data = asset_accumulator_dfr_upload,
+                            table_name = "trade_tracker_realised",
+                            conn = realised_DB_path_con)
+      DBI::dbDisconnect(realised_DB_path_con)
+      rm(realised_DB_path_con)
+    }
+
+    realised_DB_path_con <- connect_db(realised_DB_path)
+    all_db_data <-
+      DBI::dbGetQuery(conn = realised_DB_path_con,
+                      statement = "SELECT * FROM trade_tracker_realised")
+
+    DBI::dbDisconnect(realised_DB_path_con)
+
+    all_db_data <-
+      all_db_data %>%
+      mutate(
+        date_closed = as_datetime(date_closed, tz = "Australia/Canberra"),
+        date_open = as_datetime(date_open, tz = "Australia/Canberra")
+      )
+
+    return(all_db_data)
+
+  }
+
+#' get_current_new_algo_trades
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_current_new_algo_trades <-
+  function(realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db") {
+
+    realised_DB_path_con <- connect_db(realised_DB_path)
+    all_db_data <-
+      DBI::dbGetQuery(conn = realised_DB_path_con,
+                      statement = "SELECT * FROM trade_tracker_realised")
+
+    DBI::dbDisconnect(realised_DB_path_con)
+
+    all_db_data <-
+      all_db_data %>%
+      mutate(
+        date_closed = as_datetime(date_closed, tz = "Australia/Canberra"),
+        date_open = as_datetime(date_open, tz = "Australia/Canberra")
+      )
+
+    return(all_db_data)
+
+  }

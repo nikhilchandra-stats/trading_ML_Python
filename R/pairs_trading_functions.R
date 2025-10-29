@@ -157,7 +157,8 @@ estimating_dual_copula <- function(
     price_col = "Open",
     rolling_period = 100,
     samples_for_MLE = 0.5,
-    test_samples = 0.4
+    test_samples = 0.4,
+    skip_log = FALSE
 ) {
 
   asset1 <- asset_data_to_use %>%
@@ -170,12 +171,24 @@ estimating_dual_copula <- function(
       !!as.name(asset_to_use[2]) := !!as.name(price_col)
     )
 
-  combined_data <- asset1 %>%
-    left_join(asset2, by = "Date") %>%
-    mutate(
-      log1_price = log(!!as.name(asset_to_use[1])),
-      log2_price = log(!!as.name(asset_to_use[2]))
-    )
+  if(skip_log == FALSE) {
+    combined_data <- asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = log(!!as.name(asset_to_use[1])),
+        log2_price = log(!!as.name(asset_to_use[2]))
+      )
+  }
+
+  if(skip_log == TRUE) {
+    combined_data <-
+      asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = !!as.name(asset_to_use[1]),
+        log2_price = !!as.name(asset_to_use[2])
+      )
+  }
 
   asset1_modeling <-combined_data %>%
     slice_head(prop = samples_for_MLE) %>%
@@ -202,6 +215,171 @@ estimating_dual_copula <- function(
     mutate(
       quantiles_1 = pcauchy(log1_price, location = mle1_1, scale = mle1_2),
       quantiles_2 = pcauchy(log2_price, location = mle2_1, scale = mle2_2)
+    )
+
+  dual_quantile_LM_pred =
+    predict.lm(temp_LM,
+               newdata = combined_data2 %>% dplyr::select(x = quantiles_2)) %>%
+    as.numeric()
+
+  rm(quantiles_1_LM, quantiles_2_LM, temp_LM_tibble, temp_LM, mle1, mle1_1, mle1_2, mle2, mle2_1, mle2_1, mle2_2)
+  gc()
+
+  combined_data2 <- combined_data2 %>%
+    mutate(quant_lm_pred = dual_quantile_LM_pred) %>%
+    filter(!is.na(log1_price), !is.na(log2_price)) %>%
+    mutate(
+      correlation_vars =
+        slider::slide2_dbl(.x = !!as.name(asset_to_use[1]), .y = !!as.name(asset_to_use[2]),
+                           .f = ~ cor(.x,.y), .before = rolling_period),
+      tangent_angle1 = atan(
+        (!!as.name(asset_to_use[1]) - lag(!!as.name(asset_to_use[1]), rolling_period))/rolling_period
+      ),
+      tangent_angle2 = atan(
+        (!!as.name(asset_to_use[2]) - lag(!!as.name(asset_to_use[2]), rolling_period))/rolling_period
+      )
+    )
+
+  if(!is.null(test_samples)) {
+    returned <- combined_data2 %>%
+      slice_tail(prop = test_samples)
+  } else {
+    returned <- combined_data2
+  }
+
+  rm(combined_data2)
+  gc()
+
+  returned <- returned %>%
+    mutate(across(.cols = !matches("Date", ignore.case = FALSE),
+                  .fns = ~ lag(.))) %>%
+    mutate(
+      correlation_vars_mean =
+        slider::slide_dbl(.x = correlation_vars, .f = ~ mean(., na.rm = T), .before = rolling_period),
+      correlation_vars_sd =
+        slider::slide_dbl(.x = correlation_vars, .f = ~ sd(., na.rm = T), .before = rolling_period),
+      quant_lm_mean =
+        slider::slide_dbl(.x = quant_lm_pred, .f = ~ mean(., na.rm = T), .before = rolling_period),
+      quant_lm_sd =
+        slider::slide_dbl(.x = quant_lm_pred, .f = ~ sd(., na.rm = T), .before = rolling_period),
+    )
+
+  gc()
+
+  new_names <-
+    names(returned) %>%
+    map(
+      ~
+        case_when(
+          .x != "Date" &
+            .x != asset_to_use[1] &
+            .x != asset_to_use[2] &
+            str_detect(.x, "1") &
+            !str_detect(.x, "0") ~ paste0(asset_to_use[1], "_",.x),
+          .x != "Date" &
+            .x != asset_to_use[1] &
+            .x != asset_to_use[2] &
+            str_detect(.x, "2") &
+            !str_detect(.x, "0") ~ paste0(asset_to_use[2], "_",.x),
+          .x == "correlation_vars" & !str_detect(.x, "_mean|_sd") ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","cor"),
+          .x == "correlation_vars_mean" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","cor_mean"),
+          .x == "correlation_vars_sd" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","cor_sd"),
+
+          .x == "quant_lm_pred" & !str_detect(.x, "_mean|_sd") ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","quant_lm"),
+          .x == "quant_lm_mean" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","quant_lm_mean"),
+          .x == "quant_lm_sd" ~ paste0(asset_to_use[1], "_",asset_to_use[2],"_","quant_lm_sd"),
+
+          .x == "Date" ~ "Date",
+          .x == asset_to_use[1] ~ asset_to_use[1],
+          .x == asset_to_use[2] ~ asset_to_use[2]
+
+        )
+    ) %>%
+    unlist()
+
+  names(returned) <-new_names
+
+  return(returned)
+
+}
+
+#' estimating_dual_copula
+#'
+#' @param asset_data_to_use
+#' @param asset_to_use
+#' @param price_col
+#' @param rolling_period
+#' @param samples_for_MLE
+#' @param test_samples
+#'
+#' @return
+#' @export
+#'
+#' @examples
+estimating_dual_copula_gauss <- function(
+    asset_data_to_use = starting_asset_data_bid_15,
+    asset_to_use = c("AUD_USD", "NZD_USD"),
+    price_col = "Open",
+    rolling_period = 100,
+    samples_for_MLE = 0.5,
+    test_samples = 0.4,
+    skip_log = FALSE
+) {
+
+  asset1 <- asset_data_to_use %>%
+    filter(Asset == asset_to_use[1]) %>% distinct(Date, !!as.name(price_col)) %>%
+    rename(
+      !!as.name(asset_to_use[1]) := !!as.name(price_col)
+    )
+  asset2 <- asset_data_to_use %>% filter(Asset == asset_to_use[2]) %>% distinct(Date, !!as.name(price_col))%>%
+    rename(
+      !!as.name(asset_to_use[2]) := !!as.name(price_col)
+    )
+
+  if(skip_log == FALSE) {
+    combined_data <- asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = log(!!as.name(asset_to_use[1])),
+        log2_price = log(!!as.name(asset_to_use[2]))
+      )
+  }
+
+  if(skip_log == TRUE) {
+    combined_data <-
+      asset1 %>%
+      left_join(asset2) %>%
+      mutate(
+        log1_price = !!as.name(asset_to_use[1]),
+        log2_price = !!as.name(asset_to_use[2])
+      )
+  }
+
+  asset1_modeling <-combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    pull(log1_price)
+
+  asset2_modeling <-combined_data %>%
+    slice_head(prop = samples_for_MLE) %>%
+    pull(log2_price)
+
+  mle1 <- fitdistrplus::fitdist(asset1_modeling %>% keep(~ !is.na(.x) & !is.nan(.x)) , distr = "norm")
+  mle1_1 <- mle1$estimate[1] %>% as.numeric()
+  mle1_2 <- mle1$estimate[2] %>% as.numeric()
+  mle2 <- fitdistrplus::fitdist(asset2_modeling %>% keep(~ !is.na(.x) & !is.nan(.x)) , distr = "norm")
+  mle2_1 <- mle2$estimate[1] %>% as.numeric()
+  mle2_2 <- mle2$estimate[2] %>% as.numeric()
+
+  quantiles_1_LM = pnorm(asset1_modeling, mean = mle1_1, sd = mle1_2)
+  quantiles_2_LM = pnorm(asset2_modeling, mean = mle2_1, sd = mle2_2)
+
+  temp_LM_tibble <- tibble(y = quantiles_1_LM, x = quantiles_2_LM)
+  temp_LM <- lm(data = temp_LM_tibble, formula = y ~ x)
+
+  combined_data2 <- combined_data %>%
+    mutate(
+      quantiles_1 = pnorm(log1_price, mean = mle1_1, sd = mle1_2),
+      quantiles_2 = pnorm(log2_price, mean = mle2_1, sd = mle2_2)
     )
 
   dual_quantile_LM_pred =
@@ -2599,5 +2777,727 @@ get_all_commod_USD <- function(
     bind_rows(SUGAR_USD)
 
   return(all_dat)
+
+}
+
+
+#-------------Indicator Inputs
+#---Gold Index
+get_equity_index <-
+  function(index_data) {
+    major_indices_log_cumulative <-
+      c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR", "SG30_SGD",
+        "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR",
+                                  "SG30_SGD", "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR",
+                              "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_equities_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_indices_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR",
+                          "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      )
+
+    rm(major_indices_log_cumulative)
+    gc()
+
+    return(pc_equities_global)
+  }
+
+#---Gold Index
+get_Gold_index <-
+  function(index_data) {
+    major_gold_log_cumulative <-
+      c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_gold_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_gold_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Gold_Equities = PC1,
+             PC2_Gold_Equities = PC2,
+             PC3_Gold_Equities = PC3) %>%
+      dplyr::select(-PC4, -PC5)
+
+    rm(major_gold_log_cumulative)
+    gc()
+
+    return(pc_gold_global)
+  }
+
+#' get_silver_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_silver_index <-
+  function(index_data) {
+
+    major_silver_log_cumulative <-
+      c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_silver_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_silver_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Silver_Equities = PC1,
+             PC2_Silver_Equities = PC2,
+             PC3_Silver_Equities = PC3) %>%
+      dplyr::select(-PC4, -PC5)
+
+    rm(major_silver_log_cumulative)
+    gc()
+
+    return(pc_silver_global)
+
+  }
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_bonds_index <-
+  function(index_data) {
+
+    major_bonds_log_cumulative <-
+      c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD") %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD")),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD")) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_bonds_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_bonds_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD"),
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_Bonds_Equities = PC1,
+             PC2_Bonds_Equities = PC2,
+             PC3_Bonds_Equities = PC3)
+
+    rm(major_bonds_log_cumulative)
+    gc()
+
+      return(pc_bonds_global)
+
+  }
+
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_AUD_index <-
+  function(index_data) {
+
+    AUD_assets <-
+      index_data %>%
+      distinct(Asset) %>%
+      filter(str_detect(Asset, "AUD")) %>%
+      pull(Asset)
+
+    major_AUD_log_cumulative <-
+      AUD_assets %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% AUD_assets),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% AUD_assets) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_AUD_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_AUD_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  AUD_assets,
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_AUD_Equities = PC1,
+             PC2_AUD_Equities = PC2,
+             PC3_AUD_Equities = PC3,
+             PC4_AUD_Equities = PC4) %>%
+      dplyr::select(Date, matches("PC[0-9]_AUD"))
+
+    rm(major_AUD_log_cumulative)
+    gc()
+
+    return(pc_AUD_global)
+
+  }
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_USD_index <-
+  function(index_data) {
+
+    USD_assets <-
+      index_data %>%
+      distinct(Asset) %>%
+      filter(str_detect(Asset, "AUD_USD|EUR_USD|XAU_USD|GBP_USD|USD_JPY|NZD_USD|USD_CHF|USD_SEK|USD_NOK")) %>%
+      pull(Asset)
+
+    major_USD_log_cumulative <-
+      USD_assets %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% index_data),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% index_data) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_USD_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_USD_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  index_data,
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_USD = PC1,
+             PC2_USD = PC2,
+             PC3_USD = PC3,
+             PC4_USD = PC4) %>%
+      dplyr::select(Date, matches("PC[0-9]_AUD"))
+
+    rm(major_USD_log_cumulative)
+    gc()
+
+    return(pc_USD_global)
+
+  }
+
+#' create_sentiment_index
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#' @param date_start
+#' @param end_date
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_sentiment_index <-
+  function(raw_macro_data,
+           lag_days = 1,
+           date_start = "2011-01-01",
+           end_date = today() %>% as.character(),
+           first_difference = TRUE,
+           scale_values = FALSE) {
+
+    aus_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    cad_macro_data <-
+      get_CAD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    jpy_macro_data <-
+      get_JPY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    gbp_macro_data <-
+      get_GBP_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    sentiment_PCA <-
+      list(
+        aus_macro_data,
+        usd_macro_data,
+        cny_macro_data,
+        eur_macro_data,
+        cad_macro_data,
+        jpy_macro_data,
+        gbp_macro_data
+      ) %>%
+      map(
+        ~ .x %>%
+          dplyr::select(date, contains( c("pmi","leading","confidence","optimism","sentiment") ))
+      ) %>%
+      reduce(left_join) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~!is.na(.)))
+
+    names_to_PCA <-
+      names(sentiment_PCA) %>%
+      keep(~ !str_detect(.x,"Date")) %>%
+      unlist() %>%
+      as.character()
+
+    pca_index_dat <- sentiment_PCA %>% dplyr::select(-date)
+
+    pca_calc <- prcomp(pca_index_dat, scale = scale_values)
+    pca_calc1 <- pca_calc$x %>%
+      as_tibble() %>%
+      mutate(
+        Sentiment_Index1 = (PC1 + PC8 + PC9)/3,
+        Sentiment_Index2 = (PC2 + PC3 + PC4 + PC5 + PC6)/5
+      ) %>%
+      dplyr::select(Sentiment_Index1, Sentiment_Index2)
+
+    data_joined_date <-
+      sentiment_PCA %>%
+      distinct(date) %>%
+      bind_cols(pca_calc1)
+
+    final_tibble <-
+      tibble(
+        Date = seq(as_date(date_start), as_date(end_date), "day" )
+      ) %>%
+      left_join(data_joined_date, by = c("Date" = "date")) %>%
+      fill( c(Sentiment_Index1, Sentiment_Index2 ), .direction = "down")
+
+    return(final_tibble)
+
+  }
+
+get_interest_rate_differentials <-
+  function(
+    raw_macro_data,
+    lag_days = 1,
+    date_start = "2011-01-01",
+    end_date = today() %>% as.character(),
+    first_difference = FALSE,
+    scale_values = FALSE
+    ) {
+
+    aus_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    usd_macro_data <-
+      get_USD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    cny_macro_data <-
+      get_CNY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    eur_macro_data <-
+      get_EUR_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    cad_macro_data <-
+      get_CAD_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    jpy_macro_data <-
+      get_JPY_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    gbp_macro_data <-
+      get_GBP_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+  }
+
+#' create_Country_Strength_Index
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#' @param date_start
+#' @param end_date
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_AUS_Strength_Index <-
+  function(raw_macro_data,
+           daily_asset_data = All_Daily_Data,
+           lag_days = 1,
+           date_start = "2011-01-01",
+           end_date = today() %>% as.character(),
+           first_difference = TRUE,
+           scale_values = FALSE,
+           Asset_for_Cointegration = "AUD_USD",
+           train_date_max = "2018-01-01",
+           second_train_date = "2021-01-01") {
+
+    aud_usd <-
+      daily_asset_data %>%
+      filter(Asset == "AUD_USD")
+
+    aud_index_data <- get_AUD_index(daily_asset_data)
+
+    aus_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+    aud_index_data <- get_AUD_index(daily_asset_data)
+
+    aus_macro_data <-
+      get_AUS_Indicators(raw_macro_data,
+                         lag_days = lag_days,
+                         first_difference = first_difference
+      ) %>%
+      janitor::clean_names()
+
+
+    aud_confidence_PCA <-
+      list(
+        aus_macro_data
+      ) %>%
+      map(
+        ~ .x %>%
+          dplyr::select(date, contains( c("confidence") ))
+      ) %>%
+      reduce(left_join) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~!is.na(.)))
+    names_to_PCA <-
+      names(aud_confidence_PCA) %>%
+      keep(~ !str_detect(.x,"Date")) %>%
+      unlist() %>%
+      as.character()
+    aud_confidence_PCA_dat <- aud_confidence_PCA %>% dplyr::select(-date)
+    aud_confidence_PCA_calc <- prcomp(aud_confidence_PCA_dat, scale = scale_values)
+    aud_confidence_PCA_calc1 <- aud_confidence_PCA_calc$x %>%
+      as_tibble() %>%
+      mutate(
+        AUD_Confidence = (PC1 + PC2)/2
+      ) %>%
+      dplyr::select(AUD_Confidence)
+
+
+
+    aud_confidence_PCA <-
+      list(
+        aus_macro_data
+      ) %>%
+      map(
+        ~ .x %>%
+          dplyr::select(date, contains( c("aud_aig_services_index|aud_aig_manufacturing_index|aud_producer_price_index") ))
+      ) %>%
+      reduce(left_join) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~!is.na(.)))
+    names_to_PCA <-
+      names(aud_confidence_PCA) %>%
+      keep(~ !str_detect(.x,"Date")) %>%
+      unlist() %>%
+      as.character()
+    aud_confidence_PCA_dat <- aud_confidence_PCA %>% dplyr::select(-date)
+    aud_confidence_PCA_calc <- prcomp(aud_confidence_PCA_dat, scale = scale_values)
+    aud_confidence_PCA_calc1 <- aud_confidence_PCA_calc$x %>%
+      as_tibble() %>%
+      mutate(
+        AUD_Confidence = (PC1 + PC2)/2
+      ) %>%
+      dplyr::select(AUD_Confidence)
+
+
+    data_joined_date <-
+      sentiment_PCA %>%
+      distinct(date) %>%
+      bind_cols(pca_calc1)
+
+    final_tibble <-
+      tibble(
+        Date = seq(as_date(date_start), as_date(end_date), "day" )
+      ) %>%
+      left_join(data_joined_date, by = c("Date" = "date")) %>%
+      fill( c(Sentiment_Index1, Sentiment_Index2 ), .direction = "down")
+
+    return(final_tibble)
+
+  }
+
+
+create_and_test_LM <- function(.data = model_data,
+                               train_date_max = "2024-01-01",
+                               dependant_var = "PC1_AUD_Equities",
+                               regressors = reg_vars,
+                               date_col = "Date",
+                               second_train_date = "2021-01-01",
+                               interval_level = 0.75) {
+
+  lm_formula <-  create_lm_formula(dependant = dependant_var, independant = regressors)
+  train_data <- .data %>% filter(!!as.name(date_col) <= train_date_max)
+  lm_model_train <- lm(formula = lm_formula, data = train_data)
+  summary(lm_model_train)
+
+  second_train_data <- .data %>%
+    filter(!!as.name(date_col) > train_date_max )
+
+  predictions <- predict(lm_model_train,
+                         newdata = second_train_data,
+                         interval = "prediction",
+                         level = interval_level) %>%
+    as_tibble()
+
+  second_train_data <- .data %>%
+    filter(!!as.name(date_col) > train_date_max ) %>%
+    mutate(
+      Middle_pred = predictions$fit,
+      Low_pred = predictions$lwr,
+      High_pred = predictions$upr
+    ) %>%
+    mutate(
+      Middle_pred_ma_10 = slider::slide_dbl(.x = Middle_pred, .f = ~ mean(.x, na.rm = T), .before = 10),
+      Middle_pred_ma_5 = slider::slide_dbl(.x = Middle_pred, .f = ~ mean(.x, na.rm = T), .before = 5),
+      Middle_pred_ma_20 = slider::slide_dbl(.x = Middle_pred, .f = ~ mean(.x, na.rm = T), .before = 20),
+
+      Low_pred_ma_10 = slider::slide_dbl(.x = Low_pred, .f = ~ mean(.x, na.rm = T), .before = 10),
+      Low_pred_ma_5 = slider::slide_dbl(.x = Low_pred, .f = ~ mean(.x, na.rm = T), .before = 5),
+      Low_pred_ma_20 = slider::slide_dbl(.x = Low_pred, .f = ~ mean(.x, na.rm = T), .before = 20)
+    )
+
+  lm_formula <-  create_lm_formula(
+                                   dependant = dependant_var,
+                                   independant = c(regressors,
+                                                   "Middle_pred",
+                                                   "Middle_pred_ma_10",
+                                                   "Middle_pred_ma_5",
+                                                   "Middle_pred_ma_20",
+                                                   "Low_pred",
+                                                   "Low_pred_ma_10",
+                                                   "Low_pred_ma_5",
+                                                   "Low_pred_ma_20",
+                                                   "High_pred")
+                                   )
+  lm_model_train2 <- lm(formula = lm_formula,
+                        data = second_train_data %>% filter(!!as.name(date_col) <= second_train_date)
+                        )
+  summary(lm_model_train2)
+
+  test_data <- second_train_data %>%
+    filter(!!as.name(date_col) > second_train_date )
+
+  predictions_test <- predict(lm_model_train2,
+                         newdata = test_data,
+                         interval = "prediction",
+                         level = interval_level) %>%
+    as_tibble()
+
+  test_data <-
+    test_data %>%
+    mutate(
+      Middle_pred_test = predictions_test$fit,
+      Low_pred_test = predictions_test$lwr,
+      High_pred_test = predictions_test$upr
+    )
+
+  return( list(test_data, lm_model_train2, lm_model_train) )
 
 }

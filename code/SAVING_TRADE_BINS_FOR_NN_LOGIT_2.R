@@ -492,7 +492,7 @@ start_date = "2013-06-01"
 end_date = "2025-09-20"
 
 Indices_Metals_Bonds <-
-  get_Port_Buy_Data_remaining_assets(
+  get_Port_Buy_Data(
     db_location = db_location,
     start_date = start_date,
     end_date = end_date,
@@ -506,6 +506,58 @@ upload_trade_actuals_period_version_to_db(
   profit_factor = 15,
   risk_dollar_value = 10,
   periods_ahead = 48,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor
+)
+
+#----------------------------------Period Version missing assets
+bin_factor = NULL
+stop_value_var = 2
+profit_value_var = 15
+period_var = 8
+full_ts_trade_db_location = "C:/Users/nikhi/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+actual_wins_losses <-
+  DBI::dbGetQuery(full_ts_trade_db_con,
+                  glue::glue("SELECT * FROM full_ts_trades_mapped
+                  WHERE stop_factor = {stop_value_var} AND
+                        periods_ahead = {period_var} AND Date >= {start_date}")
+  ) %>%
+  mutate(
+    Date = as_datetime(Date)
+  ) %>%
+  filter(stop_factor == stop_value_var,
+         profit_factor == profit_value_var,
+         periods_ahead == period_var) %>%
+  distinct(Asset) %>%
+  pull(Asset)
+
+DBI::dbDisconnect(full_ts_trade_db_con)
+rm(full_ts_trade_db_con)
+gc()
+
+Indices_Metals_Bonds <-
+  get_Port_Buy_Data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "H1"
+  )
+
+Indices_Metals_Bonds <- Indices_Metals_Bonds %>%
+  map(
+    ~ .x %>% filter(!(Asset %in% actual_wins_losses))
+  )
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 2,
+  profit_factor = 15,
+  risk_dollar_value = 10,
+  periods_ahead = 8,
   append_or_write = "append",
   full_ts_trade_db_location = full_ts_trade_db_location,
   currency_conversion = currency_conversion,

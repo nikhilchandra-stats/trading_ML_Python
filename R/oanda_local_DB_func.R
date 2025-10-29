@@ -19,7 +19,7 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
   start_date_integer <- start_date %>% as_datetime() %>% as.integer()
   end_date_integer <- (as_datetime(end_date) + days(1)) %>% as.integer()
 
-  "Oanda_Asset_Data_ask_M15"
+  # "Oanda_Asset_Data_ask_M15"
 
   db_table <- glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
   db_table <- case_when(
@@ -238,7 +238,7 @@ update_local_db_file <- function(
   dates_by_asset <-
     get_db_price(
       db_location = db_location,
-      start_date = today() - days(30),
+      start_date = today() - days(100),
       end_date = today(),
       time_frame = time_frame,
       bid_or_ask = bid_or_ask) %>%
@@ -279,7 +279,7 @@ update_local_db_file <- function(
     left_join(
       dates_by_asset %>% ungroup() %>%  dplyr::select(Asset,  DB_Date = Date)
     ) %>%
-    filter(Date > DB_Date) %>%
+    filter(Date > DB_Date| is.na(DB_Date)) %>%
     dplyr::select(-DB_Date)
 
   table_name <-

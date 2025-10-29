@@ -394,40 +394,41 @@ get_closed_positions <- function(save_csv = FALSE,
                                  account_var = 2,
                                  asset = "AUD_USD"){
 
-    headers = c(
-      `Content-Type` = 'application/json',
-      `Authorization` = get_oanda_from_sys()
+  headers = c(
+    `Content-Type` = 'application/json',
+    `Authorization` = get_oanda_from_sys()
+  )
+
+  params <-
+    list(
+      `state` = "CLOSED",
+      `count` = 500L,
+      instrument = asset
     )
 
-    params <-
-      list(
-        `state` = "CLOSED",
-        `count` = 500L,
-        instrument = asset
-      )
+  res <- httr::GET(url =
+                     paste0(get_oanda_url(account = account_var),"/trades"),
+                   httr::add_headers(.headers=headers),
+                   query = params)
 
-    res <- httr::GET(url =
-                       paste0(get_oanda_url(account = account_var),"/trades"),
-                     httr::add_headers(.headers=headers),
-                     query = params)
+  returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
 
-    returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
+  returned_value$trades <-  returned_value$trades
 
-    returned_value$trades <-  returned_value$trades
+  complete_frame <- returned_value$trades  %>%
+    select(-takeProfitOrder,-stopLossOrder) %>%
+    mutate(
+      date_open = as_datetime(openTime),
+      date_closed = as_datetime(closeTime)
+    )  %>%
+    distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits,
+             financing, dividendAdjustment) %>%
+    mutate(
+      account_var = account_var
+    ) %>%
+    rename(Asset =instrument)
 
-    complete_frame <- returned_value$trades  %>%
-      select(-takeProfitOrder,-stopLossOrder) %>%
-      mutate(
-        date_open = as_datetime(openTime),
-        date_closed = as_datetime(closeTime)
-      )  %>%
-      distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits) %>%
-      mutate(
-        account_var = account_var
-      ) %>%
-      rename(Asset =instrument)
-
-    return(complete_frame)
+  return(complete_frame)
 
 }
 
@@ -1094,18 +1095,18 @@ oanda_close_trade_ID <-
       `Authorization` = get_oanda_from_sys()
     )
 
-    params = list(
-      `units` = glue::glue("{volume}")
-    )
+    # params = list(
+    #   `units` = glue::glue("{units}")
+    # )
 
-    json_body <- rjson::toJSON(params)
+    # json_body <- rjson::toJSON(params)
 
     account_number <- get_oanda_account_number(account_name = account)
 
     returned_response <-
       httr::PUT(url = glue::glue('https://api-fxtrade.oanda.com/v3/accounts/{account_number}/trades/{tradeID}/close'),
                 httr::add_headers(.headers=headers),
-                body = json_body,
+                # body = json_body,
                 encode = "raw")
 
     return(returned_response)

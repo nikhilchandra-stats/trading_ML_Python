@@ -1269,3 +1269,370 @@ get_random_samples_MLE_beta <-
     return(all_results)
 
   }
+
+#' upload_trade_actuals_to_db
+#'
+#' @param asset_data_raw_list
+#' @param date_filter
+#' @param stop_factor
+#' @param profit_factor
+#' @param risk_dollar_value
+#' @param append_or_write
+#' @param full_ts_trade_db_location
+#'
+#' @return
+#' @export
+#'
+#' @examples
+upload_trade_actuals_to_db <-
+  function(
+    asset_data_raw_list,
+    date_filter = "2008-01-01",
+    stop_factor = 3,
+    profit_factor = 6,
+    risk_dollar_value = 10,
+    append_or_write = "append",
+    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db"
+  ) {
+
+    Long_Data_tagged <-
+      asset_data_raw_list[[1]] %>%
+      filter(Date >= date_filter) %>%
+      mutate(
+        trade_col = "Long"
+      )
+
+    Long_trade_data <-
+      run_pairs_analysis(
+        tagged_trades = Long_Data_tagged,
+        stop_factor = stop_factor,
+        profit_factor = profit_factor,
+        raw_asset_data = asset_data_raw_list[[1]],
+        risk_dollar_value = risk_dollar_value,
+        return_trade_ts = TRUE
+      )
+
+    Short_Data_tagged <-
+      asset_data_raw_list[[2]] %>%
+      filter(Date >= date_filter) %>%
+      mutate(
+        trade_col = "Short"
+      )
+
+    Short_trade_data <-
+      run_pairs_analysis(
+        tagged_trades = Short_Data_tagged,
+        stop_factor = stop_factor,
+        profit_factor = profit_factor,
+        raw_asset_data = asset_data_raw_list[[2]],
+        risk_dollar_value = risk_dollar_value,
+        return_trade_ts = TRUE
+      )
+
+    full_data_for_upload <-
+      Long_trade_data %>%
+      mutate(
+        stop_factor = stop_factor,
+        profit_factor = profit_factor
+      ) %>%
+      bind_rows(
+        Short_trade_data %>%
+          mutate(
+            stop_factor = stop_factor,
+            profit_factor = profit_factor
+          )
+      )
+
+    if(append_or_write == "append") {
+      full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+      append_table_sql_lite(.data = full_data_for_upload,
+                            table_name = "full_ts_trades_mapped",
+                            conn = full_ts_trade_db_con)
+      DBI::dbDisconnect(full_ts_trade_db_con)
+      rm(full_ts_trade_db_con)
+      gc()
+
+      rm(full_data_for_upload)
+      gc()
+    }
+
+    if(append_or_write == "write") {
+      full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+      write_table_sql_lite(.data = full_data_for_upload,
+                           table_name = "full_ts_trades_mapped",
+                           conn = full_ts_trade_db_con,
+                           overwrite_true = TRUE)
+      DBI::dbDisconnect(full_ts_trade_db_con)
+      rm(full_ts_trade_db_con)
+      gc()
+
+      rm(full_data_for_upload)
+      gc()
+    }
+
+  }
+
+
+#' get_X_period_ahead_return
+#'
+#' @param tagged_trades
+#' @param ask_price
+#' @param bid_price
+#' @param stop_factor
+#' @param profit_factor
+#' @param trade_col
+#' @param date_col
+#' @param start_price_col
+#' @param mean_values_by_asset
+#' @param periods_ahead
+#' @param trade_direction
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_X_period_ahead_return <-
+  function(
+    tagged_trades = SPX_US2000_XAG_trades ,
+    ask_price = SPX_US2000_XAG_ask,
+    bid_price = SPX_US2000_XAG_bid,
+    stop_factor = 0.75,
+    profit_factor =3,
+    trade_col = "trade_col",
+    date_col = "Date",
+    start_price_col = "Price",
+    mean_values_by_asset = mean_values_by_asset_for_loop,
+    periods_ahead = 24,
+    trade_direction = "Long"
+  ) {
+
+
+    trade_dates_by_asset <-
+      tagged_trades %>%
+      filter(!is.na(trade_col)) %>%
+      distinct(Date, Asset, trade_col) %>%
+      filter(trade_col == trade_direction)
+
+    loop_determined_trades <-
+      generic_trade_finder_loop(
+        tagged_trades = tagged_trades %>% filter(trade_col == trade_direction),
+        asset_data_daily_raw = ask_price,
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = trade_col,
+        date_col = date_col,
+        start_price_col = start_price_col,
+        mean_values_by_asset =mean_values_by_asset
+      )
+
+    trades_where_did_we_stop <-
+      loop_determined_trades %>%
+      dplyr::select(Asset = asset,
+                    Date = dates,
+                    End_Date = ending_date_trade,
+                    trade_returns_stop_prof = trade_returns,
+                    trade_col,
+                    trade_start_prices,
+                    starting_profit_value,
+                    starting_stop_value,
+                    trade_end_prices_stop_prof = trade_end_prices) %>%
+      mutate(
+        End_Date = as_datetime(End_Date, tz = "Australia/Sydney"),
+        Time_Periods = (as.numeric(End_Date - Date)/60)/60
+      )
+
+    analysis_data <-
+      ask_price %>%
+      rename(Ask_Price = Price) %>%
+      left_join(bid_price %>% dplyr::select(Date, Asset, Bid_Price = Price)) %>%
+      left_join(trade_dates_by_asset) %>%
+      dplyr::select(-`Vol.`) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        Price_X_periods_Bid = lead(Bid_Price, periods_ahead),
+        Price_X_periods_Ask = lead(Ask_Price, periods_ahead),
+        End_Date_X_Periods = lead(Date, periods_ahead)
+      ) %>%
+      left_join(trades_where_did_we_stop) %>%
+      mutate(
+        trade_return =
+          case_when(
+            Time_Periods <= periods_ahead ~ trade_returns_stop_prof,
+            Time_Periods > periods_ahead & trade_direction == "Long" ~ Price_X_periods_Bid - Ask_Price,
+            Time_Periods > periods_ahead & trade_direction == "Short" ~ Bid_Price - Price_X_periods_Ask
+          ),
+
+        trade_end_prices =
+          case_when(
+            Time_Periods <= periods_ahead ~ abs(trade_end_prices_stop_prof),
+            Time_Periods > periods_ahead & trade_direction == "Long" ~ abs(Price_X_periods_Bid),
+            Time_Periods > periods_ahead & trade_direction == "Short" ~ abs(Price_X_periods_Ask)
+          )
+      ) %>%
+      dplyr::select(-trade_end_prices_stop_prof)
+
+    return(analysis_data)
+
+  }
+
+
+#' upload_trade_actuals_to_db
+#'
+#' @param asset_data_raw_list
+#' @param date_filter
+#' @param stop_factor
+#' @param profit_factor
+#' @param risk_dollar_value
+#' @param append_or_write
+#' @param full_ts_trade_db_location
+#'
+#' @return
+#' @export
+#'
+#' @examples
+upload_trade_actuals_period_version_to_db <-
+  function(
+    asset_data_raw_list,
+    date_filter = "2008-01-01",
+    stop_factor = 3,
+    profit_factor = 6,
+    risk_dollar_value = 5,
+    periods_ahead = 24,
+    append_or_write = "append",
+    full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_AUD_USD.db",
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor
+  ) {
+
+    Long_Data_tagged <-
+      asset_data_raw_list[[1]] %>%
+      filter(Date >= date_filter) %>%
+      mutate(
+        trade_col = "Long"
+      )
+
+    mean_values_by_asset_for_loop <-
+      wrangle_asset_data(asset_data_raw_list[[1]], summarise_means = TRUE)
+
+    Long_trade_data <-
+      get_X_period_ahead_return(
+        tagged_trades = Long_Data_tagged ,
+        ask_price = asset_data_raw_list[[1]],
+        bid_price = asset_data_raw_list[[2]],
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset_for_loop,
+        periods_ahead = periods_ahead,
+        trade_direction = "Long"
+      )
+
+    data_for_dollar_values_long <-
+      convert_stop_profit_AUD(trade_data = Long_trade_data,
+                              asset_infor = asset_infor,
+                              currency_conversion = currency_conversion,
+                              asset_col = "Asset",
+                              stop_col = "starting_stop_value",
+                              profit_col = "starting_profit_value",
+                              price_col = "trade_start_prices",
+                              risk_dollar_value = risk_dollar_value,
+                              returns_present = FALSE,
+                              trade_return_col = "trade_return") %>%
+      mutate(
+        trade_return_dollar_aud =
+          case_when(
+            str_detect(Asset,"SEK|NOK|ZAR|MXN|CNH") ~ ((risk_dollar_value/trade_return)/adjusted_conversion)*trade_return,
+            TRUE ~ volume_adj*trade_return
+          )
+      )
+
+    Short_Data_tagged <-
+      asset_data_raw_list[[2]] %>%
+      filter(Date >= date_filter) %>%
+      mutate(
+        trade_col = "Short"
+      )
+
+    Short_trade_data <-
+      get_X_period_ahead_return(
+        tagged_trades = Short_Data_tagged ,
+        ask_price = asset_data_raw_list[[1]],
+        bid_price = asset_data_raw_list[[2]],
+        stop_factor = stop_factor,
+        profit_factor =profit_factor,
+        trade_col = "trade_col",
+        date_col = "Date",
+        start_price_col = "Price",
+        mean_values_by_asset = mean_values_by_asset_for_loop,
+        periods_ahead = periods_ahead,
+        trade_direction = "Short"
+      )
+
+
+    data_for_dollar_values_short <-
+      convert_stop_profit_AUD(trade_data = Short_trade_data,
+                              asset_infor = asset_infor,
+                              currency_conversion = currency_conversion,
+                              asset_col = "Asset",
+                              stop_col = "starting_stop_value",
+                              profit_col = "starting_profit_value",
+                              price_col = "trade_start_prices",
+                              risk_dollar_value = risk_dollar_value,
+                              returns_present = FALSE,
+                              trade_return_col = "trade_return") %>%
+      mutate(
+        trade_return_dollar_aud =
+          case_when(
+            str_detect(Asset,"SEK|NOK|ZAR|MXN|CNH") ~ ((risk_dollar_value/trade_return)/adjusted_conversion)*trade_return,
+            TRUE ~ volume_adj*trade_return
+          )
+      )
+
+    full_data_for_upload <-
+      data_for_dollar_values_long %>%
+      mutate(
+        stop_factor = stop_factor,
+        profit_factor = profit_factor,
+        periods_ahead = periods_ahead
+      ) %>%
+      bind_rows(
+        data_for_dollar_values_short %>%
+          mutate(
+            stop_factor = stop_factor,
+            profit_factor = profit_factor,
+            periods_ahead = periods_ahead
+          )
+      )
+
+    if(append_or_write == "append") {
+      full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+      append_table_sql_lite(.data = full_data_for_upload,
+                            table_name = "full_ts_trades_mapped",
+                            conn = full_ts_trade_db_con)
+      DBI::dbDisconnect(full_ts_trade_db_con)
+      rm(full_ts_trade_db_con)
+      gc()
+
+      rm(full_data_for_upload)
+      gc()
+    }
+
+    if(append_or_write == "write") {
+      full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+      write_table_sql_lite(.data = full_data_for_upload,
+                           table_name = "full_ts_trades_mapped",
+                           conn = full_ts_trade_db_con,
+                           overwrite_true = TRUE)
+      DBI::dbDisconnect(full_ts_trade_db_con)
+      rm(full_ts_trade_db_con)
+      gc()
+
+      rm(full_data_for_upload)
+      gc()
+    }
+
+  }

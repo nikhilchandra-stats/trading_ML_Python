@@ -90,7 +90,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Third Algo.db"
 start_date = "2018-06-01"
 end_date = today() %>% as.character()
 
@@ -144,10 +144,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close.db"
+  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Third Algo.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -165,7 +165,6 @@ mean_values_by_asset_for_loop_H1_ask <-
 
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
-# trades_opened <- 1
 trades_closed <- 0
 risk_dollar_value = 8
 
@@ -206,8 +205,7 @@ Asset_Available =
   )
 
 Asset_Available <-
-  Asset_Available[1:14]
-
+  Asset_Available[15:29]
 # new_db <- TRUE
 while (current_time < end_time) {
 
@@ -341,13 +339,14 @@ while (current_time < end_time) {
           stop_value_var = 1,
           profit_value_var = 15,
           period_var = 5,
-          start_index = 1,
-          end_index = 14,
+          start_index = 15,
+          end_index = 29,
           save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
         )
       tictoc::toc()
 
     }
+
 
     if((current_hour) %% 2 != 0) {
       tictoc::tic()
@@ -363,15 +362,15 @@ while (current_time < end_time) {
           stop_value_var = 1,
           profit_value_var = 15,
           period_var = 5,
-          start_index = 1,
-          end_index = 14,
+          start_index = 15,
+          end_index = 29,
           save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
         )
       tictoc::toc()
     }
 
     asset_optimisation_store_path =
-      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation 2.db"
 
     asset_optimisation_store_db <- connect_db(asset_optimisation_store_path)
 
@@ -439,6 +438,8 @@ while (current_time < end_time) {
           periods_ahead = as.character(periods_ahead)
         )
     }
+
+
 
     #-------------------------All Trades
     total_trades <-
@@ -725,10 +726,11 @@ while (current_time < end_time) {
       }
     }
 
+
+
     Sys.sleep(60)
 
     rm(positions_tagged_as_part_of_algo, check_if_position_still_open)
-
 
   }
 
