@@ -1563,7 +1563,8 @@ single_asset_model_loop_and_trade <-
     profit_value_var = 15,
     period_var = 48,
     start_index = 1,
-    end_index = 20
+    end_index = 20,
+    save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
   ) {
 
     #-------------Indicator Inputs
@@ -1612,7 +1613,7 @@ single_asset_model_loop_and_trade <-
                 "AUD_USD", #7
                 "EUR_GBP", #8
                 "AU200_AUD" ,#9
-                "GBP_AUD", #10
+                # "EUR_AUD", #10
                 "WTICO_USD", #11
                 "UK100_GBP", #12
                 "USD_CAD", #13
@@ -1622,29 +1623,49 @@ single_asset_model_loop_and_trade <-
                 "EUR_AUD", #17
                 "EUR_NZD", #18
                 "XAG_USD", #19
-                "XAG_EUR" #20
+                "XAG_EUR", #20
+                "XAG_AUD", #21
+                "XAG_NZD", #22
+                "HK33_HKD", #23
+                "FR40_EUR", #24
+                "BTC_USD", #25
+                "XAG_GBP", #26
+                "GBP_AUD", #27
+                "USD_SEK", #28
+                # "ETH_USD", #29
+                "USD_SGD" #30
       ),
       couplua_assets =
         list( c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP"), #1
-              c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EUR_USD", "EUR_AUD", "EUR_GBP"), #2
+              c("XAU_EUR", "XAG_EUR", "XAU_USD", "UK100_GBP", "EUR_AUD", "EUR_GBP", "SPX500_USD"), #2
               c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR"), #3
               c("SPX500_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR"), #4
               c("SPX500_USD", "AU200_AUD", "US2000_USD", "UK100_GBP", "XAU_USD", "EU50_EUR"), #5
               c("EUR_JPY", "XAU_JPY", "XAG_JPY", "GBP_JPY", "XAU_USD", "SPX500_USD"), #6
               c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #7
               c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_GBP", "GBP_JPY", "EUR_JPY"), #8
-              c("XCU_USD", "SPX500_USD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD"), #9
-              c("EUR_USD", "EUR_GBP", "XAU_AUD", "EUR_AUD", "XAU_AUD", "AUD_USD", "XAU_EUR"), #10
+              c("XCU_USD", "SPX500_USD", "XAU_AUD", "GBP_AUD", "XAU_USD", "UK100_GBP"), #9
+              # c("EUR_USD", "EUR_GBP", "XAU_AUD", "GBP_AUD", "AUD_USD", "XAU_EUR"), #10
               c("NATGAS_USD", "XAG_USD", "BCO_USD", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "UK100_GBP"), #11
               c("GBP_USD", "XAG_GBP", "EU50_EUR", "SPX500_USD", "UK10YB_GBP", "XAU_USD", "XAU_GBP"), #12
               c("GBP_USD", "GBP_CAD", "EUR_USD", "XAU_USD", "XAG_EUR", "XAU_GBP", "XAU_EUR"), #13
               c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #14
-              c("GBP_JPY", "GBP_USD", "GBP_AUD", "USD_CAD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #15
+              c("GBP_JPY", "GBP_USD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP"), #15
               c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD", "EUR_GBP"), #16
               c("EUR_NZD", "EUR_USD", "XAU_EUR", "XAU_AUD", "AUD_USD", "EUR_JPY", "EUR_GBP"), #17
               c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP"), #18
               c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #19
-              c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD") #20
+              c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD"), #20
+              c("XAG_JPY", "EUR_AUD", "XAG_USD", "XAG_NZD", "XAU_USD", "AUD_USD", "SPX500_USD"), #21
+              c("XAG_JPY", "EUR_NZD", "XAG_USD", "XAG_AUD", "XAU_USD", "NZD_USD", "SPX500_USD"), #22
+              c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD", "XAU_USD", "USB10Y_USD", "SPX500_USD"), #23
+              c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD", "XAU_USD", "USB10Y_USD", "SPX500_USD"), #24
+              c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD", "XAU_USD", "USB10Y_USD", "SPX500_USD"), #25
+              c("UK100_GBP", "XAU_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "XAG_AUD", "SPX500_USD"), #26
+              c("AUD_USD", "EUR_AUD", "XAG_USD", "XAG_GBP", "XAU_USD", "XAG_AUD", "GBP_JPY"), #27
+              c("AUD_USD", "EUR_USD", "GBP_USD", "USD_JPY", "XAU_USD", "USD_CAD", "NZD_USD"), #28
+              # c("XAU_USD", "XAG_USD", "SPX500_USD", "USB10Y_USD", "EU50_EUR", "UK100_GBP"), #29
+              c("AUD_USD", "EUR_USD", "GBP_USD", "USD_JPY", "XAU_USD", "USD_CAD", "NZD_USD") #30
 
         ),
       countries_for_int_strength =
@@ -1658,7 +1679,7 @@ single_asset_model_loop_and_trade <-
           c("AUD", "USD", "EUR"), #7
           c("GBP", "USD", "EUR", "JPY"), #8
           c("AUD", "USD", "EUR"), #9
-          c("AUD", "USD", "EUR"), #10
+          # c("AUD", "USD", "EUR"), #10
           c("GBP", "USD", "EUR", "AUD"), #11
           c("GBP", "USD", "EUR", "AUD"), #12
           c("GBP", "USD", "EUR", "AUD"), #13
@@ -1668,7 +1689,17 @@ single_asset_model_loop_and_trade <-
           c("GBP", "USD", "EUR", "AUD", "NZD"), #17
           c("GBP", "USD", "EUR", "AUD", "JPY"), #18
           c("GBP", "USD", "EUR", "AUD", "JPY"), #19
-          c("GBP", "USD", "EUR", "AUD", "JPY") #20
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #20
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #21
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #22
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #23
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #24
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #25
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #26
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #27
+          c("GBP", "USD", "EUR", "AUD", "JPY"), #28
+          # c("GBP", "USD", "EUR", "AUD", "JPY"), #29
+          c("GBP", "USD", "EUR", "AUD", "JPY") #30
         )
     )
 
@@ -1685,6 +1716,9 @@ single_asset_model_loop_and_trade <-
         unlist(indicator_mapping$countries_for_int_strength[j])
       couplua_assets = unlist(indicator_mapping$couplua_assets[j])
       Asset_of_interest = unlist(indicator_mapping$Asset[j])
+
+      message(Asset_of_interest)
+      message(j)
 
       longs <-
         safely_find_preds(
@@ -1710,7 +1744,7 @@ single_asset_model_loop_and_trade <-
           stop_value_var = stop_value_var,
           profit_value_var = profit_value_var,
           period_var = period_var,
-          save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/") %>%
+          save_path = save_path) %>%
         pluck('result') %>%
         mutate(
           trade_col = "Long"
@@ -1740,7 +1774,7 @@ single_asset_model_loop_and_trade <-
           stop_value_var = stop_value_var,
           profit_value_var = profit_value_var,
           period_var = period_var,
-          save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/") %>%
+          save_path = save_path) %>%
         pluck('result') %>%
         mutate(
           trade_col = "Short"

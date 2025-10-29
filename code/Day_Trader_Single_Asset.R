@@ -5,7 +5,7 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+  save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
@@ -65,7 +65,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2015-01-01"
 end_date = today() %>% as.character()
 
@@ -73,7 +73,7 @@ bin_factor = NULL
 stop_value_var = 2
 profit_value_var = 15
 period_var = 24
-full_ts_trade_db_location = "C:/Users/Nikhil Chandra/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+full_ts_trade_db_location = "C:/Users/nikhi/Documents/trade_data/full_ts_trades_mapped_period_version.db"
 full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
 actual_wins_losses <-
   DBI::dbGetQuery(full_ts_trade_db_con,
@@ -172,7 +172,7 @@ indicator_mapping <- list(
             "XAG_GBP", #26
             "GBP_AUD", #27
             "USD_SEK", #28
-            "ETH_USD", #29
+            # "ETH_USD", #29
             "USD_SGD" #30
             ),
   couplua_assets =
@@ -204,7 +204,7 @@ indicator_mapping <- list(
           c("UK100_GBP", "XAU_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "XAG_AUD", "SPX500_USD"), #26
           c("AUD_USD", "EUR_AUD", "XAG_USD", "XAG_GBP", "XAU_USD", "XAG_AUD", "GBP_JPY"), #27
           c("AUD_USD", "EUR_USD", "GBP_USD", "USD_JPY", "XAU_USD", "USD_CAD", "NZD_USD"), #28
-          c("XAU_USD", "XAG_USD", "SPX500_USD", "USB10Y_USD", "EU50_EUR", "UK100_GBP"), #29
+          # c("XAU_USD", "XAG_USD", "SPX500_USD", "USB10Y_USD", "EU50_EUR", "UK100_GBP"), #29
           c("AUD_USD", "EUR_USD", "GBP_USD", "USD_JPY", "XAU_USD", "USD_CAD", "NZD_USD") #30
 
           ),
@@ -238,7 +238,7 @@ indicator_mapping <- list(
       c("GBP", "USD", "EUR", "AUD", "JPY"), #26
       c("GBP", "USD", "EUR", "AUD", "JPY"), #27
       c("GBP", "USD", "EUR", "AUD", "JPY"), #28
-      c("GBP", "USD", "EUR", "AUD", "JPY"), #29
+      # c("GBP", "USD", "EUR", "AUD", "JPY"), #29
       c("GBP", "USD", "EUR", "AUD", "JPY") #30
     )
   )
@@ -247,7 +247,7 @@ indicator_mapping_accumulator_short <- list()
 safely_single_asset_Logit_indicator <-
   safely(single_asset_Logit_indicator, otherwise = NULL)
 model_data_store_path <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
+  "C:/Users/nikhi/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
 model_data_store_db <-
   connect_db(model_data_store_path)
 
@@ -371,7 +371,7 @@ for (k in 19:length(date_seq_simulations)) {
 }
 
 model_data_store_path <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
+  "C:/Users/nikhi/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
 model_data_store_db <-
   connect_db(model_data_store_path)
 
@@ -393,7 +393,7 @@ indicator_data <-
   filter(periods_ahead == period_var, stop_factor == stop_value_var)
 
 asset_optimisation_store_path <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+  "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation.db"
 asset_optimisation_store_db <-
   connect_db(asset_optimisation_store_path)
 
@@ -523,7 +523,7 @@ for (j in 1:length(pred_thresh)) {
 }
 
 asset_optimisation_store_path =
-  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+  "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation.db"
 
 asset_optimisation_store_db <-
   connect_db(asset_optimisation_store_path)

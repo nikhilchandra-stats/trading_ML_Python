@@ -90,7 +90,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
 start_date = "2020-06-01"
 end_date = today() %>% as.character()
 
@@ -103,7 +103,6 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
   end_date = today() %>% as.character(),
   time_frame = "H1"
 )
-
 
 Indices_Metals_Bonds[[2]] <- NULL
 Indices_Metals_Bonds <- Indices_Metals_Bonds[[1]]
@@ -140,10 +139,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close.db"
+  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -162,7 +161,7 @@ mean_values_by_asset_for_loop_H1_ask <-
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
 trades_closed <- 0
-risk_dollar_value = 5
+risk_dollar_value = 7
 
 gc()
 load_custom_functions()
@@ -201,7 +200,8 @@ assets_to_use <-
     "USD_SGD" #30
   )
 
-assets_to_use <- assets_to_use[1:14]
+assets_to_use <- assets_to_use[15:28]
+
 
 while (current_time < end_time) {
 
@@ -257,26 +257,26 @@ while (current_time < end_time) {
 
     Indices_Metals_Bonds <-
       updated_data_internal(
-                          starting_asset_data = Indices_Metals_Bonds,
-                          end_date_day = now() + days(1),
-                          time_frame = "H1",
-                          bid_or_ask = "ask",
-                          db_location = db_location) %>%
+        starting_asset_data = Indices_Metals_Bonds,
+        end_date_day = now() + days(1),
+        time_frame = "H1",
+        bid_or_ask = "ask",
+        db_location = db_location) %>%
       distinct() %>%
       filter(Asset %in% asset_list_oanda_single_asset)
 
     All_Daily_Data <-
       updated_data_internal(
-      starting_asset_data = All_Daily_Data,
-      end_date_day = now() + days(1),
-      time_frame = "D",
-      bid_or_ask = "ask",
-      db_location = db_location) %>%
+        starting_asset_data = All_Daily_Data,
+        end_date_day = now() + days(1),
+        time_frame = "D",
+        bid_or_ask = "ask",
+        db_location = db_location) %>%
       distinct() %>%
       filter(Asset %in% asset_list_oanda_single_asset)
 
 
-  #--------------------------------------------------Macro Only Trades
+    #--------------------------------------------------Macro Only Trades
     current_prices_ask <-
       read_all_asset_data_intra_day(
         asset_list_oanda = asset_list_oanda,
@@ -317,7 +317,7 @@ while (current_time < end_time) {
 
     #-----------Single Asset Model
 
-    if( current_hour %% 2 == 0 | current_hour %% 2 != 0 ) {
+    if( current_hour %% 2 == 0 | current_hour %% 2 != 0) {
       tictoc::tic()
       single_asset_model_trades <-
         single_asset_model_loop_and_trade(
@@ -331,8 +331,8 @@ while (current_time < end_time) {
           stop_value_var = 2,
           profit_value_var = 15,
           period_var = 24,
-          start_index = 1,
-          end_index = 14,
+          start_index = 15,
+          end_index = 28,
           save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
         )
       tictoc::toc()
@@ -340,7 +340,7 @@ while (current_time < end_time) {
     }
 
     asset_optimisation_store_path =
-      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation 2.db"
 
     asset_optimisation_store_db <-
       connect_db(asset_optimisation_store_path)
@@ -411,7 +411,7 @@ while (current_time < end_time) {
       single_asset_model_trades_filt <- NULL
     }
 
-  #-------------------------All Trades
+    #-------------------------All Trades
     total_trades <-
       list(total_trades_macro_only_port_stops,
            single_asset_model_trades_filt) %>%
