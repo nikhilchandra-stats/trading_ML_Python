@@ -740,6 +740,10 @@ while (current_time < end_time) {
     trades_closed <- 0
   }
 
+  if( current_minute >= 58 & current_minute <= 58 ) {
+    trades_opened <- 0
+  }
+
   if( current_minute >= 5 & current_minute <= 5 ) {
     trades_closed <- 0
     Sys.sleep(60)

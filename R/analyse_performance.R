@@ -333,3 +333,26 @@ get_current_new_algo_trades <-
     return(all_db_data)
 
   }
+
+
+#' get_trades_in_tracker
+#'
+#' @param trade_tracker_DB_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_trades_in_tracker <-
+  function( trade_tracker_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db") {
+
+    trade_tracker_DB <- connect_db(trade_tracker_DB_path)
+    all_trades_so_far <-
+      DBI::dbGetQuery(conn = trade_tracker_DB,
+                      "SELECT * FROM trade_tracker")
+    DBI::dbDisconnect(trade_tracker_DB)
+    gc()
+
+    return(all_trades_so_far)
+
+  }
