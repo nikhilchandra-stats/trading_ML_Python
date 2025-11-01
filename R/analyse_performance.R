@@ -263,12 +263,28 @@ analyse_new_algos <-
       ) %>%
       filter(is.na(already_in_db))
 
+    if(dim(asset_accumulator_dfr_upload)[1] > 1) {
+      asset_accumulator_dfr_upload <-
+        asset_accumulator_dfr_upload %>%
+        mutate(
+          already_in_db = NA
+        ) %>%
+        left_join(
+          all_trades_so_far %>%
+            dplyr::select(id = tradeID, Asset, account_var) %>%
+            mutate(
+              tradeID_filt = id
+            )
+        ) %>%
+        filter(!is.na(tradeID_filt)) %>%
+        dplyr::select(-tradeID_filt)
+    }
+
     if(dim(asset_accumulator_dfr_upload)[1] > 1 ) {
       realised_DB_path_con <- connect_db(realised_DB_path)
-      write_table_sql_lite(.data = asset_accumulator_dfr_upload,
+      append_table_sql_lite(.data = asset_accumulator_dfr_upload,
                             table_name = "trade_tracker_realised",
-                            conn = realised_DB_path_con,
-                            overwrite_true = TRUE)
+                            conn = realised_DB_path_con)
       DBI::dbDisconnect(realised_DB_path_con)
       rm(realised_DB_path_con)
     }

@@ -161,7 +161,7 @@ mean_values_by_asset_for_loop_H1_ask <-
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
 trades_closed <- 0
-risk_dollar_value = 7
+risk_dollar_value = 5
 
 gc()
 load_custom_functions()
@@ -230,14 +230,14 @@ while (current_time < end_time) {
       time_frame = "D",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
 
     update_local_db_file(
@@ -245,14 +245,14 @@ while (current_time < end_time) {
       time_frame = "D",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 15
     )
 
     Indices_Metals_Bonds <-
