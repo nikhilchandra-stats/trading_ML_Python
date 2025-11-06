@@ -178,27 +178,25 @@ assets_to_use <-
     "AUD_USD", #7
     "EUR_GBP", #8
     "AU200_AUD" ,#9
-    # "EUR_AUD", #10
+    "EUR_AUD", #10
     "WTICO_USD", #11
     "UK100_GBP", #12
     "USD_CAD", #13
     "GBP_USD", #14
     "GBP_CAD", #15
     "EUR_JPY", #16
-    "EUR_AUD", #17
-    "EUR_NZD", #18
-    "XAG_USD", #19
-    "XAG_EUR", #20
-    "XAG_AUD", #21
-    "XAG_NZD", #22
-    "HK33_HKD", #23
-    "FR40_EUR", #24
-    "BTC_USD", #25
-    "XAG_GBP", #26
-    "GBP_AUD", #27
-    "USD_SEK", #28
-    # "ETH_USD", #29
-    "USD_SGD" #30
+    "EUR_NZD", #17
+    "XAG_USD", #18
+    "XAG_EUR", #19
+    "XAG_AUD", #20
+    "XAG_NZD", #21
+    "HK33_HKD", #22
+    "FR40_EUR", #23
+    "BTC_USD", #24
+    "XAG_GBP", #25
+    "GBP_AUD", #26
+    "USD_SEK", #27
+    "USD_SGD" #28
   )
 
 assets_to_use <- assets_to_use[1:14]
@@ -225,19 +223,21 @@ while (current_time < end_time) {
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
 
+    days_back_x <- lubridate::wday(today() - hours(14))
+
     update_local_db_file(
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
 
     update_local_db_file(
@@ -245,14 +245,14 @@ while (current_time < end_time) {
       time_frame = "D",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 3
+      how_far_back = 14
     )
 
     Indices_Metals_Bonds <-
@@ -340,7 +340,7 @@ while (current_time < end_time) {
     }
 
     asset_optimisation_store_path =
-      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation_more_cop.db"
 
     asset_optimisation_store_db <-
       connect_db(asset_optimisation_store_path)
@@ -354,11 +354,12 @@ while (current_time < end_time) {
     best_results <-
       all_model_results %>%
       filter(pred_thresh != "control") %>%
+      filter(pred_thresh > 0) %>%
       filter(Mid > 0, lower >0) %>%
       group_by(Asset, trade_col) %>%
       slice_max(Win_Perc_mean, n = 10) %>%
       group_by(Asset, trade_col) %>%
-      slice_max(Mid, n = 3) %>%
+      slice_max(Mid, n = 5) %>%
       group_by(Asset, trade_col) %>%
       slice_max(total_trades_mean, n = 1) %>%
       ungroup()

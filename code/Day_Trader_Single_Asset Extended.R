@@ -209,7 +209,7 @@ indicator_mapping <- list(
           # AUD_USD
           c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD",
             "XAG_USD","NZD_USD", "USD_JPY", "EUR_USD", "GBP_USD", "USD_CAD",
-            "USD_SEK", "USD_SGD", "USB10Y_USD", "AUD_NZD", "NZD_USD") %>% unique(), #7
+            "USD_SEK", "USD_SGD", "USB10Y_USD", "NZD_USD") %>% unique(), #7
 
           # EUR_GBP
           c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_GBP", "GBP_JPY", "EUR_JPY",
@@ -218,13 +218,13 @@ indicator_mapping <- list(
 
           # AU200_AUD
           c("XCU_USD", "US2000_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
-            "HK33_HKD", "FR40_EUR", "WTICO_USD", "GBP_AUD", "AUD_NZD", "EUR_AUD",
+            "HK33_HKD", "FR40_EUR", "WTICO_USD", "GBP_AUD", "EUR_AUD",
             "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(), #9
 
           # EUR_AUD
           c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "AUD_USD",
             "XAG_USD","NZD_USD", "USD_JPY", "EUR_USD",
-            "USB10Y_USD", "AUD_NZD", "NZD_USD", "FR40_EUR", "EU50_EUR",
+            "USB10Y_USD", "NZD_USD", "FR40_EUR", "EU50_EUR",
             "EUR_SEK", "EUR_NZD", "EUR_SEK") %>% unique(), #10
 
           # WTICO_USD
@@ -260,7 +260,7 @@ indicator_mapping <- list(
 
           # "EUR_NZD", #17
           c("EUR_AUD", "EUR_USD", "XAU_EUR", "XAU_AUD", "NZD_USD", "EUR_JPY", "EUR_GBP",
-            "AUD_NZD", "GBP_NZD", "XAG_NZD", "XAG_EUR", "XAU_USD", "XAG_USD", "EUR_SEK",
+            "GBP_NZD", "XAG_NZD", "XAG_EUR", "XAU_USD", "XAG_USD", "EUR_SEK",
             "FR40_EUR", "EU50_EUR", "AU200_AUD") %>% unique(), #17
 
           # "XAG_USD", #18
@@ -276,12 +276,12 @@ indicator_mapping <- list(
           # "XAG_AUD", #20
           c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
             "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD",
-            "AUD_USD", "EUR_AUD", "GBP_AUD", "AUD_NZD") %>% unique(), #20
+            "AUD_USD", "EUR_AUD", "GBP_AUD") %>% unique(), #20
 
           # "XAG_NZD", #21
           c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
             "XAG_AUD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD",
-            "NZD_USD", "GBP_NZD", "EUR_NZD", "AUD_NZD") %>% unique(), #21
+            "NZD_USD", "GBP_NZD", "EUR_NZD") %>% unique(), #21
 
           # "HK33_HKD", #22
           c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
@@ -354,10 +354,10 @@ model_data_store_db <-
 
 date_seq_simulations <-
   seq(as_date("2019-01-01"), as_date("2024-07-01"), "month")
-c = 0
-redo_db = TRUE
+c = 1
+redo_db = FALSE
 
-for (k in 1:length(date_seq_simulations)) {
+for (k in 47:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 
@@ -447,10 +447,10 @@ for (k in 1:length(date_seq_simulations)) {
     if(dim(complete_sim)[1] > 0) {
       c = c + 1
       if(redo_db == TRUE & c == 1) {
-        write_table_sql_lite(.data = complete_sim,
-                             table_name = "single_asset_improved",
-                             conn = model_data_store_db,
-                             overwrite_true = TRUE)
+        # write_table_sql_lite(.data = complete_sim,
+        #                      table_name = "single_asset_improved",
+        #                      conn = model_data_store_db,
+        #                      overwrite_true = TRUE)
         redo_db = FALSE
       }
 
@@ -461,7 +461,7 @@ for (k in 1:length(date_seq_simulations)) {
       }
     }
 
-    rm(short_sim, long_sim)
+    rm(short_sim, long_sim, complete_sim)
 
     gc()
     Sys.sleep(1)
@@ -638,11 +638,15 @@ gc()
 best_results <-
   all_model_results %>%
   filter(pred_thresh != "control") %>%
-  filter(lower > 0) %>%
+  filter(pred_thresh > 0) %>%
+  filter(Mid > 0, lower >0) %>%
   group_by(Asset, trade_col) %>%
   slice_max(Win_Perc_mean, n = 10) %>%
   group_by(Asset, trade_col) %>%
-  slice_max(total_trades_mean, n = 1)
+  slice_max(Mid, n = 5) %>%
+  group_by(Asset, trade_col) %>%
+  slice_max(total_trades_mean, n = 1) %>%
+  ungroup()
 
 best_overall_thresh <-
   all_model_results %>%

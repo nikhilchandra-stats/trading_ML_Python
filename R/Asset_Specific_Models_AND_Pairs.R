@@ -8137,6 +8137,16 @@ get_Port_Buy_Data <- function(
       keep_bid_to_ask = TRUE
     )
 
+  AUD_NZD <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = "ask",
+    time_frame = time_frame,
+    asset = "AUD_NZD",
+    keep_bid_to_ask = TRUE
+  )
+
   XAG_SPX_US2000_USD <-
     SPX %>%
     bind_rows(US2000) %>%
