@@ -81,9 +81,9 @@ long_account_num_equity <- 4
 account_number_long_equity <- "001-011-1615559-002"
 account_name_long_equity <- "equity_long"
 
-short_account_num_equity <- 5
-account_number_short_equity <- "001-011-1615559-005"
-account_name_short_equity <- "equity_short"
+short_account_num_equity <- 3
+account_number_short_equity <- "001-011-1615559-004"
+account_name_short_equity <- "corr_no_macro"
 
 data_updated <- 0
 
