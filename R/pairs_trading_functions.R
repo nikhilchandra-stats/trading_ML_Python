@@ -2946,16 +2946,17 @@ get_silver_index <-
 #'
 #' @examples
 get_bonds_index <-
-  function(index_data) {
+  function(index_data,
+           assets_in_index = c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD") ) {
 
     major_bonds_log_cumulative <-
-      c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD") %>%
+      assets_in_index %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD")),
+              filter(Asset %in% assets_in_index ),
             asset_to_use = c(.x[1]),
             price_col = "Open",
             return_long_format = TRUE
@@ -2963,7 +2964,7 @@ get_bonds_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD")) %>%
+          filter(Asset %in% assets_in_index ) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
 
@@ -2976,7 +2977,7 @@ get_bonds_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD"),
+        asset_to_use =  assets_in_index,
         price_col = "Return_Index_Diff",
         scale_values = TRUE
       ) %>%

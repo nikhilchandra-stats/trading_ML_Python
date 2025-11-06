@@ -570,17 +570,22 @@ upload_trade_actuals_period_version_to_db(
 
 
 #---------------------------------------------------------Metals
-db_location = "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
+load_custom_functions()
+db_location = "D:/Asset Data/full_ts_trades_mapped_period_version.db"
 full_ts_trade_db_location = "C:/Users/Nikhil/Documents/trade_data/full_ts_trades_mapped_period_version.db"
 start_date = "2020-01-01"
 end_date = "2025-10-30"
 
 asset_list_oanda =
   get_oanda_symbols() %>%
-  keep( ~ str_detect(.x, "XAU|XAG|ETH|BCH|BTC|LTC")) %>%
+  keep( ~
+          str_detect(.x, "XAU|XAG|ETH|BCH|BTC|LTC|SPX500|EU50|USB|AU200|HK33_HKD|UK100_GBP|UK10YB_GBP")|
+          (.x %in%       c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR", "SG30_SGD",
+                           "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD", "EUR_USD",
+                           "GBP_USD", "USD_JPY", "AUD_USD", "EUR_GBP", "NZD_USD", "USD_CHF", "EUR_JPY") ) ) %>%
   unlist() %>%
   unique()
-db_location_data = "C:/Users/Nikhil/Documents/Asset Data/Oanda_Asset_Data.db"
+db_location_data = "D:/Asset Data/full_ts_trades_mapped_period_version.db"
 
 Indices_Metals_Bonds <- list()
 Indices_Metals_Bonds[[1]] <-
@@ -608,9 +613,9 @@ upload_trade_actuals_period_version_to_db(
   asset_data_raw_list = Indices_Metals_Bonds,
   date_filter = start_date,
   stop_factor = 2,
-  profit_factor = 4,
+  profit_factor = 15,
   risk_dollar_value = 10,
-  periods_ahead = 24,
+  periods_ahead = 8,
   append_or_write = "write",
   full_ts_trade_db_location = full_ts_trade_db_location,
   currency_conversion = currency_conversion,
@@ -620,10 +625,10 @@ upload_trade_actuals_period_version_to_db(
 upload_trade_actuals_period_version_to_db(
   asset_data_raw_list = Indices_Metals_Bonds,
   date_filter = start_date,
-  stop_factor = 3,
-  profit_factor = 6,
+  stop_factor = 4,
+  profit_factor = 24,
   risk_dollar_value = 10,
-  periods_ahead = 24,
+  periods_ahead = 8,
   append_or_write = "append",
   full_ts_trade_db_location = full_ts_trade_db_location,
   currency_conversion = currency_conversion,
@@ -633,10 +638,10 @@ upload_trade_actuals_period_version_to_db(
 upload_trade_actuals_period_version_to_db(
   asset_data_raw_list = Indices_Metals_Bonds,
   date_filter = start_date,
-  stop_factor = 1.5,
-  profit_factor = 3,
+  stop_factor = 2,
+  profit_factor = 15,
   risk_dollar_value = 10,
-  periods_ahead = 24,
+  periods_ahead = 12,
   append_or_write = "append",
   full_ts_trade_db_location = full_ts_trade_db_location,
   currency_conversion = currency_conversion,
@@ -647,9 +652,9 @@ upload_trade_actuals_period_version_to_db(
   asset_data_raw_list = Indices_Metals_Bonds,
   date_filter = start_date,
   stop_factor = 4,
-  profit_factor = 8,
+  profit_factor = 24,
   risk_dollar_value = 10,
-  periods_ahead = 24,
+  periods_ahead = 12,
   append_or_write = "append",
   full_ts_trade_db_location = full_ts_trade_db_location,
   currency_conversion = currency_conversion,

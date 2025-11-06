@@ -312,3 +312,61 @@ update_local_db_file <- function(
   }
 
 }
+
+#' get_generic_DB_Asset_data_by_Asset
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_generic_DB_Asset_data_by_Asset <- function(
+    db_location = db_location,
+    start_date = "2020-01-01",
+    end_date = today() %>% as.character(),
+    time_frame = "M15",
+    asseets
+) {
+
+  accumulation_list_ask <- list()
+  accumulation_list_bid <- list()
+
+  for (i in 1:length(asseets)) {
+
+    accumulation_list_ask[[i]] <- create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "ask",
+      time_frame = time_frame,
+      asset = asseets[i],
+      keep_bid_to_ask = TRUE
+    )
+
+    accumulation_list_bid[[i]] <- create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = "bid",
+      time_frame = time_frame,
+      asset = asseets[i],
+      keep_bid_to_ask = TRUE
+    )
+
+  }
+
+  accumulation_list_bid_dfr <-
+    accumulation_list_bid %>%
+    map_dfr(bind_rows)
+
+  accumulation_list_ask_dfr <-
+    accumulation_list_ask %>%
+    map_dfr(bind_rows)
+
+  return(
+    list(
+      accumulation_list_bid_dfr,
+      accumulation_list_ask_dfr
+    )
+  )
+
+}
