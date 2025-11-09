@@ -700,7 +700,7 @@ while (current_time < end_time) {
           Sys.sleep(1)
 
           if(dim(check_if_position_still_open)[1] > 0) {
-            oanda_close_trade_ID(
+            oanda_close_trade_IsD(
               tradeID = id_for_close,
               units = units_for_close,
               account = account_name_for_close
