@@ -90,8 +90,8 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Third Algo.db"
-start_date = "2019-06-01"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Fourth Algo.db"
+start_date = "2020-01-01"
 end_date = today() %>% as.character()
 
 # bin_factor = NULL
@@ -129,7 +129,6 @@ Indices_Metals_Bonds <-
 # ungroup() %>%
 # dplyr::select(-kk)
 
-
 asset_list_oanda_single_asset <-
   Indices_Metals_Bonds %>%
   distinct(Asset) %>%
@@ -160,10 +159,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db"
+  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 3.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Third Algo.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Fourth Algo.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -181,6 +180,7 @@ mean_values_by_asset_for_loop_H1_ask <-
 
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
+# trades_opened <- 1
 trades_closed <- 0
 risk_dollar_value = 8
 
@@ -221,7 +221,7 @@ Asset_Available =
   )
 
 Asset_Available <-
-  Asset_Available[10:19]
+  Asset_Available[20:29]
 
 safely_upload <-
   safely(update_local_db_file, otherwise = "error")
@@ -239,13 +239,12 @@ while (run_all == 1) {
   #----------------------Refresh Data Stores and LM model
   if(current_minute >= 0 &
      current_minute <= 5 &
-     trades_opened == 0 &
+     trades_opened == 0  &
      (
        (wday(current_time) == 7 & hour(current_time) <= 4)|
        ( wday(current_time) == 2 & hour(current_time) >= 10 )|
        ( wday(current_time) > 2 & wday(current_time) < 7 )
      )
-     # ( (current_hour) == 0)
   ) {
 
     gc()
@@ -319,15 +318,12 @@ while (run_all == 1) {
       All_weekly_data <- All_weekly_data %>% ungroup()
 
 
-
-      #--------------------------------------------------Macro Only Trade
+      #--------------------------------------------------Macro Only Trades
       if(current_hour %% 2 == 0) {
         total_trades_macro_only_port_stops <- NULL
       } else {
         total_trades_macro_only_port_stops <- NULL
       }
-
-
 
       #-----------Single Asset Model
 
@@ -350,14 +346,13 @@ while (run_all == 1) {
             stop_value_var = 1,
             profit_value_var = 15,
             period_var = 5,
-            start_index = 10,
-            end_index = 19,
+            start_index = 20,
+            end_index = 29,
             save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
 
       }
-
 
       if((current_hour) %% 2 != 0) {
         tictoc::tic()
@@ -374,15 +369,15 @@ while (run_all == 1) {
             stop_value_var = 1,
             profit_value_var = 15,
             period_var = 5,
-            start_index = 10,
-            end_index = 19,
+            start_index = 20,
+            end_index = 29,
             save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
       }
 
       asset_optimisation_store_path =
-        "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation_extended 2.db"
+        "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation_extended 3.db"
 
       asset_optimisation_store_db <- connect_db(asset_optimisation_store_path)
 
@@ -403,6 +398,7 @@ while (run_all == 1) {
         slice_max(Mid, n = 1) %>%
         group_by(Asset, trade_col) %>%
         slice_max(total_trades_mean, n = 1)
+
 
       current_prices_ask <-
         read_all_asset_data_intra_day(
@@ -434,7 +430,6 @@ while (run_all == 1) {
         slice_max(Date) %>%
         ungroup()
 
-
       single_asset_model_trades_filt <-
         single_asset_model_trades %>%
         left_join(
@@ -452,7 +447,8 @@ while (run_all == 1) {
         dplyr::select(Date, Asset, trade_col, stop_factor, profit_factor, periods_ahead) %>%
         left_join(current_prices_ask %>% dplyr::select(Asset, Price, Open, High, Low)) %>%
         filter(!is.na(Price))  %>%
-        ungroup()
+        ungroup() %>%
+        distinct()
 
       if(dim(single_asset_model_trades_filt)[1] > 0) {
         single_asset_model_trades_filt <-
@@ -480,8 +476,6 @@ while (run_all == 1) {
             periods_ahead = as.character(periods_ahead)
           )
       }
-
-
 
       #-------------------------All Trades
       total_trades <-
@@ -609,7 +603,7 @@ while (run_all == 1) {
 
   }
 
-  if(trades_closed == 0 &
+  if(trades_closed == 0  &
      (
        (wday(current_time) == 7 & hour(current_time) <= 4)|
        ( wday(current_time) == 2 & hour(current_time) >= 10 )|
@@ -781,11 +775,10 @@ while (run_all == 1) {
       }
     }
 
-
-
     Sys.sleep(60)
 
     rm(positions_tagged_as_part_of_algo, check_if_position_still_open)
+
 
   }
 

@@ -9080,7 +9080,8 @@ get_Port_Buy_Data <- function(
     bind_rows(EUR_SEK) %>%
     bind_rows(USD_SEK) %>%
     bind_rows(LTC_USD) %>%
-    bind_rows(XAG_NZD)
+    bind_rows(XAG_NZD) %>%
+    distinct()
 
   rm(SPX, US2000,EUR50, AU200_AUD, SG30_SGD, XAG, XAU, UK100_GBP, JP225Y_JPY, FR40_EUR, CH20_CHF,
      USB10Y_USD, USB02Y_USD, EUR_USD, GBP_USD,XAU_EUR, XAG_EUR, XAU_EUR, XAU_GBP, XAG_GBP, EUR_GBP,
@@ -9665,7 +9666,8 @@ get_Port_Buy_Data <- function(
     bind_rows(USD_SEK) %>%
     bind_rows(LTC_USD) %>%
     bind_rows(XAG_AUD) %>%
-    bind_rows(XAG_NZD)
+    bind_rows(XAG_NZD) %>%
+    distinct()
 
   rm(SPX, US2000,EUR50, AU200_AUD, SG30_SGD, XAG, XAU, UK100_GBP, JP225Y_JPY, FR40_EUR, CH20_CHF,
      GBP_USD, XAG_EUR, XAU_EUR, XAU_GBP, XAG_GBP, EUR_GBP, XCU_USD, WTICO_USD, BCO_USD,
