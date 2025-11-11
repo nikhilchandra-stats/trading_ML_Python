@@ -10,7 +10,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
+  start_date = (today() - days(4)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
