@@ -311,6 +311,8 @@ update_local_db_file <- function(
 
   }
 
+  return("Pass")
+
 }
 
 #' get_generic_DB_Asset_data_by_Asset
