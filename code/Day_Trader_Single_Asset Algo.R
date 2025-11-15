@@ -230,14 +230,14 @@ while (current_time < end_time) {
       time_frame = "D",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 14
+      how_far_back = 9
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 14
+      how_far_back = 9
     )
 
     update_local_db_file(
@@ -245,14 +245,14 @@ while (current_time < end_time) {
       time_frame = "D",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 14
+      how_far_back = 9
     )
     update_local_db_file(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 14
+      how_far_back = 9
     )
 
     Indices_Metals_Bonds <-
