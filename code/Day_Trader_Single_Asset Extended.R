@@ -89,7 +89,14 @@ actual_wins_losses <-
   actual_wins_losses %>%
   filter(stop_factor == stop_value_var,
          profit_factor == profit_value_var,
-         periods_ahead == period_var)
+         periods_ahead == period_var) %>%
+  group_by(Asset, Date) %>%
+  mutate(
+    kk = row_number()
+  ) %>%
+  ungroup() %>%
+  slice_min(kk) %>%
+  dplyr::select(-kk)
 
 DBI::dbDisconnect(full_ts_trade_db_con)
 rm(full_ts_trade_db_con)
@@ -353,11 +360,11 @@ model_data_store_db <-
   connect_db(model_data_store_path)
 
 date_seq_simulations <-
-  seq(as_date("2019-01-01"), as_date("2024-07-01"), "month")
-c = 1
-redo_db = FALSE
+  seq(as_date("2018-01-01"), as_date("2024-09-15"), "month")
+c = 0
+redo_db = TRUE
 
-for (k in 47:length(date_seq_simulations)) {
+for (k in 1:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 
@@ -447,10 +454,10 @@ for (k in 47:length(date_seq_simulations)) {
     if(dim(complete_sim)[1] > 0) {
       c = c + 1
       if(redo_db == TRUE & c == 1) {
-        # write_table_sql_lite(.data = complete_sim,
-        #                      table_name = "single_asset_improved",
-        #                      conn = model_data_store_db,
-        #                      overwrite_true = TRUE)
+        write_table_sql_lite(.data = complete_sim,
+                             table_name = "single_asset_improved",
+                             conn = model_data_store_db,
+                             overwrite_true = TRUE)
         redo_db = FALSE
       }
 

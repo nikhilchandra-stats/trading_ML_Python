@@ -110,3 +110,83 @@ upload_trade_actuals_period_version_to_db(
   asset_infor = asset_infor,
   directions_to_run = c("Long", "Short")
 )
+
+
+#-------------------------------------------------------------------
+helpeR::load_custom_functions()
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+start_date = "2025-09-01"
+end_date = today() %>% as.character()
+
+bin_factor = NULL
+stop_value_var = 2
+profit_value_var = 15
+period_var = 24
+full_ts_trade_db_location = "C:/Users/nikhi/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
+actual_wins_losses <-
+  DBI::dbGetQuery(full_ts_trade_db_con,
+                  glue::glue("SELECT * FROM full_ts_trades_mapped
+                  WHERE stop_factor = {stop_value_var} AND
+                        periods_ahead = {period_var} AND Date >= {start_date}")
+  ) %>%
+  mutate(
+    Date = as_datetime(Date)
+  )
+
+actual_wins_losses <-
+  actual_wins_losses %>%
+  filter(stop_factor == stop_value_var,
+         profit_factor == profit_value_var,
+         periods_ahead == period_var)
+
+last_dates <-
+  actual_wins_losses %>%
+  group_by(Asset) %>%
+  slice_max(Date) %>%
+  distinct(Asset, Date) %>%
+  rename(last_date = Date)
+
+
+DBI::dbDisconnect(full_ts_trade_db_con)
+rm(full_ts_trade_db_con)
+gc()
+
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+full_ts_trade_db_location = "C:/Users/nikhi/Documents/trade_data/full_ts_trades_mapped_period_version.db"
+start_date = "2025-09-19"
+end_date = "2025-10-13"
+
+Indices_Metals_Bonds <-
+  get_Port_Buy_Data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "H1"
+  )
+
+Indices_Metals_Bonds <-
+  Indices_Metals_Bonds %>%
+  map(
+    ~
+      .x %>%
+      left_join(last_dates) %>%
+      filter(Date > last_date) %>%
+      dplyr::select(-last_date)
+  )
+
+start_date <- "2025-09-20"
+
+upload_trade_actuals_period_version_to_db(
+  asset_data_raw_list = Indices_Metals_Bonds,
+  date_filter = start_date,
+  stop_factor = 4,
+  profit_factor = 2,
+  risk_dollar_value = 15,
+  periods_ahead = 24,
+  append_or_write = "append",
+  full_ts_trade_db_location = full_ts_trade_db_location,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor,
+  directions_to_run = c("Long", "Short")
+)
