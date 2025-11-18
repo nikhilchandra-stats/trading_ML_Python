@@ -199,7 +199,7 @@ assets_to_use <-
   )
 
 assets_to_use <- assets_to_use[15:28]
-
+safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 
 while (current_time < end_time) {
 
@@ -223,296 +223,373 @@ while (current_time < end_time) {
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
 
-    update_local_db_file(
+    how_far_back_date <- seq(today() - days(15), today(), by =  "days" ) %>%
+      keep(
+        ~ wday(.x) == 3
+      ) %>%
+      unlist() %>%
+      as_date() %>%
+      min()
+
+    how_far_back_var <-
+      as.numeric(today() - how_far_back_date)
+
+    days_back_x <- lubridate::wday(today() - hours(14))
+
+    u1 <- safely_upload_to_db(
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 9
-    )
-    update_local_db_file(
+      how_far_back = how_far_back_var
+    ) %>%
+      pluck('result')
+
+    u2 <- safely_upload_to_db(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 9
-    )
+      how_far_back = how_far_back_var
+    )%>%
+      pluck('result')
 
-    update_local_db_file(
+    u3 <- safely_upload_to_db(
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 9
-    )
-    update_local_db_file(
+      how_far_back = how_far_back_var
+    ) %>%
+      pluck('result')
+
+    u4 <- safely_upload_to_db(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = 9
-    )
+      how_far_back = how_far_back_var
+    )%>%
+      pluck('result')
 
-    Indices_Metals_Bonds <-
-      updated_data_internal(
-        starting_asset_data = Indices_Metals_Bonds,
-        end_date_day = now() + days(1),
-        time_frame = "H1",
-        bid_or_ask = "ask",
-        db_location = db_location) %>%
-      distinct() %>%
-      filter(Asset %in% asset_list_oanda_single_asset)
+    if(u1 != "error" & u2 != "error" & u3 != "error" & u4 != "error") {
 
-    All_Daily_Data <-
-      updated_data_internal(
-        starting_asset_data = All_Daily_Data,
-        end_date_day = now() + days(1),
-        time_frame = "D",
-        bid_or_ask = "ask",
-        db_location = db_location) %>%
-      distinct() %>%
-      filter(Asset %in% asset_list_oanda_single_asset)
+      Indices_Metals_Bonds <-
+        updated_data_internal(
+          starting_asset_data = Indices_Metals_Bonds,
+          end_date_day = now() + days(1),
+          time_frame = "H1",
+          bid_or_ask = "ask",
+          db_location = db_location) %>%
+        distinct() %>%
+        filter(Asset %in% asset_list_oanda_single_asset)
 
-
-    #--------------------------------------------------Macro Only Trades
-    current_prices_ask <-
-      read_all_asset_data_intra_day(
-        asset_list_oanda = asset_list_oanda,
-        save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
-        read_csv_or_API = "API",
-        time_frame = "H1",
-        bid_or_ask = "ask",
-        how_far_back = 800,
-        start_date = as.character(current_date - days(4))
-      )%>%
-      map_dfr(bind_rows) %>%
-      group_by(Asset) %>%
-      slice_max(Date) %>%
-      ungroup()
-
-    current_prices_bid <-
-      read_all_asset_data_intra_day(
-        asset_list_oanda = asset_list_oanda,
-        save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
-        read_csv_or_API = "API",
-        time_frame = "H1",
-        bid_or_ask = "bid",
-        how_far_back = 800,
-        start_date = as.character(current_date - days(4))
-      ) %>%
-      map_dfr(bind_rows) %>%
-      group_by(Asset) %>%
-      slice_max(Date) %>%
-      ungroup()
-
-    if(current_hour %% 2 == 0) {
-      total_trades_macro_only_port_stops <- NULL
-    } else {
-      total_trades_macro_only_port_stops <- NULL
-    }
+      All_Daily_Data <-
+        updated_data_internal(
+          starting_asset_data = All_Daily_Data,
+          end_date_day = now() + days(1),
+          time_frame = "D",
+          bid_or_ask = "ask",
+          db_location = db_location) %>%
+        distinct() %>%
+        filter(Asset %in% asset_list_oanda_single_asset)
 
 
+      #--------------------------------------------------Macro Only Trades
+      current_prices_ask <-
+        read_all_asset_data_intra_day(
+          asset_list_oanda = asset_list_oanda,
+          save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
+          read_csv_or_API = "API",
+          time_frame = "H1",
+          bid_or_ask = "ask",
+          how_far_back = 800,
+          start_date = as.character(how_far_back_date)
+        )%>%
+        map_dfr(bind_rows) %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup()
 
-    #-----------Single Asset Model
+      current_prices_bid <-
+        read_all_asset_data_intra_day(
+          asset_list_oanda = asset_list_oanda,
+          save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
+          read_csv_or_API = "API",
+          time_frame = "H1",
+          bid_or_ask = "bid",
+          how_far_back = 800,
+          start_date = as.character(how_far_back_date)
+        ) %>%
+        map_dfr(bind_rows) %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup()
 
-    if( current_hour %% 2 == 0 | current_hour %% 2 != 0) {
-      tictoc::tic()
-      single_asset_model_trades <-
-        single_asset_model_loop_and_trade(
-          Indices_Metals_Bonds = Indices_Metals_Bonds,
-          All_Daily_Data = All_Daily_Data,
-          pre_train_date_end = today() - months(12),
-          post_train_date_start = today() - months(12),
-          test_date_start = today() - weeks(1),
-          test_end_date = today() + weeks(1),
-          raw_macro_data = raw_macro_data,
-          stop_value_var = 2,
-          profit_value_var = 15,
-          period_var = 24,
-          start_index = 15,
-          end_index = 28,
-          save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
-        )
-      tictoc::toc()
+      if(current_hour %% 2 == 0) {
+        total_trades_macro_only_port_stops <- NULL
+      } else {
+        total_trades_macro_only_port_stops <- NULL
+      }
 
-    }
 
-    asset_optimisation_store_path =
-      "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation_more_cop 2.db"
 
-    asset_optimisation_store_db <-
-      connect_db(asset_optimisation_store_path)
+      #-----------Single Asset Model
 
-    all_model_results <-
-      DBI::dbGetQuery(conn = asset_optimisation_store_db,
-                      statement = "SELECT * FROM single_asset_improved_asset_optimisation")
-    DBI::dbDisconnect(asset_optimisation_store_db)
-    gc()
+      if( current_hour %% 2 == 0 | current_hour %% 2 != 0) {
+        tictoc::tic()
+        single_asset_model_trades <-
+          single_asset_model_loop_and_trade(
+            Indices_Metals_Bonds = Indices_Metals_Bonds,
+            All_Daily_Data = All_Daily_Data,
+            pre_train_date_end = today() - months(12),
+            post_train_date_start = today() - months(12),
+            test_date_start = today() - weeks(1),
+            test_end_date = today() + weeks(1),
+            raw_macro_data = raw_macro_data,
+            stop_value_var = 2,
+            profit_value_var = 15,
+            period_var = 24,
+            start_index = 15,
+            end_index = 28,
+            save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
+          )
+        tictoc::toc()
 
-    best_results <-
-      all_model_results %>%
-      filter(pred_thresh != "control") %>%
-      filter(pred_thresh > 0) %>%
-      filter(Mid > 0, lower >0) %>%
-      group_by(Asset, trade_col) %>%
-      slice_max(Win_Perc_mean, n = 10) %>%
-      group_by(Asset, trade_col) %>%
-      slice_max(Mid, n = 5) %>%
-      group_by(Asset, trade_col) %>%
-      slice_max(total_trades_mean, n = 1) %>%
-      ungroup()
+      }
 
-    single_asset_model_trades_filt <-
-      single_asset_model_trades %>%
-      left_join(
-        best_results %>%
-          ungroup() %>%
-          dplyr::select(Asset, trade_col, pred_thresh) %>%
-          mutate(pred_thresh = as.numeric(pred_thresh))
-      ) %>%
-      filter(
-        (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-           averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
-          (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-             averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
-      ) %>%
-      dplyr::select(Date, Asset, trade_col, stop_factor, profit_factor, periods_ahead) %>%
-      left_join(current_prices_ask %>% dplyr::select(Asset, Price, Open, High, Low)) %>%
-      filter(!is.na(Price))  %>%
-      ungroup()
+      asset_optimisation_store_path =
+        "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation_more_cop 2.db"
 
-    if(dim(single_asset_model_trades_filt)[1] > 0) {
+      asset_optimisation_store_db <-
+        connect_db(asset_optimisation_store_path)
+
+      all_model_results <-
+        DBI::dbGetQuery(conn = asset_optimisation_store_db,
+                        statement = "SELECT * FROM single_asset_improved_asset_optimisation")
+      DBI::dbDisconnect(asset_optimisation_store_db)
+      gc()
+
+      best_results <-
+        all_model_results %>%
+        filter(pred_thresh != "control") %>%
+        filter(pred_thresh > 0) %>%
+        filter(Mid > 0, lower >0) %>%
+        group_by(Asset, trade_col) %>%
+        # slice_max(Win_Perc_mean, n = 10) %>%
+        # group_by(Asset, trade_col) %>%
+        # slice_max(Mid, n = 5) %>%
+        # group_by(Asset, trade_col) %>%
+        # slice_max(total_trades_mean, n = 1) %>%
+        slice_max(Mid) %>%
+        ungroup()
+
       single_asset_model_trades_filt <-
-        single_asset_model_trades_filt%>%
-        mutate(kk = row_number()) %>%
-        split(.$kk) %>%
-        map_dfr(
-          ~
-            get_stops_profs_volume_trades(
-              tagged_trades = .x,
-              mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
-              trade_col = "trade_col",
-              currency_conversion = currency_conversion,
-              risk_dollar_value = risk_dollar_value,
-              stop_factor = .x$stop_factor[1] %>% as.numeric(),
-              profit_factor = .x$profit_factor[1] %>% as.numeric(),
-              asset_col = "Asset",
-              stop_col = "stop_value",
-              profit_col = "profit_value",
-              price_col = "Price",
-              trade_return_col = "trade_returns"
+        single_asset_model_trades %>%
+        left_join(
+          best_results %>%
+            ungroup() %>%
+            dplyr::select(Asset, trade_col, pred_thresh) %>%
+            mutate(pred_thresh = as.numeric(pred_thresh))
+        ) %>%
+        filter(
+          (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+             averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
+            (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+               averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
+        ) %>%
+        dplyr::select(Date, Asset, trade_col, stop_factor, profit_factor, periods_ahead) %>%
+        left_join(current_prices_ask %>% dplyr::select(Asset, Price, Open, High, Low)) %>%
+        filter(!is.na(Price))  %>%
+        ungroup()
+
+      # Second Stage Optimisation
+      best_trade_setups <-
+        get_best_trade_setup_sa(
+          model_optimisation_store_path =
+            "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db",
+          table_to_extract = "summary_for_reg"
+        )
+
+      single_asset_model_trades_filt <-
+        single_asset_model_trades_filt %>%
+        rename(trade_col_og = trade_col) %>%
+        dplyr::select(Date, Asset, Price, Open, High, Low, trade_col_og) %>%
+        left_join(best_trade_setups[[2]] ) %>%
+        mutate(
+          trade_col_revised =
+            case_when(
+              trade_col_og == "Short" & trade_col == "Long" ~ "Short",
+              trade_col_og == "Short" & trade_col == "Short" ~ "Long",
+              TRUE ~ trade_col
             )
         ) %>%
         mutate(
-          periods_ahead = as.character(periods_ahead)
+          trade_col = trade_col_revised
+        ) %>%
+        mutate(
+          risk_dollar_value =
+            case_when(
+              trade_col_og == "Short" & trade_col_revised == "Long" ~ 5,
+              trade_col_og == "Short" & trade_col_revised == "Short" ~ 2,
+
+              trade_col_og == "Long" & trade_col_revised == "Long" ~ 2,
+              trade_col_og == "Long" & trade_col_revised == "Short" ~ 5,
+            ),
+          required_risk = risk_dollar_value,
+        ) %>%
+        dplyr::select(-trade_col_revised, -trade_col_og) %>%
+        rename(
+          periods_ahead = period_var
         )
-    } else {
-      single_asset_model_trades_filt <- NULL
-    }
 
-    #-------------------------All Trades
-    total_trades <-
-      list(total_trades_macro_only_port_stops,
-           single_asset_model_trades_filt) %>%
-      map_dfr(bind_rows)
 
-    rm(single_asset_model_trades_filt,
-       total_trades_macro_only_port_stops,
-       single_asset_model_trades,
-       raw_macro_data,
-       total_trades_macro_only_port)
 
-    if(dim(total_trades)[1] > 0) {
+      if(dim(single_asset_model_trades_filt)[1] > 0) {
+        single_asset_model_trades_filt <-
+          single_asset_model_trades_filt%>%
+          mutate(kk = row_number()) %>%
+          split(.$kk) %>%
+          map_dfr(
+            ~
+              get_stops_profs_volume_trades(
+                tagged_trades = .x,
+                mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
+                trade_col = "trade_col",
+                currency_conversion = currency_conversion,
+                risk_dollar_value = .x$risk_dollar_value[1] %>% as.numeric(),
+                stop_factor = .x$stop_factor[1] %>% as.numeric(),
+                profit_factor = .x$profit_factor[1] %>% as.numeric(),
+                asset_col = "Asset",
+                stop_col = "stop_value",
+                profit_col = "profit_value",
+                price_col = "Price",
+                trade_return_col = "trade_returns"
+              )
+          ) %>%
+          mutate(
+            periods_ahead = as.character(periods_ahead)
+          ) %>%
+          group_by(Asset, trade_col) %>%
+          mutate(
+            trades_to_keep =
+              case_when(
+                minimal_loss <= 1.25*required_risk ~ "Keep",
+                minimal_loss > 1.25*required_risk & profit_factor == max(profit_factor, na.rm = T) ~ "Keep"
+              )
+          ) %>%
+          ungroup() %>%
+          filter(trades_to_keep == "Keep")
 
-      for (i in 1:dim(total_trades)[1]) {
+      } else {
+        single_asset_model_trades_filt <- NULL
+      }
 
-        account_details_long <- get_account_summary(account_var = long_account_num)
-        margain_available_long <- account_details_long$marginAvailable %>% as.numeric()
-        margain_used_long <- account_details_long$marginUsed%>% as.numeric()
-        total_margain_long <- margain_available_long + margain_used_long
-        percentage_margain_available_long <- margain_available_long/total_margain_long
+      #-------------------------All Trades
+      total_trades <-
+        list(total_trades_macro_only_port_stops,
+             single_asset_model_trades_filt) %>%
+        map_dfr(bind_rows)
 
-        account_details_short <- get_account_summary(account_var = short_account_num)
-        margain_available_short <- account_details_short$marginAvailable %>% as.numeric()
-        margain_used_short <- account_details_short$marginUsed%>% as.numeric()
-        total_margain_short <- margain_available_short + margain_used_short
-        percentage_margain_available_short <- margain_available_short/total_margain_short
+      rm(single_asset_model_trades_filt,
+         total_trades_macro_only_port_stops,
+         single_asset_model_trades,
+         raw_macro_data,
+         total_trades_macro_only_port)
 
-        Sys.sleep(1)
+      if(dim(total_trades)[1] > 0) {
 
-        trade_direction <- total_trades$trade_col[i] %>% as.character()
-        asset <- total_trades$Asset[i] %>% as.character()
-        volume_trade <- total_trades$volume_required[i] %>% as.numeric()
-        volume_trade <- ifelse(trade_direction == "Short" & volume_trade > 0, -1*volume_trade, volume_trade)
-        volume_trade <- ifelse(trade_direction == "Long" & volume_trade < 0, -1*volume_trade, volume_trade)
+        for (i in 1:dim(total_trades)[1]) {
 
-        loss_var <- total_trades$stop_value[i] %>% as.numeric()
-        profit_var <- total_trades$profit_value[i] %>% as.numeric()
+          account_details_long <- get_account_summary(account_var = long_account_num)
+          margain_available_long <- account_details_long$marginAvailable %>% as.numeric()
+          margain_used_long <- account_details_long$marginUsed%>% as.numeric()
+          total_margain_long <- margain_available_long + margain_used_long
+          percentage_margain_available_long <- margain_available_long/total_margain_long
 
-        if(loss_var > 9) { loss_var <- round(loss_var)}
-        if(profit_var > 9) { profit_var <- round(profit_var)}
+          account_details_short <- get_account_summary(account_var = short_account_num)
+          margain_available_short <- account_details_short$marginAvailable %>% as.numeric()
+          margain_used_short <- account_details_short$marginUsed%>% as.numeric()
+          total_margain_short <- margain_available_short + margain_used_short
+          percentage_margain_available_short <- margain_available_short/total_margain_short
 
-        if(percentage_margain_available_long[1] > margain_threshold & trade_direction == "Long") {
+          Sys.sleep(1)
 
-          volume_trade <- ifelse(volume_trade < 0, -1*volume_trade, volume_trade)
+          trade_direction <- total_trades$trade_col[i] %>% as.character()
+          asset <- total_trades$Asset[i] %>% as.character()
+          volume_trade <- total_trades$volume_required[i] %>% as.numeric()
+          volume_trade <- ifelse(trade_direction == "Short" & volume_trade > 0, -1*volume_trade, volume_trade)
+          volume_trade <- ifelse(trade_direction == "Long" & volume_trade < 0, -1*volume_trade, volume_trade)
 
-          # This is misleading because it is price distance and not pip distance
-          http_return <- oanda_place_order_pip_stop(
-            asset = asset,
-            volume = volume_trade,
-            stopLoss = loss_var,
-            takeProfit = profit_var,
-            type = "MARKET",
-            timeinForce = "FOK",
-            acc_name = account_name_long,
-            position_fill = "OPEN_ONLY" ,
-            price
-          )
+          loss_var <- total_trades$stop_value[i] %>% as.numeric()
+          profit_var <- total_trades$profit_value[i] %>% as.numeric()
 
-          cleaned_trade_details <-
-            extract_put_request_return(http_return) %>%
-            mutate(Asset = asset,
-                   trade_col = trade_direction,
-                   account_var = long_account_num,
-                   account_name = account_name_long,
-                   status = "OPEN",
-                   periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+          if(loss_var > 9) { loss_var <- round(loss_var)}
+          if(profit_var > 9) { profit_var <- round(profit_var)}
 
-          append_table_sql_lite(.data = cleaned_trade_details,
-                                table_name = "trade_tracker",
-                                conn = trade_tracker_DB)
+          if(percentage_margain_available_long[1] > margain_threshold & trade_direction == "Long") {
 
-        }
+            volume_trade <- ifelse(volume_trade < 0, -1*volume_trade, volume_trade)
 
-        if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
+            # This is misleading because it is price distance and not pip distance
+            http_return <- oanda_place_order_pip_stop(
+              asset = asset,
+              volume = volume_trade,
+              stopLoss = loss_var,
+              takeProfit = profit_var,
+              type = "MARKET",
+              timeinForce = "FOK",
+              acc_name = account_name_long,
+              position_fill = "OPEN_ONLY" ,
+              price
+            )
 
-          volume_trade <- ifelse(volume_trade > 0, -1*volume_trade, volume_trade)
+            cleaned_trade_details <-
+              extract_put_request_return(http_return) %>%
+              mutate(Asset = asset,
+                     trade_col = trade_direction,
+                     account_var = long_account_num,
+                     account_name = account_name_long,
+                     status = "OPEN",
+                     periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
 
-          # This is misleading because it is price distance and not pip distance
-          http_return <- oanda_place_order_pip_stop(
-            asset = asset,
-            volume = volume_trade,
-            stopLoss = loss_var,
-            takeProfit = profit_var,
-            type = "MARKET",
-            timeinForce = "FOK",
-            acc_name = account_name_short,
-            position_fill = "OPEN_ONLY" ,
-            price
-          )
+            append_table_sql_lite(.data = cleaned_trade_details,
+                                  table_name = "trade_tracker",
+                                  conn = trade_tracker_DB)
 
-          cleaned_trade_details <-
-            extract_put_request_return(http_return) %>%
-            mutate(Asset = asset,
-                   trade_col = trade_direction,
-                   account_var = short_account_num,
-                   account_name = account_name_short,
-                   status = "OPEN",
-                   periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+          }
 
-          append_table_sql_lite(.data = cleaned_trade_details,
-                                table_name = "trade_tracker",
-                                conn = trade_tracker_DB)
+          if(percentage_margain_available_short[1] > margain_threshold & trade_direction == "Short") {
+
+            volume_trade <- ifelse(volume_trade > 0, -1*volume_trade, volume_trade)
+
+            # This is misleading because it is price distance and not pip distance
+            http_return <- oanda_place_order_pip_stop(
+              asset = asset,
+              volume = volume_trade,
+              stopLoss = loss_var,
+              takeProfit = profit_var,
+              type = "MARKET",
+              timeinForce = "FOK",
+              acc_name = account_name_short,
+              position_fill = "OPEN_ONLY" ,
+              price
+            )
+
+            cleaned_trade_details <-
+              extract_put_request_return(http_return) %>%
+              mutate(Asset = asset,
+                     trade_col = trade_direction,
+                     account_var = short_account_num,
+                     account_name = account_name_short,
+                     status = "OPEN",
+                     periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+
+            append_table_sql_lite(.data = cleaned_trade_details,
+                                  table_name = "trade_tracker",
+                                  conn = trade_tracker_DB)
+
+          }
 
         }
 
