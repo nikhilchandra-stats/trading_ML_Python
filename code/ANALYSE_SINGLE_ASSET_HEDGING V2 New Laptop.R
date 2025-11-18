@@ -1343,16 +1343,18 @@ get_return_indicator_joined_data <-
 
 
 param_tibble <-
-  c(18,15,12,9,6,2) %>%
+  # c(18,15,12,9,6,2) %>%
+  c(18) %>%
   map_dfr(
     ~
       tibble(
-        stop_factor_long = c(4,2,6, 8)
+        # stop_factor_long = c(4,2,6, 8)
+        stop_factor_long = c(6)
       ) %>%
       mutate(
         profit_factor_long = .x,
-        profit_factor_long_fast = round(.x/2),
-        profit_factor_long_fastest = (.x/3)
+        profit_factor_long_fast = round(.x/4),
+        profit_factor_long_fastest = floor((.x/7))
       )
 
   ) %>%
@@ -1363,8 +1365,8 @@ param_tibble <-
   map_dfr(
     ~
       tibble(
-        stop_factor_short = c(3,5,4, 6, 3),
-        profit_factor_short = c(1,1,4, 0.5, 0.5)
+        stop_factor_short = c(3,4,3,2,3,6,6),
+        profit_factor_short = c(6,12,1,1,0.5,3,1)
       ) %>%
       bind_cols(.x)
   ) %>%
@@ -1374,8 +1376,8 @@ param_tibble <-
   split(.$kk, drop = FALSE) %>%
   map_dfr(
       ~ tibble(
-      period_var_long = rep(c(30,24,18,12), 5),
-      period_var_short = rep(c(12,8,4,2,1), 4)
+      period_var_long = rep(c(30,24,18,12), 6),
+      period_var_short = rep(c(14,12,8,6,4,2), 4)
     ) %>%
       bind_cols(.x)
   )
@@ -1398,7 +1400,7 @@ model_data_store_db <-
 
 c = 0
 
-for (i in 1:dim(param_tibble)[1] ) {
+for (i in 129:dim(param_tibble)[1] ) {
 
   for (j in 1:length(asset_list)) {
 
@@ -1555,10 +1557,10 @@ oo = 0
 
 for (k in 1:length(asset_list) ) {
 
-  all_results_dfr <-
+  results_summary <-
     DBI::dbGetQuery(conn = model_data_store_db,
                     statement =
-                    glue::glue("SELECT * FROM single_asset_advanced_optimisation
+                      glue::glue("SELECT * FROM single_asset_advanced_optimisation
                                 WHERE Asset = '{asset_list[k]}'") ) %>%
     mutate(
       Date = as_datetime(Date)
@@ -1575,37 +1577,38 @@ for (k in 1:length(asset_list) ) {
           TRUE ~ 0
         )
     ) %>%
+    ungroup() %>%
     group_by(
       stop_factor_short , profit_factor_short ,
       period_var_short , profit_factor_long , stop_factor_long,
-      period_var_long, trade_col, Asset, Date
-    ) %>%
-    mutate(kk = row_number()) %>%
-    slice_max(kk) %>%
-    ungroup()
-
-  results_summary <-
-    all_results_dfr %>%
-    group_by(
-      stop_factor_short , profit_factor_short ,
-      period_var_short , profit_factor_long , stop_factor_long,
-      period_var_long, trade_col, Asset
+      period_var_long, profit_factor_long_fast, profit_factor_long_fastest,
+      trade_col, Asset
     ) %>%
     arrange(Date, .by_group = TRUE) %>%
     group_by(
       stop_factor_short , profit_factor_short ,
       period_var_short , profit_factor_long , stop_factor_long,
-      period_var_long, trade_col, Asset
+      period_var_long, profit_factor_long_fast, profit_factor_long_fastest,
+      trade_col, Asset
     ) %>%
     mutate(long_only_cum = cumsum(long_return),
-           short_return_cum = cumsum(short_return)) %>%
+           long_only_cum_fast = cumsum(long_return_fast),
+           short_return_cum = cumsum(short_return),
+           Total_Return = long_return + short_return + long_return_fast + long_return_fastest,
+           Total_Return_cum = cumsum(Total_Return),
+           period_run_25_total = Total_Return_cum - lag(Total_Return_cum, 25),
+           period_run_25_long = long_only_cum - lag(long_only_cum, 25),
+           period_run_25_short = short_return_cum - lag(short_return_cum, 25),
+           period_run_25_long_fast = long_only_cum_fast - lag(long_only_cum_fast, 25) ) %>%
     group_by(
       stop_factor_short , profit_factor_short ,
       period_var_short , profit_factor_long , stop_factor_long,
-      period_var_long, trade_col, Asset
+      period_var_long, profit_factor_long_fast, profit_factor_long_fastest,
+      trade_col, Asset
     ) %>%
     summarise(
       Total_Return = sum(Total_Return, na.rm = T),
+      Total_Return_worst_run = quantile(period_run_25_total, 0.25 ,na.rm  = T),
       total_trades = n(),
       return_25 = quantile(Total_Return_cum, 0.25, na.rm = T),
       return_75 = quantile(Total_Return_cum, 0.75, na.rm = T),
@@ -1615,12 +1618,27 @@ for (k in 1:length(asset_list) ) {
       long_return = sum(long_return),
       long_return_25 = quantile(long_only_cum, 0.25, na.rm = T),
       long_return_75 = quantile(long_only_cum, 0.75, na.rm = T),
+      worst_long_run = quantile(period_run_25_long, 0.25 ,na.rm = T),
 
       short_return = sum(short_return),
       short_return_25 = quantile(short_return_cum, 0.25, na.rm = T),
-      short_return_75 = quantile(short_return_cum, 0.75, na.rm = T)
+      short_return_75 = quantile(short_return_cum, 0.75, na.rm = T),
+      worst_short_run = quantile(period_run_25_short, 0.25, na.rm = T),
+
+      long_return_fast = sum(long_return_fast, na.rm = T),
+      long_return_fastest = sum(long_return_fastest, na.rm = T),
+      worst_long_run_fast = quantile(period_run_25_long_fast, 0.25 ,na.rm = T),
     ) %>%
     ungroup() %>%
+    mutate(
+      Total_Return_fast = long_return_fast + short_return,
+      Total_Return_fastest = long_return_fastest + short_return
+      # Total_summed_return =
+      #   Total_Return_fast +
+      #   Total_Return_fastest +
+      #   long_return +
+      #   short_return
+    ) %>%
     mutate(
       multi_win_perc =multi_win/total_trades,
       multi_loss_perc =multi_loss/total_trades
@@ -1630,8 +1648,11 @@ for (k in 1:length(asset_list) ) {
       profit_factor_short_2 = profit_factor_short^2,
       period_var_short_2 = period_var_short^2,
       profit_factor_long_2 = profit_factor_long^2,
-      stop_factor_long_2 = stop_factor_long^2
+      stop_factor_long_2 = stop_factor_long^2,
+      period_var_long_2 = period_var_long^2
     )
+
+  gc()
 
   oo = oo + 1
 
@@ -1654,30 +1675,226 @@ for (k in 1:length(asset_list) ) {
 
 }
 
-model_optimisation_store_path <-
-  "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
-model_data_store_db <-
-  connect_db(model_optimisation_store_path)
+get_best_trade_setup_sa <-
+  function(
+    model_optimisation_store_path =
+      "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db",
+    table_to_extract = "summary_for_reg"
+    ) {
 
-summary_results <-
-  DBI::dbGetQuery(conn = model_data_store_db,
-                  statement =
-                    glue::glue("SELECT * FROM summary_for_reg") )
+    model_data_store_db <-
+      connect_db(model_optimisation_store_path)
 
-DBI::dbDisconnect(model_data_store_db)
+    summary_results <-
+      DBI::dbGetQuery(conn = model_data_store_db,
+                      statement =
+                        glue::glue("SELECT * FROM {table_to_extract}") )
 
-test <-
-  summary_results %>%
-  group_by(Asset) %>%
-  slice_max(short_return, n = 5)
+    DBI::dbDisconnect(model_data_store_db)
 
-param_comp_lm <-
-  lm(data = summary_results,
-     formula = Total_Return ~
-       stop_factor_short + stop_factor_short_2 +
-       profit_factor_short + profit_factor_short_2 +
-       period_var_short + period_var_short_2 +
-       profit_factor_long + profit_factor_long_2 +
-       stop_factor_long + stop_factor_long_2 )
+    all_assets <-
+      summary_results %>%
+      pull(Asset) %>%
+      unique()
 
-summary(param_comp_lm)
+    best <-
+      summary_results %>%
+      group_by(Asset) %>%
+      # slice_max(short_return, n = 1) %>%
+      # group_by(Asset) %>%
+      # slice_max(Total_Return_worst_run) %>%
+      group_by(Asset) %>%
+      slice_max(Total_Return) %>%
+      distinct()
+
+    best_params_average <-
+      best %>%
+      ungroup() %>%
+      summarise(
+        stop_factor_short = mean(stop_factor_short, na.rm = T),
+        profit_factor_short = mean(profit_factor_short, na.rm = T),
+        period_var_short = mean(period_var_short, na.rm = T),
+        profit_factor_long = mean(profit_factor_long, na.rm = T),
+        stop_factor_long = mean(stop_factor_long ,na.rm = T),
+        profit_factor_long_fast = mean(profit_factor_long_fast, na.rm = T),
+        profit_factor_long_fastest = mean(profit_factor_long_fastest, na.rm = T),
+        period_var_long = mean(period_var_long, na.rm = T),
+        Total_Return = mean(Total_Return, na.rm = T)
+      )
+
+    param_comp_lm <-
+      lm(data =
+           summary_results %>%
+           mutate(
+             profit_factor_long_fast_2 = profit_factor_long_fast^2,
+             profit_factor_long_fastest_2 = profit_factor_long_fastest^2
+           ),
+         formula = Total_Return ~
+           stop_factor_short +
+           stop_factor_short_2 +
+           profit_factor_short +
+           profit_factor_short_2 +
+           period_var_short +
+           period_var_short_2 +
+           profit_factor_long +
+           profit_factor_long_2 +
+           stop_factor_long +
+           stop_factor_long_2 +
+           profit_factor_long_fast +
+           profit_factor_long_fastest +
+           period_var_long +
+           Asset
+      )
+
+    summary(param_comp_lm)
+
+    param_tibble <-
+      c(18,15,12,9,6,2) %>%
+      map_dfr(
+        ~
+          tibble(
+            stop_factor_long = c(4,2,6, 8)
+          ) %>%
+          mutate(
+            profit_factor_long = .x,
+            profit_factor_long_fast = round(.x/2),
+            profit_factor_long_fastest = (.x/3)
+          )
+
+      ) %>%
+      mutate(
+        kk = row_number()
+      ) %>%
+      split(.$kk, drop = FALSE) %>%
+      map_dfr(
+        ~
+          tibble(
+            stop_factor_short = c(3,4,3,2,3,6,6),
+            profit_factor_short = c(6,12,1,1,0.5,3,1)
+          ) %>%
+          bind_cols(.x)
+      ) %>%
+      mutate(
+        kk = row_number()
+      ) %>%
+      split(.$kk, drop = FALSE) %>%
+      map_dfr(
+        ~ tibble(
+          period_var_long = rep(c(30,24,18,12), 6),
+          period_var_short = rep(c(14,12,8,6,4,2), 4)
+        ) %>%
+          bind_cols(.x)
+      )
+
+    param_tibble <-
+      all_assets %>%
+      map_dfr(
+        ~
+          param_tibble %>%
+          mutate(Asset = .x)
+      )
+
+
+    predicted_outcomes <-
+      predict(object = param_comp_lm,
+              newdata = param_tibble %>%
+                mutate(
+                  stop_factor_short_2 = stop_factor_short^2,
+                  profit_factor_short_2 = profit_factor_short^2,
+                  period_var_short_2 = period_var_short^2,
+                  profit_factor_long_2 = profit_factor_long^2,
+                  stop_factor_long_2 = stop_factor_long^2
+                )
+      )
+
+    predicted_outcomes <-
+      param_tibble %>%
+      mutate(
+        stop_factor_short_2 = stop_factor_short^2,
+        profit_factor_short_2 = profit_factor_short^2,
+        period_var_short_2 = period_var_short^2,
+        profit_factor_long_2 = profit_factor_long^2,
+        stop_factor_long_2 = stop_factor_long^2
+      ) %>%
+      mutate(
+        predicted_values = predicted_outcomes
+      )
+
+    best_prediced_outcome <-
+      predicted_outcomes %>%
+      group_by(Asset) %>%
+      slice_max(predicted_values) %>%
+      ungroup()
+
+    best_best_prediced_outcome2 <-
+      best_prediced_outcome %>%
+      dplyr::select(
+        stop_factor_short ,
+        profit_factor_short ,
+        period_var_short ,
+        profit_factor_long,
+        stop_factor_long,
+        profit_factor_long_fast,
+        profit_factor_long_fastest,
+        period_var_long,
+        Total_return = predicted_values
+      ) %>%
+      distinct()
+
+    final_results <-
+      best %>%
+      dplyr::select(
+        Asset,
+        stop_factor_short ,
+        profit_factor_short ,
+        period_var_short ,
+        profit_factor_long,
+        stop_factor_long,
+        profit_factor_long_fast,
+        profit_factor_long_fastest,
+        period_var_long,
+        Total_Return
+      ) %>%
+      split(.$Asset, drop = FALSE) %>%
+      map_dfr(
+       ~ .x %>%
+         ungroup() %>%
+          bind_rows(
+            best_best_prediced_outcome2 %>%
+              ungroup()
+          ) %>%
+         ungroup() %>%
+          summarise(
+            Asset = Asset[1],
+            stop_factor_short = mean(stop_factor_short, na.rm = T),
+            profit_factor_short = mean(profit_factor_short, na.rm = T),
+            period_var_short = mean(period_var_short, na.rm = T),
+            profit_factor_long = mean(profit_factor_long, na.rm = T),
+            stop_factor_long = mean(stop_factor_long ,na.rm = T),
+            profit_factor_long_fast = mean(profit_factor_long_fast, na.rm = T),
+            profit_factor_long_fastest = mean(profit_factor_long_fastest, na.rm = T),
+            period_var_long = mean(period_var_long, na.rm = T),
+            Total_Return = mean(Total_Return, na.rm = T)
+          )
+      )
+
+    final_results_real <-
+      best %>%
+      ungroup() %>%
+      summarise(
+        Asset = Asset[1],
+        stop_factor_short = mean(stop_factor_short, na.rm = T),
+        profit_factor_short = mean(profit_factor_short, na.rm = T),
+        period_var_short = mean(period_var_short, na.rm = T),
+        profit_factor_long = mean(profit_factor_long, na.rm = T),
+        stop_factor_long = mean(stop_factor_long ,na.rm = T),
+        profit_factor_long_fast = mean(profit_factor_long_fast, na.rm = T),
+        profit_factor_long_fastest = mean(profit_factor_long_fastest, na.rm = T),
+        period_var_long = mean(period_var_long, na.rm = T)
+      )
+
+
+    return(final_results_real)
+
+  }
+

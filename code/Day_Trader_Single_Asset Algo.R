@@ -383,6 +383,8 @@ while (current_time < end_time) {
       filter(!is.na(Price))  %>%
       ungroup()
 
+    #------Second Phase Optimisation
+
     if(dim(single_asset_model_trades_filt)[1] > 0) {
       single_asset_model_trades_filt <-
         single_asset_model_trades_filt%>%
