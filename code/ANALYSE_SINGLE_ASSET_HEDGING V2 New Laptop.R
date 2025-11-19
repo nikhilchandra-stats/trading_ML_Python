@@ -1343,17 +1343,17 @@ get_return_indicator_joined_data <-
 
 
 param_tibble <-
-  # c(18,15,12,9,6,2) %>%
-  c(18) %>%
+  c(18,15,12) %>%
+  # c(18) %>%
   map_dfr(
     ~
       tibble(
-        # stop_factor_long = c(4,2,6, 8)
-        stop_factor_long = c(6)
+        stop_factor_long = c(4,2,6)
+        # stop_factor_long = c(6)
       ) %>%
       mutate(
         profit_factor_long = .x,
-        profit_factor_long_fast = round(.x/4),
+        profit_factor_long_fast = floor(.x/4),
         profit_factor_long_fastest = floor((.x/7))
       )
 
@@ -1388,19 +1388,22 @@ distinct_assets <-
   distinct(Asset) %>%
   pull(Asset)
 
+# asset_list <-
+#   c("EUR_USD", "SPX500_USD", "EU50_EUR", "GBP_USD", "XAG_USD", "USD_CAD", "AUD_USD",
+#     "WTICO_USD", "BTC_USD", "XAG_GBP", "GBP_AUD", "UK100_GBP", "AU200_AUD", "US2000_USD",
+#     "EUR_GBP", "GBP_CAD", "USD_CAD", "XAG_EUR", "EUR_AUD", "XAG_AUD", "EUR_NZD", "BTC_USD")
+
 asset_list <-
-  c("EUR_USD", "SPX500_USD", "EU50_EUR", "GBP_USD", "XAG_USD", "USD_CAD", "AUD_USD",
-    "WTICO_USD", "BTC_USD", "XAG_GBP", "GBP_AUD", "UK100_GBP", "AU200_AUD", "US2000_USD",
-    "EUR_GBP", "GBP_CAD", "USD_CAD", "XAG_EUR", "EUR_AUD", "XAG_AUD", "EUR_NZD", "BTC_USD")
+  c("USB10Y_USD", "USD_JPY", "EUR_JPY", "XAG_NZD", "HK33_HKD", "FR40_EUR", "USD_SEK", "USD_SGD")
 
 model_optimisation_store_path <-
   "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
 model_data_store_db <-
   connect_db(model_optimisation_store_path)
 
-c = 0
+c = 5
 
-for (i in 129:dim(param_tibble)[1] ) {
+for (i in 1:dim(param_tibble)[1] ) {
 
   for (j in 1:length(asset_list)) {
 
@@ -1529,10 +1532,10 @@ for (i in 129:dim(param_tibble)[1] ) {
       left_join(temp_fastest)
 
     if(c == 1) {
-      write_table_sql_lite(conn = model_data_store_db,
-                           .data = results_summary,
-                           table_name = "single_asset_advanced_optimisation",
-                           overwrite_true = TRUE)
+      # write_table_sql_lite(conn = model_data_store_db,
+      #                      .data = results_summary,
+      #                      table_name = "single_asset_advanced_optimisation",
+      #                      overwrite_true = TRUE)
     } else {
 
       append_table_sql_lite(conn = model_data_store_db,
@@ -1552,6 +1555,12 @@ model_optimisation_store_path <-
   "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
 model_data_store_db <-
   connect_db(model_optimisation_store_path)
+
+asset_list <-
+  c("EUR_USD", "SPX500_USD", "EU50_EUR", "GBP_USD", "XAG_USD", "USD_CAD", "AUD_USD",
+    "WTICO_USD", "BTC_USD", "XAG_GBP", "GBP_AUD", "UK100_GBP", "AU200_AUD", "US2000_USD",
+    "EUR_GBP", "GBP_CAD", "USD_CAD", "XAG_EUR", "EUR_AUD", "XAG_AUD", "EUR_NZD", "BTC_USD",
+  "USB10Y_USD", "USD_JPY", "EUR_JPY", "XAG_NZD", "HK33_HKD", "FR40_EUR", "USD_SEK", "USD_SGD")
 
 oo = 0
 
