@@ -189,7 +189,7 @@ starting_asset_data_ask_daily <-
 starting_asset_data_ask_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2019-06-01",
+    start_date = "2020-06-01",
     end_date = end_date_day,
     bid_or_ask = "ask",
     time_frame = "H1"
@@ -219,7 +219,7 @@ starting_asset_data_bid_daily <-
 starting_asset_data_bid_H1 <-
   get_db_price(
     db_location = db_location,
-    start_date = "2019-06-01",
+    start_date = "2020-06-01",
     end_date = end_date_day,
     bid_or_ask = "bid",
     time_frame = "H1"
@@ -292,7 +292,7 @@ all_trade_ts_actuals_Logit <-
 rm(all_trade_ts_actuals_Logit1, all_trade_ts_actuals_Logit2)
 
 all_trade_ts_actuals_Logit <- all_trade_ts_actuals_Logit %>%
-  filter(dates >= "2019-06-01")
+  filter(dates >= "2020-06-01")
 
 gc()
 
@@ -1283,16 +1283,16 @@ while (current_time < end_time) {
               "NAS100_USD", "DE30_EUR", "HK33_HKD", "XAG_USD", "XCU_USD", "XAU_USD", "BCO_USD",
               "SUGAR_USD", "WHEAT_USD", "FR40_EUR","CN50_USD", "USB10Y_USD", "NAS100_USD", "CORN_USD",
               "US30_USD", "WTICO_USD"
-            )) & abs(units) >= 16000 ~ "Remove",
+            )) & abs(units) >= 26000 ~ "Remove",
             Asset %in% c("SPX500_USD", "JP225_USD", "EU50_EUR", "US2000_USD", "AU200_AUD",
-                         "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 4 ~ "Remove",
-            Asset == "SG30_SGD" & abs(units) >= 35 ~ "Remove",
-            Asset == "XCU_USD" & abs(units)>=450 ~ "Remove",
-            Asset == "WHEAT_USD" & abs(units)>=450 ~ "Remove",
-            Asset == "CORN_USD" & abs(units)>=450 ~ "Remove",
-            Asset == "NATGAS_USD" & abs(units)>=450 ~ "Remove",
-            Asset == "XAG_USD" & abs(units)>=100 ~ "Remove",
-            Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=32 ~ "Remove",
+                         "NAS100_USD", "DE30_EUR", "NAS100_USD", "HK33_HKD", "US30_USD") & abs(units) >= 10 ~ "Remove",
+            Asset == "SG30_SGD" & abs(units) >= 65 ~ "Remove",
+            Asset == "XCU_USD" & abs(units)>=850 ~ "Remove",
+            Asset == "WHEAT_USD" & abs(units)>=850 ~ "Remove",
+            Asset == "CORN_USD" & abs(units)>=850 ~ "Remove",
+            Asset == "NATGAS_USD" & abs(units)>=850 ~ "Remove",
+            Asset == "XAG_USD" & abs(units)>=300 ~ "Remove",
+            Asset %in% c("BCO_USD", "WTICO_USD") & abs(units)>=64 ~ "Remove",
             str_detect(Asset, "XAU_") & abs(units)>=1 ~ "Remove",
             TRUE ~ "Keep"
           )

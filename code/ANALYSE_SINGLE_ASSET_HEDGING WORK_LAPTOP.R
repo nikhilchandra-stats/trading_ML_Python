@@ -65,12 +65,12 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
-start_date = "2022-01-01"
-end_date = "2024-01-01"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+start_date = "2019-01-01"
+end_date = "2025-11-01"
 
 model_data_store_path <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_indcator_trades_ts.db"
+  "C:/Users/Nikhil Chandra/Documents/single_asset_improved_indcator_trades_ts_more_cop.db"
 model_data_store_db <-
   connect_db(model_data_store_path)
 
@@ -86,6 +86,12 @@ indicator_data <-
 DBI::dbDisconnect(model_data_store_db)
 rm(model_data_store_db)
 gc()
+
+indicator_data <-
+  indicator_data %>%
+  group_by(Asset, Date, trade_col) %>%
+  slice_max(sim_index) %>%
+  ungroup()
 
 Indices_Metals_Bonds <-
   get_Port_Buy_Data(
@@ -121,7 +127,7 @@ create_running_profits <-
     trade_direction = "Long",
     currency_conversion = currency_conversion,
     asset_infor = asset_infor
-  ) {
+    ) {
 
     bid_price <-
       asset_data[[2]] %>%
@@ -213,8 +219,7 @@ create_running_profits <-
         )
       ) %>%
       mutate(
-        profit_return = profit_value*adjusted_conversion*volume_adj,
-        stop_return = stop_value*adjusted_conversion*volume_adj
+        profit_return = profit_value*adjusted_conversion*volume_adj
       ) %>%
       mutate(
 
@@ -228,7 +233,7 @@ create_running_profits <-
               lead(Bid_High,2) > profit_point  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,2) <= stop_point|
-              trade_col == "Long" & lead(Bid_Low,1) <= stop_point ~ -1*stop_return,
+              trade_col == "Long" & lead(Bid_Low,1) <= stop_point ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,2) < stop_point &
               lead(Ask_Low,2) > profit_point ~
@@ -238,196 +243,196 @@ create_running_profits <-
               lead(Ask_Low,2) < profit_point ~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,2) >= stop_point|
-              trade_col == "Short" & lead(Ask_High,1) >= stop_point ~ -1*stop_return
+              trade_col == "Short" & lead(Ask_High,1) >= stop_point ~ -1*risk_dollar_value
           ),
 
         period_return_2_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,3) > stop_point &
               lead(Bid_High,3) < profit_point &
-              period_return_1_Price != -1*stop_return ~
+              period_return_1_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price, 3) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,3) > stop_point &
               lead(Bid_High,3) > profit_point &
-              period_return_1_Price != -1*stop_return  ~ profit_return,
+              period_return_1_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,3) <= stop_point|
-              period_return_1_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_1_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,3) < stop_point &
               lead(Ask_Low,3) > profit_point &
-              period_return_1_Price != -1*stop_return~
+              period_return_1_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,3) ),
 
             trade_col == "Short" & lead(Ask_High,3) < stop_point &
               lead(Ask_Low,3) < profit_point &
-              period_return_1_Price != -1*stop_return~ profit_return,
+              period_return_1_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,3) >= stop_point|
-              period_return_1_Price == -1*stop_return ~ -1*stop_return
+              period_return_1_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_3_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,4) > stop_point &
               lead(Bid_High,4) < profit_point &
-              period_return_2_Price != -1*stop_return ~
+              period_return_2_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,4) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,4) > stop_point &
               lead(Bid_High,4) > profit_point &
-              period_return_2_Price != -1*stop_return  ~ profit_return,
+              period_return_2_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,4) <= stop_point|
-              period_return_2_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_2_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,4) < stop_point &
               lead(Ask_Low,4) > profit_point &
-              period_return_2_Price != -1*stop_return~
+              period_return_2_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,4) ),
 
             trade_col == "Short" & lead(Ask_High,4) < stop_point &
               lead(Ask_Low,4) < profit_point &
-              period_return_2_Price != -1*stop_return~ profit_return,
+              period_return_2_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,4) >= stop_point|
-              period_return_2_Price == -1*stop_return ~ -1*stop_return
+              period_return_2_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_4_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,5) > stop_point &
               lead(Bid_High,5) < profit_point &
-              period_return_3_Price != -1*stop_return ~
+              period_return_3_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,5) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,5) > stop_point &
               lead(Bid_High,5) > profit_point &
-              period_return_3_Price != -1*stop_return  ~ profit_return,
+              period_return_3_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,5) <= stop_point|
-              period_return_3_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_3_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,5) < stop_point &
               lead(Ask_Low,5) > profit_point &
-              period_return_3_Price != -1*stop_return~
+              period_return_3_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,5) ),
 
             trade_col == "Short" & lead(Ask_High,5) < stop_point &
               lead(Ask_Low,5) < profit_point &
-              period_return_3_Price != -1*stop_return~ profit_return,
+              period_return_3_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,5) >= stop_point|
-              period_return_3_Price == -1*stop_return ~ -1*stop_return
+              period_return_3_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_5_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,6) > stop_point &
               lead(Bid_High,6) < profit_point &
-              period_return_4_Price != -1*stop_return ~
+              period_return_4_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,6) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,6) > stop_point &
               lead(Bid_High,6) > profit_point &
-              period_return_4_Price != -1*stop_return  ~ profit_return,
+              period_return_4_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,6) <= stop_point|
-              period_return_4_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_4_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,6) < stop_point &
               lead(Ask_Low,6) > profit_point &
-              period_return_4_Price != -1*stop_return~
+              period_return_4_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,6) ),
 
             trade_col == "Short" & lead(Ask_High,6) < stop_point &
               lead(Ask_Low,6) < profit_point &
-              period_return_4_Price != -1*stop_return~ profit_return,
+              period_return_4_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,6) >= stop_point|
-              period_return_4_Price == -1*stop_return ~ -1*stop_return
+              period_return_4_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_6_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,7) > stop_point &
               lead(Bid_High,7) < profit_point &
-              period_return_5_Price != -1*stop_return ~
+              period_return_5_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,7) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,7) > stop_point &
               lead(Bid_High,7) > profit_point &
-              period_return_5_Price != -1*stop_return  ~ profit_return,
+              period_return_5_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,7) <= stop_point|
-              period_return_5_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_5_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,7) < stop_point &
               lead(Ask_Low,7) > profit_point &
-              period_return_5_Price != -1*stop_return~
+              period_return_5_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,7) ),
 
             trade_col == "Short" & lead(Ask_High,7) < stop_point &
               lead(Ask_Low,7) < profit_point &
-              period_return_5_Price != -1*stop_return~ profit_return,
+              period_return_5_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,7) >= stop_point|
-              period_return_5_Price == -1*stop_return ~ -1*stop_return
+              period_return_5_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_7_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,8) > stop_point &
               lead(Bid_High,8) < profit_point &
-              period_return_6_Price != -1*stop_return ~
+              period_return_6_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,8) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,8) > stop_point &
               lead(Bid_High,8) > profit_point &
-              period_return_6_Price != -1*stop_return  ~ profit_return,
+              period_return_6_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,8) <= stop_point|
-              period_return_6_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_6_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,8) < stop_point &
               lead(Ask_Low,8) > profit_point &
-              period_return_6_Price != -1*stop_return~
+              period_return_6_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,8) ),
 
             trade_col == "Short" & lead(Ask_High,8) < stop_point &
               lead(Ask_Low,8) < profit_point &
-              period_return_6_Price != -1*stop_return~ profit_return,
+              period_return_6_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,8) >= stop_point|
-              period_return_6_Price == -1*stop_return ~ -1*stop_return
+              period_return_6_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_8_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,9) > stop_point &
               lead(Bid_High,9) < profit_point &
-              period_return_7_Price != -1*stop_return ~
+              period_return_7_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,9) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,9) > stop_point &
               lead(Bid_High,9) > profit_point &
-              period_return_7_Price != -1*stop_return  ~ profit_return,
+              period_return_7_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,9) <= stop_point|
-              period_return_7_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_7_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,9) < stop_point &
               lead(Ask_Low,9) > profit_point &
-              period_return_7_Price != -1*stop_return~
+              period_return_7_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,9) ),
 
             trade_col == "Short" & lead(Ask_High,9) < stop_point &
               lead(Ask_Low,9) < profit_point &
-              period_return_7_Price != -1*stop_return~ profit_return,
+              period_return_7_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,9) >= stop_point|
-              period_return_7_Price == -1*stop_return ~ -1*stop_return
+              period_return_7_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
 
@@ -435,27 +440,27 @@ create_running_profits <-
           case_when(
             trade_col == "Long" & lead(Bid_Low,10) > stop_point &
               lead(Bid_High,10) < profit_point &
-              period_return_8_Price != -1*stop_return ~
+              period_return_8_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,10) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,10) > stop_point &
               lead(Bid_High,10) > profit_point &
-              period_return_8_Price != -1*stop_return  ~ profit_return,
+              period_return_8_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,10) <= stop_point|
-              period_return_8_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_8_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,10) < stop_point &
               lead(Ask_Low,10) > profit_point &
-              period_return_8_Price != -1*stop_return~
+              period_return_8_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,10) ),
 
             trade_col == "Short" & lead(Ask_High,10) < stop_point &
               lead(Ask_Low,10) < profit_point &
-              period_return_8_Price != -1*stop_return~ profit_return,
+              period_return_8_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,10) >= stop_point|
-              period_return_8_Price == -1*stop_return ~ -1*stop_return
+              period_return_8_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
 
@@ -463,459 +468,243 @@ create_running_profits <-
           case_when(
             trade_col == "Long" & lead(Bid_Low,11) > stop_point &
               lead(Bid_High,11) < profit_point &
-              period_return_9_Price != -1*stop_return ~
+              period_return_9_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,11) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,11) > stop_point &
               lead(Bid_High,11) > profit_point &
-              period_return_9_Price != -1*stop_return  ~ profit_return,
+              period_return_9_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,11) <= stop_point|
-              period_return_9_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_9_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,11) < stop_point &
               lead(Ask_Low,11) > profit_point &
-              period_return_9_Price != -1*stop_return~
+              period_return_9_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,11) ),
 
             trade_col == "Short" & lead(Ask_High,11) < stop_point &
               lead(Ask_Low,11) < profit_point &
-              period_return_9_Price != -1*stop_return~ profit_return,
+              period_return_9_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,11) >= stop_point|
-              period_return_9_Price == -1*stop_return ~ -1*stop_return
+              period_return_9_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_11_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,12) > stop_point &
               lead(Bid_High,12) < profit_point &
-              period_return_10_Price != -1*stop_return ~
+              period_return_10_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,12) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,12) > stop_point &
               lead(Bid_High,12) > profit_point &
-              period_return_10_Price != -1*stop_return  ~ profit_return,
+              period_return_10_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,12) <= stop_point|
-              period_return_10_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_10_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,12) < stop_point &
               lead(Ask_Low,12) > profit_point &
-              period_return_10_Price != -1*stop_return~
+              period_return_10_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,12) ),
 
             trade_col == "Short" & lead(Ask_High,12) < stop_point &
               lead(Ask_Low,12) < profit_point &
-              period_return_10_Price != -1*stop_return~ profit_return,
+              period_return_10_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,12) >= stop_point|
-              period_return_10_Price == -1*stop_return ~ -1*stop_return
+              period_return_10_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_12_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,13) > stop_point &
               lead(Bid_High,13) < profit_point &
-              period_return_11_Price != -1*stop_return ~
+              period_return_11_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,13) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,13) > stop_point &
               lead(Bid_High,13) > profit_point &
-              period_return_11_Price != -1*stop_return  ~ profit_return,
+              period_return_11_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,13) <= stop_point|
-              period_return_11_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_11_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,13) < stop_point &
               lead(Ask_Low,13) > profit_point &
-              period_return_11_Price != -1*stop_return~
+              period_return_11_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,13) ),
 
             trade_col == "Short" & lead(Ask_High,13) < stop_point &
               lead(Ask_Low,13) < profit_point &
-              period_return_11_Price != -1*stop_return~ profit_return,
+              period_return_11_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,13) >= stop_point|
-              period_return_11_Price == -1*stop_return ~ -1*stop_return
+              period_return_11_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_13_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,14) > stop_point &
               lead(Bid_High,14) < profit_point &
-              period_return_12_Price != -1*stop_return ~
+              period_return_12_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,14) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,14) > stop_point &
               lead(Bid_High,14) > profit_point &
-              period_return_12_Price != -1*stop_return  ~ profit_return,
+              period_return_12_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,14) <= stop_point|
-              period_return_12_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_12_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,14) < stop_point &
               lead(Ask_Low,14) > profit_point &
-              period_return_12_Price != -1*stop_return~
+              period_return_12_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,14) ),
 
             trade_col == "Short" & lead(Ask_High,14) < stop_point &
               lead(Ask_Low,14) < profit_point &
-              period_return_12_Price != -1*stop_return~ profit_return,
+              period_return_12_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,14) >= stop_point|
-              period_return_12_Price == -1*stop_return ~ -1*stop_return
+              period_return_12_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_14_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,15) > stop_point &
               lead(Bid_High,15) < profit_point &
-              period_return_13_Price != -1*stop_return ~
+              period_return_13_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,15) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,15) > stop_point &
               lead(Bid_High,15) > profit_point &
-              period_return_13_Price != -1*stop_return  ~ profit_return,
+              period_return_13_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,15) <= stop_point|
-              period_return_13_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_13_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,15) < stop_point &
               lead(Ask_Low,15) > profit_point &
-              period_return_13_Price != -1*stop_return~
+              period_return_13_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,15) ),
 
             trade_col == "Short" & lead(Ask_High,15) < stop_point &
               lead(Ask_Low,15) < profit_point &
-              period_return_13_Price != -1*stop_return~ profit_return,
+              period_return_13_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,15) >= stop_point|
-              period_return_13_Price == -1*stop_return ~ -1*stop_return
+              period_return_13_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_15_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,16) > stop_point &
               lead(Bid_High,16) < profit_point &
-              period_return_14_Price != -1*stop_return ~
+              period_return_14_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,16) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,16) > stop_point &
               lead(Bid_High,16) > profit_point &
-              period_return_14_Price != -1*stop_return  ~ profit_return,
+              period_return_14_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,16) <= stop_point|
-              period_return_14_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_14_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,16) < stop_point &
               lead(Ask_Low,16) > profit_point &
-              period_return_14_Price != -1*stop_return~
+              period_return_14_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,16) ),
 
             trade_col == "Short" & lead(Ask_High,16) < stop_point &
               lead(Ask_Low,16) < profit_point &
-              period_return_14_Price != -1*stop_return~ profit_return,
+              period_return_14_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,16) >= stop_point|
-              period_return_14_Price == -1*stop_return ~ -1*stop_return
+              period_return_14_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ) ,
 
         period_return_16_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,17) > stop_point &
               lead(Bid_High,17) < profit_point &
-              period_return_15_Price != -1*stop_return ~
+              period_return_15_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,17) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,17) > stop_point &
               lead(Bid_High,17) > profit_point &
-              period_return_15_Price != -1*stop_return  ~ profit_return,
+              period_return_15_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,17) <= stop_point|
-              period_return_15_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_15_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,17) < stop_point &
               lead(Ask_Low,17) > profit_point &
-              period_return_15_Price != -1*stop_return~
+              period_return_15_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,17) ),
 
             trade_col == "Short" & lead(Ask_High,17) < stop_point &
               lead(Ask_Low,17) < profit_point &
-              period_return_15_Price != -1*stop_return~ profit_return,
+              period_return_15_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,17) >= stop_point|
-              period_return_15_Price == -1*stop_return ~ -1*stop_return
+              period_return_15_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_17_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,18) > stop_point &
               lead(Bid_High,18) < profit_point &
-              period_return_16_Price != -1*stop_return ~
+              period_return_16_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,18) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,18) > stop_point &
               lead(Bid_High,18) > profit_point &
-              period_return_16_Price != -1*stop_return  ~ profit_return,
+              period_return_16_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,18) <= stop_point|
-              period_return_16_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_16_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,18) < stop_point &
               lead(Ask_Low,18) > profit_point &
-              period_return_16_Price != -1*stop_return~
+              period_return_16_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,18) ),
 
             trade_col == "Short" & lead(Ask_High,18) < stop_point &
               lead(Ask_Low,18) < profit_point &
-              period_return_16_Price != -1*stop_return~ profit_return,
+              period_return_16_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,18) >= stop_point|
-              period_return_16_Price == -1*stop_return ~ -1*stop_return
+              period_return_16_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           ),
 
         period_return_18_Price =
           case_when(
             trade_col == "Long" & lead(Bid_Low,19) > stop_point &
               lead(Bid_High,19) < profit_point &
-              period_return_17_Price != -1*stop_return ~
+              period_return_17_Price != -1*risk_dollar_value ~
               adjusted_conversion*volume_adj*( (lead(Bid_Price ,19) - lead(Ask_Price)) ),
 
             trade_col == "Long" & lead(Bid_Low,19) > stop_point &
               lead(Bid_High,19) > profit_point &
-              period_return_17_Price != -1*stop_return  ~ profit_return,
+              period_return_17_Price != -1*risk_dollar_value  ~ profit_return,
 
             trade_col == "Long" & lead(Bid_Low,19) <= stop_point|
-              period_return_17_Price== -1*stop_return  ~ -1*stop_return,
+              period_return_17_Price== -1*risk_dollar_value  ~ -1*risk_dollar_value,
 
             trade_col == "Short" & lead(Ask_High,19) < stop_point &
               lead(Ask_Low,19) > profit_point &
-              period_return_17_Price != -1*stop_return~
+              period_return_17_Price != -1*risk_dollar_value~
               adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,19) ),
 
             trade_col == "Short" & lead(Ask_High,19) < stop_point &
               lead(Ask_Low,19) < profit_point &
-              period_return_17_Price != -1*stop_return~ profit_return,
+              period_return_17_Price != -1*risk_dollar_value~ profit_return,
 
             trade_col == "Short" & lead(Ask_High,19) >= stop_point|
-              period_return_17_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_19_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,20) > stop_point &
-              lead(Bid_High,20) < profit_point &
-              period_return_18_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,20) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,20) > stop_point &
-              lead(Bid_High,20) > profit_point &
-              period_return_18_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,20) <= stop_point|
-              period_return_18_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,20) < stop_point &
-              lead(Ask_Low,20) > profit_point &
-              period_return_18_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,20) ),
-
-            trade_col == "Short" & lead(Ask_High,20) < stop_point &
-              lead(Ask_Low,20) < profit_point &
-              period_return_18_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,20) >= stop_point|
-              period_return_18_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_20_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,21) > stop_point &
-              lead(Bid_High,21) < profit_point &
-              period_return_19_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,21) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,21) > stop_point &
-              lead(Bid_High,21) > profit_point &
-              period_return_19_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,21) <= stop_point|
-              period_return_19_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,21) < stop_point &
-              lead(Ask_Low,21) > profit_point &
-              period_return_19_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,21) ),
-
-            trade_col == "Short" & lead(Ask_High,21) < stop_point &
-              lead(Ask_Low,21) < profit_point &
-              period_return_19_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,21) >= stop_point|
-              period_return_19_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_21_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,22) > stop_point &
-              lead(Bid_High,22) < profit_point &
-              period_return_20_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,22) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,22) > stop_point &
-              lead(Bid_High,22) > profit_point &
-              period_return_20_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,22) <= stop_point|
-              period_return_20_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,22) < stop_point &
-              lead(Ask_Low,22) > profit_point &
-              period_return_20_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,22) ),
-
-            trade_col == "Short" & lead(Ask_High,22) < stop_point &
-              lead(Ask_Low,22) < profit_point &
-              period_return_20_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,22) >= stop_point|
-              period_return_20_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_22_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,23) > stop_point &
-              lead(Bid_High,23) < profit_point &
-              period_return_21_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,23) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,23) > stop_point &
-              lead(Bid_High,23) > profit_point &
-              period_return_21_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,23) <= stop_point|
-              period_return_21_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,23) < stop_point &
-              lead(Ask_Low,23) > profit_point &
-              period_return_21_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,23) ),
-
-            trade_col == "Short" & lead(Ask_High,23) < stop_point &
-              lead(Ask_Low,23) < profit_point &
-              period_return_21_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,23) >= stop_point|
-              period_return_21_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_23_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,24) > stop_point &
-              lead(Bid_High,24) < profit_point &
-              period_return_22_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,24) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,24) > stop_point &
-              lead(Bid_High,24) > profit_point &
-              period_return_22_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,24) <= stop_point|
-              period_return_22_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,24) < stop_point &
-              lead(Ask_Low,24) > profit_point &
-              period_return_22_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,24) ),
-
-            trade_col == "Short" & lead(Ask_High,24) < stop_point &
-              lead(Ask_Low,24) < profit_point &
-              period_return_22_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,24) >= stop_point|
-              period_return_22_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_24_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,25) > stop_point &
-              lead(Bid_High,25) < profit_point &
-              period_return_23_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,25) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,25) > stop_point &
-              lead(Bid_High,25) > profit_point &
-              period_return_23_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,25) <= stop_point|
-              period_return_23_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,25) < stop_point &
-              lead(Ask_Low,25) > profit_point &
-              period_return_23_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,25) ),
-
-            trade_col == "Short" & lead(Ask_High,25) < stop_point &
-              lead(Ask_Low,25) < profit_point &
-              period_return_23_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,25) >= stop_point|
-              period_return_23_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_25_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,26) > stop_point &
-              lead(Bid_High,26) < profit_point &
-              period_return_24_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,26) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,26) > stop_point &
-              lead(Bid_High,26) > profit_point &
-              period_return_24_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,26) <= stop_point|
-              period_return_24_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,26) < stop_point &
-              lead(Ask_Low,26) > profit_point &
-              period_return_24_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,26) ),
-
-            trade_col == "Short" & lead(Ask_High,26) < stop_point &
-              lead(Ask_Low,26) < profit_point &
-              period_return_24_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,26) >= stop_point|
-              period_return_24_Price == -1*stop_return ~ -1*stop_return
-          ),
-
-        period_return_26_Price =
-          case_when(
-            trade_col == "Long" & lead(Bid_Low,27) > stop_point &
-              lead(Bid_High,27) < profit_point &
-              period_return_25_Price != -1*stop_return ~
-              adjusted_conversion*volume_adj*( (lead(Bid_Price ,27) - lead(Ask_Price)) ),
-
-            trade_col == "Long" & lead(Bid_Low,27) > stop_point &
-              lead(Bid_High,27) > profit_point &
-              period_return_25_Price != -1*stop_return  ~ profit_return,
-
-            trade_col == "Long" & lead(Bid_Low,27) <= stop_point|
-              period_return_25_Price== -1*stop_return  ~ -1*stop_return,
-
-            trade_col == "Short" & lead(Ask_High,27) < stop_point &
-              lead(Ask_Low,27) > profit_point &
-              period_return_25_Price != -1*stop_return~
-              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,27) ),
-
-            trade_col == "Short" & lead(Ask_High,27) < stop_point &
-              lead(Ask_Low,27) < profit_point &
-              period_return_25_Price != -1*stop_return~ profit_return,
-
-            trade_col == "Short" & lead(Ask_High,27) >= stop_point|
-              period_return_25_Price == -1*stop_return ~ -1*stop_return
+              period_return_17_Price == -1*risk_dollar_value ~ -1*risk_dollar_value
           )
 
       )
@@ -930,13 +719,13 @@ get_multi_sngle_asst_impr_indcator <-
     indicator_asset_list = c("EUR_JPY"),
     indicator_stop = 2,
     indicator_period= 24
-  ) {
+    ) {
 
     indicator_data_asset_data_long <-
       indicator_data %>%
       ungroup() %>%
       filter(Asset %in% indicator_asset_list, trade_col == "Long",
-             stop_factor == indicator_stop, periods_ahead == indicator_period) %>%
+              stop_factor == indicator_stop, periods_ahead == indicator_period) %>%
       select(Date, Asset, contains("pred")) %>%
       distinct() %>%
       group_by(Date, Asset) %>%
@@ -961,12 +750,12 @@ get_multi_sngle_asst_impr_indcator <-
       distinct() %>%
       pivot_wider( values_from = value, names_from = var_names)
 
-    # mutate(
-    #   new_var_name = paste0(Asset, "_", var_names)
-    # ) %>%
-    # dplyr::select(-var_names, -Asset) %>%
-    # distinct() %>%
-    # pivot_wider( values_from = value, names_from = new_var_name)
+      # mutate(
+      #   new_var_name = paste0(Asset, "_", var_names)
+      # ) %>%
+      # dplyr::select(-var_names, -Asset) %>%
+      # distinct() %>%
+      # pivot_wider( values_from = value, names_from = new_var_name)
 
     indicator_data_asset_data_short <-
       indicator_data %>%
@@ -996,12 +785,12 @@ get_multi_sngle_asst_impr_indcator <-
       ungroup() %>%
       distinct() %>%
       pivot_wider( values_from = value, names_from = var_names)
-    # mutate(
-    #   new_var_name = paste0(Asset, "_", var_names)
-    # ) %>%
-    # dplyr::select(-var_names, -Asset) %>%
-    # distinct() %>%
-    # pivot_wider( values_from = value, names_from = new_var_name)
+      # mutate(
+      #   new_var_name = paste0(Asset, "_", var_names)
+      # ) %>%
+      # dplyr::select(-var_names, -Asset) %>%
+      # distinct() %>%
+      # pivot_wider( values_from = value, names_from = new_var_name)
 
     indicators_joined <-
       indicator_data_asset_data_long %>%
@@ -1031,7 +820,7 @@ get_return_indicator_joined_data <-
     indicator_period= 24,
     period_var_long = 16,
     period_var_short = 4
-  ) {
+    ) {
 
 
     # indicators_joined_raw <-
@@ -1119,11 +908,11 @@ get_return_indicator_joined_data <-
     names(short_results) <-
       names(short_results) %>%
       map(
-        ~ case_when(
-          str_detect(.x, "period_return_") ~ paste0("Short_",.x),
-          TRUE ~ .x
-        )
-      ) %>%
+          ~ case_when(
+            str_detect(.x, "period_return_") ~ paste0("Short_",.x),
+            TRUE ~ .x
+          )
+        ) %>%
       unlist() %>%
       as.character()
 
@@ -1177,8 +966,8 @@ get_return_indicator_joined_data <-
       #     min(c_across(contains("Short_period_return_")), na.rm = T),
       #   max_point_in_trade_short =
       #     max(c_across(contains("Short_period_return_")), na.rm = T)
-    # ) %>%
-    ungroup() %>%
+      # ) %>%
+      ungroup() %>%
       mutate(
         trade_col =
           case_when(
@@ -1207,7 +996,7 @@ get_return_indicator_joined_data <-
                # )
                long_return +
                short_return
-      ) %>%
+             ) %>%
       mutate(
         month_date = floor_date(Date, unit = "month"),
         Total_Return_cum = cumsum(Total_Return)
@@ -1234,7 +1023,7 @@ param_tibble <-
   tibble(
     stop_factor_long = rep(c(4,2,6), 5),
     profit_factor_long = rep(c(18,15,12,9,6), 3)
-  ) %>%
+    ) %>%
   mutate(
     kk = row_number()
   ) %>%
@@ -1252,7 +1041,7 @@ param_tibble <-
   ) %>%
   split(.$kk, drop = FALSE) %>%
   map_dfr(
-    ~ tibble(
+      ~ tibble(
       period_var_long = rep(c(18,15,12,9), 6),
       period_var_short = rep(c(6,5,4,3,2,1), 4)
     ) %>%
@@ -1273,9 +1062,8 @@ asset_list <-
     "WTICO_USD", "BTC_USD", "XAG_GBP", "GBP_AUD", "UK100_GBP", "AU200_AUD", "US2000_USD",
     "EUR_GBP", "GBP_CAD", "USD_CAD", "XAG_EUR", "EUR_AUD", "XAG_AUD", "EUR_NZD", "BTC_USD")
 
-
 model_optimisation_store_path <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_advanced_optimisation.db"
+  "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
 model_data_store_db <-
   connect_db(model_optimisation_store_path)
 
@@ -1332,8 +1120,6 @@ for (i in 1:dim(param_tibble)[1] ) {
         Asset = asset_of_interest
       )
 
-    result_list[[c]] <-temp
-
     if(c == 1) {
       write_table_sql_lite(conn = model_data_store_db,
                            .data = temp,
@@ -1347,28 +1133,29 @@ for (i in 1:dim(param_tibble)[1] ) {
 
     }
 
+    rm(temp)
+    gc()
+
   }
 
 }
 
+model_optimisation_store_path <-
+  "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
+model_data_store_db <-
+  connect_db(model_optimisation_store_path)
+
 all_results_dfr <-
-  result_list %>%
-  map_dfr(bind_rows)
+  DBI::dbGetQuery(conn = model_data_store_db,
+                  statement = "SELECT * FROM single_asset_advanced_optimisation
+                                WHERE Asset = 'EUR_USD'" ) %>%
+  mutate(
+    Date = as_datetime(Date)
+  )
 
 results_summary <-
   all_results_dfr %>%
   mutate(
-    long_return =
-      case_when(
-        !is.na(Long_period_return_18_Price) ~ Long_period_return_18_Price
-      ),
-    short_return =
-      case_when(
-        !is.na(Short_period_return_6_Price) ~ Short_period_return_6_Price,
-        !is.na(Short_period_return_5_Price) ~ Short_period_return_5_Price,
-        !is.na(Short_period_return_4_Price) ~ Short_period_return_4_Price,
-        !is.na(Short_period_return_3_Price) ~ Short_period_return_3_Price
-      ),
     multi_win =
       case_when(
         long_return > 0 & short_return> 0 ~ 1,
@@ -1383,7 +1170,15 @@ results_summary <-
   group_by(
     stop_factor_short , profit_factor_short ,
       period_var_short , profit_factor_long , stop_factor_long,
-    period_var_long
+    period_var_long, trade_col, Asset, Date
+  ) %>%
+  mutate(kk = row_number()) %>%
+  slice_max(kk) %>%
+  ungroup() %>%
+  group_by(
+    stop_factor_short , profit_factor_short ,
+    period_var_short , profit_factor_long , stop_factor_long,
+    period_var_long, trade_col, Asset
   ) %>%
   summarise(
     Total_Return = sum(Total_Return, na.rm = T),
