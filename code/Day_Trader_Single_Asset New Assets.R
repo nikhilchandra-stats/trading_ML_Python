@@ -144,19 +144,19 @@ sentiment_index <-
   )
 
 indicator_mapping <- list(
-  Asset = c("EUR_CHF", #1
-            "EUR_SEK" ,
-            "GBP_CHF",
-            "GBP_JPY",
-            "USD_CZK",
-            "USD_NOK" ,
-            "XAG_CAD",
-            "XAG_CHF",
-            "XAG_JPY" ,
-            "GBP_NZD" ,
-            "NZD_CHF" ,
-            "USD_MXN" ,
-            "XPD_USD" ,
+  Asset = c("EUR_CHF", #1 EUR_CHF
+            "EUR_SEK" , #2 EUR_SEK
+            "GBP_CHF", #3 GBP_CHF
+            "GBP_JPY", #4 GBP_JPY
+            "USD_CZK", #5 USD_CZK
+            "USD_NOK" , #6 USD_NOK
+            "XAG_CAD", #7 XAG_CAD
+            "XAG_CHF", #8 XAG_CHF
+            "XAG_JPY" , #9 XAG_JPY
+            "GBP_NZD" , #10 GBP_NZD
+            "NZD_CHF" , #11 NZD_CHF
+            "USD_MXN" , #12 USD_MXN
+            "XPD_USD" , #13 XPD_USD
             "XPT_USD" ,
             "NATGAS_USD" ,
             "SG30_SGD" ,
@@ -172,12 +172,62 @@ indicator_mapping <- list(
             "BCH_USD" ,
             "LTC_USD" ),
   couplua_assets =
-    list( c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP", "EUR_SEK"), #1
+    list(
+      c("EUR_SEK", "DE30_EUR", "XAG_CHF", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
+            "EUR_AUD", "EUR_JPY", "FR40_EUR", "GBP_CHF", "NZD_CHF", "CH20_CHF", "XAU_USD"), #1 EUR_CHF
+
+      c("EUR_CHF", "DE30_EUR", "NL25_EUR", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
+        "EUR_AUD", "EUR_JPY", "FR40_EUR", "XAU_USD"), #2 EUR_SEK
+
+      c("GBP_JPY", "GBP_NZD", "UK10YB_GBP", "GBP_USD", "GBP_AUD", "XAG_GBP", "XAU_GBP",
+        "UK100_GBP", "EUR_JPY", "FR40_EUR", "EUR_USD",  "EUR_CHF", "NZD_CHF", "CH20_CHF",
+        "XAU_USD"), #3 GBP_CHF
+
+      c("GBP_CHF", "GBP_NZD", "UK10YB_GBP", "GBP_USD", "GBP_AUD", "XAG_GBP", "XAU_GBP",
+        "UK100_GBP", "XAG_JPY", "USD_JPY", "EUR_JPY", "XAU_JPY", "XAU_USD"), #4 GBP_JPY
+
+      c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD", "EUR_SEK"), #5 USD_CZK
+
+      c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD", "EUR_SEK"), #6 USD_NOK
+
+      c("XAG_CHF", "XAG_JPY", "XAG_SGD", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD"), #7 XAG_CAD
+
+      c("XAG_CAD", "XAG_JPY", "XAG_SGD", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD"), #8 XAG_CHF
+
+      c("XAG_CAD", "XAG_CHF", "XAG_SGD", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD"), #9 XAG_JPY
+
+      c("GBP_CHF", "GBP_JPY", "UK10YB_GBP", "GBP_USD", "GBP_AUD", "XAG_GBP", "XAU_GBP",
+        "UK100_GBP", "NZD_CHF", "NZD_USD", "XAU_NZD", "XAG_NZD"), #10 GBP_NZD
+
+      c( "GBP_NZD", "NZD_USD", "XAU_NZD", "XAG_NZD", "EUR_CHF", "GBP_CHF", "XAG_CHF",
+         "CH20_CHF"), #11 NZD_CHF
+
+      c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+         "USD_CAD", "USD_SEK", "NZD_USD"), #12 USD_MXN
+
+      c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+         "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD"), #13 XPD_USD
 
     ),
   countries_for_int_strength =
     list(
-      c("GBP", "USD", "EUR", "AUD", "JPY")  #1
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #1
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #2
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #3
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #4
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #5
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #6
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #7
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #8
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #9
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #10
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #11
+      c("GBP", "USD", "EUR", "AUD", "JPY")  #12
     )
 )
 indicator_mapping_accumulator_long <- list()
