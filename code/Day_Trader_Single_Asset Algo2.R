@@ -374,14 +374,20 @@ while (current_time < end_time) {
         all_model_results %>%
         filter(pred_thresh != "control") %>%
         filter(pred_thresh > 0) %>%
-        filter(Mid > 0, lower >0) %>%
+        filter(Mid > 0,
+               lower >0
+        ) %>%
         group_by(Asset, trade_col) %>%
         # slice_max(Win_Perc_mean, n = 10) %>%
         # group_by(Asset, trade_col) %>%
         # slice_max(Mid, n = 5) %>%
         # group_by(Asset, trade_col) %>%
         # slice_max(total_trades_mean, n = 1) %>%
-        slice_max(Mid) %>%
+        slice_max(Mid, n = 5) %>%
+        group_by(Asset, trade_col) %>%
+        slice_max(simulations) %>%
+        group_by(Asset, trade_col) %>%
+        slice_min(pred_thresh) %>%
         ungroup()
 
       single_asset_model_trades_filt <-
@@ -398,12 +404,24 @@ while (current_time < end_time) {
             (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
                averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
         ) %>%
+        # filter(
+        #   (logit_combined_pred >= mean_logit_combined_pred + 0*sd_logit_combined_pred &
+        #      averaged_pred >=  mean_averaged_pred + sd_averaged_pred*0 & 0 >= 0)|
+        #     (logit_combined_pred < mean_logit_combined_pred + 0*sd_logit_combined_pred &
+        #        averaged_pred <  mean_averaged_pred + sd_averaged_pred*0 & 0 < 0)
+        # ) %>%
+        group_by(Asset) %>%
+        mutate(
+          abs_logit_pred = abs(logit_combined_pred)
+        ) %>%
+        group_by(Asset) %>%
+        slice_max(abs_logit_pred) %>%
         dplyr::select(Date, Asset, trade_col, stop_factor, profit_factor, periods_ahead) %>%
         left_join(current_prices_ask %>% dplyr::select(Asset, Price, Open, High, Low)) %>%
         filter(!is.na(Price))  %>%
         ungroup()
 
-      # Second Stage Optimisation
+      #------Second Phase Optimisation
       best_trade_setups <-
         get_best_trade_setup_sa(
           model_optimisation_store_path =
@@ -441,7 +459,8 @@ while (current_time < end_time) {
         dplyr::select(-trade_col_revised, -trade_col_og) %>%
         rename(
           periods_ahead = period_var
-        )
+        ) %>%
+        distinct()
 
 
 
@@ -479,7 +498,8 @@ while (current_time < end_time) {
               )
           ) %>%
           ungroup() %>%
-          filter(trades_to_keep == "Keep")
+          filter(trades_to_keep == "Keep") %>%
+          distinct()
 
       } else {
         single_asset_model_trades_filt <- NULL
@@ -800,6 +820,18 @@ while (current_time < end_time) {
 
   if( current_minute >= 59 & current_minute <= 59 ) {
     trades_opened <- 0
+    trades_closed <- 0
+  }
+
+  if( current_minute >= 58 & current_minute <= 58 ) {
+    trades_closed <- 0
+  }
+
+  if( current_minute >= 57 & current_minute <= 57 ) {
+    trades_closed <- 0
+  }
+
+  if( current_minute >= 56 & current_minute <= 56 ) {
     trades_closed <- 0
   }
 

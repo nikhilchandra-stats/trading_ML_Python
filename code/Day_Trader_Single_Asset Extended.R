@@ -361,10 +361,10 @@ model_data_store_db <-
 
 date_seq_simulations <-
   seq(as_date("2018-01-01"), as_date("2024-09-15"), "month")
-c = 0
-redo_db = TRUE
+c = 1
+redo_db = FALSE
 
-for (k in 60:length(date_seq_simulations)) {
+for (k in 71:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 

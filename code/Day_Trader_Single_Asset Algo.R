@@ -373,14 +373,20 @@ while (current_time < end_time) {
         all_model_results %>%
         filter(pred_thresh != "control") %>%
         filter(pred_thresh > 0) %>%
-        filter(Mid > 0, lower >0) %>%
+        filter(Mid > 0,
+               lower >0
+               ) %>%
         group_by(Asset, trade_col) %>%
         # slice_max(Win_Perc_mean, n = 10) %>%
         # group_by(Asset, trade_col) %>%
         # slice_max(Mid, n = 5) %>%
         # group_by(Asset, trade_col) %>%
         # slice_max(total_trades_mean, n = 1) %>%
-        slice_max(Mid) %>%
+        slice_max(Mid, n = 5) %>%
+        group_by(Asset, trade_col) %>%
+        slice_max(simulations) %>%
+        group_by(Asset, trade_col) %>%
+        slice_min(pred_thresh) %>%
         ungroup()
 
       single_asset_model_trades_filt <-
@@ -391,6 +397,7 @@ while (current_time < end_time) {
             dplyr::select(Asset, trade_col, pred_thresh) %>%
             mutate(pred_thresh = as.numeric(pred_thresh))
         ) %>%
+        filter(!is.na(pred_thresh)) %>%
         filter(
           (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
              averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
@@ -441,18 +448,19 @@ while (current_time < end_time) {
         mutate(
           risk_dollar_value =
             case_when(
-              trade_col_og == "Short" & trade_col_revised == "Long" ~ 5,
-              trade_col_og == "Short" & trade_col_revised == "Short" ~ 2,
+              trade_col_og == "Short" & trade_col_revised == "Long" ~ 3,
+              trade_col_og == "Short" & trade_col_revised == "Short" ~ 3,
 
-              trade_col_og == "Long" & trade_col_revised == "Long" ~ 2,
-              trade_col_og == "Long" & trade_col_revised == "Short" ~ 5,
+              trade_col_og == "Long" & trade_col_revised == "Long" ~ 3,
+              trade_col_og == "Long" & trade_col_revised == "Short" ~ 3,
             ),
           required_risk = risk_dollar_value,
         ) %>%
         dplyr::select(-trade_col_revised, -trade_col_og) %>%
         rename(
           periods_ahead = period_var
-        )
+        ) %>%
+        distinct()
 
 
       if(dim(single_asset_model_trades_filt)[1] > 0) {
@@ -489,7 +497,8 @@ while (current_time < end_time) {
               )
           ) %>%
           ungroup() %>%
-          filter(trades_to_keep == "Keep")
+          filter(trades_to_keep == "Keep") %>%
+          distinct()
 
       } else {
         single_asset_model_trades_filt <- NULL
@@ -790,7 +799,7 @@ while (current_time < end_time) {
           Sys.sleep(1)
 
           if(dim(check_if_position_still_open)[1] > 0) {
-            oanda_close_trade_IsD(
+            oanda_close_trade_ID(
               tradeID = id_for_close,
               units = units_for_close,
               account = account_name_for_close
@@ -815,6 +824,18 @@ while (current_time < end_time) {
 
   if( current_minute >= 59 & current_minute <= 59 ) {
     trades_opened <- 0
+    trades_closed <- 0
+  }
+
+  if( current_minute >= 58 & current_minute <= 58 ) {
+    trades_closed <- 0
+  }
+
+  if( current_minute >= 57 & current_minute <= 57 ) {
+    trades_closed <- 0
+  }
+
+  if( current_minute >= 56 & current_minute <= 56 ) {
     trades_closed <- 0
   }
 

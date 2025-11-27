@@ -1851,35 +1851,37 @@ single_asset_model_loop_and_trade <-
           trade_col = "Long"
         )
 
-      shorts <-
-        safely_find_preds(
-          asset_data = Indices_Metals_Bonds,
-          All_Daily_Data = All_Daily_Data,
-          Asset_of_interest = Asset_of_interest,
-          equity_index = equity_index,
-          gold_index = gold_index,
-          silver_index = silver_index,
-          bonds_index = bonds_index,
-          interest_rates = interest_rates,
-          cpi_data = cpi_data,
-          sentiment_index = sentiment_index,
-          countries_for_int_strength = countries_for_int_strength,
-          couplua_assets = couplua_assets,
-          pre_train_date_end = pre_train_date_end,
-          post_train_date_start = post_train_date_start,
-          test_date_start = test_date_start,
-          neuron_adjustment = 1.1,
-          hidden_layers_var= 2,
-          ending_thresh = 0.02,
-          trade_direction = "Short",
-          stop_value_var = stop_value_var,
-          profit_value_var = profit_value_var,
-          period_var = period_var,
-          save_path = save_path) %>%
-        pluck('result') %>%
-        mutate(
-          trade_col = "Short"
-        )
+      # shorts <-
+      #   safely_find_preds(
+      #     asset_data = Indices_Metals_Bonds,
+      #     All_Daily_Data = All_Daily_Data,
+      #     Asset_of_interest = Asset_of_interest,
+      #     equity_index = equity_index,
+      #     gold_index = gold_index,
+      #     silver_index = silver_index,
+      #     bonds_index = bonds_index,
+      #     interest_rates = interest_rates,
+      #     cpi_data = cpi_data,
+      #     sentiment_index = sentiment_index,
+      #     countries_for_int_strength = countries_for_int_strength,
+      #     couplua_assets = couplua_assets,
+      #     pre_train_date_end = pre_train_date_end,
+      #     post_train_date_start = post_train_date_start,
+      #     test_date_start = test_date_start,
+      #     neuron_adjustment = 1.1,
+      #     hidden_layers_var= 2,
+      #     ending_thresh = 0.02,
+      #     trade_direction = "Short",
+      #     stop_value_var = stop_value_var,
+      #     profit_value_var = profit_value_var,
+      #     period_var = period_var,
+      #     save_path = save_path) %>%
+      #   pluck('result') %>%
+      #   mutate(
+      #     trade_col = "Short"
+      #   )
+
+      shorts <- NULL
 
       accumulator[[j]] <-
         list(longs, shorts) %>%
@@ -1952,6 +1954,9 @@ get_best_trade_setup_sa <-
     best <-
       summary_results %>%
       filter(Total_Return > 0, return_25 > 0) %>%
+      filter(
+        profit_factor_long > stop_factor_long
+      ) %>%
       group_by(Asset) %>%
       slice_max(win_loss_perc, n = 4) %>%
       group_by(Asset) %>%
