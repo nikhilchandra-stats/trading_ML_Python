@@ -14860,3 +14860,884 @@ get_X_hours_port_trades <- function(raw_macro_data = raw_macro_data,
   return(returned_value)
 
 }
+
+#' get_SPX_US2000_XAG_XAU
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_Port_Buy_Data_2 <- function(
+    db_location = db_location,
+    start_date = "2016-01-01",
+    end_date = today() %>% as.character(),
+    time_frame = "H1",
+    bid_or_ask_var = "ask"
+) {
+
+
+  EUR_CHF <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask_var,
+    time_frame = time_frame,
+    asset = "EUR_CHF",
+    keep_bid_to_ask = TRUE
+  )
+
+  EUR_SEK <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask_var,
+    time_frame = time_frame,
+    asset = "EUR_SEK",
+    keep_bid_to_ask = TRUE
+  )
+
+  GBP_CHF <- create_asset_high_freq_data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    bid_or_ask = bid_or_ask_var,
+    time_frame = time_frame,
+    asset = "GBP_CHF",
+    keep_bid_to_ask = TRUE
+  )
+
+  GBP_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "GBP_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_CZK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_CZK",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_NOK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_NOK",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_CAD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_CAD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_CHF <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_CHF",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "GBP_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NZD_CHF <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "NZD_CHF",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_MXN <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_MXN",
+      keep_bid_to_ask = TRUE
+    )
+
+  XPD_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XPD_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XPT_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XPT_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NATGAS_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "NATGAS_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  SG30_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "SG30_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  SOYBN_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "SOYBN_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  WHEAT_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "WHEAT_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  SUGAR_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "SUGAR_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  DE30_EUR <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "DE30_EUR",
+      keep_bid_to_ask = TRUE
+    )
+
+  UK10YB_GBP <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "UK10YB_GBP",
+      keep_bid_to_ask = TRUE
+    )
+
+  JP225_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "JP225_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  CH20_CHF <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "CH20_CHF",
+      keep_bid_to_ask = TRUE
+    )
+
+  NL25_EUR <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "NL25_EUR",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  BCH_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "BCH_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  LTC_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "LTC_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "EUR_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  EU50_EUR <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "EU50_EUR",
+      keep_bid_to_ask = TRUE
+    )
+
+  SPX500_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "SPX500_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  US2000_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "US2000_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  USB10Y_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USB10Y_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  AUD_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "AUD_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_EUR <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_EUR",
+      keep_bid_to_ask = TRUE
+    )
+
+  BTC_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "BTC_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_EUR <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_EUR",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "GBP_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_CAD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_CAD",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_SEK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_SEK",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_NOK <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "EUR_NOK",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "EUR_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  GBP_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "GBP_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_GBP <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_GBP",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_GBP <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_GBP",
+      keep_bid_to_ask = TRUE
+    )
+
+  EUR_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "EUR_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  USD_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USD_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_CAD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_CAD",
+      keep_bid_to_ask = TRUE
+    )
+
+  NZD_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "NZD_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_NZD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_NZD",
+      keep_bid_to_ask = TRUE
+    )
+
+  FR40_EUR <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "FR40_EUR",
+      keep_bid_to_ask = TRUE
+    )
+
+  UK100_GBP <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "UK100_GBP",
+      keep_bid_to_ask = TRUE
+    )
+
+  AU200_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "AU200_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  HK33_HKD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "HK33_HKD",
+      keep_bid_to_ask = TRUE
+    )
+
+  SG30_SGD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "SG30_SGD",
+      keep_bid_to_ask = TRUE
+    )
+
+  US2000_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "US2000_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_GBP <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_GBP",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAG_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAG_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_AUD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_AUD",
+      keep_bid_to_ask = TRUE
+    )
+
+  XAU_JPY <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "XAU_JPY",
+      keep_bid_to_ask = TRUE
+    )
+
+  USB02Y_USD <-
+    create_asset_high_freq_data(
+      db_location = db_location,
+      start_date = start_date,
+      end_date = end_date,
+      bid_or_ask = bid_or_ask_var,
+      time_frame = time_frame,
+      asset = "USB02Y_USD",
+      keep_bid_to_ask = TRUE
+    )
+
+  returned <-
+    EUR_CHF %>%
+    bind_rows(EUR_SEK) %>%
+    bind_rows(GBP_CHF)%>%
+    bind_rows(GBP_JPY)%>%
+    bind_rows(USD_CZK)%>%
+    bind_rows(USD_NOK) %>%
+    bind_rows(XAG_CAD)%>%
+    bind_rows(XAG_CHF)%>%
+    bind_rows(XAG_JPY) %>%
+    bind_rows(GBP_NZD) %>%
+    bind_rows(NZD_CHF) %>%
+    bind_rows(USD_MXN) %>%
+    bind_rows(XPD_USD) %>%
+    bind_rows(XPT_USD) %>%
+    bind_rows(NATGAS_USD) %>%
+    bind_rows(SG30_SGD) %>%
+    bind_rows(SOYBN_USD) %>%
+    bind_rows(WHEAT_USD) %>%
+    bind_rows(SUGAR_USD) %>%
+    bind_rows(DE30_EUR) %>%
+    bind_rows(UK10YB_GBP) %>%
+    bind_rows(JP225_USD) %>%
+    bind_rows(CH20_CHF) %>%
+    bind_rows(NL25_EUR) %>%
+    bind_rows(XAG_SGD) %>%
+    bind_rows(BCH_USD) %>%
+    bind_rows(LTC_USD) %>%
+    bind_rows(EUR_USD) %>%
+    bind_rows(EU50_EUR) %>%
+    bind_rows(SPX500_USD) %>%
+    bind_rows(US2000_USD) %>%
+    bind_rows(USB10Y_USD) %>%
+    bind_rows(USD_JPY) %>%
+    bind_rows(AUD_USD) %>%
+    bind_rows(XAG_USD) %>%
+    bind_rows(XAG_EUR) %>%
+    bind_rows(BTC_USD) %>%
+    bind_rows(XAU_USD) %>%
+    bind_rows(XAU_EUR) %>%
+    bind_rows(GBP_USD) %>%
+    bind_rows(USD_CAD) %>%
+    bind_rows(USD_SEK) %>%
+    bind_rows(EUR_AUD) %>%
+    bind_rows(GBP_AUD) %>%
+    bind_rows(XAG_GBP) %>%
+    bind_rows(XAU_GBP) %>%
+    bind_rows(EUR_JPY) %>%
+    bind_rows(XAU_SGD) %>%
+    bind_rows(XAU_CAD) %>%
+    bind_rows(NZD_USD) %>%
+    bind_rows(XAU_NZD) %>%
+    bind_rows(XAG_NZD) %>%
+    bind_rows(FR40_EUR) %>%
+    bind_rows(UK100_GBP) %>%
+    bind_rows(AU200_AUD) %>%
+    bind_rows(HK33_HKD) %>%
+    bind_rows(SG30_SGD) %>%
+    bind_rows(US2000_USD) %>%
+    bind_rows(XAG_AUD) %>%
+    bind_rows(XAU_AUD) %>%
+    bind_rows(XAU_JPY) %>%
+    bind_rows(USB02Y_USD) %>%
+    distinct()
+
+  rm(EUR_CHF,
+     EUR_SEK,
+     GBP_CHF,
+     GBP_JPY,
+     USD_CZK,
+     USD_NOK,
+     XAG_CAD,
+     XAG_CHF,
+     XAG_JPY,
+     GBP_NZD,
+     NZD_CHF,
+     USD_MXN,
+     XPD_USD,
+     XPT_USD,
+     NATGAS_USD,
+     SG30_SGD,
+     SOYBN_USD,
+     WHEAT_USD,
+     SUGAR_USD,
+     DE30_EUR,
+     UK10YB_GBP,
+     JP225_USD,
+     CH20_CHF,
+     NL25_EUR,
+     XAG_SGD,
+     BCH_USD,
+     LTC_USD,
+     EUR_USD,
+     EU50_EUR,
+     SPX500_USD,
+     US2000_USD,
+     USB10Y_USD,
+     USD_JPY,
+     AUD_USD,
+     XAG_USD,
+     XAG_EUR,
+     BTC_USD,
+     XAU_USD,
+     XAU_EUR,
+     GBP_USD,
+     USD_CAD,
+     USD_SEK,
+     EUR_AUD,
+     GBP_AUD,
+     XAG_GBP,
+     XAU_GBP,
+     EUR_JPY,
+     XAU_SGD,
+     XAU_CAD,
+     NZD_USD,
+     XAU_NZD,
+     XAG_NZD,
+     SG30_SGD,
+     US2000_USD)
+
+  gc()
+
+  return(returned)
+
+}
+
+get_Port_Buy_Data_2_complete <-
+  function(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "H1"
+    ) {
+    Indices_Metals_Bonds <-
+      list(
+        get_Port_Buy_Data_2(
+          db_location = db_location,
+          start_date = start_date,
+          end_date = end_date,
+          time_frame = time_frame,
+          bid_or_ask_var = "ask"
+        ),
+        get_Port_Buy_Data_2(
+          db_location = db_location,
+          start_date = start_date,
+          end_date = end_date,
+          time_frame = time_frame,
+          bid_or_ask_var = "bid"
+        )
+      )
+
+    return(Indices_Metals_Bonds)
+  }

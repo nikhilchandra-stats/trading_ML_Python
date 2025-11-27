@@ -2832,13 +2832,13 @@ get_equity_index <-
 get_Gold_index <-
   function(index_data) {
     major_gold_log_cumulative <-
-      c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY") %>%
+      c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD") %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")),
+              filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD")),
             asset_to_use = c(.x[1]),
             price_col = "Open",
             return_long_format = TRUE
@@ -2846,7 +2846,7 @@ get_Gold_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")) %>%
+          filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD")) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
 
@@ -2859,7 +2859,7 @@ get_Gold_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY"),
+        asset_to_use =  c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
       ) %>%
@@ -2890,13 +2890,13 @@ get_silver_index <-
   function(index_data) {
 
     major_silver_log_cumulative <-
-      c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY") %>%
+      c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF") %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY")),
+              filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF")),
             asset_to_use = c(.x[1]),
             price_col = "Open",
             return_long_format = TRUE
@@ -2904,7 +2904,7 @@ get_silver_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY")) %>%
+          filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF")) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
 
@@ -2917,7 +2917,7 @@ get_silver_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY"),
+        asset_to_use =  c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF" ),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
       ) %>%
