@@ -51,7 +51,9 @@ single_asset_Logit_indicator <-
     trade_direction = "Long",
     stop_value_var = 1.5,
     profit_value_var = 15,
-    period_var = 48
+    period_var = 48,
+    correlation_period = 10,
+    tangent_period = 10
   ){
 
     interest_rates_diffs <-
@@ -94,8 +96,8 @@ single_asset_Logit_indicator <-
       mutate(Date_for_Join = as_date(Date)) %>%
       arrange(Date) %>%
       left_join(equity_index %>% mutate(Date_for_Join = Date) %>% dplyr::select(-Average_PCA) )%>%
-      left_join(gold_index %>% mutate(Date_for_Join = Date)  %>% dplyr::select(-Average_PCA) )%>%
-      left_join(silver_index %>% mutate(Date_for_Join = Date)  %>% dplyr::select(-Average_PCA) )%>%
+      left_join(gold_index %>% mutate(Date_for_Join = Date)  %>% dplyr::select(-Average_PCA, -PC6) )%>%
+      left_join(silver_index %>% mutate(Date_for_Join = Date)  %>% dplyr::select(-Average_PCA, -PC6) )%>%
       left_join(bonds_index %>% mutate(Date_for_Join = Date)   %>% dplyr::select(-Average_PCA) ) %>%
       dplyr::select(-Date_for_Join)  %>%
       fill(everything(), .direction = "down") %>%
@@ -123,6 +125,53 @@ single_asset_Logit_indicator <-
 
     }
 
+    copula_trig_accumulation <- list()
+
+    for (i in 1:length(couplua_assets)) {
+
+      if(i == 1) {
+        cor_trig_data <-
+          create_cor_trig_indicators(
+            data_for_indicators = asset_data,
+            tangent_period = tangent_period,
+            correlation_period = correlation_period,
+            Asset1 = Asset_of_interest,
+            Asset2 = couplua_assets[i],
+            asset_of_interest = Asset_of_interest
+          )
+      }
+
+      if(i != 1) {
+        cor_trig_data <-
+          create_cor_trig_indicators(
+            data_for_indicators = asset_data,
+            tangent_period = tangent_period,
+            correlation_period = correlation_period,
+            Asset1 = Asset_of_interest,
+            Asset2 = couplua_assets[i],
+            asset_of_interest = Asset_of_interest
+          ) %>%
+          dplyr::select(
+            -c(
+              !!as.name(paste0(Asset_of_interest,"_Price") ),
+              !!as.name(paste0(Asset_of_interest,"_High") ) ,
+              !!as.name(paste0(Asset_of_interest,"_Low") ),
+              !!as.name(paste0(Asset_of_interest,"_Tangent_", tangent_period,"_Price") ),
+              !!as.name(paste0(Asset_of_interest,"_Tangent_", tangent_period,"_High") ),
+              !!as.name(paste0(Asset_of_interest,"_Tangent_", tangent_period,"_Low") ),
+              !!as.name(paste0("rolling_Bull_Count_", Asset_of_interest, "_", tangent_period)),
+              !!as.name(paste0("rolling_Bear_Count_", Asset_of_interest, "_", tangent_period))
+            )
+          )
+      }
+
+      copula_trig_accumulation[[i]] <- cor_trig_data
+
+      rm(cor_trig_data)
+      gc()
+
+    }
+
     actual_wins_losses <-
       actual_wins_losses %>%
       filter(trade_col == trade_direction) %>%
@@ -143,6 +192,55 @@ single_asset_Logit_indicator <-
 
           )
       )
+
+    cor_trig_data <- copula_trig_accumulation %>% reduce(left_join)
+    cor_trig_data_joined_returns <-
+      cor_trig_data %>%
+      left_join(
+        actual_wins_losses %>%
+          filter(trade_col == trade_direction) %>%
+          dplyr::select(Date, Asset, bin_var, trade_col)
+      )
+
+    cor_trig_model_vars <-
+      names(cor_trig_data_joined_returns) %>%
+      keep(~ str_detect(.x, paste( c("Cor_", "_Tan", "_Run", "Bear", "Bull"),collapse = "|") )) %>%
+      unlist()%>%
+      as.character()
+
+    cor_trig_formula <- create_lm_formula("bin_var=='win'", independant = cor_trig_model_vars)
+
+    cor_trig_model <-
+      glm(formula = cor_trig_formula,
+          data = cor_trig_data_joined_returns %>% filter(Date <=pre_train_date_end),
+          family = binomial("logit"))
+    summary(cor_trig_model)
+    message("Passed Cor Trig Model")
+
+    cor_trig_model_pred <-
+      cor_trig_data_joined_returns %>%
+      mutate(
+        cor_trig_model_pred = predict.glm(cor_trig_model,
+                                            newdata = cor_trig_data_joined_returns, type = "response"),
+        mean_cor_trig_pred =
+          mean( ifelse(Date <= pre_train_date_end, cor_trig_model_pred, NA), na.rm = T ),
+        sd_cor_trig_pred =
+          sd( ifelse(Date <= pre_train_date_end, cor_trig_model_pred, NA), na.rm = T )
+      ) %>%
+      dplyr::select(Date,cor_trig_model_pred, mean_cor_trig_pred, sd_cor_trig_pred,
+                    !!as.name(paste0(Asset_of_interest,"_Price") ),
+                    !!as.name(paste0(Asset_of_interest,"_High") ) ,
+                    !!as.name(paste0(Asset_of_interest,"_Low") ),
+                    !!as.name(paste0(Asset_of_interest,"_Tangent_", tangent_period,"_Price") ),
+                    !!as.name(paste0(Asset_of_interest,"_Tangent_", tangent_period,"_High") ),
+                    !!as.name(paste0(Asset_of_interest,"_Tangent_", tangent_period,"_Low") ),
+                    !!as.name(paste0("rolling_Bull_Count_", Asset_of_interest, "_", tangent_period)),
+                    !!as.name(paste0("rolling_Bear_Count_", Asset_of_interest, "_", tangent_period))
+                    )
+    message("Passed Cor Trig Model Pred")
+
+    rm(cor_trig_data, copula_trig_accumulation, cor_trig_data_joined_returns)
+    gc()
 
     daily_indicator <-
       get_daily_indicators(
@@ -401,6 +499,7 @@ single_asset_Logit_indicator <-
         technical_indicator_pred %>% dplyr::select(-bin_var)
       ) %>%
       left_join(daily_indicator_pred %>% dplyr::select(-bin_var) %>% distinct()) %>%
+      left_join(cor_trig_model_pred %>% distinct()) %>%
       janitor::clean_names() %>%
       filter(if_all(everything() ,~!is.na(.))) %>%
       mutate(
@@ -446,7 +545,7 @@ single_asset_Logit_indicator <-
     NN_indcator_coefs <-
       names(combined_indicator_NN) %>%
       keep(~ !str_detect(.x, "date|asset|bin_var") &
-             !(str_detect(.x, "mean_|sd_") & str_detect(.x, "pred"))
+             !(str_detect(.x, "mean_|sd_") & str_detect(.x, "pred|Tangent|rolling"))
            )
 
     NN_form <-  create_lm_formula(dependant = "bin_var=='win'", independant = NN_indcator_coefs)
@@ -454,9 +553,7 @@ single_asset_Logit_indicator <-
     logit_combined_indicator_model <-
       glm(formula = NN_form,
           data = combined_indicator_NN %>%
-            filter(
-                   # date >= (pre_train_date_end - months(12)),
-                   date <= test_date_start) ,
+            filter(date <= test_date_start) ,
           family = binomial("logit"))
 
     message("Created Combined Model")

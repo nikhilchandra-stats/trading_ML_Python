@@ -3501,3 +3501,184 @@ create_and_test_LM <- function(.data = model_data,
   return( list(test_data, lm_model_train2, lm_model_train) )
 
 }
+
+
+#' create_cor_trig_indicators
+#'
+#' @param data_for_indicators
+#' @param tangent_period
+#' @param correlation_period
+#' @param Asset1
+#' @param Asset2
+#' @param asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_cor_trig_indicators <-
+  function(data_for_indicators = Indices_Metals_Bonds[[1]],
+           tangent_period = 50,
+           correlation_period = 20,
+           Asset1 = "SPX500_USD",
+           Asset2 = "EU50_EUR",
+           asset_of_interest = "SPX500_USD") {
+
+    a1 <-
+      data_for_indicators %>%
+      filter(Asset == Asset1) %>%
+      arrange(Date) %>%
+      mutate(
+
+        !!as.name(paste0("rolling_Bull_Count_", Asset1))  :=
+          ifelse(Price > lag(Price), 1, -1 ),
+
+        !!as.name(paste0("rolling_Bear_Count_", Asset1)) :=
+          ifelse(Price <= lag(Price), 1, -1),
+
+        !!as.name(paste0("rolling_Bull_Count_", Asset1))  :=
+          ifelse( is.na( !!as.name(paste0("rolling_Bull_Count_", Asset1)) )  , 0, !!as.name(paste0("rolling_Bull_Count_", Asset1))   ),
+
+        !!as.name(paste0("rolling_Bear_Count_", Asset1))  :=
+          ifelse( is.na(  !!as.name(paste0("rolling_Bear_Count_", Asset1)) )  , 0, !!as.name(paste0("rolling_Bear_Count_", Asset1))   ),
+
+        # !!as.name(paste("rolling_Bull_Count_", Asset2)) := cumsum(!!as.name(paste("rolling_Bull_Count_", Asset2)) ),
+        !!as.name(paste0("rolling_Bull_Count_", Asset1)) :=
+          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bull_Count_", Asset1)),
+                            .f = sum,
+                            .before = tangent_period) ,
+        # !!as.name(paste("rolling_Bear_Count_", Asset2)) := cumsum( !!as.name(paste("rolling_Bear_Count_", Asset2)) ),
+        !!as.name(paste0("rolling_Bear_Count_", Asset1)) :=
+          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bear_Count_", Asset1)),
+                            .f = sum,
+                            .before = tangent_period),
+
+        !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ) :=
+          (Price - lag(Price, tangent_period))/tangent_period,
+        !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_High") ) :=
+          (High - lag(High, tangent_period))/tangent_period,
+        !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Low") ) :=
+          (Low - lag(Low, tangent_period))/tangent_period
+      ) %>%
+      ungroup() %>%
+      dplyr::select(Date,
+                    !!as.name(paste0(Asset1,"_Price") ) := Price,
+                    !!as.name(paste0(Asset1,"_High") ) := High,
+                    !!as.name(paste0(Asset1,"_Low") ) := Low,
+                    !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ),
+                    !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_High") ),
+                    !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Low") ),
+
+                    !!as.name(paste0("rolling_Bull_Count_", Asset1, "_", tangent_period)) := !!as.name(paste0("rolling_Bull_Count_", Asset1)),
+                    !!as.name(paste0("rolling_Bear_Count_", Asset1, "_", tangent_period)) := !!as.name(paste0("rolling_Bear_Count_", Asset1))
+      )  %>%
+      filter(!is.na(!!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ))) %>%
+      mutate(
+        across(
+          .cols = contains( c("_Tangent_", "rolling_Bull_Count_", "rolling_Bear_Count_") ) ,
+          .fns = ~ lag(.)
+        )
+      )
+
+    a2 <-
+      data_for_indicators %>%
+      filter(Asset == Asset2) %>%
+      arrange(Date) %>%
+      distinct() %>%
+      mutate(
+
+        !!as.name(paste0("rolling_Bull_Count_", Asset2))  :=
+          ifelse(Price > lag(Price), 1, -1 ),
+
+        !!as.name(paste0("rolling_Bear_Count_", Asset2)) :=
+          ifelse(Price <= lag(Price), 1, -1),
+
+        !!as.name(paste0("rolling_Bull_Count_", Asset2))  :=
+          ifelse( is.na( !!as.name(paste0("rolling_Bull_Count_", Asset2)) )  , 0, !!as.name(paste0("rolling_Bull_Count_", Asset2))   ),
+
+        !!as.name(paste0("rolling_Bear_Count_", Asset2))  :=
+          ifelse( is.na(  !!as.name(paste0("rolling_Bear_Count_", Asset2)) )  , 0, !!as.name(paste0("rolling_Bear_Count_", Asset2))   ),
+
+        # !!as.name(paste("rolling_Bull_Count_", Asset2)) := cumsum(!!as.name(paste("rolling_Bull_Count_", Asset2)) ),
+        !!as.name(paste0("rolling_Bull_Count_", Asset2)) :=
+          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bull_Count_", Asset2)),
+                            .f = sum,
+                            .before = tangent_period) ,
+        # !!as.name(paste("rolling_Bear_Count_", Asset2)) := cumsum( !!as.name(paste("rolling_Bear_Count_", Asset2)) ),
+        !!as.name(paste0("rolling_Bear_Count_", Asset2)) :=
+          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bear_Count_", Asset2)),
+                            .f = sum,
+                            .before = tangent_period),
+
+        !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ) :=
+          (Price - lag(Price, tangent_period))/tangent_period,
+        !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_High") ) :=
+          (High - lag(High, tangent_period))/tangent_period,
+        !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Low") ) :=
+          (Low - lag(Low, tangent_period))/tangent_period
+      ) %>%
+      ungroup() %>%
+      dplyr::select(Date,
+                    !!as.name(paste0(Asset2,"_Price") ) := Price,
+                    !!as.name(paste0(Asset2,"_High") ) := High,
+                    !!as.name(paste0(Asset2,"_Low") ) := Low,
+                    !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ),
+                    !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_High") ),
+                    !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Low") ),
+
+                    !!as.name(paste0("rolling_Bull_Count_", Asset2, "_", tangent_period)) := !!as.name(paste0("rolling_Bull_Count_", Asset2)),
+                    !!as.name(paste0("rolling_Bear_Count_", Asset2, "_", tangent_period)) := !!as.name(paste0("rolling_Bear_Count_", Asset2))
+      )  %>%
+      filter(!is.na(!!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ))) %>%
+      mutate(
+        across(
+          .cols = contains( c("_Tangent_", "rolling_Bull_Count_", "rolling_Bear_Count_") ) ,
+          .fns = ~ lag(.)
+        )
+      )
+
+    tagged_data <-
+      a1 %>%
+      left_join(a2) %>%
+      arrange(Date) %>%
+      fill(
+        everything(), .direction = "down"
+      ) %>%
+      mutate(
+        !!as.name(paste0(Asset1,"_",Asset2, "_Cor_Price_",tangent_period,"_", correlation_period,"_Tan")) :=
+          slider::slide2_dbl(.x = !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ),
+                             .y = !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ),
+                             .f = ~ cor(.x, .y),
+                             .before = correlation_period),
+
+        !!as.name(paste0(Asset1,"_",Asset2, "_Cor_High_",tangent_period,"_", correlation_period,"_Tan")) :=
+          slider::slide2_dbl(.x = !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_High") ),
+                             .y = !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_High") ),
+                             .f = ~ cor(.x, .y),
+                             .before = correlation_period),
+
+        !!as.name(paste0(Asset1,"_",Asset2, "_Cor_Low_",tangent_period,"_", correlation_period,"_Tan")) :=
+          slider::slide2_dbl(.x = !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Low") ),
+                             .y = !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Low") ),
+                             .f = ~ cor(.x, .y),
+                             .before = correlation_period),
+
+        !!as.name(paste0(Asset1,"_",Asset2, "Cor_Bull_Run",tangent_period,"_", correlation_period,"_Tan")) :=
+          slider::slide2_dbl(.x = !!as.name(paste0("rolling_Bull_Count_", Asset1, "_", tangent_period)),
+                             .y = !!as.name(paste0("rolling_Bull_Count_", Asset2, "_", tangent_period)),
+                             .f = ~ cor(.x, .y),
+                             .before = correlation_period),
+
+        !!as.name(paste0(Asset1,"_",Asset2, "Cor_Bear_Run",tangent_period,"_", correlation_period,"_Tan")) :=
+          slider::slide2_dbl(.x = !!as.name(paste0("rolling_Bear_Count_", Asset1, "_", tangent_period)),
+                             .y = !!as.name(paste0("rolling_Bear_Count_", Asset2, "_", tangent_period)),
+                             .f = ~ cor(.x, .y),
+                             .before = correlation_period)
+      ) %>%
+      mutate(
+        Asset = asset_of_interest
+      )
+
+    return(tagged_data)
+
+  }

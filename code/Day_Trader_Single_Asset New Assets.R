@@ -157,65 +157,156 @@ indicator_mapping <- list(
             "NZD_CHF" , #11 NZD_CHF
             "USD_MXN" , #12 USD_MXN
             "XPD_USD" , #13 XPD_USD
-            "XPT_USD" ,
-            "NATGAS_USD" ,
-            "SG30_SGD" ,
-            "SOYBN_USD" ,
-            "WHEAT_USD" ,
-            "SUGAR_USD" ,
-            "DE30_EUR" ,
-            "UK10YB_GBP" ,
-            "JP225_USD" ,
-            "CH20_CHF" ,
-            "NL25_EUR" ,
-            "XAG_SGD" ,
-            "BCH_USD" ,
-            "LTC_USD" ),
+            "XPT_USD" , #14 XPT_USD
+            "NATGAS_USD" , #15 NATGAS_USD
+            "SG30_SGD" , #16 SG30_SGD
+            "SOYBN_USD" , #17 SOYBN_USD
+            "WHEAT_USD" , #18 WHEAT_USD
+            "SUGAR_USD" , #19 SUGAR_USD
+            "DE30_EUR" , #20 DE30_EUR
+            "UK10YB_GBP" , #21 UK10YB_GBP
+            "JP225_USD" , #22 JP225_USD
+            "CH20_CHF" , #23 CH20_CHF
+            "NL25_EUR" , #24 NL25_EUR
+            "XAG_SGD" , #25 XAG_SGD
+            "BCH_USD" , #26 BCH_USD
+            "LTC_USD" ), #27 LTC_USD
   couplua_assets =
     list(
-      c("EUR_SEK", "DE30_EUR", "XAG_CHF", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
-            "EUR_AUD", "EUR_JPY", "FR40_EUR", "GBP_CHF", "NZD_CHF", "CH20_CHF", "XAU_USD"), #1 EUR_CHF
+      c(
+        "EUR_SEK", "DE30_EUR", "XAG_CHF", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
+        "EUR_AUD", "EUR_JPY", "FR40_EUR", "GBP_CHF", "NZD_CHF", "CH20_CHF", "XAU_USD"
+        ) %>% unique() , #1 EUR_CHF
 
       c("EUR_CHF", "DE30_EUR", "NL25_EUR", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
-        "EUR_AUD", "EUR_JPY", "FR40_EUR", "XAU_USD"), #2 EUR_SEK
+        "EUR_AUD", "EUR_JPY", "FR40_EUR", "XAU_USD") %>% unique(), #2 EUR_SEK
 
       c("GBP_JPY", "GBP_NZD", "UK10YB_GBP", "GBP_USD", "GBP_AUD", "XAG_GBP", "XAU_GBP",
         "UK100_GBP", "EUR_JPY", "FR40_EUR", "EUR_USD",  "EUR_CHF", "NZD_CHF", "CH20_CHF",
-        "XAU_USD"), #3 GBP_CHF
+        "XAU_USD") %>% unique(), #3 GBP_CHF
 
       c("GBP_CHF", "GBP_NZD", "UK10YB_GBP", "GBP_USD", "GBP_AUD", "XAG_GBP", "XAU_GBP",
-        "UK100_GBP", "XAG_JPY", "USD_JPY", "EUR_JPY", "XAU_JPY", "XAU_USD"), #4 GBP_JPY
+        "UK100_GBP", "XAG_JPY", "USD_JPY", "EUR_JPY", "XAU_JPY", "XAU_USD") %>% unique(), #4 GBP_JPY
 
       c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-        "USD_CAD", "USD_SEK", "NZD_USD", "EUR_SEK"), #5 USD_CZK
+        "USD_CAD", "USD_SEK", "NZD_USD", "EUR_SEK") %>% unique(), #5 USD_CZK
 
       c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-        "USD_CAD", "USD_SEK", "NZD_USD", "EUR_SEK"), #6 USD_NOK
+        "USD_CAD", "USD_SEK", "NZD_USD", "EUR_SEK") %>% unique(), #6 USD_NOK
 
       c("XAG_CHF", "XAG_JPY", "XAG_SGD", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
-        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD"), #7 XAG_CAD
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP",
+        "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD") %>% unique(), #7 XAG_CAD
 
       c("XAG_CAD", "XAG_JPY", "XAG_SGD", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
-        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD"), #8 XAG_CHF
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP",
+        "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD") %>% unique(), #8 XAG_CHF
 
       c("XAG_CAD", "XAG_CHF", "XAG_SGD", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
-        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD"), #9 XAG_JPY
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP",
+        "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD") %>% unique(), #9 XAG_JPY
 
       c("GBP_CHF", "GBP_JPY", "UK10YB_GBP", "GBP_USD", "GBP_AUD", "XAG_GBP", "XAU_GBP",
-        "UK100_GBP", "NZD_CHF", "NZD_USD", "XAU_NZD", "XAG_NZD"), #10 GBP_NZD
+        "UK100_GBP", "NZD_CHF", "NZD_USD", "XAU_NZD", "XAG_NZD") %>% unique(), #10 GBP_NZD
 
       c( "GBP_NZD", "NZD_USD", "XAU_NZD", "XAG_NZD", "EUR_CHF", "GBP_CHF", "XAG_CHF",
-         "CH20_CHF"), #11 NZD_CHF
+         "CH20_CHF") %>% unique(), #11 NZD_CHF
 
       c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-         "USD_CAD", "USD_SEK", "NZD_USD"), #12 USD_MXN
+         "USD_CAD", "USD_SEK", "NZD_USD") %>% unique(), #12 USD_MXN
 
       c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-         "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD"), #13 XPD_USD
+         "USD_CAD", "USD_SEK", "NZD_USD",
+         "NATGAS_USD", "XPT_USD", "USB10Y_USD") %>% unique(), #13 XPD_USD
+
+      c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD",
+        "NATGAS_USD", "XPD_USD", "USB10Y_USD") %>% unique(), #14 XPT_USD
+
+      c(
+        "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD",
+        "XPT_USD", "XPD_USD", "USB10Y_USD"
+      ) %>% unique(), #15 NATGAS_USD
+
+      c("USB10Y_USD", "USD_SGD", "XAU_SGD", "XAG_SGD", "AU200_AUD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XPT_USD", "XAU_USD", "DE30_EUR",
+        "CH20_CHF") %>% unique(), #16 SG30_SGD
+
+      c(
+        "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "WHEAT_USD",
+        "SUGAR_USD","SPX500_USD", "US2000_USD"
+      ) %>% unique(), #17 SOYBN_USD
+
+      c(
+        "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
+        "SUGAR_USD","SPX500_USD", "US2000_USD"
+      ) %>% unique(), #18 WHEAT_USD
+
+      c(
+        "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
+        "SUGAR_USD","SPX500_USD", "US2000_USD"
+      ) %>% unique(), #18 WHEAT_USD
+
+      c(
+        "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+        "USD_CAD", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
+        "WHEAT_USD","SPX500_USD", "US2000_USD"
+      ) %>% unique(), #19 SUGAR_USD
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_EUR", "AU200_AUD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XAG_USD",
+        "CH20_CHF", "XAU_EUR", "EUR_USD"
+      ) %>% unique(), #20 DE30_EUR
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_GBP", "AU200_AUD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XAG_USD",
+        "CH20_CHF", "XAU_GBP", "GBP_USD", "UK100_GBP"
+      ) %>% unique(), #21 UK10YB_GBP
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_EUR", "AU200_AUD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "DE30_EUR", "XAG_USD",
+        "CH20_CHF", "XAU_EUR", "EUR_USD"
+      ) %>% unique(), #22 JP225_USD
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_CHF", "AU200_AUD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "DE30_EUR", "XAG_USD",
+        "JP225_USD", "XAU_CHF", "EUR_CHF"
+      ) %>% unique(), #23 CH20_CHF
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_CHF", "AU200_AUD", "US2000_USD", "SPX500_USD",
+        "CH20_CHF", "FR40_EUR", "EU50_EUR", "DE30_EUR", "XAG_USD",
+        "JP225_USD", "XAU_CHF", "EUR_CHF"
+      ) %>% unique(), #24 NL25_EUR
+
+      c("XAG_CAD", "XAG_JPY", "XAG_CHF", "XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_NZD",
+        "XAG_AUD", "XAU_USD", "XAU_EUR", "XAU_GBP",
+        "XAU_SGD", "XAU_CAD", "XAU_NZD", "XAU_AUD") %>% unique(), #25 XAG_SGD
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "BTC_USD", "LTC_USD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XAG_USD",
+        "CH20_CHF", "XAU_GBP", "GBP_USD", "UK100_GBP"
+      ) %>% unique(), #26 BCH_USD
+
+      c(
+        "USB10Y_USD", "USD_SGD", "XAU_USD", "BTC_USD", "BCH_USD", "US2000_USD", "SPX500_USD",
+        "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XAG_USD",
+        "CH20_CHF", "XAU_GBP", "GBP_USD", "UK100_GBP"
+      ) %>% unique() #27 LTC_USD
 
     ),
   countries_for_int_strength =
     list(
+
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #1
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #2
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #3
@@ -227,7 +318,21 @@ indicator_mapping <- list(
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #9
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #10
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #11
-      c("GBP", "USD", "EUR", "AUD", "JPY")  #12
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #12
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #13
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #14
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #15
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #16
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #18
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #19
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #20
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #21
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #22
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #23
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #24
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #25
+      c("GBP", "USD", "EUR", "AUD", "JPY")  #26
+
     )
 )
 indicator_mapping_accumulator_long <- list()
@@ -240,17 +345,14 @@ model_data_store_db <-
   connect_db(model_data_store_path)
 
 date_seq_simulations <-
-  seq(as_date("2019-01-01"), as_date("2024-07-01"), "month")
+  seq(as_date("2021-01-01"), as_date("2024-11-01"), "month")
 c = 0
-redo_db = FALSE
+redo_db = TRUE
 
-for (k in 40:length(date_seq_simulations)) {
-
-  # for (k in 19:34) {
+for (k in 11:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 
-    # for (j in 1:16 ) {
 
     pre_train_date_end = date_seq_simulations[k]
     post_train_date_start = date_seq_simulations[k]
@@ -288,40 +390,14 @@ for (k in 40:length(date_seq_simulations)) {
         trade_direction = "Long",
         stop_value_var = stop_value_var,
         profit_value_var = profit_value_var,
-        period_var = period_var
+        period_var = period_var,
+        correlation_period = 30,
+        tangent_period = 30
       ) %>%
       pluck('result')
 
 
-    short_sim <-
-      safely_single_asset_Logit_indicator(
-        asset_data = Indices_Metals_Bonds[[1]] %>%
-          filter(Date <= test_end_date),
-        Asset_of_interest = Asset_of_interest,
-        All_Daily_Data = All_Daily_Data,
-        equity_index = equity_index,
-        gold_index = gold_index,
-        silver_index = silver_index,
-        bonds_index = bonds_index,
-        interest_rates = interest_rates,
-        cpi_data = cpi_data,
-        sentiment_index = sentiment_index,
-        countries_for_int_strength =  countries_for_int_strength,
-        couplua_assets = couplua_assets,
-        pre_train_date_end = pre_train_date_end,
-        post_train_date_start = post_train_date_start,
-        test_date_start = test_date_start,
-        actual_wins_losses = actual_wins_losses %>%
-          filter(Date <= test_end_date),
-        neuron_adjustment = 1.1,
-        hidden_layers_var= 2,
-        ending_thresh = 0.02,
-        trade_direction = "Short",
-        stop_value_var = stop_value_var,
-        profit_value_var = profit_value_var,
-        period_var = period_var
-      ) %>%
-      pluck('result')
+    short_sim <- NULL
 
     complete_sim <-
       list(long_sim,
