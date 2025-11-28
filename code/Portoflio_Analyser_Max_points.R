@@ -54,9 +54,10 @@ asset_list_oanda =
   unique()
 
 asset_infor <- get_instrument_info()
+raw_macro_data <- get_macro_event_data()
 
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2024-01-01"
+start_date = "2022-06-01"
 end_date = "2025-11-26"
 
 Indices_Metals_Bonds <-
@@ -82,7 +83,7 @@ indicator_data <-
          test_date_start = as_date(test_date_start),
          test_end_date = as_date(test_end_date),
          Date_filt = as_date(Date)) %>%
-  filter(start_date >= test_date_start)
+  filter(start_date <= test_date_start)
 
 
 DBI::dbDisconnect(model_data_store_db)
@@ -95,20 +96,7 @@ indicator_data <-
   indicator_data %>%
   group_by(Asset, Date, trade_col) %>%
   slice_max(sim_index) %>%
-  ungroup() %>%
-  filter(Date >= test_date_start) %>%
-  filter(
-    (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-       averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)
-  ) %>%
   ungroup()
-
-trades_to_tag_with_returns_long <-
-  indicator_data %>%
-  ungroup() %>%
-  distinct(Asset, Date, trade_col) %>%
-  filter(Date >= start_date) %>%
-  filter(trade_col == "Long")
 
 distinct_assets <-
   indicator_data %>%
@@ -119,11 +107,36 @@ port_return_list <- list()
 
 for (i in 1:length(distinct_assets)) {
 
+  # indicator_data_tagged <-
+  #   indicator_data %>%
+  #   ungroup() %>%
+  #   filter(Date >= test_date_start) %>%
+  #   filter(
+  #     (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
+  #        averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)
+  #   ) %>%
+  #   ungroup()
+
+  # trades_to_tag_with_returns_long <-
+  #   indicator_data_tagged %>%
+  #   ungroup() %>%
+  #   distinct(Asset, Date, trade_col) %>%
+  #   filter(Date >= start_date) %>%
+  #   filter(trade_col == "Long")
+
+  trades_to_tag_with_returns_long <-
+    Indices_Metals_Bonds[[1]] %>%
+    ungroup() %>%
+    distinct(Asset, Date) %>%
+    mutate(trade_col = "Long") %>%
+    filter(trade_col == "Long")
+
   port_return_list[[i]] <-
     get_portfolio_model(
     asset_data = Indices_Metals_Bonds,
     asset_of_interest = distinct_assets[i],
-    stop_factor_long = 2,
+    tagged_trades = trades_to_tag_with_returns_long,
+    stop_factor_long = 6,
     profit_factor_long = 20,
     risk_dollar_value_long = 5,
     end_period = 20,
@@ -136,20 +149,200 @@ port_return_dfr <-
   port_return_list %>%
   map_dfr( ~
              .x %>%
-             dplyr::select(adjusted_Date, Asset, Return)
+             dplyr::select(adjusted_Date, Asset, Return, Date, close_Date, period_since_open)
            ) %>%
   ungroup() %>%
-  filter(Asset != "BTC_USD") %>%
+  filter(Asset != "BTC_USD", Asset != "SPX500_USD", Asset != "EU50_EUR") %>%
+  group_by(adjusted_Date, Asset) %>%
+  summarise(Return = sum(Return),
+            trades_open = n_distinct(Date)) %>%
   group_by(adjusted_Date) %>%
-  summarise(Return = sum(Return))
-
-
-port_return_dfr %>%
-  summarise(
-    min_portfolio = min(Return, na.rm = T),
-    Portfolio_05 = quantile(Return, 0.05, na.rm = T),
-    Portfolio_10 = quantile(Return, 0.1, na.rm = T),
-    Portfolio_25 = quantile(Return, 0.25, na.rm = T),
-    Portfolio_50 = quantile(Return, 0.50, na.rm = T),
-    Portfolio_75 = quantile(Return, 0.75, na.rm = T)
+  mutate(
+    Total_Return = sum(Return)
   )
+
+
+results_sum <-
+  port_return_dfr %>%
+  ungroup() %>%
+  summarise(
+    min_portfolio = min(Total_Return, na.rm = T),
+    Portfolio_05 = quantile(Total_Return, 0.05, na.rm = T),
+    Portfolio_10 = quantile(Total_Return, 0.1, na.rm = T),
+    Portfolio_25 = quantile(Total_Return, 0.25, na.rm = T),
+    Portfolio_50 = quantile(Total_Return, 0.50, na.rm = T),
+    Portfolio_mean = mean(Total_Return, na.rm = T),
+    Portfolio_75 = quantile(Total_Return, 0.75, na.rm = T)
+  )
+
+port_return_dfr  <-
+  port_return_list %>%
+  map_dfr( ~
+             .x %>%
+             dplyr::select(adjusted_Date, Asset, Return, Date, close_Date, period_since_open)
+  ) %>%
+  ungroup()
+
+tag_portfolio_data_for_models <-
+  function(port_return_dfr,
+           trade_thresh = 3) {
+
+    tagged_trade_data  <-
+      port_return_dfr %>%
+      ungroup() %>%
+      filter(close_Date == period_since_open) %>%
+      mutate(
+        bin_var =
+          case_when(
+            Return >= trade_thresh ~ "win",
+            Return < trade_thresh ~ "loss"
+          )
+      )
+
+    return(tagged_trade_data)
+
+  }
+
+tagged_trade_data <-
+  tag_portfolio_data_for_models(port_return_dfr)
+
+create_macro_models <- function(raw_macro_data = raw_macro_data,
+                                asset_data = Indices_Metals_Bonds[[1]],
+                                tagged_trade_data = tagged_trade_data,
+                                pre_train_date_end = "2025-03-01") {
+
+  countries_for_int_strength <-
+    c("GBP", "USD", "EUR", "AUD", "JPY", "CAD", "CNY", "NZD")
+
+  interest_rates <-
+    get_interest_rates(
+      raw_macro_data = raw_macro_data,
+      lag_days = 1
+    )
+
+  cpi_data <-
+    get_cpi(
+      raw_macro_data = raw_macro_data,
+      lag_days = 1
+    )
+
+  sentiment_index <-
+    create_sentiment_index(
+      raw_macro_data,
+      lag_days = 1,
+      date_start = "2011-01-01",
+      end_date = today() %>% as.character(),
+      first_difference = TRUE,
+      scale_values = FALSE
+    )
+
+  interest_rates_diffs <-
+    interest_rates %>%
+    dplyr::select(Date_for_Join= Date, contains("_Diff"))
+
+  cpi_data_diffs <-
+    cpi_data %>%
+    dplyr::select(Date_for_Join = Date, contains("_Diff"))
+
+  interest_rate_strength_Index <-
+    get_Interest_Rate_strength(
+      interest_rates =interest_rates_diffs %>% mutate(Date = Date_for_Join),
+      countries = countries_for_int_strength
+    ) %>%
+    mutate(Date_for_Join = Date)
+
+  CPI_strength_index <-
+    get_CPI_Rate_strength(
+      cpi_data =cpi_data_diffs %>% mutate(Date = Date_for_Join),
+      countries = countries_for_int_strength
+    ) %>%
+    mutate(Date_for_Join = Date)
+
+  macro_for_join <-
+    asset_data %>%
+    distinct(Date) %>%
+    mutate(Date_for_Join = as_date(Date)) %>%
+    arrange(Date) %>%
+    left_join(CPI_strength_index) %>%
+    left_join(interest_rate_strength_Index) %>%
+    left_join(interest_rates_diffs) %>%
+    left_join(sentiment_index %>% mutate(Date_for_Join = Date)) %>%
+    dplyr::select(-Date_for_Join) %>%
+    fill(everything(), .direction = "down") %>%
+    filter(if_all(everything(), ~ !is.na(.)))
+
+  macro_for_join_model <-
+    tagged_trade_data %>%
+    dplyr::select(Date, Asset ,bin_var, Return) %>%
+    left_join(macro_for_join) %>%
+    filter(if_all(everything(),~!is.na(.))) %>%
+    mutate(AUD_var =
+             ifelse(str_detect(Asset, "AUD"), 1, 0),
+           USD_var =
+             ifelse(str_detect(Asset, "USD"), 1, 0),
+           CAD_var =
+             ifelse(str_detect(Asset, "CAD"), 1, 0),
+           JPY_var =
+             ifelse(str_detect(Asset, "JPY"), 1, 0),
+           EUR_var =
+             ifelse(str_detect(Asset, "EUR"), 1, 0),
+           GBP_var =
+             ifelse(str_detect(Asset, "GBP"), 1, 0),
+           SEK_var =
+             ifelse(str_detect(Asset, "SEK"), 1, 0),
+           NZD_var =
+             ifelse(str_detect(Asset, "NZD"), 1, 0),
+           HKD_var =
+             ifelse(str_detect(Asset, "HKD"), 1, 0),
+           XAU_var =
+             ifelse(str_detect(Asset, "XAU"), 1, 0),
+           XAG_var =
+             ifelse(str_detect(Asset, "XAG"), 1, 0),
+           BTC_var =
+             ifelse(str_detect(Asset, "BTC"), 1, 0),
+           CHF_var =
+             ifelse(str_detect(Asset, "CHF"), 1, 0),
+           equity_var =
+             ifelse(str_detect(Asset, "SPX|US2000|NL25|HK33|JP225|EU50|UK100|FR40|AU200|DE30|SG30|CH20"), 1, 0),
+           commod_var =
+             ifelse(str_detect(Asset, "WTICO|BCO|SOY|WHEAT|SUGAR"), 1, 0),
+           bond_var =
+             ifelse(str_detect(Asset, "USB|UK10YB"), 1, 0)
+           )
+
+  macro_vars_for_indicator <-
+    names(macro_for_join_model) %>%
+    keep(~ !str_detect(.x, "Date") &
+           !str_detect(.x, "bin_var") &
+           !str_detect(.x, "Asset") &
+           !str_detect(.x, "Return") &
+           !str_detect(.x, "_var")
+         ) %>%
+    unlist() %>%
+    as.character()
+
+  macro_indicator_formula <-
+    create_lm_formula(dependant = "bin_var=='win'",
+                      independant = macro_vars_for_indicator)
+
+  macro_indicator_model <-
+    glm(formula = macro_indicator_formula,
+        data = macro_for_join_model %>% filter(Date <=pre_train_date_end),
+        family = binomial("logit"))
+
+  summary(macro_indicator_model)
+  message("Passed Macro Model")
+
+  macro_indicator_pred <-
+    macro_for_join_model %>%
+    mutate(
+      macro_indicator_pred = predict.glm(macro_indicator_model,
+                                         newdata = macro_for_join_model, type = "response"),
+      mean_macro_pred =
+        mean( ifelse(Date <= pre_train_date_end, macro_indicator_pred, NA), na.rm = T ),
+      sd_macro_pred =
+        sd( ifelse(Date <= pre_train_date_end, macro_indicator_pred, NA), na.rm = T )
+    )
+  message("Passed Macro Pred")
+
+}

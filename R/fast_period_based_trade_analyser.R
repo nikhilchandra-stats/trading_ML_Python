@@ -1034,28 +1034,40 @@ get_portfolio_model <-
   function(
     asset_data = Indices_Metals_Bonds,
     asset_of_interest = distinct_assets[1],
+    tagged_trades = tagged_trades,
     stop_factor_long = 4,
     profit_factor_long = 15,
     risk_dollar_value_long = 5,
     end_period = 24,
-    time_frame = "H1"
+    time_frame = "H1",
+    trade_direction = "Long"
   ) {
 
-    Longs <- create_running_profits(
-      asset_of_interest = asset_of_interest,
-      asset_data = asset_data,
-      stop_factor = stop_factor_long,
-      profit_factor = profit_factor_long,
-      risk_dollar_value = risk_dollar_value_long,
-      trade_direction = "Long",
-      currency_conversion = currency_conversion,
-      asset_infor = asset_infor
-    )
+    Trades <-
+        create_running_profits(
+        asset_of_interest = asset_of_interest,
+        asset_data = asset_data,
+        stop_factor = stop_factor_long,
+        profit_factor = profit_factor_long,
+        risk_dollar_value = risk_dollar_value_long,
+        trade_direction = trade_direction,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor
+        )
+
+    tagged_trades_distinct <-
+      tagged_trades %>%
+      filter(trade_col == trade_direction) %>%
+      distinct(Date, Asset) %>%
+      mutate(tagged_trade = TRUE)
 
     Longs_pivoted_for_portfolio <-
-      Longs %>%
+      Trades %>%
       dplyr::select(Date, Asset, volume_required, stop_return, profit_return, stop_value, profit_value,
                     contains("period_return_")) %>%
+      left_join(tagged_trades_distinct) %>%
+      filter(tagged_trade == TRUE) %>%
+      dplyr::select(-tagged_trade) %>%
       pivot_longer(-c(Date, Asset, volume_required, stop_return, profit_return, stop_value, profit_value),
                    values_to = "Return",
                    names_to = "Period") %>%
