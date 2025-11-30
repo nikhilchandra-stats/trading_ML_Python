@@ -349,7 +349,7 @@ date_seq_simulations <-
 c = 0
 redo_db = TRUE
 
-for (k in 11:length(date_seq_simulations)) {
+for (k in 36:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 

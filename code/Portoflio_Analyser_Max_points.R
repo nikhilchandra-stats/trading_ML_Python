@@ -265,7 +265,6 @@ create_macro_models <- function(raw_macro_data = raw_macro_data,
     arrange(Date) %>%
     left_join(CPI_strength_index) %>%
     left_join(interest_rate_strength_Index) %>%
-    left_join(interest_rates_diffs) %>%
     left_join(sentiment_index %>% mutate(Date_for_Join = Date)) %>%
     dplyr::select(-Date_for_Join) %>%
     fill(everything(), .direction = "down") %>%
@@ -315,8 +314,7 @@ create_macro_models <- function(raw_macro_data = raw_macro_data,
     keep(~ !str_detect(.x, "Date") &
            !str_detect(.x, "bin_var") &
            !str_detect(.x, "Asset") &
-           !str_detect(.x, "Return") &
-           !str_detect(.x, "_var")
+           !str_detect(.x, "Return")
          ) %>%
     unlist() %>%
     as.character()
