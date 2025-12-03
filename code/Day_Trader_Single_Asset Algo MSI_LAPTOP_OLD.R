@@ -91,7 +91,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "D:/Asset Data/Oanda_Asset_Data.db"
-start_date = "2020-01-01"
+start_date = "2020-09-01"
 end_date = today() %>% as.character()
 
 # bin_factor = NULL
@@ -101,11 +101,6 @@ end_date = today() %>% as.character()
 
 All_Daily_Data <-
   get_DAILY_ALGO_DATA_API_REQUEST()
-
-All_weekly_data <-
-  convert_daily_to_weekly(All_Daily_Data = All_Daily_Data)
-
-All_weekly_data <- All_weekly_data %>% ungroup()
 
 Indices_Metals_Bonds <- get_Port_Buy_Data(
   db_location = db_location,
@@ -168,14 +163,7 @@ end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
   wrangle_asset_data(
-    asset_data_daily_raw =
-      get_db_price(
-        db_location = db_location,
-        start_date = "2020-01-01",
-        end_date = end_date_day,
-        bid_or_ask = "ask",
-        time_frame = "H1"
-      ),
+    asset_data_daily_raw = Indices_Metals_Bonds,
     summarise_means = TRUE
   )
 
@@ -220,7 +208,7 @@ Asset_Available =
   )
 
 Asset_Available <-
-  Asset_Available[1:16]
+  Asset_Available[1:15]
 
 safely_upload <-
   safely(update_local_db_file, otherwise = "error")
@@ -255,12 +243,23 @@ while (run_all == 1) {
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
 
+    how_far_back_date <- seq(today() - days(25), today(), by =  "days" ) %>%
+      keep(
+        ~ wday(.x) == 3
+      ) %>%
+      unlist() %>%
+      as_date() %>%
+      min()
+
+    how_far_back_var <-
+      as.numeric(today() - how_far_back_date)
+
     u1 <- safely_upload(
       db_location = db_location,
       time_frame = "D",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = upload_increment
+      how_far_back = how_far_back_var
     ) %>%
       pluck('result')
     u2 <-  safely_upload(
@@ -268,7 +267,7 @@ while (run_all == 1) {
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = upload_increment
+      how_far_back = how_far_back_var
     ) %>%
       pluck('result')
 
@@ -277,7 +276,7 @@ while (run_all == 1) {
       time_frame = "D",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = upload_increment
+      how_far_back = how_far_back_var
     ) %>%
       pluck('result')
 
@@ -286,7 +285,7 @@ while (run_all == 1) {
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = upload_increment
+      how_far_back = how_far_back_var
     ) %>%
       pluck('result')
 
@@ -312,11 +311,6 @@ while (run_all == 1) {
         distinct() %>%
         filter(Asset %in% asset_list_oanda_single_asset)
 
-      # All_weekly_data <-
-      #   convert_daily_to_weekly(All_Daily_Data = All_Daily_Data)
-      #
-      # All_weekly_data <- All_weekly_data %>% ungroup()
-
       #--------------------------------------------------Macro Only Trade
       if(current_hour %% 2 == 0) {
         total_trades_macro_only_port_stops <- NULL
@@ -338,7 +332,6 @@ while (run_all == 1) {
           single_asset_model_loop_and_trade(
             Indices_Metals_Bonds = Indices_Metals_Bonds,
             All_Daily_Data = All_Daily_Data,
-            # weekly_data = All_weekly_data,
             pre_train_date_end = today() - months(12),
             post_train_date_start = today() - months(12),
             test_date_start = today() - weeks(1),
@@ -347,8 +340,8 @@ while (run_all == 1) {
             stop_value_var = 4,
             profit_value_var = 15,
             period_var = 48,
-            start_index = 10,
-            end_index = 19,
+            start_index = 1,
+            end_index = 15,
             save_path = "D:/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
@@ -371,8 +364,8 @@ while (run_all == 1) {
             stop_value_var = 4,
             profit_value_var = 15,
             period_var = 48,
-            start_index = 10,
-            end_index = 19,
+            start_index = 1,
+            end_index = 15,
             save_path = "D:/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
@@ -391,15 +384,17 @@ while (run_all == 1) {
 
       best_results <-
         all_model_results %>%
-        filter(pred_thresh != "control", pred_thresh> 0) %>%
-        # filter(simulations >= 8) %>%
-        filter(Mid > 0, lower > 0) %>%
+        filter(pred_thresh != "control") %>%
+        filter(pred_thresh > 0) %>%
+        filter(Mid > 0, lower >0) %>%
         group_by(Asset, trade_col) %>%
-        slice_max(Win_Perc_mean, n = 10) %>%
-        group_by(Asset, trade_col) %>%
-        slice_max(Mid, n = 1) %>%
-        group_by(Asset, trade_col) %>%
-        slice_max(total_trades_mean, n = 1)
+        # slice_max(Win_Perc_mean, n = 10) %>%
+        # group_by(Asset, trade_col) %>%
+        # slice_max(Mid, n = 5) %>%
+        # group_by(Asset, trade_col) %>%
+        # slice_max(total_trades_mean, n = 1) %>%
+        slice_max(Mid) %>%
+        ungroup()
 
       current_prices_ask <-
         read_all_asset_data_intra_day(
@@ -409,7 +404,7 @@ while (run_all == 1) {
           time_frame = "H1",
           bid_or_ask = "ask",
           how_far_back = 800,
-          start_date = as.character(current_date - days(upload_increment))
+          start_date = as.character(how_far_back_date)
         )%>%
         map_dfr(bind_rows) %>%
         group_by(Asset) %>%
@@ -424,7 +419,7 @@ while (run_all == 1) {
           time_frame = "H1",
           bid_or_ask = "bid",
           how_far_back = 800,
-          start_date = as.character(current_date - days(upload_increment))
+          start_date = as.character(how_far_back_date)
         ) %>%
         map_dfr(bind_rows) %>%
         group_by(Asset) %>%
@@ -451,6 +446,47 @@ while (run_all == 1) {
         filter(!is.na(Price))  %>%
         ungroup()
 
+      #------Second Phase Optimisation
+      best_trade_setups <-
+        get_best_trade_setup_sa_old_laptop(
+          model_optimisation_store_path =
+            "D:/trade_data/single_asset_advanced_optimisation Algo Summary.db",
+          table_to_extract = "summary_for_reg"
+        )
+
+      single_asset_model_trades_filt <-
+        single_asset_model_trades_filt %>%
+        rename(trade_col_og = trade_col) %>%
+        dplyr::select(Date, Asset, Price, Open, High, Low, trade_col_og) %>%
+        left_join(best_trade_setups[[2]] ) %>%
+        mutate(
+          trade_col_revised =
+            case_when(
+              trade_col_og == "Short" & trade_col == "Long" ~ "Short",
+              trade_col_og == "Short" & trade_col == "Short" ~ "Long",
+              TRUE ~ trade_col
+            )
+        ) %>%
+        mutate(
+          trade_col = trade_col_revised
+        ) %>%
+        mutate(
+          risk_dollar_value =
+            case_when(
+              trade_col_og == "Short" & trade_col_revised == "Long" ~ 3,
+              trade_col_og == "Short" & trade_col_revised == "Short" ~ 3,
+
+              trade_col_og == "Long" & trade_col_revised == "Long" ~ 3,
+              trade_col_og == "Long" & trade_col_revised == "Short" ~ 3,
+            ),
+          required_risk = risk_dollar_value,
+        ) %>%
+        dplyr::select(-trade_col_revised, -trade_col_og) %>%
+        rename(
+          periods_ahead = period_var
+        ) %>%
+        distinct()
+
       if(dim(single_asset_model_trades_filt)[1] > 0) {
         single_asset_model_trades_filt <-
           single_asset_model_trades_filt%>%
@@ -475,7 +511,24 @@ while (run_all == 1) {
           ) %>%
           mutate(
             periods_ahead = as.character(periods_ahead)
-          )
+          ) %>%
+          group_by(Asset, trade_col) %>%
+          mutate(
+            trades_to_keep =
+              case_when(
+                minimal_loss <= 1.25*required_risk ~ "Keep",
+                minimal_loss > 1.25*required_risk & profit_factor == max(profit_factor, na.rm = T) ~ "Keep"
+              )
+          ) %>%
+          ungroup() %>%
+          filter(trades_to_keep == "Keep") %>%
+          distinct()
+
+      } else {
+
+        single_asset_model_trades_filt <- NULL
+
+
       }
 
 
@@ -719,7 +772,7 @@ while (run_all == 1) {
         summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                   EstimatedTotal_risk = risk_dollar_value*n())
 
-      if(estimated_running_profit$unrealizedPL[1] < 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      if(estimated_running_profit$unrealizedPL[1] < 400 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(
@@ -728,7 +781,7 @@ while (run_all == 1) {
           )
       }
 
-      if(estimated_running_profit$unrealizedPL[1] >= 2*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      if(estimated_running_profit$unrealizedPL[1] >= 400 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(
@@ -794,6 +847,7 @@ while (run_all == 1) {
 
   if( current_minute == 58 & current_minute == 58 ) {
     trades_opened <- 0
+    trades_closed <- 0
   }
 
   if( current_minute == 5 & current_minute == 5 ) {
