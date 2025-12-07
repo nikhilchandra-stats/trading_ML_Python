@@ -453,8 +453,15 @@ while (current_time < end_time) {
         rename(
           periods_ahead = period_var
         ) %>%
-        distinct()
-
+        distinct()  %>%
+        mutate(
+          time_diff =
+            abs(as.numeric( (Date) - (current_time), units = "mins"))
+        ) %>%
+        group_by(Asset) %>%
+        slice_min(time_diff) %>%
+        ungroup() %>%
+        filter(time_diff < 60)
 
 
       if(dim(single_asset_model_trades_filt)[1] > 0) {

@@ -1440,7 +1440,7 @@ single_asset_Logit_run_local_models <-
     combined_indicator_NN <-
       macro_indicator_pred %>%
       mutate(Asset = Asset_of_interest) %>%
-      mutate(Date = as_datetime(Date)) %>%
+      # mutate(Date = as_datetime(Date)) %>%
       dplyr::select(Date, Asset,
                     contains("pred") ,
                     contains("PC1"), contains("Sentiment")  ) %>%
@@ -1448,7 +1448,7 @@ single_asset_Logit_run_local_models <-
       left_join(
         indexes_indicator_pred %>%
           mutate(Asset = Asset_of_interest) %>%
-          mutate(Date = as_datetime(Date)) %>%
+          # mutate(Date = as_datetime(Date)) %>%
           dplyr::select(Date, Asset,
                         contains("pred"),
                         contains("PC1")  ) %>%
@@ -1456,25 +1456,25 @@ single_asset_Logit_run_local_models <-
       ) %>%
       left_join(copula_indicator_pred %>%
                   mutate(Asset = Asset_of_interest) %>%
-                  mutate(Date = as_datetime(Date)) %>%
+                  # mutate(Date = as_datetime(Date)) %>%
                   dplyr::select(Date, Asset,
                                 contains("pred"),
                                 contains("cor"),
                                 contains("lm")  ) %>%
                   distinct()) %>%
-      fill(contains("pred")|contains("cor")|contains("lm")|contains("copula_pred"), .direction = "down") %>%
+      # fill(contains("pred")|contains("cor")|contains("lm")|contains("copula_pred"), .direction = "down") %>%
       left_join(
         technical_indicator_pred %>%
           mutate(Asset = Asset_of_interest) %>%
-          mutate(Date = as_datetime(Date)) %>%
+          # mutate(Date = as_datetime(Date)) %>%
           distinct()
       ) %>%
       left_join(daily_indicator_pred %>%
                   mutate(Asset = Asset_of_interest) %>%
-                  mutate(Date = as_datetime(Date)) %>%
+                  # mutate(Date = as_datetime(Date)) %>%
                   distinct()
                 ) %>%
-      fill(contains("daily_indicator_pred")|contains("Daily_")|contains("daily_"), .direction = "down") %>%
+      # fill(contains("daily_indicator_pred")|contains("Daily_")|contains("daily_"), .direction = "down") %>%
       janitor::clean_names() %>%
       filter(if_all(everything() ,~!is.na(.))) %>%
       mutate(
@@ -1873,7 +1873,8 @@ single_asset_model_loop_and_trade <-
           stop_value_var = stop_value_var,
           profit_value_var = profit_value_var,
           period_var = period_var,
-          save_path = save_path) %>%
+          save_path = save_path
+          ) %>%
         pluck('result') %>%
         mutate(
           trade_col = "Long"
