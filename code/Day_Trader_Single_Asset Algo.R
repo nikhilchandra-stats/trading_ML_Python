@@ -148,14 +148,7 @@ end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
   wrangle_asset_data(
-    asset_data_daily_raw =
-      get_db_price(
-        db_location = db_location,
-        start_date = "2020-01-01",
-        end_date = end_date_day,
-        bid_or_ask = "ask",
-        time_frame = "H1"
-      ),
+    asset_data_daily_raw = Indices_Metals_Bonds,
     summarise_means = TRUE
   )
 
@@ -729,7 +722,22 @@ while (current_time < end_time) {
                    time_in_process =  abs(as.numeric(current_time - openTime, units = "hours")),
                    flagged_for_close = time_in_process >= periods_ahead)
         ) %>%
-        mutate(time_in_process = as.numeric(time_in_process))
+        mutate(time_in_process = as.numeric(time_in_process)) %>%
+        left_join(
+          get_best_trade_end_point(
+            "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
+          ) %>%
+            distinct(Asset, max_point_long_high_75, max_point_long_mean)
+        ) %>%
+        ungroup() %>%
+        mutate(
+          reached_max_point = as.numeric(unrealizedPL) >= max_point_long_mean,
+          flagged_for_close =
+            case_when(
+              as.numeric(unrealizedPL) >= max_point_long_mean ~ TRUE,
+              TRUE ~ flagged_for_close
+            )
+        )
 
       estimated_running_profit <-
         positions_tagged_as_part_of_algo_raw %>%
@@ -737,7 +745,7 @@ while (current_time < end_time) {
         summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                   EstimatedTotal_risk = risk_dollar_value*n())
 
-      if(estimated_running_profit$unrealizedPL[1] < 3.5*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      if(estimated_running_profit$unrealizedPL[1] < 170 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(
@@ -746,7 +754,7 @@ while (current_time < end_time) {
           )
       }
 
-      if(estimated_running_profit$unrealizedPL[1] >= 3.5*estimated_running_profit$EstimatedTotal_risk[1] ) {
+      if(estimated_running_profit$unrealizedPL[1] >= 170 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(

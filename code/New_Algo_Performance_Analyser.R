@@ -32,8 +32,7 @@ gc()
 all_trades_so_far_comb <-
   all_trades_so_far %>%
   bind_rows(all_trades_so_far2) %>%
-  distinct() %>%
-  filter()
+  distinct()
 
 distinct_assets <-
   all_trades_so_far_comb %>%
@@ -43,6 +42,9 @@ distinct_assets <-
 
 newest_results_sum <-
   newest_results %>%
+  left_join(distinct_assets) %>%
+  filter(inLocalDB == TRUE, !is.na(inLocalDB )) %>%
+  # filter(date_open >= "2025-11-17") %>%
   group_by(id, Asset, account_var, initialUnits) %>%
   mutate(kk = row_number()) %>%
   slice_min(kk) %>%
@@ -53,6 +55,22 @@ newest_results_sum <-
            .fns = ~ as.numeric(.))
   ) %>%
   mutate(Net_Profit = realizedPL + dividendAdjustment + financing)
+
+
+combined_results <-
+  newest_results_sum %>%
+  group_by(id, Asset, account_var, initialUnits) %>%
+  mutate(kk = row_number()) %>%
+  slice_min(kk) %>%
+  ungroup() %>%
+  dplyr::select(-kk) %>%
+  arrange(date_closed) %>%
+  mutate(cumulative_return = cumsum(Net_Profit))
+
+combined_results %>%
+  ggplot(aes(x = date_closed, y = cumulative_return)) +
+  geom_line() +
+  theme_minimal()
 
 write.csv(newest_results_sum,
           "C:/Users/nikhi/Documents/Repos/macrodatasetsraw/data/trade_results_msi_pc_new_algos.csv",
@@ -87,16 +105,21 @@ get_realised_trades_from_repo <-
       sum()
 
     combined_results <-
-      d1 %>%
-      bind_rows(d2) %>%
-      group_by(id, Asset, account_var, initialUnits) %>%
+      d2 %>%
+      mutate(trade_source = "24 Period") %>%
+      bind_rows(d1 %>%
+                  mutate(trade_source = "5 Period") ) %>%
+      group_by(id, Asset, account_var, initialUnits,  trade_source) %>%
       mutate(kk = row_number()) %>%
       slice_min(kk) %>%
       ungroup() %>%
       dplyr::select(-kk) %>%
       filter(date_open >= filt_date) %>%
-      arrange(date_closed) %>%
-      mutate(cumulative_return = cumsum(Net_Profit))
+      group_by(trade_source) %>%
+      arrange(date_closed, .by_group = TRUE) %>%
+      group_by(trade_source) %>%
+      mutate(cumulative_return = cumsum(Net_Profit)) %>%
+      ungroup()
 
     total_return <-
       combined_results$Net_Profit %>% sum()
@@ -104,39 +127,8 @@ get_realised_trades_from_repo <-
     combined_results %>%
       ggplot(aes(x = date_closed, y = cumulative_return)) +
       geom_line() +
+      facet_wrap(.~trade_source, scales = "free") +
       theme_minimal()
 
     }
 
-
-newest_results_sum <-
-  newest_results %>%
-  left_join(distinct_assets) %>%
-  filter(inLocalDB == TRUE) %>%
-  group_by(id, Asset, account_var, initialUnits) %>%
-  mutate(kk = row_number()) %>%
-  slice_min(kk) %>%
-  ungroup() %>%
-  dplyr::select(-kk) %>%
-  mutate(
-    across(.cols = c(initialUnits, dividendAdjustment, financing),
-           .fns = ~ as.numeric(.))
-  ) %>%
-  mutate(Net_Profit = realizedPL + dividendAdjustment + financing)
-
-
-combined_results <-
-  newest_results_sum %>%
-  group_by(id, Asset, account_var, initialUnits) %>%
-  mutate(kk = row_number()) %>%
-  slice_min(kk) %>%
-  ungroup() %>%
-  dplyr::select(-kk) %>%
-  filter(date_open >= filt_date) %>%
-  arrange(date_closed) %>%
-  mutate(cumulative_return = cumsum(Net_Profit))
-
-combined_results %>%
-  ggplot(aes(x = date_closed, y = cumulative_return)) +
-  geom_line() +
-  theme_minimal()
