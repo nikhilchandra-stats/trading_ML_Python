@@ -370,10 +370,10 @@ indicator_mapping <- list(
 
 pre_train_date_end = today() - months(12)
 post_train_date_start = today() - months(12)
-test_date_start = today() - weeks(1)
-test_end_date = today() + weeks(1)
+test_date_start = today() - days(4)
+test_end_date = today() + days(4)
 
-for (j in 23:length(indicator_mapping$Asset) ) {
+for (j in 1:length(indicator_mapping$Asset) ) {
 
   countries_for_int_strength <-
     unlist(indicator_mapping$countries_for_int_strength[j])

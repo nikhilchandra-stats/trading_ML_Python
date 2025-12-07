@@ -379,11 +379,11 @@ model_data_store_db <-
   connect_db(model_data_store_path)
 
 date_seq_simulations <-
-  seq(as_date("2020-06-01"), as_date("2024-07-01"), "month")
+  seq(as_date("2019-06-01"), as_date("2024-09-15"), "month")
 c = 1
 redo_db = FALSE
 
-for (k in 28:length(date_seq_simulations)) {
+for (k in 56:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 

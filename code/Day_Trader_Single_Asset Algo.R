@@ -10,7 +10,7 @@ aud_assets <- read_all_asset_data_intra_day(
   time_frame = "D",
   bid_or_ask = "bid",
   how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
+  start_date = (today() - days(4)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -167,14 +167,7 @@ end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
   wrangle_asset_data(
-    asset_data_daily_raw =
-      get_db_price(
-        db_location = db_location,
-        start_date = "2020-01-01",
-        end_date = end_date_day,
-        bid_or_ask = "ask",
-        time_frame = "H1"
-      ),
+    asset_data_daily_raw = Indices_Metals_Bonds,
     summarise_means = TRUE
   )
 
@@ -221,7 +214,7 @@ Asset_Available =
   )
 
 Asset_Available <-
-  Asset_Available[1:9]
+  Asset_Available[1:15]
 run_all = 1
 upload_increment <- 3
 
@@ -247,6 +240,7 @@ while (run_all == 1) {
      )
   ) {
 
+    trades_closed = 0
     gc()
     Sys.sleep(2)
     gc()
@@ -347,7 +341,7 @@ while (run_all == 1) {
             profit_value_var = 15,
             period_var = 5,
             start_index = 1,
-            end_index = 9,
+            end_index = 15,
             save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
@@ -370,7 +364,7 @@ while (run_all == 1) {
             profit_value_var = 15,
             period_var = 5,
             start_index = 1,
-            end_index = 9,
+            end_index = 15,
             save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
@@ -392,12 +386,14 @@ while (run_all == 1) {
         filter(pred_thresh != "control", pred_thresh> 0) %>%
         # filter(simulations >= 8) %>%
         filter(Mid > 0, lower > 0) %>%
-        group_by(Asset, trade_col) %>%
-        slice_max(Win_Perc_mean, n = 6) %>%
+        # group_by(Asset, trade_col) %>%
+        # slice_max(Win_Perc_mean, n = 10) %>%
         group_by(Asset, trade_col) %>%
         slice_max(Mid, n = 1) %>%
         group_by(Asset, trade_col) %>%
-        slice_max(total_trades_mean, n = 1)
+        slice_max(total_trades_mean, n = 1) %>%
+        ungroup() %>%
+        distinct()
 
 
       current_prices_ask <-
@@ -408,7 +404,7 @@ while (run_all == 1) {
           time_frame = "H1",
           bid_or_ask = "ask",
           how_far_back = 800,
-          start_date = as.character(current_date - days(4))
+          start_date = as.character(current_date - days(upload_increment))
         )%>%
         map_dfr(bind_rows) %>%
         group_by(Asset) %>%
@@ -423,7 +419,7 @@ while (run_all == 1) {
           time_frame = "H1",
           bid_or_ask = "bid",
           how_far_back = 800,
-          start_date = as.character(current_date - days(4))
+          start_date = as.character(current_date - days(upload_increment))
         ) %>%
         map_dfr(bind_rows) %>%
         group_by(Asset) %>%
