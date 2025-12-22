@@ -838,7 +838,8 @@ single_asset_Logit_run_and_save_models_2 <-
 
     saveRDS(object = daily_indicator_model,
             file =
-              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_daily_indicator_model.RDS"))
+              glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_daily_indicator_model.RDS")
+            )
 
     message("Passed Daily Model")
 

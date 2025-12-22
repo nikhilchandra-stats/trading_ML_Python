@@ -519,57 +519,6 @@ single_asset_Logit_indicator <-
 
   }
 
-#' get_daily_indicators
-#'
-#' @param Daily_Data
-#' @param asset_data
-#' @param Asset_of_interest
-#'
-#' @return
-#' @export
-#'
-#' @examples
-get_daily_indicators <-
-  function(Daily_Data = All_Daily_Data,
-           asset_data = Indices_Metals_Bonds[[1]],
-           Asset_of_interest = "EUR_USD") {
-
-    daily_technical_indicators <- Daily_Data %>%
-      filter(Asset == Asset_of_interest) %>%
-      create_technical_indicators()
-
-    new_names <- names(daily_technical_indicators) %>%
-      map(
-        ~ case_when(
-          .x %in% c("Date","Asset", "Price", "High", "Low", "Open") ~ .x,
-          TRUE ~ paste0("Daily_", .x)
-        )
-      ) %>%
-      unlist() %>%
-      as.character()
-
-    names(daily_technical_indicators) <- new_names
-
-    joined_dat <-
-      asset_data %>%
-      filter(Asset == Asset_of_interest) %>%
-      mutate(
-        Date_for_join = as_date(Date)
-      ) %>%
-      left_join(daily_technical_indicators %>%
-                  mutate(Date_for_join = as_date(Date)) %>%
-                  dplyr::select(-Date, -Price, -Low, -Open, -High),
-                by = c("Date_for_join", "Asset")
-                ) %>%
-      fill(
-        contains("Daily"), .direction = "down"
-      ) %>%
-      distinct()
-
-    return(joined_dat)
-
-  }
-
 #' Title
 #'
 #' @param asset_data
@@ -3244,10 +3193,1728 @@ create_running_profits <-
 
             trade_col == "Short" & lead(Ask_High,31) >= stop_point|
               period_return_29_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_31_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,32) > stop_point &
+              lead(Bid_High,32) < profit_point &
+              period_return_30_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,32) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,32) > stop_point &
+              lead(Bid_High,32) > profit_point &
+              period_return_30_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,32) <= stop_point|
+              period_return_30_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,32) < stop_point &
+              lead(Ask_Low,32) > profit_point &
+              period_return_30_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,32) ),
+
+            trade_col == "Short" & lead(Ask_High,32) < stop_point &
+              lead(Ask_Low,32) < profit_point &
+              period_return_30_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,32) >= stop_point|
+              period_return_30_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_32_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,33) > stop_point &
+              lead(Bid_High,33) < profit_point &
+              period_return_31_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,33) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,33) > stop_point &
+              lead(Bid_High,33) > profit_point &
+              period_return_31_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,33) <= stop_point|
+              period_return_31_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,33) < stop_point &
+              lead(Ask_Low,33) > profit_point &
+              period_return_31_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,33) ),
+
+            trade_col == "Short" & lead(Ask_High,33) < stop_point &
+              lead(Ask_Low,33) < profit_point &
+              period_return_31_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,33) >= stop_point|
+              period_return_31_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_33_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,34) > stop_point &
+              lead(Bid_High,34) < profit_point &
+              period_return_32_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,34) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,34) > stop_point &
+              lead(Bid_High,34) > profit_point &
+              period_return_32_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,34) <= stop_point|
+              period_return_32_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,34) < stop_point &
+              lead(Ask_Low,34) > profit_point &
+              period_return_32_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,34) ),
+
+            trade_col == "Short" & lead(Ask_High,34) < stop_point &
+              lead(Ask_Low,34) < profit_point &
+              period_return_32_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,34) >= stop_point|
+              period_return_32_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_34_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,35) > stop_point &
+              lead(Bid_High,35) < profit_point &
+              period_return_33_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,35) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,35) > stop_point &
+              lead(Bid_High,35) > profit_point &
+              period_return_33_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,35) <= stop_point|
+              period_return_33_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,35) < stop_point &
+              lead(Ask_Low,35) > profit_point &
+              period_return_33_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,35) ),
+
+            trade_col == "Short" & lead(Ask_High,35) < stop_point &
+              lead(Ask_Low,35) < profit_point &
+              period_return_33_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,35) >= stop_point|
+              period_return_33_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_35_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,36) > stop_point &
+              lead(Bid_High,36) < profit_point &
+              period_return_34_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,36) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,36) > stop_point &
+              lead(Bid_High,36) > profit_point &
+              period_return_34_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,36) <= stop_point|
+              period_return_34_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,36) < stop_point &
+              lead(Ask_Low,36) > profit_point &
+              period_return_34_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,36) ),
+
+            trade_col == "Short" & lead(Ask_High,36) < stop_point &
+              lead(Ask_Low,36) < profit_point &
+              period_return_34_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,36) >= stop_point|
+              period_return_34_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_36_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,37) > stop_point &
+              lead(Bid_High,37) < profit_point &
+              period_return_35_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,37) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,37) > stop_point &
+              lead(Bid_High,37) > profit_point &
+              period_return_35_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,37) <= stop_point|
+              period_return_35_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,37) < stop_point &
+              lead(Ask_Low,37) > profit_point &
+              period_return_35_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,37) ),
+
+            trade_col == "Short" & lead(Ask_High,37) < stop_point &
+              lead(Ask_Low,37) < profit_point &
+              period_return_35_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,37) >= stop_point|
+              period_return_35_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+        period_return_37_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,38) > stop_point &
+              lead(Bid_High,38) < profit_point &
+              period_return_36_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,38) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,38) > stop_point &
+              lead(Bid_High,38) > profit_point &
+              period_return_36_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,38) <= stop_point|
+              period_return_36_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,38) < stop_point &
+              lead(Ask_Low,38) > profit_point &
+              period_return_36_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,38) ),
+
+            trade_col == "Short" & lead(Ask_High,38) < stop_point &
+              lead(Ask_Low,38) < profit_point &
+              period_return_36_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,38) >= stop_point|
+              period_return_36_Price == -1*stop_return ~ -1*stop_return
+          ),
+
+
+        period_return_38_Price =
+          case_when(
+            trade_col == "Long" & lead(Bid_Low,39) > stop_point &
+              lead(Bid_High,39) < profit_point &
+              period_return_37_Price != -1*stop_return ~
+              adjusted_conversion*volume_adj*( (lead(Bid_Price ,39) - lead(Ask_Price)) ),
+
+            trade_col == "Long" & lead(Bid_Low,39) > stop_point &
+              lead(Bid_High,39) > profit_point &
+              period_return_37_Price != -1*stop_return  ~ profit_return,
+
+            trade_col == "Long" & lead(Bid_Low,39) <= stop_point|
+              period_return_37_Price== -1*stop_return  ~ -1*stop_return,
+
+            trade_col == "Short" & lead(Ask_High,39) < stop_point &
+              lead(Ask_Low,39) > profit_point &
+              period_return_37_Price != -1*stop_return~
+              adjusted_conversion*volume_adj*(lead(Bid_Price) - lead(Ask_Price,39) ),
+
+            trade_col == "Short" & lead(Ask_High,39) < stop_point &
+              lead(Ask_Low,39) < profit_point &
+              period_return_37_Price != -1*stop_return~ profit_return,
+
+            trade_col == "Short" & lead(Ask_High,39) >= stop_point|
+              period_return_37_Price == -1*stop_return ~ -1*stop_return
           )
 
       )
 
     return(asset_data_with_indicator)
+
+  }
+
+#' get_sig_coefs
+#'
+#' @param model_object_of_interest
+#' @param p_value_thresh_for_inputs
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_sig_coefs <-
+  function(model_object_of_interest = macro_indicator_model,
+           p_value_thresh_for_inputs = 0.15) {
+
+
+    all_coefs <-  model_object_of_interest %>% jtools::j_summ() %>% pluck(1)
+    coef_names <- row.names(all_coefs) %>% as.character()
+    filtered_coefs <-
+      all_coefs %>%
+      as_tibble() %>%
+      mutate(all_vars = coef_names) %>%
+      filter(p <= p_value_thresh_for_inputs) %>%
+      filter(!str_detect(all_vars, "Intercep")) %>%
+      pull(all_vars) %>%
+      map( ~ str_remove_all(.x, "`") %>% str_trim() ) %>%
+      unlist() %>%
+      as.character()
+
+    return(filtered_coefs)
+
+  }
+
+single_asset_Logit_indicator_adv <-
+  function(
+    asset_data = Indices_Metals_Bonds[[1]],
+    All_Daily_Data = All_Daily_Data,
+    Asset_of_interest = "EUR_USD",
+    actual_wins_losses = actual_wins_losses,
+    interest_rates = interest_rates,
+    cpi_data = cpi_data,
+    sentiment_index = sentiment_index,
+
+    equity_index = equity_index,
+    gold_index = gold_index,
+    silver_index = silver_index,
+    bonds_index = bonds_index,
+    USD_index = USD_index,
+    EUR_index = EUR_index,
+    GBP_index = GBP_index,
+    AUD_index = AUD_index,
+
+    countries_for_int_strength = countries_for_int_strength,
+    date_train_end = post_train_date_start,
+    date_train_phase_2_end = post_train_date_start + months(6),
+    date_test_start = post_train_date_start + months(7),
+
+    stop_value_var = stop_value_var,
+    profit_value_var = profit_value_var,
+    period_var = period_var,
+
+    bin_var_col = c("period_return_20_Price", "period_return_35_Price"),
+    trade_direction = "Long",
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv"
+
+  ) {
+
+    asset_data_internal <-
+      asset_data %>%
+      filter(Asset == Asset_of_interest)
+
+    macro_data <-
+      prepare_macro_indicator_model_data(
+        asset_data = asset_data_internal,
+        Asset_of_interest = Asset_of_interest,
+        interest_rates = interest_rates,
+        cpi_data = cpi_data,
+        sentiment_index = sentiment_index,
+        countries_for_int_strength = countries_for_int_strength,
+        date_limit = today()
+      )
+
+    macro_train_data <-
+      macro_data %>%
+      filter(Date <= date_train_end)
+
+    message("Saving macro Models")
+    prepare_macro_indicator_model(
+      macro_for_join = macro_train_data,
+      actual_wins_losses = actual_wins_losses,
+      Asset_of_interest = Asset_of_interest,
+      date_limit = date_train_end,
+      stop_value_var = stop_value_var,
+      profit_value_var = profit_value_var,
+      period_var = period_var,
+      bin_var_col = bin_var_col,
+      trade_direction = trade_direction,
+      save_path = save_path
+    )
+
+    macro_phase_2_data <-
+      macro_data %>%
+      filter(Date < date_train_phase_2_end)
+
+    macro_preds <-
+      single_asset_read_models_and_get_pred(
+      pred_data = macro_phase_2_data,
+      trade_direction = trade_direction,
+      Asset_of_interest = Asset_of_interest,
+      save_path = save_path,
+      model_string = "_macro_"
+    )
+
+    macro_preds_averages <-
+      macro_preds %>%
+      summarise(
+        across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
+      )
+
+    names(macro_preds_averages) <-
+      names(macro_preds_averages) %>%
+      map(~ paste0(.x, "_mean")) %>%
+      unlist() %>%
+      as.character()
+
+    macro_preds_sd <-
+      macro_preds %>%
+      summarise(
+        across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
+      )
+
+    names(macro_preds_sd) <-
+      names(macro_preds_sd) %>%
+      map(~ paste0(.x, "_sd")) %>%
+      unlist() %>%
+      as.character()
+
+
+    index_pca_data <-
+      get_pca_index_indicator_data(
+        asset_data = asset_data_internal,
+        Asset_of_interest = Asset_of_interest,
+        equity_index = equity_index,
+        gold_index = gold_index,
+        silver_index = silver_index,
+        bonds_index = bonds_index,
+        USD_index = USD_index,
+        EUR_index = EUR_index,
+        GBP_index = GBP_index,
+        AUD_index = AUD_index,
+        date_limit = today()
+      )
+
+    index_pca_train_data <-
+      index_pca_data %>%
+      filter(Date <= date_train_end)
+
+    prepare_index_indicator_model(
+      index_pca_data = index_pca_train_data,
+      actual_wins_losses = actual_wins_losses,
+      Asset_of_interest = Asset_of_interest,
+      date_limit = date_train_end,
+      stop_value_var = stop_value_var,
+      profit_value_var = profit_value_var,
+      period_var = period_var,
+      bin_var_col = bin_var_col,
+      trade_direction = trade_direction,
+      save_path = save_path
+    )
+
+    index_pca_phase_2_data <-
+      index_pca_data %>%
+      filter(Date < date_train_phase_2_end)
+
+    index_preds <-
+      single_asset_read_models_and_get_pred(
+      pred_data = index_pca_phase_2_data,
+      trade_direction = trade_direction,
+      Asset_of_interest = Asset_of_interest,
+      save_path = save_path,
+      model_string = "_index_"
+    )
+
+    index_preds_averages <-
+      index_preds %>%
+      summarise(
+        across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
+      )
+
+    names(index_preds_averages) <-
+      names(index_preds_averages) %>%
+      map(~ paste0(.x, "_mean")) %>%
+      unlist() %>%
+      as.character()
+
+    index_preds_sd <-
+      index_preds%>%
+      summarise(
+        across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
+      )
+
+    names(index_preds_sd) <-
+      names(index_preds_sd) %>%
+      map(~ paste0(.x, "_sd")) %>%
+      unlist() %>%
+      as.character()
+
+    daily_data_for_modelling <-
+      prepare_daily_indicator_data(
+      asset_data = asset_data_internal,
+      All_Daily_Data = All_Daily_Data,
+      Asset_of_interest = Asset_of_interest,
+      date_limit = today()
+    )
+
+    daily_data_for_modelling_train <-
+      daily_data_for_modelling %>%
+      filter(Date <= date_train_end)
+
+    prepare_daily_indicator_model(
+      daily_indicator = daily_data_for_modelling_train,
+      actual_wins_losses = actual_wins_losses,
+      Asset_of_interest = Asset_of_interest,
+      date_limit = date_train_end,
+      stop_value_var = stop_value_var,
+      profit_value_var = profit_value_var,
+      period_var = period_var,
+      bin_var_col = bin_var_col,
+      trade_direction = trade_direction,
+      save_path = save_path
+    )
+
+    daily_phase_2_data <-
+      daily_data_for_modelling %>%
+      filter(Date < date_train_phase_2_end)
+
+    daily_preds <-
+      single_asset_read_models_and_get_pred(
+        pred_data = daily_phase_2_data,
+        trade_direction = trade_direction,
+        Asset_of_interest = Asset_of_interest,
+        save_path = save_path,
+        model_string = "_daily_"
+      )
+
+    daily_preds_averages <-
+      daily_preds %>%
+      summarise(
+        across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
+      )
+
+    names(daily_preds_averages) <-
+      names(daily_preds_averages) %>%
+      map(~ paste0(.x, "_mean")) %>%
+      unlist() %>%
+      as.character()
+
+    daily_preds_sd <-
+      daily_preds%>%
+      summarise(
+        across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
+      )
+
+    names(daily_preds_sd) <-
+      names(daily_preds_sd) %>%
+      map(~ paste0(.x, "_sd")) %>%
+      unlist() %>%
+      as.character()
+
+    accumulating_probs <-
+      asset_data_internal %>%
+      distinct(Date, Asset) %>%
+      left_join(macro_preds) %>%
+      bind_cols(macro_preds_averages) %>%
+      bind_cols(macro_preds_sd) %>%
+      left_join(index_preds) %>%
+      bind_cols(index_preds_averages) %>%
+      bind_cols(index_preds_sd) %>%
+      left_join(daily_preds) %>%
+      bind_cols(daily_preds_averages) %>%
+      bind_cols(daily_preds_sd)
+
+
+  }
+
+#' single_asset_read_models_and_get_pred
+#'
+#' @param pred_data
+#' @param trade_direction
+#' @param Asset_of_interest
+#' @param save_path
+#' @param model_string
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+single_asset_read_models_and_get_pred <-
+  function(
+    pred_data = macro_test_data,
+    trade_direction = "Long",
+    Asset_of_interest = "EUR_USD",
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv",
+    model_string = "_macro_"
+    ) {
+
+    models_in_path <-
+      fs::dir_info(save_path) %>%
+      filter(str_detect(path, Asset_of_interest),
+             str_detect(path, trade_direction),
+             str_detect(path, model_string)) %>%
+      pull(path)
+
+    model_preds <- pred_data %>% dplyr::select(Date)
+
+    for (i in 1:length(models_in_path)) {
+
+      model_object <-
+        readRDS(models_in_path[i])
+
+      if(str_detect(models_in_path[i], "logit")) {
+        preds <-
+          predict.glm(object = model_object, newdata = pred_data, type = "response")
+      }
+
+      if(str_detect(models_in_path[i], "lin")) {
+        preds <-
+          predict.lm(object = model_object, newdata = pred_data, type = "response")
+      }
+
+      model_preds <-
+        model_preds %>%
+        mutate(
+          !!as.name( glue::glue("pred{model_string}{i}") ) := preds
+        )
+
+    }
+
+    return(model_preds)
+
+  }
+
+
+#' prepare_macro_indicator_model_data
+#'
+#' @param asset_data
+#' @param Asset_of_interest
+#' @param interest_rates
+#' @param cpi_data
+#' @param sentiment_index
+#' @param countries_for_int_strength
+#' @param date_limit
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_macro_indicator_model_data <-
+  function(
+    asset_data = Indices_Metals_Bonds[[1]],
+    Asset_of_interest = "EUR_USD",
+    interest_rates = interest_rates,
+    cpi_data = cpi_data,
+    sentiment_index = sentiment_index,
+    countries_for_int_strength = countries_for_int_strength,
+    date_limit = post_train_date_start
+    ) {
+
+    internal_asset_data <-
+      asset_data %>%
+      filter(Asset == Asset_of_interest) %>%
+      filter(Date <= date_limit)
+
+    interest_rates_diffs <-
+      interest_rates %>%
+      dplyr::select(Date_for_Join= Date, contains("_Diff"))
+
+    cpi_data_diffs <-
+      cpi_data %>%
+      dplyr::select(Date_for_Join = Date, contains("_Diff"))
+
+    interest_rate_strength_Index <-
+      get_Interest_Rate_strength(
+        interest_rates =interest_rates_diffs %>% mutate(Date = Date_for_Join),
+        countries = countries_for_int_strength
+      ) %>%
+      mutate(Date_for_Join = Date)
+
+    CPI_strength_index <-
+      get_CPI_Rate_strength(
+        cpi_data =cpi_data_diffs %>% mutate(Date = Date_for_Join),
+        countries = countries_for_int_strength
+      ) %>%
+      mutate(Date_for_Join = Date)
+
+    macro_for_join <-
+      internal_asset_data %>%
+      distinct(Date) %>%
+      mutate(Date_for_Join = as_date(Date)) %>%
+      arrange(Date) %>%
+      left_join(CPI_strength_index) %>%
+      left_join(interest_rate_strength_Index) %>%
+      left_join(sentiment_index %>% mutate(Date_for_Join = Date)) %>%
+      dplyr::select(-Date_for_Join) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+    return(macro_for_join)
+
+  }
+
+
+#' prepare_macro_indicator_model
+#'
+#' @param macro_for_join
+#' @param actual_wins_losses
+#' @param Asset_of_interest
+#' @param date_limit
+#' @param stop_value_var
+#' @param profit_value_var
+#' @param period_var
+#' @param bin_var_col
+#' @param trade_direction
+#' @param save_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_macro_indicator_model <-
+  function(macro_for_join = macro_train_data,
+           actual_wins_losses = actual_wins_losses,
+           Asset_of_interest = "EUR_USD",
+           date_limit = post_train_date_start,
+           stop_value_var = stop_value_var,
+           profit_value_var = profit_value_var,
+           period_var = period_var,
+           bin_var_col = c("period_return_20_Price", "period_return_35_Price"),
+           trade_direction = "Long",
+           save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv"
+           ) {
+
+    actual_wins_losses_raw <-
+      actual_wins_losses
+
+    for (i in 1:length(bin_var_col)) {
+
+      actual_wins_losses <-
+        actual_wins_losses_raw %>%
+        filter(trade_col == trade_direction) %>%
+        filter(
+          stop_factor == stop_value_var,
+          profit_factor == profit_value_var,
+          periods_ahead == period_var,
+          Asset == Asset_of_interest
+        ) %>%
+        mutate(
+          bin_var =
+            case_when(
+              !!as.name(bin_var_col[i]) > 0 & trade_col == "Short" ~ "win",
+              !!as.name(bin_var_col[i]) <= 0 & trade_col == "Short" ~ "loss",
+
+              !!as.name(bin_var_col[i]) > 0 & trade_col == "Long" ~ "win",
+              !!as.name(bin_var_col[i]) <= 0 & trade_col == "Long" ~ "loss"
+
+            )
+        ) %>%
+        filter(Date <= date_limit)
+
+      check_date <-
+        macro_for_join %>% pull(Date) %>% max() %>% as_date()
+
+      check_date <- check_date <= date_limit
+
+      message(glue::glue("Data Date is less than Train Date Max: {check_date}"))
+
+      macro_for_join_model <-
+        actual_wins_losses %>%
+        dplyr::select(Date, Asset ,bin_var, matches(bin_var_col) ) %>%
+        filter(
+          Asset == Asset_of_interest
+        ) %>%
+        left_join(macro_for_join) %>%
+        fill(!contains("Date"), .direction = "down") %>%
+        filter(if_all(everything(),~!is.na(.))) %>%
+        filter(Date <= date_limit)
+
+      # rm(actual_wins_losses)
+
+      macro_vars_for_indicator <-
+        names(macro_for_join_model) %>%
+        keep(~ !str_detect(.x, "Date") &
+               !str_detect(.x, "bin_var") &
+               !str_detect(.x, "Asset") &
+               !str_detect(.x, paste(bin_var_col, collapse = "|") ) &
+               !str_detect(.x, "period_return_")
+             ) %>%
+        unlist() %>%
+        as.character()
+
+      macro_indicator_formula_logit <-
+        create_lm_formula(dependant = "bin_var=='win'",
+                          independant = macro_vars_for_indicator)
+
+      macro_indicator_model <-
+        glm(formula = macro_indicator_formula_logit,
+            data = macro_for_join_model,
+            family = binomial("logit"))
+
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = macro_indicator_model,
+                      p_value_thresh_for_inputs = 0.15)
+
+      rm(macro_indicator_model)
+      gc()
+
+      macro_indicator_formula_logit <-
+        create_lm_formula(dependant = "bin_var=='win'",
+                          independant = sig_coefs)
+
+      macro_indicator_model <-
+        glm(formula = macro_indicator_formula_logit,
+            data = macro_for_join_model,
+            family = binomial("logit"))
+
+      summary(macro_indicator_model)
+
+      message(glue::glue("Passed Macro Model {Asset_of_interest} {i}"))
+
+      saveRDS(object = macro_indicator_model,
+              file =
+                glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_{bin_var_col[i]}_macro_logit.RDS")
+      )
+
+      rm(macro_indicator_model)
+      gc()
+
+      macro_indicator_formula_lin <-
+        create_lm_formula(dependant = bin_var_col[i],
+                          independant = macro_vars_for_indicator)
+
+      macro_indicator_model_lin <-
+        lm(formula = macro_indicator_formula_lin,
+            data = macro_for_join_model)
+
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = macro_indicator_model_lin,
+                      p_value_thresh_for_inputs = 0.15)
+
+      macro_indicator_formula_lin <-
+        create_lm_formula(dependant = bin_var_col[i],
+                          independant = sig_coefs)
+
+      macro_indicator_model_lin <-
+        lm(formula = macro_indicator_formula_lin,
+           data = macro_for_join_model)
+
+      summary(macro_indicator_model_lin)
+
+      message(glue::glue("Passed Macro Model Linear {Asset_of_interest} {i}"))
+
+      saveRDS(object = macro_indicator_model_lin,
+              file =
+                glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_{bin_var_col[i]}_macro_lin.RDS")
+      )
+
+      rm(macro_indicator_model_lin)
+      gc()
+
+    }
+
+    rm(actual_wins_losses)
+    rm(actual_wins_losses_raw)
+
+    gc()
+
+  }
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_USD_index_for_models <-
+  function(index_data) {
+
+    USD_assets <-
+      index_data %>%
+      distinct(Asset) %>%
+      filter(str_detect(Asset, "AUD_USD|EUR_USD|XAU_USD|GBP_USD|USD_JPY|NZD_USD|USD_CHF|USD_SEK|USD_NOK")) %>%
+      pull(Asset)
+
+    major_USD_log_cumulative <-
+      USD_assets %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% USD_assets),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% USD_assets) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_USD_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_USD_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  USD_assets,
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_USD = PC1,
+             PC2_USD = PC2,
+             PC3_USD = PC3,
+             PC4_USD = PC4) %>%
+      dplyr::select(Date, matches("PC[0-9]_USD"))
+
+    rm(major_USD_log_cumulative)
+    gc()
+
+    return(pc_USD_global)
+
+  }
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_EUR_index_for_models <-
+  function(index_data) {
+
+    EUR_assets <-
+      index_data %>%
+      distinct(Asset) %>%
+      filter(str_detect(Asset, "EUR_AUD|EUR_USD|XAU_EUR|EUR_GBP|EUR_NZD|EUR_CHF|XAG_EUR|EUR_SEK|EUR_JPY|USD_JPY|EU50_EUR")) %>%
+      pull(Asset)
+
+    major_EUR_log_cumulative <-
+      EUR_assets %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% EUR_assets),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% EUR_assets) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_EUR_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_EUR_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  EUR_assets,
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_EUR = PC1,
+             PC2_EUR = PC2,
+             PC3_EUR = PC3,
+             PC4_EUR = PC4) %>%
+      dplyr::select(Date, matches("PC[0-9]_EUR"))
+
+    rm(major_EUR_log_cumulative)
+    gc()
+
+    return(pc_EUR_global)
+
+  }
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_GBP_index_for_models <-
+  function(index_data) {
+
+    GBP_assets <-
+      index_data %>%
+      distinct(Asset) %>%
+      filter(str_detect(Asset, "GBP_AUD|GBP_NZD|XAU_GBP|EUR_GBP|GBP_CHF|UK100_GBP|XAG_GBP|GBP_JPY|GBP_USD|GBP_CAD|USD_JPY")) %>%
+      pull(Asset)
+
+    major_GBP_log_cumulative <-
+      GBP_assets %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% GBP_assets),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% GBP_assets) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_GBP_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_GBP_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  GBP_assets,
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_GBP = PC1,
+             PC2_GBP = PC2,
+             PC3_GBP = PC3,
+             PC4_GBP = PC4) %>%
+      dplyr::select(Date, matches("PC[0-9]_GBP"))
+
+    rm(major_GBP_log_cumulative)
+    gc()
+
+    return(pc_GBP_global)
+
+  }
+
+#' get_bonds_index
+#'
+#' @param index_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_AUD_index_for_models <-
+  function(index_data) {
+
+    AUD_assets <-
+      index_data %>%
+      distinct(Asset) %>%
+      filter(str_detect(Asset, "GBP_AUD|XAU_AUD|EUR_AUD|AUD_USD|AU200_AUD|AUD_JPY|XAG_AUD|USD_JPY|NZD_USD")) %>%
+      pull(Asset)
+
+    major_AUD_log_cumulative <-
+      AUD_assets %>%
+      map_dfr(
+        ~
+          create_log_cumulative_returns(
+            asset_data_to_use =
+              index_data %>%
+              filter(Asset %in% AUD_assets),
+            asset_to_use = c(.x[1]),
+            price_col = "Open",
+            return_long_format = TRUE
+          )
+      ) %>%
+      left_join(
+        index_data %>%
+          filter(Asset %in% AUD_assets) %>%
+          dplyr::select(Date, Asset, Price, Open)
+      )
+
+    pc_AUD_global <-
+      create_PCA_Asset_Index(
+        asset_data_to_use = major_AUD_log_cumulative %>%
+          group_by(Asset) %>%
+          mutate(
+            Return_Index_Diff = ((Price - Open)/Open)*100
+          ) %>%
+          ungroup() %>%
+          filter(!is.na(Return_Index_Diff)),
+        asset_to_use =  AUD_assets,
+        price_col = "Return_Index_Diff",
+        scale_values = TRUE
+      ) %>%
+      arrange(Date) %>%
+      mutate(
+        across(contains("PC[0-9]"), ~cumsum(.))
+      ) %>%
+      rename(PC1_AUD = PC1,
+             PC2_AUD = PC2,
+             PC3_AUD = PC3,
+             PC4_AUD = PC4) %>%
+      dplyr::select(Date, matches("PC[0-9]_AUD"))
+
+    rm(major_AUD_log_cumulative)
+    gc()
+
+    return(pc_AUD_global)
+
+  }
+
+#' get_pca_index_indicator_data
+#'
+#' @param asset_data
+#' @param Asset_of_interest
+#' @param equity_index
+#' @param gold_index
+#' @param silver_index
+#' @param bonds_index
+#' @param date_limit
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_pca_index_indicator_data <-
+  function(
+    asset_data = Indices_Metals_Bonds[[1]],
+    Asset_of_interest = "EUR_USD",
+    equity_index = equity_index,
+    gold_index = gold_index,
+    silver_index = silver_index,
+    bonds_index = bonds_index,
+    USD_index = USD_index,
+    EUR_index = EUR_index,
+    GBP_index = GBP_index,
+    AUD_index = AUD_index,
+    date_limit = post_train_date_start,
+    index_lag_cols = 12,
+    sum_rolling_length = 30
+    ) {
+
+    internal_asset_data <-
+      asset_data %>%
+      filter(Asset == Asset_of_interest) %>%
+      filter(Date <= date_limit)
+
+    indexes_data_for_join <-
+      internal_asset_data %>%
+      ungroup() %>%
+      distinct(Date) %>%
+      arrange(Date) %>%
+      left_join(equity_index  %>% dplyr::select(-Average_PCA) )%>%
+      left_join(gold_index  %>% dplyr::select(-Average_PCA) )%>%
+      left_join(silver_index  %>% dplyr::select(-Average_PCA) )%>%
+      left_join(bonds_index  %>% dplyr::select(-Average_PCA) ) %>%
+      left_join(USD_index) %>%
+      left_join(EUR_index) %>%
+      left_join(GBP_index) %>%
+      left_join(AUD_index) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
+      mutate(
+        across(.cols = !contains("Date"), .fns = ~ lag(.))
+      ) %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+    rolling_sums <-
+      indexes_data_for_join %>%
+      arrange(Date) %>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ slider::slide_dbl(.x = .,
+                                          .f = ~ sum(.x, na.rm = T),
+                                          .before = sum_rolling_length )
+               )
+      )
+
+    names(rolling_sums) <-
+      names(rolling_sums) %>%
+      map( ~
+             ifelse(
+                !str_detect(.x, "Date"),
+                paste0(.x, "_sum"),
+                .x
+            )
+      ) %>%
+      unlist()
+
+    rolling_sums2 <-
+      indexes_data_for_join %>%
+      arrange(Date) %>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ slider::slide_dbl(.x = .,
+                                          .f = ~ sum(.x, na.rm = T),
+                                          .before = round(sum_rolling_length/2) )
+        )
+      )
+
+    names(rolling_sums2) <-
+      names(rolling_sums2) %>%
+      map( ~
+             ifelse(
+               !str_detect(.x, "Date"),
+               paste0(.x, "_sum_2"),
+               .x
+             )
+      ) %>%
+      unlist()
+
+    rolling_average <-
+      indexes_data_for_join %>%
+      arrange(Date) %>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ slider::slide_dbl(.x = .,
+                                          .f = ~ sum(.x, na.rm = T),
+                                          .before = sum_rolling_length )
+        )
+      )%>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ slider::slide_dbl(.x = .,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = sum_rolling_length )
+        )
+      )
+
+    names(rolling_average) <-
+      names(rolling_average) %>%
+      map( ~
+             ifelse(
+               !str_detect(.x, "Date"),
+               paste0(.x, "_average"),
+               .x
+             )
+      ) %>%
+      unlist()
+
+    rolling_average2 <-
+      indexes_data_for_join %>%
+      arrange(Date) %>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ slider::slide_dbl(.x = .,
+                                          .f = ~ sum(.x, na.rm = T),
+                                          .before = round(sum_rolling_length/2) )
+        )
+      )%>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ slider::slide_dbl(.x = .,
+                                          .f = ~ mean(.x, na.rm = T),
+                                          .before = round(sum_rolling_length/2) )
+        )
+      )
+
+    names(rolling_average2) <-
+      names(rolling_average2) %>%
+      map( ~
+             ifelse(
+               !str_detect(.x, "Date"),
+               paste0(.x, "_average_2"),
+               .x
+             )
+      ) %>%
+      unlist()
+
+    indexes_data_for_join <-
+      indexes_data_for_join %>%
+      left_join(rolling_sums)%>%
+      left_join(rolling_sums2)%>%
+      left_join(rolling_average2) %>%
+      left_join(rolling_average)
+
+    for (k in 1:index_lag_cols) {
+
+      indexes_data_for_join <-
+        indexes_data_for_join %>%
+        arrange(Date) %>%
+        mutate(
+          !!as.name( glue::glue("PC1_Equities_{k}_lag") ) :=
+            lag(PC1_Equities, k),
+
+          !!as.name( glue::glue("PC1_Gold_Equities_{k}_lag") ) :=
+            lag(PC1_Gold_Equities, k),
+
+          !!as.name( glue::glue("PC1_Silver_Equities_{k}_lag") ) :=
+            lag(PC1_Silver_Equities, k),
+
+          !!as.name( glue::glue("PC1_Bonds_Equities_{k}_lag") ) :=
+            lag(PC1_Bonds_Equities, k),
+
+          !!as.name( glue::glue("PC1_USD_{k}_lag") ) :=
+            lag(PC1_USD, k),
+
+          !!as.name( glue::glue("PC1_EUR_{k}_lag") ) :=
+            lag(PC1_EUR, k),
+
+          !!as.name( glue::glue("PC1_GBP_{k}_lag") ) :=
+            lag(PC1_GBP, k)
+
+        )
+
+    }
+
+    return(indexes_data_for_join)
+
+  }
+
+#' Title
+#'
+#' @param index_pca_data
+#' @param actual_wins_losses
+#' @param Asset_of_interest
+#' @param date_limit
+#' @param stop_value_var
+#' @param profit_value_var
+#' @param period_var
+#' @param bin_var_col
+#' @param trade_direction
+#' @param save_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_index_indicator_model <-
+  function(
+    index_pca_data = index_pca_data,
+    actual_wins_losses = actual_wins_losses,
+    Asset_of_interest = "EUR_USD",
+    date_limit = post_train_date_start,
+    stop_value_var = stop_value_var,
+    profit_value_var = profit_value_var,
+    period_var = period_var,
+    bin_var_col = c("period_return_20_Price", "period_return_35_Price"),
+    trade_direction = "Long",
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv"
+    ) {
+
+    actual_wins_losses_raw <-
+      actual_wins_losses
+
+    for (i in 1:length(bin_var_col)) {
+
+      actual_wins_losses <-
+        actual_wins_losses_raw %>%
+        filter(trade_col == trade_direction) %>%
+        filter(
+          stop_factor == stop_value_var,
+          profit_factor == profit_value_var,
+          periods_ahead == period_var,
+          Asset == Asset_of_interest
+        ) %>%
+        mutate(
+          bin_var =
+            case_when(
+              !!as.name(bin_var_col[i]) > 0 & trade_col == "Short" ~ "win",
+              !!as.name(bin_var_col[i]) <= 0 & trade_col == "Short" ~ "loss",
+
+              !!as.name(bin_var_col[i]) > 0 & trade_col == "Long" ~ "win",
+              !!as.name(bin_var_col[i]) <= 0 & trade_col == "Long" ~ "loss"
+
+            )
+        ) %>%
+        filter(Date <= date_limit)
+
+      index_for_join_model <-
+        actual_wins_losses %>%
+        dplyr::select(Date, Asset ,bin_var, matches(bin_var_col) ) %>%
+        filter(
+          Asset == Asset_of_interest
+        ) %>%
+        left_join(index_pca_data) %>%
+        arrange(Date) %>%
+        fill(!contains("Date"), .direction = "down") %>%
+        filter(if_all(everything(),~!is.na(.))) %>%
+        filter(Date <= date_limit)
+
+      check_date <-
+        index_for_join_model %>% pull(Date) %>% max() %>% as_date()
+
+      check_date <- check_date <= date_limit
+
+      message(glue::glue("Data Date is less than Train Date Max: {check_date}"))
+
+
+      # rm(actual_wins_losses)
+
+      index_vars_for_indicator <-
+        names(index_for_join_model) %>%
+        keep(~ !str_detect(.x, "Date") &
+               !str_detect(.x, "bin_var") &
+               !str_detect(.x, "Asset") &
+               !str_detect(.x, paste(bin_var_col, collapse = "|") ) &
+               !str_detect(.x, "period_return_")
+        ) %>%
+        unlist() %>%
+        as.character()
+
+      index_indicator_formula_logit <-
+        create_lm_formula(dependant = "bin_var=='win'",
+                          independant = index_vars_for_indicator)
+
+      index_indicator_model <-
+        glm(formula = index_indicator_formula_logit,
+            data = index_for_join_model,
+            family = binomial("logit"))
+
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = index_indicator_model,
+                      p_value_thresh_for_inputs = 0.15)
+
+      rm(index_indicator_model)
+      gc()
+
+      index_indicator_formula_logit <-
+        create_lm_formula(dependant = "bin_var=='win'",
+                          independant = sig_coefs)
+
+      index_indicator_model <-
+        glm(formula = index_indicator_formula_logit,
+            data = index_for_join_model,
+            family = binomial("logit"))
+
+      summary(index_indicator_model)
+
+      message(glue::glue("Passed Index Model {Asset_of_interest} {i}"))
+
+      saveRDS(object = index_indicator_model,
+              file =
+                glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_{bin_var_col[i]}_index_logit.RDS")
+      )
+
+      rm(index_indicator_model)
+      gc()
+
+      index_indicator_formula_lin <-
+        create_lm_formula(dependant = bin_var_col[i],
+                          independant = index_vars_for_indicator)
+
+      index_indicator_model_lin <-
+        lm(formula = index_indicator_formula_lin,
+           data = index_for_join_model)
+
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = index_indicator_model_lin,
+                      p_value_thresh_for_inputs = 0.15)
+
+      index_indicator_formula_lin <-
+        create_lm_formula(dependant = bin_var_col[i],
+                          independant = sig_coefs)
+
+      index_indicator_model_lin <-
+        lm(formula = index_indicator_formula_lin,
+           data = index_for_join_model)
+
+      summary(index_indicator_model_lin)
+
+      message(glue::glue("Passed index Model Linear {Asset_of_interest} {i}"))
+
+      saveRDS(object = index_indicator_model_lin,
+              file =
+                glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_{bin_var_col[i]}_index_lin.RDS")
+      )
+
+      rm(index_indicator_model_lin)
+      gc()
+
+    }
+
+  }
+
+#' get_daily_indicators
+#'
+#' @param Daily_Data
+#' @param asset_data
+#' @param Asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_daily_indicators <-
+  function(Daily_Data = All_Daily_Data,
+           asset_data = Indices_Metals_Bonds[[1]],
+           Asset_of_interest = "EUR_USD",
+           return_joined_only = TRUE) {
+
+    daily_technical_indicators <-
+      Daily_Data %>%
+      filter(Asset == Asset_of_interest) %>%
+      create_technical_indicators() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        across(.cols = !contains("Date") & !contains("Asset"),
+               .fns = ~ lag(.))
+      ) %>%
+      ungroup()
+
+    new_names <- names(daily_technical_indicators) %>%
+      map(
+        ~ case_when(
+          .x %in% c("Date","Asset", "Price", "High", "Low", "Open") ~ .x,
+          TRUE ~ paste0("Daily_", .x)
+        )
+      ) %>%
+      unlist() %>%
+      as.character()
+
+    names(daily_technical_indicators) <- new_names
+
+    joined_dat <-
+      asset_data %>%
+      filter(Asset == Asset_of_interest) %>%
+      mutate(
+        Date_for_join = as_date(Date)
+      ) %>%
+      left_join(daily_technical_indicators %>%
+                  mutate(Date_for_join = as_date(Date)) %>%
+                  dplyr::select(-Date, -Price, -Low, -Open, -High),
+                by = c("Date_for_join", "Asset")
+      ) %>%
+      fill(
+        contains("Daily"), .direction = "down"
+      ) %>%
+      distinct()
+
+    if(return_joined_only == TRUE) {
+      return(joined_dat)
+    } else {
+      return(
+        list(joined_dat,
+             daily_technical_indicators)
+        )
+    }
+
+  }
+
+#' prepare_daily_indicator_data
+#'
+#' @param asset_data
+#' @param All_Daily_Data
+#' @param Asset_of_interest
+#' @param equity_index
+#' @param gold_index
+#' @param silver_index
+#' @param bonds_index
+#' @param USD_index
+#' @param EUR_index
+#' @param GBP_index
+#' @param date_limit
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_daily_indicator_data <-
+  function(
+    asset_data = Indices_Metals_Bonds[[1]],
+    All_Daily_Data = All_Daily_Data,
+    Asset_of_interest = "EUR_USD",
+    date_limit = date_train_end
+    ) {
+
+    asset_data_internal <-
+      asset_data %>%
+      filter(Asset == Asset_of_interest) %>%
+      filter(Date <= date_limit)
+
+    All_Daily_Data_internal <-
+      All_Daily_Data %>%
+      filter(Asset == Asset_of_interest) %>%
+      filter(Date <= date_limit)
+
+    daily_indicator <-
+      get_daily_indicators(
+        Daily_Data = All_Daily_Data_internal,
+        asset_data = asset_data_internal,
+        Asset_of_interest = Asset_of_interest,
+        return_joined_only = FALSE
+      )
+
+    daily_indicator <-
+      daily_indicator[[1]] %>%
+      dplyr::select(-Price, -Open, -Low, -High, -Vol., -Date_for_join) %>%
+      mutate(
+        across(.cols = !contains("Date") & !contains("Asset"),
+               .fns = ~ lag(.))
+      ) %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
+      mutate(
+        Date = as_datetime(Date, tz = "Australia/Canberra")
+      )
+
+    return(daily_indicator)
+
+  }
+
+#' prepare_daily_indicator_model
+#'
+#' @param daily_indicator
+#' @param actual_wins_losses
+#' @param Asset_of_interest
+#' @param date_limit
+#' @param stop_value_var
+#' @param profit_value_var
+#' @param period_var
+#' @param bin_var_col
+#' @param trade_direction
+#' @param save_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_daily_indicator_model <-
+  function(
+    daily_indicator = daily_data_for_modelling_train,
+    actual_wins_losses = actual_wins_losses,
+    Asset_of_interest = "EUR_USD",
+    date_limit = date_train_end,
+    stop_value_var = stop_value_var,
+    profit_value_var = profit_value_var,
+    period_var = period_var,
+    bin_var_col = c("period_return_20_Price", "period_return_35_Price"),
+    trade_direction = "Long",
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv"
+    ) {
+
+    actual_wins_losses_raw <-
+      actual_wins_losses
+
+    daily_indicator <-
+      daily_indicator %>%
+      filter(Asset == Asset_of_interest,
+             Date <= date_limit)
+
+    for (i in 1:length(bin_var_col)) {
+
+      message("Entered Loop")
+
+      actual_wins_losses <-
+        actual_wins_losses_raw %>%
+        filter(trade_col == trade_direction) %>%
+        filter(
+          stop_factor == stop_value_var,
+          profit_factor == profit_value_var,
+          periods_ahead == period_var,
+          Asset == Asset_of_interest
+        ) %>%
+        mutate(
+          bin_var =
+            case_when(
+              !!as.name(bin_var_col[i]) > 0 & trade_col == "Short" ~ "win",
+              !!as.name(bin_var_col[i]) <= 0 & trade_col == "Short" ~ "loss",
+
+              !!as.name(bin_var_col[i]) > 0 & trade_col == "Long" ~ "win",
+              !!as.name(bin_var_col[i]) <= 0 & trade_col == "Long" ~ "loss"
+
+            )
+        ) %>%
+        filter(Date <= date_limit)
+
+      check_date <-
+        daily_indicator %>% pull(Date) %>% max() %>% as_date()
+
+      check_date <- check_date <= date_limit
+
+      message(glue::glue("Data Date is less than Train Date Max: {check_date}"))
+
+      daily_for_join_model <-
+        actual_wins_losses %>%
+        dplyr::select(Date, Asset ,bin_var, matches(bin_var_col) ) %>%
+        filter(
+          Asset == Asset_of_interest
+        ) %>%
+        left_join(daily_indicator) %>%
+        fill(!contains("Date"), .direction = "down") %>%
+        filter(if_all(everything(),~!is.na(.))) %>%
+        filter(Date <= date_limit)
+
+      # rm(actual_wins_losses)
+
+      daily_vars_for_indicator <-
+        names(daily_for_join_model) %>%
+        keep(~ !str_detect(.x, "Date") &
+               !str_detect(.x, "bin_var") &
+               !str_detect(.x, "Asset") &
+               !str_detect(.x, paste(bin_var_col, collapse = "|") ) &
+               !str_detect(.x, "period_return_")
+        ) %>%
+        unlist() %>%
+        as.character()
+
+      daily_indicator_formula_logit <-
+        create_lm_formula(dependant = "bin_var=='win'",
+                          independant = daily_vars_for_indicator)
+
+      daily_indicator_model <-
+        glm(formula = daily_indicator_formula_logit,
+            data = daily_for_join_model,
+            family = binomial("logit"))
+
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = daily_indicator_model,
+                      p_value_thresh_for_inputs = 0.15)
+
+      rm(daily_indicator_model)
+      gc()
+
+      daily_indicator_formula_logit <-
+        create_lm_formula(dependant = "bin_var=='win'",
+                          independant = sig_coefs)
+
+      daily_indicator_model <-
+        glm(formula = daily_indicator_formula_logit,
+            data = daily_for_join_model,
+            family = binomial("logit"))
+
+      summary(daily_indicator_model)
+
+      message(glue::glue("Passed daily Model {Asset_of_interest} {i}"))
+
+      saveRDS(object = daily_indicator_model,
+              file =
+                glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_{bin_var_col[i]}_daily_logit.RDS")
+      )
+
+      rm(daily_indicator_model)
+      gc()
+
+      daily_indicator_formula_lin <-
+        create_lm_formula(dependant = bin_var_col[i],
+                          independant = daily_vars_for_indicator)
+
+      daily_indicator_model_lin <-
+        lm(formula = daily_indicator_formula_lin,
+           data = daily_for_join_model)
+
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = daily_indicator_model_lin,
+                      p_value_thresh_for_inputs = 0.15)
+
+      daily_indicator_formula_lin <-
+        create_lm_formula(dependant = bin_var_col[i],
+                          independant = sig_coefs)
+
+      daily_indicator_model_lin <-
+        lm(formula = daily_indicator_formula_lin,
+           data = daily_for_join_model)
+
+      summary(daily_indicator_model_lin)
+
+      message(glue::glue("Passed daily Model Linear {Asset_of_interest} {i}"))
+
+      saveRDS(object = daily_indicator_model_lin,
+              file =
+                glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_{bin_var_col[i]}_daily_lin.RDS")
+      )
+
+      rm(daily_indicator_model_lin)
+      gc()
+
+    }
 
   }

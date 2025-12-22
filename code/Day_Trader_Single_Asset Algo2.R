@@ -424,6 +424,7 @@ while (current_time < end_time) {
 
       single_asset_model_trades_filt <-
         single_asset_model_trades_filt %>%
+        filter(trade_col == "Long") %>%
         rename(trade_col_og = trade_col) %>%
         dplyr::select(Date, Asset, Price, Open, High, Low, trade_col_og) %>%
         left_join(best_trade_setups[[2]] ) %>%
@@ -442,9 +443,9 @@ while (current_time < end_time) {
           risk_dollar_value =
             case_when(
               trade_col_og == "Short" & trade_col_revised == "Long" ~ 5,
-              trade_col_og == "Short" & trade_col_revised == "Short" ~ 2,
+              trade_col_og == "Short" & trade_col_revised == "Short" ~ 5,
 
-              trade_col_og == "Long" & trade_col_revised == "Long" ~ 2,
+              trade_col_og == "Long" & trade_col_revised == "Long" ~ 5,
               trade_col_og == "Long" & trade_col_revised == "Short" ~ 5,
             ),
           required_risk = risk_dollar_value,
@@ -748,7 +749,7 @@ while (current_time < end_time) {
         summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                   EstimatedTotal_risk = risk_dollar_value*n())
 
-      if(estimated_running_profit$unrealizedPL[1] < 170 ) {
+      if(estimated_running_profit$unrealizedPL[1] < 600 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(
@@ -757,7 +758,7 @@ while (current_time < end_time) {
           )
       }
 
-      if(estimated_running_profit$unrealizedPL[1] >= 170 ) {
+      if(estimated_running_profit$unrealizedPL[1] >= 600 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(

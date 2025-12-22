@@ -2358,14 +2358,14 @@ create_PCA_Asset_Index <- function(
       Average_PCA = (PC1 + PC2)/2
     )
 
-  pca_calc1 %>%
-    mutate(index = row_number()) %>%
-    ggplot(aes(x = index)) +
-    geom_line(aes(y = PC1)) +
-    geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
-    geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
-    geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
-    theme_minimal()
+  # pca_calc1 %>%
+  #   mutate(index = row_number()) %>%
+  #   ggplot(aes(x = index)) +
+  #   geom_line(aes(y = PC1)) +
+  #   geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
+  #   geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
+  #   geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
+  #   theme_minimal()
 
   if(length(asset_to_use) >= 6) {
     returned_data <-
@@ -2785,6 +2785,7 @@ get_all_commod_USD <- function(
 #---Gold Index
 get_equity_index <-
   function(index_data) {
+
     major_indices_log_cumulative <-
       c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR", "SG30_SGD",
         "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD") %>%
@@ -2820,7 +2821,13 @@ get_equity_index <-
                           "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
-      )
+      )  %>%
+      rename(PC1_Equities = PC1,
+             PC2_Equities = PC2,
+             PC3_Equities = PC3,
+             PC4_Equities = PC4,
+             PC5_Equities = PC5,
+             PC6_Equities = PC6)
 
     rm(major_indices_log_cumulative)
     gc()
