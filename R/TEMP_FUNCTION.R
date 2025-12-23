@@ -398,6 +398,9 @@ single_asset_Logit_indicator_2 <-
     technical_data <-
       create_technical_indicators(asset_data = technical_asset_data) %>%
       dplyr::select(-Price, -Low, -High, -Open)
+    technical_data <-
+      technical_data %>%
+      arrange(Date)
     rm(technical_asset_data)
 
     technical_for_join_model <-

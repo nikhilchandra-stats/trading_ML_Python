@@ -116,7 +116,7 @@ get_AUS_Indicators <-
     raw_macro_data = get_macro_event_data(),
     lag_days = 3,
     first_difference = FALSE
-    ) {
+  ) {
 
     AIG_INDEX <- raw_macro_data %>%
       filter(symbol == "AUD") %>%
@@ -147,7 +147,7 @@ get_AUS_Indicators <-
             str_detect(event, "Wage Price Index \\(QoQ\\)") ~ "AUD Wage Price Index",
             str_detect(event, "Construction Work Done") ~ "AUD Wage Price Index",
             str_detect(event, "RBA Interest Rate Decision") ~ "AUD Interest Rate"
-            )
+          )
       ) %>%
       filter(!is.na(Index_Type)) %>%
       dplyr::select(Index_Type, actual,date )
@@ -198,13 +198,13 @@ get_AUS_Indicators <-
 
     return(AIG_INDEX)
 
-}
+  }
 
 get_USD_Indicators <- function(
     raw_macro_data = get_macro_event_data(),
     lag_days = 3,
     first_difference = FALSE
-    ) {
+) {
 
   USD_INDEX <- raw_macro_data %>%
     filter(symbol == "USD") %>%
@@ -950,14 +950,14 @@ run_reg_for_trades_with_NN <- function(
   safely_n_net <- safely(neuralnet::neuralnet, otherwise = NULL)
 
   n <- safely_n_net(reg_formula ,
-                            data = testing_data_train,
-                            hidden = c(50),
-                            err.fct = "sse",
-                            linear.output = TRUE,
-                            lifesign = 'full',
-                            rep = 1,
-                            algorithm = "rprop+",
-                            stepmax = iterations) %>%
+                    data = testing_data_train,
+                    hidden = c(50),
+                    err.fct = "sse",
+                    linear.output = TRUE,
+                    lifesign = 'full',
+                    rep = 1,
+                    algorithm = "rprop+",
+                    stepmax = iterations) %>%
     pluck('result')
 
 
@@ -1223,14 +1223,14 @@ run_reg_for_trades_with_NN_grouped <- function(
 
   test <-
     neuralnet(reg_formula ,
-                 data = testing_data_train,
-                 hidden = c(70),
-                 err.fct = "ce",
-                 linear.output = FALSE,
-                 lifesign = 'full',
-                 rep = 1,
-                 algorithm = "rprop+",
-                 stepmax = iterations)
+              data = testing_data_train,
+              hidden = c(70),
+              err.fct = "ce",
+              linear.output = FALSE,
+              lifesign = 'full',
+              rep = 1,
+              algorithm = "rprop+",
+              stepmax = iterations)
 
   n <- safely_n_net(reg_formula ,
                     data = testing_data_train,
@@ -1487,7 +1487,7 @@ get_US_exports <- function() {
 get_EUR_exports <- function(
     # path_var = "C:/Users/Nikhil Chandra/Documents/51000-0006_en_flat.csv"
   path_var = "C:/Users/Nikhil Chandra/Documents/51000-0006_en_flat_2025-04-08.csv"
-    ) {
+) {
 
   test <- read_delim(path_var, ";")
 
@@ -1550,40 +1550,40 @@ get_EUR_exports <- function(
 
 run_reg_weekly_variant <- function(
 
-    raw_macro_data = get_macro_event_data(),
+  raw_macro_data = get_macro_event_data(),
 
-    eur_data = get_EUR_exports(),
+  eur_data = get_EUR_exports(),
 
-    AUD_exports_total = get_AUS_exports()  %>%
-      pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
-      rename(date = TIME_PERIOD) %>%
-      group_by(date) %>%
-      summarise(Aus_Export = sum(Aus_Export, na.rm = T)),
+  AUD_exports_total = get_AUS_exports()  %>%
+    pivot_longer(-TIME_PERIOD, names_to = "category", values_to = "Aus_Export") %>%
+    rename(date = TIME_PERIOD) %>%
+    group_by(date) %>%
+    summarise(Aus_Export = sum(Aus_Export, na.rm = T)),
 
-    USD_exports_total = get_US_exports()  %>%
-      pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
-      group_by(date) %>%
-      summarise(US_Export = sum(US_Export, na.rm = T)) %>%
-      left_join(AUD_exports_total) %>%
-      ungroup(),
+  USD_exports_total = get_US_exports()  %>%
+    pivot_longer(-date, names_to = "category", values_to = "US_Export") %>%
+    group_by(date) %>%
+    summarise(US_Export = sum(US_Export, na.rm = T)) %>%
+    left_join(AUD_exports_total) %>%
+    ungroup(),
 
-    asset_data_combined = fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
-      mutate(asset_name =
-               str_remove(path, "C\\:\\/Users/Nikhil Chandra\\/Documents\\/Asset Data\\/Futures\\/") %>%
-               str_remove("\\.csv") %>%
-               str_remove("Historical Data")%>%
-               str_remove("Stock Price") %>%
-               str_remove("History")
-      ) %>%
-      dplyr::select(path, asset_name) %>%
-      split(.$asset_name, drop = FALSE) %>%
-      map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
-                 transform_asset_to_weekly()  %>%
-                 mutate(Asset = .x[1,2] %>% as.character())
-      ),
+  asset_data_combined = fs::dir_info("C:/Users/Nikhil Chandra/Documents/Asset Data/Futures/") %>%
+    mutate(asset_name =
+             str_remove(path, "C\\:\\/Users/Nikhil Chandra\\/Documents\\/Asset Data\\/Futures\\/") %>%
+             str_remove("\\.csv") %>%
+             str_remove("Historical Data")%>%
+             str_remove("Stock Price") %>%
+             str_remove("History")
+    ) %>%
+    dplyr::select(path, asset_name) %>%
+    split(.$asset_name, drop = FALSE) %>%
+    map_dfr( ~ read_csv(.x[1,1] %>% as.character()) %>%
+               transform_asset_to_weekly()  %>%
+               mutate(Asset = .x[1,2] %>% as.character())
+    ),
 
-    train_percent = 0.6
-  ) {
+  train_percent = 0.6
+) {
 
   trading_dat <- asset_data_combined
 
@@ -1743,9 +1743,9 @@ run_reg_weekly_variant <- function(
   return(
 
     list(
-       "LM Model"= lm_reg,
-       "Testing Data"= raw_LM_trade_df,
-       "Training Data" = raw_LM_trade_df_training
+      "LM Model"= lm_reg,
+      "Testing Data"= raw_LM_trade_df,
+      "Training Data" = raw_LM_trade_df_training
     )
 
   )
@@ -1770,7 +1770,7 @@ prep_LM_wkly_trade_data <- function(
     raw_LM_trade_df_training,
     new_week_date_start_day = 1
 
-  ) {
+) {
 
   asset_data_daily <- asset_data_daily_raw %>%
     mutate(Date = as.Date(Date, format =  "%m/%d/%Y"))
@@ -2368,8 +2368,8 @@ get_interest_rates <-
       filter(if_all(everything(), ~ !is.na(.) )) %>%
       mutate(
         Global_Average_Rate =(`AUD Interest Rate` + `USD Interest Rate` + `EUR Interest Rate` +
-          `JPY BoJ Interest Rate Decision` + `CNY Interest Rate` + `GBP Interest Rate` +
-          `CAD Interest Rate` + `NZD Interest Rate`)/8
+                                `JPY BoJ Interest Rate Decision` + `CNY Interest Rate` + `GBP Interest Rate` +
+                                `CAD Interest Rate` + `NZD Interest Rate`)/8
       )
 
     for (i in 2:length(interest_rates) ) {

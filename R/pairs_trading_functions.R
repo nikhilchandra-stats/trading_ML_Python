@@ -250,7 +250,8 @@ estimating_dual_copula <- function(
   rm(combined_data2)
   gc()
 
-  returned <- returned %>%
+  returned <-
+    returned %>%
     mutate(across(.cols = !matches("Date", ignore.case = FALSE),
                   .fns = ~ lag(.))) %>%
     mutate(
@@ -2301,7 +2302,7 @@ create_log_cumulative_returns <- function(
       arrange(Date) %>%
       dplyr::select(Date,
                     Return_Index = !!as.name(glue::glue("{asset_to_use[1]}_Return_Index"))
-                    ) %>%
+      ) %>%
       mutate(
         Asset = asset_to_use[1]
       )
@@ -2534,7 +2535,7 @@ get_PCA_Index_rolling_cor_sd_mean <-
     raw_asset_data_for_PCA_cor = asset_data_to_use %>% filter(Asset == "SPX500_USD"),
     PCA_data = returned_data,
     rolling_period = 100
-    ) {
+  ) {
 
     returned_data_rolling_PCA_cor <-
       raw_asset_data_for_PCA_cor %>%
@@ -2607,12 +2608,12 @@ get_PCA_Index_rolling_cor_sd_mean <-
                                                .before = rolling_period),
 
         rolling_tan_angle_mean = slider::slide_dbl(.x = tan_angle,
-                                              .f = ~  mean(.x, na.rm = T),
-                                              .before = rolling_period),
+                                                   .f = ~  mean(.x, na.rm = T),
+                                                   .before = rolling_period),
 
         rolling_tan_angle_sd = slider::slide_dbl(.x = tan_angle,
-                                                   .f = ~  sd(.x, na.rm = T),
-                                                   .before = rolling_period)
+                                                 .f = ~  sd(.x, na.rm = T),
+                                                 .before = rolling_period)
       )
 
     return(returned_data_rolling_PCA_cor)
