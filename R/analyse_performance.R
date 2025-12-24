@@ -263,12 +263,28 @@ analyse_new_algos <-
       ) %>%
       filter(is.na(already_in_db))
 
+    if(dim(asset_accumulator_dfr_upload)[1] > 1) {
+      asset_accumulator_dfr_upload <-
+        asset_accumulator_dfr_upload %>%
+        mutate(
+          already_in_db = NA
+        ) %>%
+        left_join(
+          all_trades_so_far %>%
+            dplyr::select(id = tradeID, Asset, account_var) %>%
+            mutate(
+              tradeID_filt = id
+            )
+        ) %>%
+        filter(!is.na(tradeID_filt)) %>%
+        dplyr::select(-tradeID_filt)
+    }
+
     if(dim(asset_accumulator_dfr_upload)[1] > 1 ) {
       realised_DB_path_con <- connect_db(realised_DB_path)
-      write_table_sql_lite(.data = asset_accumulator_dfr_upload,
+      append_table_sql_lite(.data = asset_accumulator_dfr_upload,
                             table_name = "trade_tracker_realised",
-                            conn = realised_DB_path_con,
-                            overwrite_true = TRUE)
+                            conn = realised_DB_path_con)
       DBI::dbDisconnect(realised_DB_path_con)
       rm(realised_DB_path_con)
     }
@@ -315,5 +331,134 @@ get_current_new_algo_trades <-
       )
 
     return(all_db_data)
+
+  }
+
+
+get_all_realised_generic <-
+  function(
+    realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
+    write_or_append = "write",
+    account_var = 1,
+    algo_start_date = "2025-11-10",
+    distinct_assets =
+      c(
+        "EUR_USD", #1
+        "EU50_EUR", #2
+        "SPX500_USD", #3
+        "US2000_USD", #4
+        "USB10Y_USD", #5
+        "USD_JPY", #6
+        "AUD_USD", #7
+        "EUR_GBP", #8
+        "AU200_AUD" ,#9
+        "EUR_AUD", #10
+        "WTICO_USD", #11
+        "UK100_GBP", #12
+        "USD_CAD", #13
+        "GBP_USD", #14
+        "GBP_CAD", #15
+        "EUR_JPY", #16
+        "EUR_NZD", #17
+        "XAG_USD", #18
+        "XAG_EUR", #19
+        "XAG_AUD", #20
+        "XAG_NZD", #21
+        "HK33_HKD", #22
+        "FR40_EUR", #23
+        "BTC_USD", #24
+        "XAG_GBP", #25
+        "GBP_AUD", #26
+        "USD_SEK", #27
+        "USD_SGD", #28
+        "BTC_USD",
+        "XAU_USD"
+      )
+    ) {
+
+    db_con <-
+      connect_db(realised_DB_path)
+    asset_accumulator <- list()
+
+
+    for (i in 1:length(distinct_assets) ) {
+
+      current_asset = distinct_assets[i] %>% as.character()
+      current_account = account_var
+
+      realised_trades_asset <-
+        get_closed_positions(account_var = current_account,
+                             asset = current_asset)
+
+      if(!is.null(realised_trades_asset)) {
+
+        realised_trades_asset_filt <-
+          realised_trades_asset %>%
+          filter((date_open) >= as_datetime(algo_start_date, tz = "Australia/Canberra"))
+      } else {
+        realised_trades_asset_filt <- NULL
+      }
+
+      asset_accumulator[[i]] <- realised_trades_asset_filt
+
+    }
+
+    asset_accumulator_dfr <-
+      asset_accumulator %>%
+      map_dfr(bind_rows) %>%
+      mutate(
+        across(
+          .cols = c(financing, realizedPL, dividendAdjustment, initialUnits),
+          .fns = ~ as.numeric(.)
+        )
+      )
+
+    if(write_or_append == "write") {
+      write_table_sql_lite(.data = asset_accumulator_dfr,
+                           table_name = "realised_return",
+                           conn = db_con,
+                           overwrite_true = TRUE)
+    } else {
+
+      trades_already_in_db <-
+        DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM realised_return")
+
+      trade_ids_present <-
+        trades_already_in_db %>%
+        distinct(id, account_var, Asset)
+
+      anti_joined_data <-
+        asset_accumulator_dfr %>%
+        anti_join(trade_ids_present)
+
+      if(dim(anti_joined_data)[1] > 0) {
+        append_table_sql_lite(.data = anti_joined_data,
+                             table_name = "realised_return",
+                             conn = db_con)
+      }
+
+    }
+
+    return(asset_accumulator_dfr)
+
+    DBI::dbDisconnect(db_con)
+
+  }
+
+get_realised_trades_from_db_generic <-
+  function(realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
+           table_name = "realised_return") {
+
+    db_con <-
+      connect_db(realised_DB_path)
+
+    returned <-
+      DBI::dbGetQuery(conn = db_con,
+                      statement = glue::glue("SELECT * FROM {table_name}")
+                      ) %>%
+      mutate(date_closed = as_datetime(date_closed, tz = "Australia/Canberra"),
+             date_open = as_datetime(date_open, tz ="Australia/Canberra"))
+
+    return(returned)
 
   }

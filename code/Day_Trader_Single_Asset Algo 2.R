@@ -86,7 +86,7 @@ asset_list_oanda =
     "XAG_SGD" , #25 XAG_SGD,
     "BCH_USD" , #26 BCH_USD
     "LTC_USD" #27 LTC_USD
-    ) %>%
+  ) %>%
   unique()
 
 asset_infor <- get_instrument_info()
@@ -157,10 +157,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_daily_buy_close.db"
+  "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_daily_buy_close 2.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -210,8 +210,7 @@ Asset_Available =
   )
 
 Asset_Available <-
-  Asset_Available[1:10]
-
+  Asset_Available[11:21]
 run_all = 1
 upload_increment <- 3
 
@@ -330,8 +329,8 @@ while (run_all == 1) {
             stop_value_var = 1,
             profit_value_var = 2,
             period_var = 3,
-            start_index = 1,
-            end_index = 10,
+            start_index = 11,
+            end_index = 21,
             save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
@@ -352,15 +351,15 @@ while (run_all == 1) {
             stop_value_var = 1,
             profit_value_var = 2,
             period_var = 3,
-            start_index = 1,
-            end_index = 10,
+            start_index = 11,
+            end_index = 21,
             save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()
       }
 
       asset_optimisation_store_path =
-        "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation.db"
+        "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_improved_asset_optimisation 2.db"
 
       asset_optimisation_store_db <- connect_db(asset_optimisation_store_path)
 
@@ -374,7 +373,7 @@ while (run_all == 1) {
         all_model_results %>%
         filter(pred_thresh != "control", pred_thresh> 0) %>%
         # filter(simulations >= 8) %>%
-        filter(Mid > 0, lower > 0) %>%
+        filter(Mid > 0) %>%
         # group_by(Asset, trade_col) %>%
         # slice_max(Win_Perc_mean, n = 10) %>%
         group_by(Asset, trade_col) %>%
@@ -423,13 +422,6 @@ while (run_all == 1) {
             dplyr::select(Asset, trade_col, pred_thresh) %>%
             mutate(pred_thresh = as.numeric(pred_thresh))
         ) %>%
-        # mutate(
-        #   test =
-        #     (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-        #        averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
-        #     (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-        #        averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
-        # )
         filter(
           (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
              averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|

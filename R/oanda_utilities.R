@@ -415,18 +415,25 @@ get_closed_positions <- function(save_csv = FALSE,
 
     returned_value$trades <-  returned_value$trades
 
-    complete_frame <- returned_value$trades  %>%
-      select(-takeProfitOrder,-stopLossOrder) %>%
-      mutate(
-        date_open = as_datetime(openTime),
-        date_closed = as_datetime(closeTime)
-      )  %>%
-      distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits,
-               financing, dividendAdjustment) %>%
-      mutate(
-        account_var = account_var
-      ) %>%
-      rename(Asset =instrument)
+    if( any(class(returned_value$trades) == "data.frame") ) {
+
+      complete_frame <- returned_value$trades  %>%
+        select(-takeProfitOrder,-stopLossOrder) %>%
+        mutate(
+          date_open = as_datetime(openTime),
+          date_closed = as_datetime(closeTime)
+        )  %>%
+        distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits,
+                 financing, dividendAdjustment) %>%
+        mutate(
+          account_var = account_var
+        ) %>%
+        rename(Asset =instrument)
+    } else {
+
+      complete_frame <- NULL
+
+    }
 
     return(complete_frame)
 

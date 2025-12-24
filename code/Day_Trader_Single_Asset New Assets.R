@@ -243,13 +243,7 @@ indicator_mapping <- list(
         "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
         "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
         "SUGAR_USD","SPX500_USD", "US2000_USD"
-      ) %>% unique(), #18 WHEAT_USD
-
-      c(
-        "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-        "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
-        "SUGAR_USD","SPX500_USD", "US2000_USD"
-      ) %>% unique(), #18 WHEAT_USD
+      ) %>% unique(), #18 WHEAT_USD #####HERE
 
       c(
         "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
@@ -264,7 +258,7 @@ indicator_mapping <- list(
       ) %>% unique(), #20 DE30_EUR
 
       c(
-        "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_GBP", "AU200_AUD", "US2000_USD", "SPX500_USD",
+         "XAG_GBP", "AU200_AUD", "US2000_USD", "SPX500_USD",
         "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XAG_USD",
         "CH20_CHF", "XAU_GBP", "GBP_USD", "UK100_GBP"
       ) %>% unique(), #21 UK10YB_GBP
@@ -323,6 +317,7 @@ indicator_mapping <- list(
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #14
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #15
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #16
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #17
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #18
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #19
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #20
@@ -331,7 +326,8 @@ indicator_mapping <- list(
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #23
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #24
       c("GBP", "USD", "EUR", "AUD", "JPY"),  #25
-      c("GBP", "USD", "EUR", "AUD", "JPY")  #26
+      c("GBP", "USD", "EUR", "AUD", "JPY"),  #26
+      c("GBP", "USD", "EUR", "AUD", "JPY")  #27
 
     )
 )
@@ -346,10 +342,10 @@ model_data_store_db <-
 
 date_seq_simulations <-
   seq(as_date("2021-01-01"), as_date("2024-11-01"), "month")
-c = 0
-redo_db = TRUE
+c = 20
+redo_db = FALSE
 
-for (k in 36:length(date_seq_simulations)) {
+for (k in 46:length(date_seq_simulations)) {
 
   for (j in 1:length(indicator_mapping$Asset) ) {
 
@@ -382,7 +378,7 @@ for (k in 36:length(date_seq_simulations)) {
         pre_train_date_end = pre_train_date_end,
         post_train_date_start = post_train_date_start,
         test_date_start = test_date_start,
-        actual_wins_losses = actual_wins_losses %>%
+        actual_wins_losses_var = actual_wins_losses %>%
           filter(Date <= test_end_date),
         neuron_adjustment = 1.1,
         hidden_layers_var= 2,
@@ -603,11 +599,13 @@ gc()
 best_results <-
   all_model_results %>%
   filter(pred_thresh != "control") %>%
-  filter(lower > 0) %>%
+  filter(pred_thresh >= 0, simulations >= 30) %>%
+  filter(Mid > 0) %>%
   group_by(Asset, trade_col) %>%
-  slice_max(Win_Perc_mean, n = 10) %>%
+  slice_max(lower) %>%
+  ungroup() %>%
   group_by(Asset, trade_col) %>%
-  slice_max(total_trades_mean, n = 1)
+  slice_max(pred_thresh)
 
 best_overall_thresh <-
   all_model_results %>%
