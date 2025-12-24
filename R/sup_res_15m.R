@@ -608,10 +608,32 @@ create_technical_indicators <-
               Price < Open,
             1,
             0
-          )
+          ),
+
+        rolling_High_Support_50 =
+          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 50),
+
+        rolling_High_Support_100 =
+          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 100),
+
+        rolling_High_Resistance_50 =
+          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 50),
+
+        rolling_High_Resistance_100 =
+          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 100)
+
       ) %>%
       group_by(Asset) %>%
       mutate(
+
         Bull_3 =
           ifelse(
             Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) ,
@@ -622,13 +644,6 @@ create_technical_indicators <-
         Bear_3 =
           ifelse(
             Price < Open & lag(Price) < lag(Open) & lag(Price,2) < lag(Open,2) ,
-            1,
-            0
-          ),
-
-        Bull_3 =
-          ifelse(
-            Price > Open & lag(Price) > lag(Open) & lag(Price,2) > lag(Open,2) ,
             1,
             0
           ),
@@ -649,7 +664,26 @@ create_technical_indicators <-
               lag(temp_price_to_open) < lag(temp_price_to_open, 2),
             1,
             0
-          )
+          ),
+
+        rolling_Bull_3_sum_50 =
+          slider::slide_dbl(.x = Bull_3, .f = ~ sum(.x, na.rm = T), .before = 50),
+
+        rolling_Bull_3_sum_100 =
+          slider::slide_dbl(.x = Bull_3, .f = ~ sum(.x, na.rm = T), .before = 100),
+
+        rolling_Bull_3_mean_50 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_50, .f = ~ mean(.x, na.rm = T), .before = 50),
+
+        rolling_Bull_3_mean_100 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_100, .f = ~ mean(.x, na.rm = T), .before = 100),
+
+        rolling_Bull_3_sd_50 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_50, .f = ~ sd(.x, na.rm = T), .before = 50),
+
+        rolling_Bull_3_sd_100 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_100, .f = ~ sd(.x, na.rm = T), .before = 100)
+
       ) %>%
       dplyr::select(
         -c(
@@ -807,6 +841,7 @@ create_technical_indicators_daily <-
       ) %>%
       ungroup() %>%
       mutate(
+
         High_Support =
           ifelse(
             temp_high_to_price/temp_high_to_low <= 0.15 &
@@ -839,7 +874,29 @@ create_technical_indicators_daily <-
               Price < Open,
             1,
             0
-          )
+          ),
+
+        rolling_High_Support_5 =
+          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 5),
+
+        rolling_High_Support_10 =
+          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 10),
+
+        rolling_High_Resistance_5 =
+          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 5),
+
+        rolling_High_Resistance_10 =
+          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = 10)
+
+
       ) %>%
       group_by(Asset) %>%
       mutate(
@@ -880,7 +937,26 @@ create_technical_indicators_daily <-
               lag(temp_price_to_open) < lag(temp_price_to_open, 2),
             1,
             0
-          )
+          ),
+
+        rolling_Bull_3_sum_25 =
+          slider::slide_dbl(.x = Bull_3, .f = ~ sum(.x, na.rm = T), .before = 25),
+
+        rolling_Bull_3_sum_50 =
+          slider::slide_dbl(.x = Bull_3, .f = ~ sum(.x, na.rm = T), .before = 50),
+
+        rolling_Bull_3_mean_25 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_25, .f = ~ mean(.x, na.rm = T), .before = 25),
+
+        rolling_Bull_3_mean_5 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_50, .f = ~ mean(.x, na.rm = T), .before = 50),
+
+        rolling_Bull_3_sd_25 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_25, .f = ~ sd(.x, na.rm = T), .before = 25),
+
+        rolling_Bull_3_sd_50 =
+          slider::slide_dbl(.x = rolling_Bull_3_sum_50, .f = ~ sd(.x, na.rm = T), .before = 50)
+
       ) %>%
       dplyr::select(
         -c(

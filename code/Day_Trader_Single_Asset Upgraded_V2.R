@@ -70,7 +70,7 @@ start_date = "2015-01-01"
 end_date = today() %>% as.character()
 
 bin_factor = NULL
-stop_value_var = 2
+stop_value_var = 7
 profit_value_var = 30
 period_var = 24
 
@@ -112,6 +112,15 @@ GBP_index <-
 AUD_index <-
   get_AUD_index_for_models(index_data = Indices_Metals_Bonds[[1]])
 
+COMMOD_index <-
+  get_COMMOD_index_for_models(index_data = Indices_Metals_Bonds[[1]])
+
+USD_STOCKS_index <-
+  get_USD_AND_STOCKS_index_for_models(index_data = Indices_Metals_Bonds[[1]])
+
+NZD_index <-
+  get_NZD_index_for_models(index_data = Indices_Metals_Bonds[[1]])
+
 interest_rates <-
   get_interest_rates(
     raw_macro_data = raw_macro_data,
@@ -142,6 +151,24 @@ gdp_data <-
 
 unemp_data <-
   get_unemp_countries(
+    raw_macro_data = raw_macro_data,
+    lag_days = 1
+  )
+
+manufac_pmi <-
+  get_manufac_countries(
+    raw_macro_data = raw_macro_data,
+    lag_days = 1
+  )
+
+USD_Macro <-
+  get_additional_USD_Macro(
+  raw_macro_data = raw_macro_data,
+  lag_days = 1
+)
+
+EUR_Macro <-
+  get_additional_EUR_Macro(
     raw_macro_data = raw_macro_data,
     lag_days = 1
   )
@@ -359,7 +386,7 @@ for (i in 1:length(assets_to_analyse)) {
       asset_data = Indices_Metals_Bonds,
       stop_factor = stop_value_var,
       profit_factor = profit_value_var,
-      risk_dollar_value = 9,
+      risk_dollar_value = 15,
       trade_direction = "Long",
       currency_conversion = currency_conversion,
       asset_infor = asset_infor
@@ -403,7 +430,7 @@ model_data_store_db <-
   connect_db(model_data_store_path)
 
 date_seq_simulations <-
-  seq(as_date("2020-06-01"), as_date("2024-08-01"), "6 month")
+  seq(as_date("2022-01-01"), as_date("2024-08-01"), "6 month")
 c = 0
 redo_db = TRUE
 
@@ -427,11 +454,15 @@ for (k in 1:1) {
         All_Daily_Data = All_Daily_Data,
         Asset_of_interest = Asset_of_interest,
         actual_wins_losses = actual_wins_losses,
+
         interest_rates = interest_rates,
         cpi_data = cpi_data,
         sentiment_index = sentiment_index,
         gdp_data = gdp_data,
         unemp_data = unemp_data,
+        manufac_pmi = manufac_pmi,
+        USD_Macro = USD_Macro,
+        EUR_Macro = EUR_Macro,
 
         equity_index = equity_index,
         gold_index = gold_index,
@@ -441,6 +472,9 @@ for (k in 1:1) {
         EUR_index = EUR_index,
         GBP_index = GBP_index,
         AUD_index = AUD_index,
+        COMMOD_index = COMMOD_index,
+        USD_STOCKS_index = USD_STOCKS_index,
+        NZD_index = NZD_index,
 
         countries_for_int_strength = countries_for_int_strength,
         date_train_end = date_train_end,
@@ -470,6 +504,9 @@ for (k in 1:1) {
         sentiment_index = sentiment_index,
         gdp_data = gdp_data,
         unemp_data = unemp_data,
+        manufac_pmi = manufac_pmi,
+        USD_Macro = USD_Macro,
+        EUR_Macro = EUR_Macro,
 
         equity_index = equity_index,
         gold_index = gold_index,
@@ -479,6 +516,9 @@ for (k in 1:1) {
         EUR_index = EUR_index,
         GBP_index = GBP_index,
         AUD_index = AUD_index,
+        COMMOD_index = COMMOD_index,
+        USD_STOCKS_index = USD_STOCKS_index,
+        NZD_index = NZD_index,
 
         countries_for_int_strength = countries_for_int_strength,
         date_train_end = date_train_end,
@@ -575,6 +615,351 @@ syms_in_data <-
   pull(Asset) %>%
   unique()
 
+new_post_DB <- TRUE
+pred_threshs <- seq(0, 4, 0.25)
+rolling_periods <- c(50,2000, 100)
+post_training_months <- 18
+new_sym = TRUE
+post_model_data_store_path <-
+  "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_post_model_All_Assets.db"
+post_model_data_store_db <-
+  connect_db(post_model_data_store_path)
+
+all_asset_post_model_data <-
+  indicator_data %>%
+  ungroup() %>%
+  filter(Date >= date_test_start) %>%
+  dplyr::select(-contains("_sd")) %>%
+  dplyr::select(-contains("_mean")) %>%
+  dplyr::select(Date, Asset,
+                contains("pred_"),
+                contains("period_return_")
+  ) %>%
+  mutate(
+    high_return_date =
+      case_when(
+        period_return_25_Price > 5 ~ "Detected",
+        TRUE ~ "Dont Trade"
+      )
+  ) %>%
+  mutate(
+    Equity_Asset =
+      case_when(
+        Asset %in% c("AU200_AUD", "FR40_EUR", "HK33_HKD", "EU50_EUR", "SPX500_USD",
+                     "UK100_GBP", "US2000_USD", "USB10Y_USD") ~ 1,
+        TRUE ~ 0
+      ),
+    Commod_Asset =
+      case_when(
+        Asset == "WTICO_USD"|str_detect(Asset, "XAG|XAU|XCU") ~ 1,
+        TRUE ~ 0
+      ),
+    Currency_Asset =
+      case_when(
+        Commod_Asset == 0 & Equity_Asset == 0 ~ 1,
+        TRUE ~ 0
+      ),
+    Crypto_Asset =
+      case_when(
+        str_detect(Asset, "BTC|ETH") ~ 1,
+        TRUE ~ 0
+      ),
+    Metal_Asset =
+      case_when(
+        str_detect(Asset, "XAG") ~ 1,
+        TRUE ~ 0
+      ),
+
+    Time_of_Day = hour(Date),
+    Day_of_week = wday(Date)
+  )
+
+training_data_post_model_all_assets <-
+  all_asset_post_model_data %>%
+  filter(Date <= date_test_start + months(post_training_months))
+
+lm_vars <- names(all_asset_post_model_data) %>%
+  keep(~ str_detect(.x, "pred|Time_of_Day|Day_of_week|Commod_Asset|Currency_Asset|Equity_Asset|Metal_Asset|Crypto_Asset")) %>%
+  unlist()
+
+lm_form <-
+  create_lm_formula(dependant = "period_return_24_Price", independant = lm_vars)
+
+lm_model <-
+  lm(data = training_data_post_model_all_assets%>%
+       filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+     formula = lm_form)
+
+summary(lm_model)
+
+sig_coefs <-
+  get_sig_coefs(model_object_of_interest = lm_model,
+                p_value_thresh_for_inputs = 0.25)
+
+lm_form <-
+  create_lm_formula(dependant = "period_return_35_Price", independant = sig_coefs)
+
+lm_model <-
+  lm(data = training_data_post_model_all_assets %>%
+       filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+     formula = lm_form)
+
+summary(lm_model)
+
+glm_form <-
+  create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = lm_vars)
+
+glm_model <-
+  glm(data =training_data_post_model_all_assets%>%
+        filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+      formula = glm_form, family = binomial("logit"))
+
+summary(glm_model)
+
+sig_coefs <-
+  get_sig_coefs(model_object_of_interest = glm_model,
+                p_value_thresh_for_inputs = 0.99)
+
+glm_form <-
+  create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = sig_coefs)
+
+glm_model <-
+  glm(data = training_data_post_model_all_assets %>%
+        filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+      formula = glm_form, family = binomial("logit"))
+
+summary(glm_model)
+
+for (uu in 1:length(rolling_periods) ) {
+
+  testing_data_post_all_assets <-
+    all_asset_post_model_data  %>%
+    filter(Date > date_test_start + months(post_training_months))
+
+  testing_data_post_all_assets <-
+    testing_data_post_all_assets %>%
+    mutate(
+      Post_Pred = predict.glm(object = glm_model,
+                              newdata = testing_data_post_all_assets,
+                              type = "response"),
+      Post_Pred_lin = predict.lm(object = lm_model,
+                                 newdata = testing_data_post_all_assets)
+    ) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    ungroup() %>%
+    group_by(Asset) %>%
+    mutate(
+      rolling_pred_mean =
+        slider::slide_dbl(
+          .x = Post_Pred,
+          .f = ~mean(.x, na.rm = T),
+          .before = rolling_periods[uu]),
+
+      rolling_pred_sd =
+        slider::slide_dbl(
+          .x = Post_Pred,
+          .f = ~sd(.x, na.rm = T),
+          .before = rolling_periods[uu]),
+
+      rolling_pred_mean_lin =
+        slider::slide_dbl(
+          .x = Post_Pred_lin,
+          .f = ~mean(.x, na.rm = T),
+          .before = rolling_periods[uu]),
+
+      rolling_pred_sd_lin =
+        slider::slide_dbl(
+          .x = Post_Pred_lin,
+          .f = ~sd(.x, na.rm = T),
+          .before = rolling_periods[uu])
+    )
+
+  for (kk in 1:length(pred_threshs) ) {
+
+    post_return_raw <-
+      testing_data_post_all_assets %>%
+      mutate(
+        trade_col_Post_Pred_Bin =
+          case_when(
+            Post_Pred >= rolling_pred_mean + rolling_pred_sd*pred_threshs[kk] ~ "Long",
+            TRUE ~ "No Trades"
+          ),
+        trade_col_Post_Pred_Lin =
+          case_when(
+            Post_Pred_lin >= rolling_pred_mean_lin + rolling_pred_sd_lin*pred_threshs[kk] ~ "Long",
+            TRUE ~ "No Trades"
+          )
+      ) %>%
+      dplyr::select(Date, Asset,trade_col_Post_Pred_Bin,
+                    trade_col_Post_Pred_Lin, Post_Pred, contains("period_return_")) %>%
+      pivot_longer(-c(Date, Asset,
+                      trade_col_Post_Pred_Bin,
+                      trade_col_Post_Pred_Lin, Post_Pred),
+                   values_to = "Return", names_to = "Period") %>%
+      mutate(
+        Period = str_remove_all(Period, "[A-Z]+|[a-z]+|_") %>% str_trim() %>% as.numeric()
+      ) %>%
+      mutate(
+        win = ifelse(Return > 0, 1, 0)
+      ) %>%
+      mutate(
+        pred_thresh = pred_threshs[kk],
+        rolling_periods = rolling_periods[uu],
+        post_training_months = post_training_months
+      )
+
+    post_bin_return <-
+      post_return_raw %>%
+      group_by(Asset, trade_col_Post_Pred_Bin, Period,
+               pred_thresh, rolling_periods, post_training_months) %>%
+      summarise(
+        total_trades = n_distinct(Date),
+        wins = sum(win, na.rm = T),
+        perc = wins/total_trades,
+        total_return = sum(Return, na.rm = T),
+
+        very_low_return = round( quantile(Return, 0.1, na.rm = T), 4),
+        low_return = round( quantile(Return, 0.25, na.rm = T), 4),
+        mid_return = round( quantile(Return, 0.5, na.rm = T), 4 ),
+        high_return = round( quantile(Return, 0.75, na.rm = T), 4 ),
+        very_high_return = round( quantile(Return, 0.9, na.rm = T), 4 ),
+        mean_return = mean(Return, na.rm = T)
+      )
+
+    post_lin_return <-
+      post_return_raw %>%
+      group_by(Asset, trade_col_Post_Pred_Lin, Period,
+               pred_thresh, rolling_periods, post_training_months) %>%
+      summarise(
+        total_trades = n_distinct(Date),
+        wins = sum(win, na.rm = T),
+        perc = wins/total_trades,
+        total_return = sum(Return, na.rm = T),
+
+        very_low_return = round( quantile(Return, 0.1, na.rm = T), 4),
+        low_return = round( quantile(Return, 0.25, na.rm = T), 4),
+        mid_return = round( quantile(Return, 0.5, na.rm = T), 4 ),
+        high_return = round( quantile(Return, 0.75, na.rm = T), 4 ),
+        very_high_return = round( quantile(Return, 0.9, na.rm = T), 4 ),
+        mean_return = mean(Return, na.rm = T)
+      )
+
+    if(new_post_DB == TRUE) {
+
+      write_table_sql_lite(.data = post_bin_return,
+                           table_name = "raw_post_model_bin_analysis_sum",
+                           conn = post_model_data_store_db,
+                           overwrite_true = TRUE )
+
+      write_table_sql_lite(.data = post_lin_return,
+                           table_name = "raw_post_model_lin_analysis_sum",
+                           conn = post_model_data_store_db,
+                           overwrite_true = TRUE )
+
+      new_post_DB = FALSE
+    }
+
+    if(new_post_DB == FALSE) {
+
+      append_table_sql_lite(.data = post_bin_return,
+                            table_name = "raw_post_model_bin_analysis_sum",
+                            conn = post_model_data_store_db)
+
+      append_table_sql_lite(.data = post_lin_return,
+                            table_name = "raw_post_model_lin_analysis_sum",
+                            conn = post_model_data_store_db)
+
+      new_post_DB = FALSE
+    }
+
+  }
+
+}
+
+control_returns_lin <-
+  DBI::dbGetQuery(conn = post_model_data_store_db,
+                  statement = "SELECT * FROM raw_post_model_lin_analysis_sum") %>%
+  group_by(Asset, Period, pred_thresh, rolling_periods, post_training_months) %>%
+  summarise(wins_control = sum(wins),
+            total_return_control = sum(total_return),
+            total_trades_control = sum(total_trades)) %>%
+  mutate(perc_control = wins_control/total_trades_control) %>%
+  ungroup()
+
+post_lin_best_return <-
+  DBI::dbGetQuery(conn = post_model_data_store_db,
+                  statement = "SELECT * FROM raw_post_model_lin_analysis_sum") %>%
+  # filter(total_return > 0) %>%
+  filter(total_trades > 500) %>%
+  # filter(Period == 24) %>%
+  group_by(Asset, trade_col_Post_Pred_Lin) %>%
+  slice_max(total_return)%>%
+  ungroup() %>%
+  left_join(control_returns_lin) %>%
+  dplyr::select(Asset,pred_thresh ,trade_col_Post_Pred_Lin, total_return,
+                total_return_control, perc, perc_control,
+                total_trades_control,
+                total_trades) %>%
+  mutate(
+    return_scale_factor = total_trades/total_trades_control,
+        return_edge = total_return - return_scale_factor*total_return_control,
+         perc_edge = round(perc - perc_control, 5)
+    ) %>%
+  dplyr::select(-return_scale_factor)
+
+post_lin_best_perc <-
+  DBI::dbGetQuery(conn = post_model_data_store_db,
+                  statement = "SELECT * FROM raw_post_model_lin_analysis_sum") %>%
+  # filter(total_return > 0) %>%
+  filter(total_trades > 500) %>%
+  # filter(Period == 24) %>%
+  group_by(Asset, trade_col_Post_Pred_Lin) %>%
+  slice_max(perc) %>%
+  group_by(Asset, trade_col_Post_Pred_Lin) %>%
+  slice_max(total_return) %>%
+  left_join(control_returns_lin) %>%
+  dplyr::select(Asset,pred_thresh ,trade_col_Post_Pred_Lin, total_return,
+                total_return_control, perc, perc_control,
+                total_trades_control,
+                total_trades) %>%
+  mutate(return_edge = total_return - total_return_control,
+         perc_edge = round(perc - perc_control, 5))
+
+control_returns_bin <-
+  DBI::dbGetQuery(conn = post_model_data_store_db,
+                  statement = "SELECT * FROM raw_post_model_bin_analysis_sum") %>%
+  group_by(Asset, Period, pred_thresh, rolling_periods, post_training_months) %>%
+  summarise(wins_control = sum(wins),
+            total_return_control = sum(total_return),
+            total_trades_control = sum(total_trades)) %>%
+  mutate(perc_control = wins_control/total_trades_control) %>%
+  ungroup()
+
+post_bin_best_return <-
+  DBI::dbGetQuery(conn = post_model_data_store_db,
+                  statement = "SELECT * FROM raw_post_model_bin_analysis_sum") %>%
+  filter(total_trades > 100) %>%
+  group_by(Asset, trade_col_Post_Pred_Bin) %>%
+  slice_max(perc) %>%
+  group_by(Asset, trade_col_Post_Pred_Bin) %>%
+  slice_max(total_return) %>%
+  left_join(control_returns_bin) %>%
+  dplyr::select(Asset,pred_thresh ,trade_col_Post_Pred_Bin, total_return,
+                total_return_control, perc, perc_control,
+                total_trades_control,
+                total_trades) %>%
+  mutate(
+    return_scale_factor = total_trades/total_trades_control,
+    return_edge = total_return - return_scale_factor*total_return_control,
+    perc_edge = round(perc - perc_control, 5)
+  ) %>%
+  dplyr::select(-return_scale_factor)
+
+DBI::dbDisconnect(post_model_data_store_db)
+rm(post_model_data_store_db)
+
+#-------------------------------------------Asset Specific Models
 post_model_accumulator <- list()
 post_model_LM_accumulator <- list()
 
@@ -588,6 +973,7 @@ new_post_DB <- TRUE
 pred_threshs <- seq(0, 4, 0.25)
 rolling_periods <- c(50,2000, 100)
 post_training_months <- 18
+new_sym = TRUE
 
 for (oo in 1:length(syms_in_data) ) {
 
@@ -620,7 +1006,7 @@ for (oo in 1:length(syms_in_data) ) {
 
       high_return_date =
         case_when(
-          period_return_35_Price > 0 & period_return_25_Price > 0 & period_return_15_Price > 0 ~ "Detected",
+          period_return_35_Price > 5 & period_return_25_Price > 2.5 & period_return_15_Price > 0 ~ "Detected",
           TRUE ~ "Dont Trade"
         )
     )
@@ -637,19 +1023,22 @@ for (oo in 1:length(syms_in_data) ) {
     create_lm_formula(dependant = "period_return_35_Price", independant = lm_vars)
 
   lm_model <-
-    lm(data = training_data_post_model, formula = lm_form)
+    lm(data = training_data_post_model%>%
+         filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+       formula = lm_form)
 
   summary(lm_model)
 
   sig_coefs <-
     get_sig_coefs(model_object_of_interest = lm_model,
-                  p_value_thresh_for_inputs = 0.9)
+                  p_value_thresh_for_inputs = 0.25)
 
   lm_form <-
     create_lm_formula(dependant = "period_return_35_Price", independant = sig_coefs)
 
   lm_model <-
-    lm(data = training_data_post_model,
+    lm(data = training_data_post_model %>%
+         filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
        formula = lm_form)
 
   post_model_LM_accumulator[[oo]] <- lm_model
@@ -660,7 +1049,8 @@ for (oo in 1:length(syms_in_data) ) {
     create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = lm_vars)
 
   glm_model <-
-    glm(data =training_data_post_model,
+    glm(data =training_data_post_model%>%
+          filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
         formula = glm_form, family = binomial("logit"))
 
   summary(glm_model)
@@ -673,7 +1063,8 @@ for (oo in 1:length(syms_in_data) ) {
     create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = sig_coefs)
 
   glm_model <-
-    glm(data = training_data_post_model,
+    glm(data = training_data_post_model %>%
+          filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
         formula = glm_form, family = binomial("logit"))
 
   summary(glm_model)
@@ -795,11 +1186,31 @@ for (oo in 1:length(syms_in_data) ) {
           mean_return = mean(Return, na.rm = T)
         )
 
-      if(new_post_DB == TRUE) {
+      if(new_sym == TRUE) {
+
+        raw_db_temp <-
+          glue::glue("C:/Users/nikhi/Documents/trade_data/Single_Asset_V2_Adv_Post_Results_Asset/{syms_in_data[oo]}_raw_post.db")
+
+        raw_db_temp <-
+          connect_db(raw_db_temp)
+
         write_table_sql_lite(.data = post_return_raw,
                              table_name = "raw_post_model_analysis_raw",
-                             conn = post_model_data_store_db,
+                             conn = raw_db_temp,
                              overwrite_true = TRUE )
+
+        new_sym = FALSE
+
+      }
+
+
+      if(new_sym == FALSE) {
+        append_table_sql_lite(.data = post_return_raw,
+                              table_name = "raw_post_model_analysis_raw",
+                              conn = raw_db_temp)
+        }
+
+      if(new_post_DB == TRUE) {
 
         write_table_sql_lite(.data = post_bin_return,
                              table_name = "raw_post_model_bin_analysis_sum",
@@ -815,9 +1226,6 @@ for (oo in 1:length(syms_in_data) ) {
       }
 
       if(new_post_DB == FALSE) {
-        append_table_sql_lite(.data = post_return_raw,
-                             table_name = "raw_post_model_analysis_raw",
-                             conn = post_model_data_store_db)
 
         append_table_sql_lite(.data = post_bin_return,
                              table_name = "raw_post_model_bin_analysis_sum",
@@ -834,6 +1242,12 @@ for (oo in 1:length(syms_in_data) ) {
 
   }
 
+  DBI::dbDisconnect(raw_db_temp)
+  rm(raw_db_temp)
+  gc()
+
+  new_sym = TRUE
+
 }
 
 post_bin_best_return <-
@@ -842,19 +1256,126 @@ post_bin_best_return <-
   group_by(Asset, trade_col_Post_Pred_Bin) %>%
   slice_max(total_return)
 
+control_returns_lin <-
+  DBI::dbGetQuery(conn = post_model_data_store_db,
+                  statement = "SELECT * FROM raw_post_model_lin_analysis_sum") %>%
+  group_by(Asset, Period, pred_thresh, rolling_periods, post_training_months) %>%
+  summarise(wins_control = sum(wins),
+            total_return_control = sum(total_return),
+            total_trades_control = sum(total_trades)) %>%
+  mutate(perc_control = wins_control/total_trades_control) %>%
+  ungroup()
+
 post_lin_best_return <-
   DBI::dbGetQuery(conn = post_model_data_store_db,
                   statement = "SELECT * FROM raw_post_model_lin_analysis_sum") %>%
+  # filter(total_return > 0) %>%
+  filter(total_trades > 500) %>%
+  # filter(Period == 24) %>%
   group_by(Asset, trade_col_Post_Pred_Lin) %>%
-  slice_max(total_return)
-
-post_bin_best_perc <-
-  DBI::dbGetQuery(conn = post_model_data_store_db,
-                  statement = "SELECT * FROM raw_post_model_bin_analysis_sum") %>%
-  # filter(total_trades >= 500) %>%
-  group_by(Asset, trade_col_Post_Pred_Bin) %>%
   slice_max(perc) %>%
-  group_by(Asset, trade_col_Post_Pred_Bin) %>%
-  slice_max( total_return)%>%
-  group_by(Asset, trade_col_Post_Pred_Bin) %>%
-  slice_max(total_trades)
+  group_by(Asset, trade_col_Post_Pred_Lin) %>%
+  slice_max(total_return) %>%
+  left_join(control_returns_lin) %>%
+  dplyr::select(Asset,pred_thresh ,trade_col_Post_Pred_Lin, total_return,
+                total_return_control, perc, perc_control,
+                total_trades_control,
+                total_trades) %>%
+  mutate(return_edge = total_return - total_return_control,
+         perc_edge = round(perc - perc_control, 5))
+
+best_distinct_trades <-
+  post_lin_best_return %>%
+  distinct(Asset, trade_col_Post_Pred_Lin,
+           Period, rolling_periods, pred_thresh,
+           total_return) %>%
+  filter(total_return > 0)
+
+for (hh in 1:dim(best_distinct_trades)[1]) {
+
+  pred_thresh_temp <-
+    best_distinct_trades$pred_thresh[hh] %>% as.numeric()
+  rolling_periods_temp <-
+    best_distinct_trades$rolling_periods[hh] %>% as.numeric()
+  Period_temp <-
+    best_distinct_trades$Period[hh] %>% as.numeric()
+  Asset_temp <-
+    best_distinct_trades$Asset[hh] %>% as.character()
+
+  sql_statement <-
+  glue::glue("SELECT [Date],[Asset],[Return] FROM raw_post_model_analysis_raw
+   WHERE pred_thresh = {pred_thresh_temp} AND
+   rolling_periods = {rolling_periods_temp} AND
+   Period = {Period_temp} AND
+   Asset = '{Asset_temp}'")
+
+  return_asset_data_temp <-
+    DBI::dbGetQuery(conn = post_model_data_store_db,
+                    statement = sql_statement) %>%
+    mutate(
+      Date = as_datetime(Date)
+    )
+
+
+}
+
+
+#-------------------------------Portfolio Analyser
+#--------------------------------------------------------------
+
+start_date = "2025-11-01"
+end_date = "2025-12-12"
+
+Indices_Metals_Bonds <-
+  get_Port_Buy_Data(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = end_date,
+    time_frame = "H1"
+  )
+
+distinct_assets <-
+  Indices_Metals_Bonds[[1]] %>%
+  pull(Asset) %>%
+  unique()
+
+port_return_list <- list()
+
+for (i in 1:length(distinct_assets)) {
+
+  trades_to_tag_with_returns_long <-
+    Indices_Metals_Bonds[[1]] %>%
+    ungroup() %>%
+    distinct(Asset, Date) %>%
+    mutate(trade_col = "Long") %>%
+    filter(trade_col == "Long")
+
+  port_return_list[[i]] <-
+    get_portfolio_model(
+      asset_data = Indices_Metals_Bonds,
+      asset_of_interest = distinct_assets[i],
+      tagged_trades = trades_to_tag_with_returns_long,
+      stop_factor_long = 6,
+      profit_factor_long = 20,
+      risk_dollar_value_long = 5,
+      end_period = 20,
+      time_frame = "H1"
+    )
+
+}
+
+port_return_dfr <-
+  port_return_list %>%
+  map_dfr( ~
+             .x %>%
+             dplyr::select(adjusted_Date, Asset, Return, Date, close_Date, period_since_open)
+  ) %>%
+  ungroup() %>%
+  group_by(adjusted_Date, Asset, Date,close_Date ) %>%
+  summarise(Return = sum(Return),
+            trades_open = n_distinct(Date)) %>%
+  group_by(adjusted_Date) %>%
+  mutate(
+    Total_Return = sum(Return)
+  )
+
