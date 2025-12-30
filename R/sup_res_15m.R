@@ -608,30 +608,87 @@ create_technical_indicators <-
               Price < Open,
             1,
             0
-          ),
+          )
 
+      ) %>%
+      mutate(
+        across(.cols = c(High_Support, High_Resistance, High_Support2, High_Resistance2),
+               .fns = ~ ifelse(
+                 is.infinite(.),
+                 NA,
+                 .
+               )
+               )
+      ) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      fill(c(High_Support, High_Resistance, High_Support2, High_Resistance2),
+           .direction = "down") %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        t1 =
+          ifelse(is.infinite(temp_high_to_price/temp_high_to_low),
+                 lag(temp_high_to_price)/lag(temp_high_to_low),
+                 temp_high_to_price/temp_high_to_low),
+        t1 =
+          ifelse(is.infinite(t1),
+                 lag(t1),
+                 t1),
+        t1 =
+          ifelse(is.infinite(t1),
+                 lag(t1),
+                 t1),
+        t1 =
+          ifelse(is.infinite(t1),
+                 lag(t1),
+                 t1),
+        t1 =
+          ifelse(is.infinite(t1),
+                 NA,
+                 t1),
         rolling_High_Support_50 =
-          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+          slider::slide_dbl(.x = t1,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 50),
 
         rolling_High_Support_100 =
-          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+          slider::slide_dbl(.x = t1,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 100),
 
+        t2 =
+          ifelse(is.infinite(temp_price_to_low/temp_high_to_low),
+                 lag(temp_price_to_low)/lag(temp_high_to_low),
+                 temp_price_to_low/temp_high_to_low),
+        t2 =
+          ifelse(is.infinite(t2),
+                 lag(t2),
+                 t2),
+        t2 =
+          ifelse(is.infinite(t2),
+                 lag(t2),
+                 t2),
+        t2 =
+          ifelse(is.infinite(t2),
+                 lag(t2),
+                 t2),
+        t2 =
+          ifelse(is.infinite(t2),
+                 NA,
+                 t2),
         rolling_High_Resistance_50 =
-          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+          slider::slide_dbl(.x = t2,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 50),
 
         rolling_High_Resistance_100 =
-          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+          slider::slide_dbl(.x = t2,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 100)
-
       ) %>%
-      group_by(Asset) %>%
+      dplyr::select(-t1, -t2) %>%
       mutate(
 
         Bull_3 =
@@ -709,6 +766,7 @@ create_technical_indicators <-
         asset_data_combined = asset_data,
         training_perc = 1,
         sd_divides = seq(0.1,2.5,0.1),
+        # sd_divides = seq(0.25,2.5,0.25),
         rolling_period = 50,
         markov_col_on_interest_pos = "Markov_Point_Pos_roll_sum_1.5",
         markov_col_on_interest_neg = "Markov_Point_Neg_roll_sum_-1.5",
@@ -721,7 +779,8 @@ create_technical_indicators <-
 
     final_tibble <-
       returned %>%
-      left_join(markov_data)
+      left_join(markov_data) %>%
+
 
     return(final_tibble)
 
@@ -840,6 +899,9 @@ create_technical_indicators_daily <-
         temp_price_to_open_sd = sd(temp_price_to_open, na.rm = T)
       ) %>%
       ungroup() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
       mutate(
 
         High_Support =
@@ -874,10 +936,36 @@ create_technical_indicators_daily <-
               Price < Open,
             1,
             0
-          ),
+          )
 
+      ) %>%
+      ungroup() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        t1 =
+          ifelse(is.infinite(temp_high_to_price/temp_high_to_low),
+                 lag(temp_high_to_price)/lag(temp_high_to_low),
+                 temp_high_to_price/temp_high_to_low),
+        t1 =
+          ifelse(is.infinite(t1),
+                 lag(t1),
+                 t1),
+        t1 =
+          ifelse(is.infinite(t1),
+                 lag(t1),
+                 t1),
+        t1 =
+          ifelse(is.infinite(t1),
+                 lag(t1),
+                 t1),
+        t1 =
+          ifelse(is.infinite(t1),
+                 NA,
+                 t1),
         rolling_High_Support_5 =
-          slider::slide_dbl(.x = temp_high_to_price/temp_high_to_low,
+          slider::slide_dbl(.x = t1,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 5),
 
@@ -886,17 +974,36 @@ create_technical_indicators_daily <-
                             .f = ~ mean(.x, na.rm = T),
                             .before = 10),
 
+        t2 =
+          ifelse(is.infinite(temp_price_to_low/temp_high_to_low),
+                 lag(temp_price_to_low)/lag(temp_high_to_low),
+                 temp_price_to_low/temp_high_to_low),
+        t2 =
+          ifelse(is.infinite(t2),
+                 lag(t2),
+                 t2),
+        t2 =
+          ifelse(is.infinite(t2),
+                 lag(t2),
+                 t2),
+        t2 =
+          ifelse(is.infinite(t2),
+                 lag(t2),
+                 t2),
+        t2 =
+          ifelse(is.infinite(t2),
+                 NA,
+                 t2),
+
         rolling_High_Resistance_5 =
-          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+          slider::slide_dbl(.x = t2,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 5),
 
         rolling_High_Resistance_10 =
-          slider::slide_dbl(.x = temp_price_to_low/temp_high_to_low,
+          slider::slide_dbl(.x = t2,
                             .f = ~ mean(.x, na.rm = T),
                             .before = 10)
-
-
       ) %>%
       group_by(Asset) %>%
       mutate(

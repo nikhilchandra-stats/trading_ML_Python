@@ -4738,7 +4738,9 @@ prepare_macro_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = macro_indicator_model,
-                      p_value_thresh_for_inputs = 0.25)
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       rm(macro_indicator_model)
       gc()
@@ -4774,7 +4776,9 @@ prepare_macro_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = macro_indicator_model_lin,
-                      p_value_thresh_for_inputs = 0.25)
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       macro_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -5885,7 +5889,9 @@ prepare_daily_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = daily_indicator_model,
-                      p_value_thresh_for_inputs = 0.25)
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       rm(daily_indicator_model)
       gc()
@@ -5921,7 +5927,9 @@ prepare_daily_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = daily_indicator_model_lin,
-                      p_value_thresh_for_inputs = 0.25)
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       daily_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -6111,7 +6119,9 @@ prepare_copula_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = copula_indicator_model,
-                      p_value_thresh_for_inputs = 0.25)
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       rm(copula_indicator_model)
       gc()
@@ -6147,7 +6157,9 @@ prepare_copula_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = copula_indicator_model_lin,
-                      p_value_thresh_for_inputs = 0.25)
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       copula_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -6454,7 +6466,9 @@ prepare_technical_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = technical_indicator_model,
-                      p_value_thresh_for_inputs = 0.15)
+                      # p_value_thresh_for_inputs = 0.15
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       rm(technical_indicator_model)
       gc()
@@ -6490,7 +6504,9 @@ prepare_technical_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = technical_indicator_model_lin,
-                      p_value_thresh_for_inputs = 0.15)
+                      # p_value_thresh_for_inputs = 0.15
+                      p_value_thresh_for_inputs = 0.9
+                      )
 
       technical_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -6937,3 +6953,644 @@ get_additional_EUR_Macro <-
     return(EUR_Macro)
 
   }
+
+
+#' get_indicator_pred_from_db
+#'
+#' @param model_data_store_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_indicator_pred_from_db <-
+  function(
+    model_data_store_path =
+      "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store.db"
+  ) {
+
+    model_data_store_db <-
+      connect_db(model_data_store_path)
+
+    indicator_data <-
+      DBI::dbGetQuery(conn = model_data_store_db,
+                      statement = "SELECT * FROM single_asset_improved") %>%
+      distinct() %>%
+      mutate(
+        Date = as_datetime(Date),
+        test_end_date = as_date(test_end_date),
+        date_train_end = as_date(date_train_end),
+        date_train_phase_2_end = as_date(date_train_phase_2_end),
+        date_test_start = as_date(date_test_start),
+      ) %>%
+      filter(sim_index == 1) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      filter(Date >= (date_test_start + days(1)) )
+
+    DBI::dbDisconnect(model_data_store_db)
+    rm(model_data_store_db)
+    gc()
+
+    return(indicator_data)
+
+  }
+
+#' prepare_post_ss_gen2_model
+#'
+#' @param indicator_data
+#' @param new_post_DB
+#' @param pred_threshs
+#' @param rolling_periods
+#' @param post_training_months
+#' @param new_sym
+#' @param post_model_data_save_path
+#' @param dependant_var
+#' @param dependant_threshold
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_post_ss_gen2_model <-
+  function(
+    indicator_data = indicator_data,
+    new_post_DB = TRUE,
+    new_sym = TRUE,
+    post_model_data_save_path =
+      "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv/",
+    dependant_var = "period_return_24_Price",
+    dependant_threshold = 5,
+    training_date_start = "2023-01-04",
+    training_date_end = "2023-07-01"
+  ) {
+
+    indicator_data <-
+      indicator_data %>%
+      filter(
+        Date >= training_date_start
+      ) %>%
+      filter(
+        Date <= training_date_end
+      ) %>%
+      dplyr::select(-contains("_sd")) %>%
+      dplyr::select(-contains("_mean")) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(contains("pred_"), .direction = "down") %>%
+      ungroup()
+
+    all_asset_post_model_data <-
+      indicator_data %>%
+      ungroup() %>%
+      dplyr::select(-contains("_sd")) %>%
+      dplyr::select(-contains("_mean")) %>%
+      dplyr::select(Date, Asset,
+                    date_test_start,
+                    contains("pred_"),
+                    contains("period_return_")
+      ) %>%
+      mutate(
+        high_return_date =
+          case_when(
+            !!as.name(dependant_var) > dependant_threshold ~ "Detected",
+            TRUE ~ "Dont Trade"
+          )
+      ) %>%
+      mutate(
+        Equity_Asset =
+          case_when(
+            Asset %in% c("AU200_AUD", "FR40_EUR", "HK33_HKD", "EU50_EUR", "SPX500_USD",
+                         "UK100_GBP", "US2000_USD", "USB10Y_USD") ~ 1,
+            TRUE ~ 0
+          ),
+        Commod_Asset =
+          case_when(
+            Asset == "WTICO_USD"|str_detect(Asset, "XAG|XAU|XCU") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_AUD =
+          case_when(
+            str_detect(Asset, "AUD") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_NZD =
+          case_when(
+            str_detect(Asset, "NZD") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_JPY =
+          case_when(
+            str_detect(Asset, "JPY") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_GBP =
+          case_when(
+            str_detect(Asset, "GBP") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_EUR =
+          case_when(
+            str_detect(Asset, "EUR") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_USD =
+          case_when(
+            str_detect(Asset, "USD") ~ 1,
+            TRUE ~ 0
+          ),
+        Crypto_Asset =
+          case_when(
+            str_detect(Asset, "BTC|ETH") ~ 1,
+            TRUE ~ 0
+          ),
+        Metal_Asset =
+          case_when(
+            str_detect(Asset, "XAG") ~ 1,
+            TRUE ~ 0
+          ),
+
+        Time_of_Day = hour(Date),
+        Day_of_week = wday(Date)
+      )
+
+    training_data_post_model_all_assets <- all_asset_post_model_data
+
+    lm_vars <- names(all_asset_post_model_data) %>%
+      keep(~ str_detect(.x, "pred|Time_of_Day|Day_of_week|Commod_Asset|Currency_Asset|Equity_Asset|Metal_Asset|Crypto_Asset")) %>%
+      unlist()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = lm_vars)
+
+    lm_model <-
+      lm(data = training_data_post_model_all_assets%>%
+           filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+         formula = lm_form)
+
+    summary(lm_model)
+
+    saveRDS(object = lm_model,
+            file =
+              glue::glue("{post_model_data_save_path}/LM_Post_All_{dependant_var}.RDS")
+            )
+
+    sig_coefs <-
+      get_sig_coefs(model_object_of_interest = lm_model,
+                    p_value_thresh_for_inputs = 0.99)
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = sig_coefs)
+
+    lm_model <-
+      lm(data = training_data_post_model_all_assets %>%
+           filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+         formula = lm_form)
+
+    summary(lm_model)
+
+    glm_form <-
+      create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = lm_vars)
+
+    glm_model <-
+      glm(data =training_data_post_model_all_assets%>%
+            filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+          formula = glm_form, family = binomial("logit"))
+
+    summary(glm_model)
+
+    sig_coefs <-
+      get_sig_coefs(model_object_of_interest = glm_model,
+                    p_value_thresh_for_inputs = 0.99)
+
+    glm_form <-
+      create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = sig_coefs)
+
+    glm_model <-
+      glm(data = training_data_post_model_all_assets %>%
+            filter(if_all(contains("pred"), ~ !is.nan(.) & !is.infinite(.) & !is.na(.)  )),
+          formula = glm_form, family = binomial("logit"))
+
+    summary(glm_model)
+
+    saveRDS(object = glm_model,
+            file =
+              glue::glue("{post_model_data_save_path}/GLM_Post_All_{dependant_var}_bin_{dependant_threshold}.RDS")
+    )
+
+  }
+
+#' read_post_models_and_get_preds
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+read_post_models_and_get_preds <-
+  function(
+    indicator_data = indicator_data,
+    post_model_data_save_path =
+      "C:/Users/nikhi/Documents/trade_data/single_asset_models_v2_adv/",
+    test_date_start = "2023-08-01",
+    test_date_end = today(),
+    dependant_var = "period_return_24_Price",
+    dependant_threshold = 5
+    ) {
+
+    indicator_data_internal <-
+      indicator_data %>%
+      dplyr::select(-test_end_date) %>%
+      # filter(
+      #   Date >=test_date_start,
+      #   Date <= test_date_end
+      # )  %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      fill(contains("pred_"), .direction = "down") %>%
+      ungroup()
+
+    all_asset_post_model_data <-
+      indicator_data_internal %>%
+      ungroup() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      ungroup() %>%
+      dplyr::select(-contains("_sd")) %>%
+      dplyr::select(-contains("_mean")) %>%
+      dplyr::select(Date, Asset,
+                    contains("pred_"),
+                    contains("period_return_")
+      ) %>%
+      mutate(
+        high_return_date =
+          case_when(
+            !!as.name(dependant_var) > dependant_threshold ~ "Detected",
+            TRUE ~ "Dont Trade"
+          )
+      ) %>%
+      mutate(
+        Equity_Asset =
+          case_when(
+            Asset %in% c("AU200_AUD", "FR40_EUR", "HK33_HKD", "EU50_EUR", "SPX500_USD",
+                         "UK100_GBP", "US2000_USD", "USB10Y_USD") ~ 1,
+            TRUE ~ 0
+          ),
+        Commod_Asset =
+          case_when(
+            Asset == "WTICO_USD"|str_detect(Asset, "XAG|XAU|XCU") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_AUD =
+          case_when(
+            str_detect(Asset, "AUD") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_NZD =
+          case_when(
+            str_detect(Asset, "NZD") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_JPY =
+          case_when(
+            str_detect(Asset, "JPY") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_GBP =
+          case_when(
+            str_detect(Asset, "GBP") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_EUR =
+          case_when(
+            str_detect(Asset, "EUR") ~ 1,
+            TRUE ~ 0
+          ),
+        Currency_Asset_USD =
+          case_when(
+            str_detect(Asset, "USD") ~ 1,
+            TRUE ~ 0
+          ),
+        Crypto_Asset =
+          case_when(
+            str_detect(Asset, "BTC|ETH") ~ 1,
+            TRUE ~ 0
+          ),
+        Metal_Asset =
+          case_when(
+            str_detect(Asset, "XAG") ~ 1,
+            TRUE ~ 0
+          ),
+
+        Time_of_Day = hour(Date),
+        Day_of_week = wday(Date)
+      )
+
+    lin_models_in_path <-
+      fs::dir_info(post_model_data_save_path) %>%
+      filter(str_detect(path, "LM_Post_All_")) %>%
+      pull(path)
+
+    returned_dat <-
+      all_asset_post_model_data
+
+      for (j in 1:length(lin_models_in_path)) {
+
+        model_temp <-
+          readRDS(lin_models_in_path[j])
+
+        model_type =
+          ifelse( str_detect(lin_models_in_path[j], "GLM"), "GLM", "LM")
+
+        period_return <-
+          lin_models_in_path[j] %>%
+          str_extract( "period_return_[0-9]+_Price") %>%
+          str_remove_all("\\.RDS") %>%
+          str_trim()
+
+        preds <-
+          predict(object = model_temp,
+                  newdata = all_asset_post_model_data,
+                  type = "response")
+
+        returned_dat <-
+          returned_dat %>%
+          mutate(
+            !!as.name( glue::glue("pred_{model_type}_{period_return}")) :=  preds
+          )
+
+
+      }
+
+    returned_dat <-
+      returned_dat %>%
+      filter(
+        Date >=test_date_start,
+        Date <= test_date_end
+      )
+
+    return(returned_dat)
+
+  }
+
+
+#' get_rolling_post_preds
+#'
+#' @param post_pred_data
+#' @param rolling_periods
+#' @param test_date_start
+#' @param test_date_end
+#' @param pred_price_cols
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_rolling_post_preds <-
+  function(
+    post_pred_data = post_preds_all,
+    rolling_periods = c(50,2000, 100),
+    test_date_start = "2023-08-01",
+    test_date_end = today(),
+    pred_price_cols =
+      c("period_return_24_Price",
+        "period_return_30_Price",
+        "period_return_44_Price")
+  ) {
+
+    post_pred_data_internal <-
+      post_pred_data %>%
+      dplyr::select(-contains("_sd")) %>%
+      dplyr::select(-contains("_mean")) %>%
+      # filter(Date >= test_date_start)%>%
+      # filter(Date <= test_date_end) %>%
+      dplyr::select(Date, Asset,
+                    contains("pred_GLM_period"),
+                    contains("pred_LM_period"),
+                    contains("period_return")
+      )
+
+    for (uu in 1:length(rolling_periods) ) {
+
+      for (ii in 1:length(pred_price_cols)) {
+
+        post_pred_data_internal <-
+          post_pred_data_internal %>%
+          group_by(Asset) %>%
+          arrange(Date, .by_group = TRUE) %>%
+          ungroup() %>%
+          group_by(Asset) %>%
+          mutate(
+            !!as.name( glue::glue("mean_{rolling_periods[uu]}_pred_GLM_{pred_price_cols[ii]}") ) :=
+              slider::slide_dbl(
+                .x = !!as.name( glue::glue("pred_GLM_{pred_price_cols[ii]}") ),
+                .f = ~mean(.x, na.rm = T),
+                .before = rolling_periods[uu]),
+
+            !!as.name( glue::glue("sd_{rolling_periods[uu]}_pred_GLM_{pred_price_cols[ii]}") ) :=
+              slider::slide_dbl(
+                .x = !!as.name( glue::glue("pred_GLM_{pred_price_cols[ii]}") ),
+                .f = ~sd(.x, na.rm = T),
+                .before = rolling_periods[uu]),
+
+            !!as.name( glue::glue("mean_{rolling_periods[uu]}_pred_LM_{pred_price_cols[ii]}") ) :=
+              slider::slide_dbl(
+                .x = !!as.name( glue::glue("pred_LM_{pred_price_cols[ii]}") ),
+                .f = ~mean(.x, na.rm = T),
+                .before = rolling_periods[uu]),
+
+            !!as.name( glue::glue("sd_{rolling_periods[uu]}_pred_LM_{pred_price_cols[ii]}") ) :=
+              slider::slide_dbl(
+                .x = !!as.name( glue::glue("pred_LM_{pred_price_cols[ii]}") ),
+                .f = ~sd(.x, na.rm = T),
+                .before = rolling_periods[uu])
+          )
+
+      }
+    }
+
+    post_pred_data_internal <-
+      post_pred_data_internal %>%
+      filter(
+        Date >=test_date_start,
+        Date <= test_date_end
+      )
+
+
+    return(post_pred_data_internal)
+
+  }
+
+
+#' get_post_pred_thresh_cols
+#'
+#' @param post_preds_all_rolling
+#' @param pred_threshs
+#' @param rolling_periods
+#' @param pred_price_cols
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_post_pred_thresh_cols <-
+  function(
+    post_preds_all_rolling = post_preds_all_rolling,
+    pred_threshs = seq(0, 3, 0.25),
+    rolling_periods = c(50,2000, 100),
+    pred_price_cols =
+      c("period_return_24_Price",
+        "period_return_30_Price",
+        "period_return_44_Price"),
+    test_date_start = "2023-08-01",
+    test_date_end = today()
+  ) {
+
+    trade_tagged_data <-
+      post_preds_all_rolling %>%
+      filter(Date >= test_date_start) %>%
+      filter(Date <= test_date_end)
+
+    for (kk in 1:length(pred_price_cols)) {
+      for (uu in 1:length(rolling_periods)) {
+        for (oo in 1:length(pred_threshs)) {
+
+          thresh <- pred_threshs[oo]
+          period_col <- pred_price_cols[kk]
+          rolling_period <- rolling_periods[uu]
+
+          pred_col_GLM <- glue::glue("pred_GLM_{period_col}")
+          pred_col_GLM_mean <- glue::glue("mean_{rolling_period}_pred_GLM_{period_col}")
+          pred_col_GLM_sd <- glue::glue("sd_{rolling_period}_pred_GLM_{period_col}")
+
+          pred_col_LM <- glue::glue("pred_LM_{period_col}")
+          pred_col_LM_mean <- glue::glue("mean_{rolling_period}_pred_LM_{period_col}")
+          pred_col_LM_sd <- glue::glue("sd_{rolling_period}_pred_LM_{period_col}")
+
+          trade_tagged_data <-
+            trade_tagged_data %>%
+            mutate(
+              !!as.name(glue::glue("trade_col_GLM_{period_col}_{rolling_period}")) :=
+                !!as.name(pred_col_GLM) >= !!as.name(pred_col_GLM_mean) + thresh*!!as.name(pred_col_GLM_sd),
+
+              !!as.name(glue::glue("trade_col_LM_{period_col}_{rolling_period}")) :=
+                !!as.name(pred_col_LM) >= !!as.name(pred_col_LM_mean) + thresh*!!as.name(pred_col_LM_sd)
+            )
+
+        }
+      }
+    }
+
+    return(trade_tagged_data)
+
+  }
+
+#' post_ss_model_analyse_condition
+#'
+#' @param tagged_trade_col_data
+#' @param return_col
+#' @param trade_statement
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+post_ss_model_analyse_condition <-
+  function(
+    tagged_trade_col_data = post_preds_all_rolling,
+    trade_statement =
+      "
+    (mean_50_pred_LM_period_return_24_Price > mean_100_pred_LM_period_return_24_Price &
+    mean_50_pred_LM_period_return_24_Price > mean_2000_pred_LM_period_return_24_Price &
+    pred_LM_period_return_24_Price > 0 &
+
+    mean_50_pred_LM_period_return_44_Price > mean_100_pred_LM_period_return_44_Price &
+    mean_50_pred_LM_period_return_44_Price > mean_2000_pred_LM_period_return_44_Price &
+    pred_LM_period_return_44_Price > 0 &
+
+    mean_50_pred_LM_period_return_30_Price > mean_100_pred_LM_period_return_30_Price &
+    mean_50_pred_LM_period_return_30_Price > mean_2000_pred_LM_period_return_30_Price &
+    pred_LM_period_return_30_Price > 0) ",
+    Asset_Var = 'EUR_USD',
+    win_thresh = 5,
+    trade_direction = "Long",
+    actual_wins_losses = actual_wins_losses
+  ) {
+
+    tagged_trade_combined <-
+      tagged_trade_col_data %>%
+      ungroup() %>%
+      filter(Asset == Asset_Var) %>%
+      mutate(
+        trade_col =
+          eval(parse(text = trade_statement)),
+        trade_col =
+          ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ", trade_direction) )
+      )  %>%
+      dplyr::select(Date, Asset,trade_col,
+                    -contains("period_return_") ) %>%
+      distinct() %>%
+      left_join(actual_wins_losses %>%
+                  dplyr::select(Date, Asset, trade_col,  contains("period_return_")) %>%
+                  filter(Asset == Asset_Var) %>%
+                  filter(trade_col == trade_direction) %>%
+                  dplyr::select(-trade_col) %>%
+                  dplyr::select(Date, Asset,  contains("period_return_")) %>%
+                  distinct()
+      ) %>%
+      pivot_longer(-c(Date, Asset, trade_col),
+                   values_to = "Returns", names_to = "Period") %>%
+      mutate(
+        Period = str_remove_all(Period, "[A-Z]+|[a-z]+|_") %>% str_trim() %>% as.numeric()
+      )
+
+    summary_data <-
+      tagged_trade_combined %>%
+      filter(!is.na(trade_col)) %>%
+      mutate(
+        wins = ifelse(
+          Returns > win_thresh,
+          1,
+          0
+        )
+      ) %>%
+      group_by(Asset, trade_col, Period) %>%
+      summarise(
+        total_trades = n_distinct(Date),
+        wins = sum(wins, na.rm = T),
+        Total_Returns = sum(Returns, na.rm = T),
+        Average_Return = mean(Returns, na.rm = T),
+        Return_25 = quantile(Returns, 0.25, na.rm = T),
+        Return_75 = quantile(Returns, 0.75, na.rm = T)
+
+      ) %>%
+      ungroup() %>%
+      mutate(
+        perc =wins/total_trades
+      ) %>%
+      mutate(
+        trade_statement = trade_statement
+      )
+
+
+    portfolio_ts <-
+      tagged_trade_combined %>%
+      filter(!is.na(trade_col)) %>%
+      group_by(trade_col, Period) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(trade_col, Period) %>%
+      mutate(
+        Total_Returns_cumulative =
+          cumsum(Returns)
+      )
+
+    return(
+      list(
+        "asset_summary" = summary_data,
+        "portfolio_ts" = portfolio_ts
+      )
+    )
+
+  }
+
