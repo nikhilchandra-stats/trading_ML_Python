@@ -91,11 +91,53 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
-start_date = "2020-06-01"
+start_date = "2016-01-01"
 end_date = today() %>% as.character()
 
 All_Daily_Data <-
-  get_DAILY_ALGO_DATA_API_REQUEST()
+  get_DAILY_ALGO_DATA_API_REQUEST(
+    c("EUR_USD", #1
+      "EU50_EUR", #2
+      "SPX500_USD", #3
+      "US2000_USD", #4
+      "USB10Y_USD", #5
+      "USD_JPY", #6
+      "AUD_USD", #7
+      "EUR_GBP", #8
+      "AU200_AUD" ,#9
+      "EUR_AUD", #10
+      "WTICO_USD", #11
+      "UK100_GBP", #12
+      "USD_CAD", #13
+      "GBP_USD", #14
+      "GBP_CAD", #15
+      "EUR_JPY", #16
+      "EUR_NZD", #17
+      "XAG_USD", #18
+      "XAG_EUR", #19
+      "XAG_AUD", #20
+      "XAG_NZD", #21
+      "HK33_HKD", #22
+      "FR40_EUR", #23
+      "BTC_USD", #24
+      "XAG_GBP", #25
+      "GBP_AUD", #26
+      "USD_SEK", #27
+      "USD_SGD", #28
+      "NZD_USD", #29
+      "GBP_NZD", #30
+      "XCU_USD", #31
+      "NATGAS_USD", #32
+      "GBP_JPY", #33
+      "SG30_SGD", #34
+      "XAU_USD", #35
+      "EUR_SEK", #36
+      "XAU_AUD", #37
+      "UK10YB_GBP", #38
+      "JP225Y_JPY", #39
+      "ETH_USD" #40
+    ) %>% unique()
+  )
 
 Indices_Metals_Bonds <- get_Port_Buy_Data(
   db_location = db_location,
@@ -154,7 +196,7 @@ mean_values_by_asset_for_loop_H1_ask <-
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
 trades_closed <- 0
-risk_dollar_value = 5
+risk_dollar_value = 10
 
 gc()
 load_custom_functions()
@@ -188,10 +230,51 @@ assets_to_use <-
     "XAG_GBP", #25
     "GBP_AUD", #26
     "USD_SEK", #27
-    "USD_SGD" #28
+    "USD_SGD", #28
+    "NZD_USD", #29
+    "GBP_NZD", #30
+    "XCU_USD", #31
+    "NATGAS_USD", #32
+    "GBP_JPY", #33
+    "SG30_SGD", #34
+    "XAU_USD", #35
+    "EUR_SEK", #36
+    "XAU_AUD", #37
+    "UK10YB_GBP", #38
+    "JP225Y_JPY", #39
+    "ETH_USD" #40
   )
 
-assets_to_use <- assets_to_use[15:28]
+trade_statement =
+  "
+  (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
+  (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
+  ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
+    pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
+  (mean_3_pred_GLM_period_return_24_Price >
+          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
+  pred_GLM_period_return_24_Price >
+            mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
+  (mean_3_pred_GLM_period_return_24_Price >
+          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
+  pred_GLM_period_return_24_Price >
+            mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
+  (mean_3_pred_GLM_period_return_24_Price >
+          mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
+  pred_GLM_period_return_24_Price >
+            mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
+    (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
+    pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
+    pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
+    (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
+      pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
+      pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
+    ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
+    ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
+    ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
+"
+
+assets_to_use <- assets_to_use[21:40]
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 
 while (current_time < end_time) {
@@ -332,129 +415,62 @@ while (current_time < end_time) {
       if( current_hour %% 2 == 0 | current_hour %% 2 != 0) {
         tictoc::tic()
         single_asset_model_trades <-
-          single_asset_model_loop_and_trade(
-            Indices_Metals_Bonds = Indices_Metals_Bonds,
+          single_asset_algo_generate_preds(
             All_Daily_Data = All_Daily_Data,
-            pre_train_date_end = today() - months(12),
-            post_train_date_start = today() - months(12),
-            test_date_start = today() - weeks(1),
-            test_end_date = today() + weeks(1),
+            Indices_Metals_Bonds = Indices_Metals_Bonds,
             raw_macro_data = raw_macro_data,
-            stop_value_var = 2,
-            profit_value_var = 15,
+            currency_conversion = currency_conversion,
+            asset_infor = asset_infor,
+            start_index = 21,
+            end_index = 40,
+            risk_dollar_value = 15,
+            trade_direction = "Long",
+            stop_value_var = 5,
+            profit_value_var = 30,
             period_var = 24,
-            start_index = 15,
-            end_index = 28,
-            save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_models_v1/"
+            bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
+            date_train_end_pre = "2023-06-01",
+            date_train_phase_2_end_pre = "2024-06-01",
+            training_date_start_post = "2024-07-04",
+            training_date_end_post = "2025-09-01",
+            test_end_date = as.character(today()),
+            post_bins_cols =
+              c("period_return_24_Price",
+                "period_return_30_Price",
+                "period_return_44_Price"),
+            post_dependant_threshold = 5,
+            post_dependant_var = "period_return_24_Price",
+            model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
+            save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2/"
           )
         tictoc::toc()
 
       }
 
-      asset_optimisation_store_path =
-        "C:/Users/nikhi/Documents/trade_data/single_asset_improved_asset_optimisation_more_cop 2.db"
-
-      asset_optimisation_store_db <-
-        connect_db(asset_optimisation_store_path)
-
-      all_model_results <-
-        DBI::dbGetQuery(conn = asset_optimisation_store_db,
-                        statement = "SELECT * FROM single_asset_improved_asset_optimisation")
-      DBI::dbDisconnect(asset_optimisation_store_db)
-      gc()
-
-      best_results <-
-        all_model_results %>%
-        filter(pred_thresh != "control") %>%
-        filter(pred_thresh > 0) %>%
-        filter(Mid > 0,
-               lower >0
-        ) %>%
-        group_by(Asset, trade_col) %>%
-        # slice_max(Win_Perc_mean, n = 10) %>%
-        # group_by(Asset, trade_col) %>%
-        # slice_max(Mid, n = 5) %>%
-        # group_by(Asset, trade_col) %>%
-        # slice_max(total_trades_mean, n = 1) %>%
-        slice_max(Mid, n = 5) %>%
-        group_by(Asset, trade_col) %>%
-        slice_max(simulations) %>%
-        group_by(Asset, trade_col) %>%
-        slice_min(pred_thresh) %>%
-        ungroup()
-
       single_asset_model_trades_filt <-
         single_asset_model_trades %>%
-        left_join(
-          best_results %>%
-            ungroup() %>%
-            dplyr::select(Asset, trade_col, pred_thresh) %>%
-            mutate(pred_thresh = as.numeric(pred_thresh))
-        ) %>%
-        filter(
-          (logit_combined_pred >= mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-             averaged_pred >=  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh >= 0)|
-            (logit_combined_pred < mean_logit_combined_pred + pred_thresh*sd_logit_combined_pred &
-               averaged_pred <  mean_averaged_pred + sd_averaged_pred*pred_thresh & pred_thresh < 0)
-        ) %>%
-        # filter(
-        #   (logit_combined_pred >= mean_logit_combined_pred + 0*sd_logit_combined_pred &
-        #      averaged_pred >=  mean_averaged_pred + sd_averaged_pred*0 & 0 >= 0)|
-        #     (logit_combined_pred < mean_logit_combined_pred + 0*sd_logit_combined_pred &
-        #        averaged_pred <  mean_averaged_pred + sd_averaged_pred*0 & 0 < 0)
-        # ) %>%
-        group_by(Asset) %>%
+        filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
         mutate(
-          abs_logit_pred = abs(logit_combined_pred)
+          trade_col =
+            eval(parse(text = trade_statement))
         ) %>%
-        group_by(Asset) %>%
-        slice_max(abs_logit_pred) %>%
-        dplyr::select(Date, Asset, trade_col, stop_factor, profit_factor, periods_ahead) %>%
-        left_join(current_prices_ask %>% dplyr::select(Asset, Price, Open, High, Low)) %>%
-        filter(!is.na(Price))  %>%
-        ungroup()
+        filter(trade_col == TRUE) %>%
+        distinct(Asset, Date)
 
-      #------Second Phase Optimisation
-      best_trade_setups <-
-        get_best_trade_setup_sa(
-          model_optimisation_store_path =
-            "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db",
-          table_to_extract = "summary_for_reg"
-        )
 
       single_asset_model_trades_filt <-
         single_asset_model_trades_filt %>%
-        filter(trade_col == "Long") %>%
-        rename(trade_col_og = trade_col) %>%
-        dplyr::select(Date, Asset, Price, Open, High, Low, trade_col_og) %>%
-        left_join(best_trade_setups[[2]] ) %>%
-        mutate(
-          trade_col_revised =
-            case_when(
-              trade_col_og == "Short" & trade_col == "Long" ~ "Short",
-              trade_col_og == "Short" & trade_col == "Short" ~ "Long",
-              TRUE ~ trade_col
-            )
+        distinct(Asset, Date) %>%
+        mutate(trade_col = "Long",
+               stop_factor = 5,
+               profit_factor = 30,
+               periods_ahead = 35,
+               required_risk = risk_dollar_value
         ) %>%
-        mutate(
-          trade_col = trade_col_revised
-        ) %>%
-        mutate(
-          risk_dollar_value =
-            case_when(
-              trade_col_og == "Short" & trade_col_revised == "Long" ~ 5,
-              trade_col_og == "Short" & trade_col_revised == "Short" ~ 5,
-
-              trade_col_og == "Long" & trade_col_revised == "Long" ~ 5,
-              trade_col_og == "Long" & trade_col_revised == "Short" ~ 5,
-            ),
-          required_risk = risk_dollar_value,
-        ) %>%
-        dplyr::select(-trade_col_revised, -trade_col_og) %>%
-        rename(
-          periods_ahead = period_var
-        ) %>%
-        distinct()  %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup() %>%
+        left_join(current_prices_ask) %>%
         mutate(
           time_diff =
             abs(as.numeric( (Date) - (current_time), units = "mins"))
@@ -463,6 +479,7 @@ while (current_time < end_time) {
         slice_min(time_diff) %>%
         ungroup() %>%
         filter(time_diff < 60)
+
 
 
       if(dim(single_asset_model_trades_filt)[1] > 0) {
@@ -490,16 +507,16 @@ while (current_time < end_time) {
           mutate(
             periods_ahead = as.character(periods_ahead)
           ) %>%
-          group_by(Asset, trade_col) %>%
-          mutate(
-            trades_to_keep =
-              case_when(
-                minimal_loss <= 1.25*required_risk ~ "Keep",
-                minimal_loss > 1.25*required_risk & profit_factor == max(profit_factor, na.rm = T) ~ "Keep"
-              )
-          ) %>%
+          # group_by(Asset, trade_col) %>%
+          # mutate(
+          #   trades_to_keep =
+          #     case_when(
+          #       minimal_loss <= 1.25*required_risk ~ "Keep",
+          #       minimal_loss > 1.25*required_risk & profit_factor == max(profit_factor, na.rm = T) ~ "Keep"
+          #     )
+          # ) %>%
           ungroup() %>%
-          filter(trades_to_keep == "Keep") %>%
+          # filter(trades_to_keep == "Keep") %>%
           distinct()
 
       } else {
