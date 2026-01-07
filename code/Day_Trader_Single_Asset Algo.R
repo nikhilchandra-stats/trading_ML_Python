@@ -148,12 +148,12 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
 
 
 Indices_Metals_Bonds[[2]] <- NULL
-Indices_Metals_Bonds <- Indices_Metals_Bonds[[1]]
+# Indices_Metals_Bonds <- Indices_Metals_Bonds[[1]]
 gc()
 rm(missing_assets)
 gc()
 asset_list_oanda_single_asset <-
-  Indices_Metals_Bonds %>%
+  Indices_Metals_Bonds[[1]] %>%
   distinct(Asset) %>%
   pull(Asset) %>%
   as.character()
@@ -190,7 +190,7 @@ end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
   wrangle_asset_data(
-    asset_data_daily_raw = Indices_Metals_Bonds,
+    asset_data_daily_raw = Indices_Metals_Bonds[[1]],
     summarise_means = TRUE
   )
 
@@ -347,11 +347,60 @@ while (current_time < end_time) {
     )%>%
       pluck('result')
 
+
+    if(u1 == "error") {
+      Sys.sleep(30)
+      u1 <- safely_upload_to_db(
+        db_location = db_location,
+        time_frame = "D",
+        bid_or_ask = "ask",
+        asset_list_oanda = asset_list_oanda,
+        how_far_back = how_far_back_var
+      ) %>%
+        pluck('result')
+    }
+
+    if(u2 == "error") {
+      Sys.sleep(30)
+      u2 <- safely_upload_to_db(
+        db_location = db_location,
+        time_frame = "H1",
+        bid_or_ask = "ask",
+        asset_list_oanda = asset_list_oanda,
+        how_far_back = how_far_back_var
+      )%>%
+        pluck('result')
+    }
+
+    if(u3 == "error") {
+      Sys.sleep(30)
+      u3 <- safely_upload_to_db(
+        db_location = db_location,
+        time_frame = "D",
+        bid_or_ask = "bid",
+        asset_list_oanda = asset_list_oanda,
+        how_far_back = how_far_back_var
+      ) %>%
+        pluck('result')
+    }
+
+    if(u4 == "error") {
+      Sys.sleep(30)
+      u4 <- safely_upload_to_db(
+        db_location = db_location,
+        time_frame = "H1",
+        bid_or_ask = "bid",
+        asset_list_oanda = asset_list_oanda,
+        how_far_back = how_far_back_var
+      )%>%
+        pluck('result')
+    }
+
     if(u1 != "error" & u2 != "error" & u3 != "error" & u4 != "error") {
 
-      Indices_Metals_Bonds <-
+      Indices_Metals_Bonds[[1]] <-
         updated_data_internal(
-          starting_asset_data = Indices_Metals_Bonds,
+          starting_asset_data = Indices_Metals_Bonds[[1]],
           end_date_day = now() + days(1),
           time_frame = "H1",
           bid_or_ask = "ask",
@@ -421,7 +470,7 @@ while (current_time < end_time) {
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
             start_index = 1,
-            end_index = 20,
+            end_index = 18,
             risk_dollar_value = 15,
             trade_direction = "Long",
             stop_value_var = 5,
@@ -432,7 +481,7 @@ while (current_time < end_time) {
             date_train_phase_2_end_pre = "2024-06-01",
             training_date_start_post = "2024-07-04",
             training_date_end_post = "2025-09-01",
-            test_end_date = as.character(today()),
+            test_end_date = as.character(today() + days(100)),
             post_bins_cols =
               c("period_return_24_Price",
                 "period_return_30_Price",
@@ -465,7 +514,7 @@ while (current_time < end_time) {
                stop_factor = 5,
                profit_factor = 30,
                periods_ahead = 35,
-               required_risk = risk_dollar_value
+               risk_dollar_value = risk_dollar_value
                ) %>%
         group_by(Asset) %>%
         slice_max(Date) %>%
@@ -748,20 +797,8 @@ while (current_time < end_time) {
                    flagged_for_close = time_in_process >= periods_ahead)
         ) %>%
         mutate(time_in_process = as.numeric(time_in_process)) %>%
-        left_join(
-          get_best_trade_end_point(
-            "C:/Users/nikhi/Documents/trade_data/single_asset_advanced_optimisation.db"
-          ) %>%
-            distinct(Asset, max_point_long_high_75, max_point_long_mean)
-        ) %>%
-        ungroup() %>%
         mutate(
-          reached_max_point = as.numeric(unrealizedPL) >= max_point_long_mean,
-          flagged_for_close =
-            case_when(
-              as.numeric(unrealizedPL) >= max_point_long_mean ~ TRUE,
-              TRUE ~ flagged_for_close
-            )
+          flagged_for_close = time_in_process >= periods_ahead
         )
 
       estimated_running_profit <-
@@ -847,7 +884,7 @@ while (current_time < end_time) {
     }
 
 
-    Sys.sleep(60)
+    Sys.sleep(5)
 
     rm(positions_tagged_as_part_of_algo, check_if_position_still_open)
 
@@ -860,66 +897,76 @@ while (current_time < end_time) {
     trades_closed <- 0
   }
 
-  if( current_minute >= 58 & current_minute <= 58 ) {
+  if( current_minute >= 58 & current_minute <= 59 ) {
     trades_closed <- 0
+    trades_opened <- 0
   }
 
-  if( current_minute >= 57 & current_minute <= 57 ) {
+  if( current_minute >= 57 & current_minute <= 58 ) {
     trades_closed <- 0
+    trades_opened <- 0
   }
 
-  if( current_minute >= 56 & current_minute <= 56 ) {
+  if( current_minute >= 56 & current_minute <= 57 ) {
     trades_closed <- 0
+    trades_opened <- 0
   }
 
   if( current_minute >= 5 & current_minute <= 5 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 10 & current_minute <= 10 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 15 & current_minute <= 15 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 20 & current_minute <= 20 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 25 & current_minute <= 25 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 30 & current_minute <= 30 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 35 & current_minute <= 35 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 40 & current_minute <= 40 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 45 & current_minute <= 45 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    Sys.sleep(10)
   }
 
   if( current_minute >= 55 & current_minute <= 55 ) {
     trades_closed <- 0
-    Sys.sleep(60)
+    trades_opened <- 0
+    Sys.sleep(10)
+  }
+
+  if( current_minute >= 54 & current_minute <= 55 ) {
+    trades_closed <- 0
+    trades_opened <- 0
+    Sys.sleep(10)
   }
 
 }

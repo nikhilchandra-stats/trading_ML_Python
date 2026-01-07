@@ -6378,8 +6378,8 @@ single_asset_algo_generate_preds <-
                 "XAG_AUD", #20
                 "XAG_NZD", #21
                 "HK33_HKD", #22
-                "FR40_EUR", #23
-                "BTC_USD", #24
+                # "FR40_EUR", #23
+                # "BTC_USD", #24
                 "XAG_GBP", #25
                 "GBP_AUD", #26
                 "USD_SEK", #27
@@ -6512,15 +6512,15 @@ single_asset_algo_generate_preds <-
             "SPX500_USD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
             "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD") %>% unique(), #22
 
-          # "FR40_EUR" #23
-          c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD",
-            "XAU_USD", "USB10Y_USD", "SPX500_USD", "EUR_USD", "EUR_AUD",
-            "XAU_EUR", "XAG_EUR", "EUR_NZD", "EUR_JPY") %>% unique(), #23
+          # # "FR40_EUR" #23
+          # c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD",
+          #   "XAU_USD", "USB10Y_USD", "SPX500_USD", "EUR_USD", "EUR_AUD",
+          #   "XAU_EUR", "XAG_EUR", "EUR_NZD", "EUR_JPY") %>% unique(), #23
 
-          # "BTC_USD", #24
-          c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
-            "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
-            "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(), #24
+          # # "BTC_USD", #24
+          # c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
+          #   "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
+          #   "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(), #24
 
           # "XAG_GBP", #25
           c("XAG_JPY", "XAG_NZD", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
@@ -6628,8 +6628,8 @@ single_asset_algo_generate_preds <-
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #20
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #21
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #22
-          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #23
-          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #24
+          # c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #23
+          # c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #24
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #25
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #26
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #27
@@ -6747,7 +6747,7 @@ single_asset_algo_generate_preds <-
         indicator_data = all_pred_data,
         post_model_data_save_path =save_path,
         test_date_start = training_date_start_post,
-        test_date_end = as.character(today()) ,
+        test_date_end = as.character(today() + days(100)) ,
         dependant_var = post_dependant_var,
         dependant_threshold = post_dependant_threshold,
         ignore_dependant_var = TRUE
@@ -6759,7 +6759,7 @@ single_asset_algo_generate_preds <-
         post_pred_data = post_preds_all,
         rolling_periods = c(3,50,100,200,400,500,2000),
         test_date_start = "2025-10-01",
-        test_date_end = today(),
+        test_date_end = as.character(today() + days(100)),
         pred_price_cols = post_bins_cols
       )
 
