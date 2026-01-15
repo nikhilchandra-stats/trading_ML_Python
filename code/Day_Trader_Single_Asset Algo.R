@@ -427,7 +427,7 @@ while (current_time < end_time) {
           read_csv_or_API = "API",
           time_frame = "H1",
           bid_or_ask = "ask",
-          how_far_back = 800,
+          how_far_back = 2,
           start_date = as.character(how_far_back_date)
         )%>%
         map_dfr(bind_rows) %>%
@@ -442,7 +442,7 @@ while (current_time < end_time) {
           read_csv_or_API = "API",
           time_frame = "H1",
           bid_or_ask = "bid",
-          how_far_back = 800,
+          how_far_back = 2,
           start_date = as.character(how_far_back_date)
         ) %>%
         map_dfr(bind_rows) %>%
@@ -496,6 +496,13 @@ while (current_time < end_time) {
       }
 
 
+      max_date_in_data <-
+        Indices_Metals_Bonds[[1]] %>%
+        slice_max(Date) %>%
+        pull(Date) %>%
+        unique() %>%
+        as_datetime(tz = "Australia/Canberra")
+
       single_asset_model_trades_filt <-
         single_asset_model_trades %>%
         filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
@@ -515,19 +522,31 @@ while (current_time < end_time) {
                profit_factor = 30,
                periods_ahead = 35,
                risk_dollar_value = risk_dollar_value
-               ) %>%
+        ) %>%
         group_by(Asset) %>%
         slice_max(Date) %>%
         ungroup() %>%
-        left_join(current_prices_ask) %>%
+        left_join(current_prices_ask %>%
+                    group_by(Asset) %>%
+                    slice_max(Date) %>%
+                    ungroup() %>%
+                    dplyr::select(-Date)) %>%
         mutate(
           time_diff =
-            abs(as.numeric( (Date) - (current_time), units = "mins"))
+            abs(
+              as.numeric(
+                as_datetime(Date, tz = "Australia/Canberra") -
+                    as_datetime(current_time, tz = "Australia/Canberra"),
+                units = "mins"
+                )
+              ),
+          date_check = max_date_in_data <= Date
         ) %>%
         group_by(Asset) %>%
         slice_min(time_diff) %>%
         ungroup() %>%
-        filter(time_diff < 60)
+        filter(time_diff <= 120 & date_check == TRUE)
+
 
 
       if(dim(single_asset_model_trades_filt)[1] > 0) {

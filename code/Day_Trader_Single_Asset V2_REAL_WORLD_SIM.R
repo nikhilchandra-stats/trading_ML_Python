@@ -128,8 +128,7 @@ Indices_Metals_Bonds <- get_Port_Buy_Data(
 
 gc()
 
-post_preds_all_rolling_and_originals <-
-  single_asset_algo_generate_preds(
+single_asset_algo_generate_models(
   All_Daily_Data = All_Daily_Data,
   Indices_Metals_Bonds = Indices_Metals_Bonds,
   raw_macro_data = raw_macro_data,
@@ -143,10 +142,41 @@ post_preds_all_rolling_and_originals <-
   profit_value_var = 30,
   period_var = 24,
   bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-  date_train_end_pre = as.character(as_date("2023-06-01") + days(0)),
-  date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(0)),
-  training_date_start_post = as.character(as_date("2024-07-04") + days(0)),
-  training_date_end_post = as.character(as_date("2025-09-01") + days(30)),
+  date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+  date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
+  training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
+  training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
+  test_end_date = as.character(today()),
+  post_bins_cols =
+    c("period_return_24_Price",
+      "period_return_30_Price",
+      "period_return_44_Price"),
+  post_dependant_threshold = 5,
+  model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
+  save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
+)
+
+post_preds_all_rolling_and_originals <-
+  single_asset_algo_generate_preds(
+  All_Daily_Data = All_Daily_Data,
+  Indices_Metals_Bonds = Indices_Metals_Bonds,
+  raw_macro_data = raw_macro_data,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor,
+  # start_index = 1,
+  # end_index = 40,
+  start_index = 1,
+  end_index = 38,
+  risk_dollar_value = 15,
+  trade_direction = "Long",
+  stop_value_var = 5,
+  profit_value_var = 30,
+  period_var = 24,
+  bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
+  date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+  date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24)),
+  training_date_start_post = as.character(as_date("2024-07-04") + days(24)),
+  training_date_end_post = as.character(as_date("2025-09-01") + days(40)),
   test_end_date = as.character(today()),
   post_bins_cols =
     c("period_return_24_Price",
@@ -228,53 +258,69 @@ trade_statement =
   #           mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*1.5)|
 
 
-  (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
-  (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
-  ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
-    pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
-  pred_GLM_period_return_24_Price >
-            mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
-  pred_GLM_period_return_24_Price >
-            mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
-  pred_GLM_period_return_24_Price >
-            mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
+  # (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
+  # (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
+  # ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
+  #   pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
+  # (mean_3_pred_GLM_period_return_24_Price >
+  #         mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
+  # pred_GLM_period_return_24_Price >
+  #           mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
+  # (mean_3_pred_GLM_period_return_24_Price >
+  #         mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
+  # pred_GLM_period_return_24_Price >
+  #           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
+  # (mean_3_pred_GLM_period_return_24_Price >
+  #         mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
+  # pred_GLM_period_return_24_Price >
+  #           mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
+  #
+  #   (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
+  #   pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
+  #   pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
+  #
+  #   ( pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
+  #     pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
+  #     pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
+  #
+  #   ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
+  #   ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
+  #   ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
+  #   (pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*0.75 &
+  #   pred_daily_4 <= pred_daily_4_mean + pred_daily_4_sd*2 )
 
-    (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
-    pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
-    pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
+  # (pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*20 &
+  # pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*20 &
+  # (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*0))
 
-    (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
-      pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
-      pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
-
-    ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
-    ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
-    ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
-
-    # (  pred_combined_2 >= pred_combined_2_mean + pred_combined_2_sd*2.5 &
-    #   pred_combined_4 >= pred_combined_4_mean + pred_combined_4_sd*2.5 &
-    #   pred_combined_6 >= pred_combined_6_mean + pred_combined_6_sd*2.5 )
+    (
+    pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*15 &
+    pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*15 &
+    (mean_3_pred_GLM_period_return_24_Price >
+          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*0.5)
+    )
 
 "
 
 win_thresh = 10
 
-comnbined_statement_best_results <-
+post_preds_all_rolling_and_originals_2 <-
   post_preds_all_rolling_and_originals %>%
+  filter(
+    Date >= as.character(as_date("2025-09-01") + days(45))
+  )
+
+comnbined_statement_best_results <-
+  post_preds_all_rolling_and_originals_2 %>%
   filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
   pull(Asset) %>%
   unique() %>%
   map(
     ~
       post_ss_model_analyse_condition(
-        tagged_trade_col_data = post_preds_all_rolling_and_originals,
-        actual_wins_losses = actual_wins_losses,
+        tagged_trade_col_data = post_preds_all_rolling_and_originals_2,
+        actual_wins_losses = actual_wins_losses %>%
+          filter(Date >= as.character(as_date("2025-09-01") + days(45))),
         trade_statement = trade_statement,
         Asset_Var = .x,
         win_thresh = win_thresh,
@@ -305,13 +351,13 @@ comnbined_statement_best_params <-
   distinct()
 
 comnbined_statement_control <-
-  post_preds_all_rolling_and_originals %>%
+  post_preds_all_rolling_and_originals_2 %>%
   pull(Asset) %>%
   unique() %>%
   map(
     ~
       post_ss_model_analyse_condition(
-        tagged_trade_col_data = post_preds_all_rolling_and_originals,
+        tagged_trade_col_data = post_preds_all_rolling_and_originals_2,
         trade_statement = "pred_LM_period_return_24_Price > 0 |
                           pred_LM_period_return_24_Price <= 0 |
                           is.na(pred_LM_period_return_24_Price)|
@@ -320,7 +366,8 @@ comnbined_statement_control <-
         Asset_Var = .x,
         win_thresh = win_thresh,
         trade_direction = "Long",
-        actual_wins_losses = actual_wins_losses
+        actual_wins_losses = actual_wins_losses %>%
+          filter(Date >= as.character(as_date("2025-09-01") + days(45)))
       ) %>%
       pluck(1) %>%
       ungroup()
@@ -371,7 +418,7 @@ comapre_results_summary <-
   )
 
 trades_taken <-
-  post_preds_all_rolling_and_originals %>%
+  post_preds_all_rolling_and_originals_2 %>%
   filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
   mutate(
     trade_col =
@@ -386,7 +433,8 @@ trades_taken <-
 
 margin_required <- create_porfolio_sim(
   trades_taken = trades_taken,
-  actual_wins_losses = actual_wins_losses
+  actual_wins_losses = actual_wins_losses %>%
+    filter(Date >= as.character(as_date("2025-09-01") + days(45)) )
 )
 
 margin_required_sum <-
@@ -482,3 +530,36 @@ trades_taken_ts_returns %>%
   facet_wrap(.~ trade_col, scales = "free_y") +
   theme_minimal() +
   theme(legend.position = "bottom")
+
+
+#-------------Simulate All factors
+
+simulate_factors(
+  post_preds_all_rolling_and_originals = post_preds_all_rolling_and_originals,
+  actual_wins_losses = actual_wins_losses,
+  win_thresh = 10,
+  macro_factor_tech_vec = c(0,5,10,15),
+  tech_factor_vec = c(0,1,2,3),
+
+  macro_factor_daily_vec = c(0,5,10,15),
+  daily_factor_vec = c(0,1,2,3),
+
+  macro_factor_post_pred_vec = c(0,5,10,15),
+  post_pred_factor_vec = c(0,1,2,3),
+
+  macro_factor_copula_vec = c(0,5,10,15),
+  copula_factor_vec = c(0,1,2,3),
+
+  sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
+)
+
+sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
+save_db <- connect_db(sim_save_db_path)
+sim_data <-
+  DBI::dbGetQuery(conn = save_db, statement = "SELECT * FROM single_asset_improved")
+DBI::dbDisconnect(save_db)
+
+sim_data_2 <-
+  sim_data %>%
+  mutate(mean_perc_diff_vs_control = round(mean_perc_diff_vs_control, 4)) %>%
+  filter(mean_perc_diff_vs_control > 0)

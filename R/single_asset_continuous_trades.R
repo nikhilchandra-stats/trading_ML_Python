@@ -1708,7 +1708,7 @@ single_asset_Logit_indicator_adv_gen_models <-
         USD_Macro = USD_Macro,
         EUR_Macro = EUR_Macro,
         countries_for_int_strength = countries_for_int_strength,
-        date_limit = today()
+        date_limit = now(tzone = "Australia/Canberra")
       )
 
     macro_train_data <-
@@ -1744,6 +1744,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     macro_preds_averages <-
       macro_preds %>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
       )
@@ -1756,6 +1757,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     macro_preds_sd <-
       macro_preds %>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
       )
@@ -1782,7 +1784,7 @@ single_asset_Logit_indicator_adv_gen_models <-
         COMMOD_index = COMMOD_index,
         USD_STOCKS_index = USD_STOCKS_index,
         NZD_index = NZD_index,
-        date_limit = today()
+        date_limit = now(tzone = "Australia/Canberra")
       )
 
     index_pca_train_data <-
@@ -1817,6 +1819,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     index_preds_averages <-
       index_preds %>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
       )
@@ -1829,6 +1832,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     index_preds_sd <-
       index_preds%>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
       )
@@ -1844,7 +1848,7 @@ single_asset_Logit_indicator_adv_gen_models <-
         asset_data = asset_data_internal,
         All_Daily_Data = All_Daily_Data,
         Asset_of_interest = Asset_of_interest,
-        date_limit = today()
+        date_limit = now(tzone = "Australia/Canberra")
       )
 
     daily_data_for_modelling_train <-
@@ -1879,6 +1883,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     daily_preds_averages <-
       daily_preds %>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
       )
@@ -1891,6 +1896,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     daily_preds_sd <-
       daily_preds%>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
       )
@@ -1906,7 +1912,7 @@ single_asset_Logit_indicator_adv_gen_models <-
         asset_data = asset_data,
         couplua_assets = couplua_assets,
         Asset_of_interest = Asset_of_interest,
-        date_limit = today()
+        date_limit = now(tzone = "Australia/Canberra")
       )
 
     copula_data_train <-
@@ -1941,6 +1947,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     copula_preds_averages <-
       copula_preds %>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
       )
@@ -1953,6 +1960,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     copula_preds_sd <-
       copula_preds%>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
       )
@@ -2008,6 +2016,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     technical_preds_averages <-
       technical_preds %>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ mean(., na.rm = T))
       )
@@ -2020,6 +2029,7 @@ single_asset_Logit_indicator_adv_gen_models <-
 
     technical_preds_sd <-
       technical_preds%>%
+      filter(if_all( everything(), ~ !is.nan(.) & !is.infinite(.) ) ) %>%
       summarise(
         across(.cols = contains("pred"), .fns = ~ sd(., na.rm = T))
       )
@@ -2249,7 +2259,7 @@ single_asset_Logit_indicator_adv_get_preds <-
         USD_Macro = USD_Macro,
         EUR_Macro = EUR_Macro,
         countries_for_int_strength = countries_for_int_strength,
-        date_limit = today()
+        date_limit = now(tzone = "Australia/Canberra")
       )
 
     macro_preds <-
@@ -2276,7 +2286,7 @@ single_asset_Logit_indicator_adv_get_preds <-
         COMMOD_index = COMMOD_index,
         USD_STOCKS_index = USD_STOCKS_index,
         NZD_index = NZD_index,
-        date_limit = today()
+        date_limit = now(tzone = "Australia/Canberra")
       )
 
     index_preds <-
@@ -2293,8 +2303,10 @@ single_asset_Logit_indicator_adv_get_preds <-
         asset_data = asset_data_internal,
         All_Daily_Data = All_Daily_Data,
         Asset_of_interest = Asset_of_interest,
-        date_limit = today()
-      )
+        date_limit = now(tzone = "Australia/Canberra")
+      ) %>%
+      filter(Asset == Asset_of_interest) %>%
+      dplyr::select(-Asset)
 
     daily_preds <-
       single_asset_read_models_and_get_pred(
@@ -2332,7 +2344,9 @@ single_asset_Logit_indicator_adv_get_preds <-
       mutate(
         across(.cols = !contains("Date"),
                .fns = ~ lag(.) )
-      )
+      ) %>%
+      ungroup() %>%
+      dplyr::select(-Asset)
 
     technical_preds <-
       single_asset_read_models_and_get_pred(
@@ -2355,7 +2369,7 @@ single_asset_Logit_indicator_adv_get_preds <-
       left_join(copula_data)%>%
       left_join(
         daily_data_for_modelling %>%
-          dplyr::select(Date, Asset,
+          dplyr::select(Date,
                         (contains("perc_line_")&contains("_20")),
                         contains("Support"),
                         contains("Resistance"),
@@ -2368,7 +2382,7 @@ single_asset_Logit_indicator_adv_get_preds <-
       left_join(index_pca_data) %>%
       left_join(
         technical_data %>%
-          dplyr::select(Date, Asset,
+          dplyr::select(Date,
                         (contains("perc_line_")&contains("_500")),
                         contains("Support"),
                         contains("Resistance"),
@@ -2382,6 +2396,7 @@ single_asset_Logit_indicator_adv_get_preds <-
 
     combined_model_data <-
       accumulating_probs %>%
+      ungroup() %>%
       arrange(Date) %>%
       fill(!contains("Date"), .direction = "down") %>%
       filter(if_all(.cols = everything(), ~!is.na(.)))
@@ -2389,7 +2404,8 @@ single_asset_Logit_indicator_adv_get_preds <-
     mean_sd_values <-
       readRDS(
         glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_mean_sd_values.RDS")
-      )
+      ) %>%
+      dplyr::select(-Asset_sd, -Asset_mean)
 
     combined_preds <-
       single_asset_read_models_and_get_pred(
@@ -3920,7 +3936,7 @@ prepare_copula_data <-
     asset_data = asset_data,
     couplua_assets = couplua_assets,
     Asset_of_interest = Asset_of_interest,
-    date_limit = today()
+    date_limit = now(tzone = "Australia/Canberra")
     ) {
 
     copula_accumulation <- list()
@@ -5553,6 +5569,9 @@ post_ss_model_analyse_condition <-
           cumsum(Returns)
       )
 
+    rm(tagged_trade_combined,
+       tagged_trade_col_data)
+
     return(
       list(
         "asset_summary" = summary_data,
@@ -6214,7 +6233,7 @@ single_asset_algo_generate_models <-
   }
 
 
-#' single_asset_algo_generate_models
+#' single_asset_algo_generate_preds
 #'
 #' @param All_Daily_Data
 #' @param Indices_Metals_Bonds
@@ -6320,7 +6339,7 @@ single_asset_algo_generate_preds <-
         raw_macro_data = raw_macro_data,
         lag_days = 1,
         date_start = "2011-01-01",
-        end_date = today() %>% as.character(),
+        end_date = today(tz = "Australia/Canberra") %>% as.character(),
         first_difference = TRUE,
         scale_values = FALSE
       )
@@ -6778,5 +6797,362 @@ single_asset_algo_generate_preds <-
     gc()
 
     return(post_preds_all_rolling_and_originals)
+
+  }
+
+
+# Use this for Periods 24 only 3.91% Edge with 200 return edge (USE THIS)
+
+#' simulate_factors
+#'
+#' @param post_preds_all_rolling_and_originals
+#' @param actual_wins_losses
+#' @param win_thresh
+#' @param macro_factor_tech_vec
+#' @param tech_factor_vec
+#' @param macro_factor_daily_vec
+#' @param daily_factor_vec
+#' @param macro_factor_post_pred_vec
+#' @param post_pred_factor_vec
+#' @param macro_factor_copula_vec
+#' @param copula_factor_vec
+#' @param sim_save_db_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+simulate_factors <-
+  function(
+    post_preds_all_rolling_and_originals = post_preds_all_rolling_and_originals,
+    actual_wins_losses = actual_wins_losses,
+    win_thresh = 10,
+    macro_factor_tech_vec = c(0,10,20),
+    tech_factor_vec = c(0,1,2,3),
+
+    macro_factor_daily_vec = c(0,10,20),
+    daily_factor_vec = c(0,1,2,3),
+
+    macro_factor_post_pred_vec = c(0,10,20),
+    post_pred_factor_vec = c(0,1,2,3),
+
+    macro_factor_copula_vec = c(0,10,20),
+    copula_factor_vec = c(0,1,2,3),
+
+    sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
+  ) {
+
+    c = 0
+    save_db <- connect_db(sim_save_db_path)
+    redo_db <- TRUE
+
+    for (i in 1:length(macro_factor_tech_vec)) {
+      for (j in 1:length(tech_factor_vec)) {
+        for (k in 1:length(macro_factor_daily_vec)) {
+          for (o in 1:length(daily_factor_vec)) {
+            for (p in 1:length(macro_factor_post_pred_vec)) {
+              for (q in 1:length(post_pred_factor_vec)) {
+                for (r in 1:length(macro_factor_copula_vec)) {
+                  for (s in 1:length(copula_factor_vec)) {
+
+                    macro_factor_tech <- macro_factor_tech_vec[i]
+                    tech_factor <- tech_factor_vec[j]
+                    macro_factor_daily <- macro_factor_daily_vec[k]
+                    daily_factor <- daily_factor_vec[o]
+                    macro_factor_post_pred <- macro_factor_post_pred_vec[p]
+                    post_pred_factor <- post_pred_factor_vec[q]
+                    macro_factor_copula <- macro_factor_copula_vec[r]
+                    copula_factor <- copula_factor_vec[s]
+
+                    trade_statement =
+                      glue::glue(
+                        "
+        (
+        pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*{macro_factor_tech} &
+        pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*{macro_factor_tech} &
+        (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*{tech_factor})
+        )|
+        (
+        pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*{macro_factor_daily} &
+        pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*{macro_factor_daily} &
+        (pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*{daily_factor})
+        )|
+        (
+        pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*{macro_factor_post_pred} &
+        pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*{macro_factor_post_pred} &
+        (mean_3_pred_GLM_period_return_24_Price >
+              mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*{post_pred_factor})
+        )|
+        (
+        pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*{macro_factor_copula} &
+        pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*{macro_factor_copula} &
+        (pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*{copula_factor})
+        )
+
+      "
+                      ) %>%
+                      as.character()
+
+                    win_thresh = win_thresh
+
+                    post_preds_all_rolling_and_originals_2 <-
+                      post_preds_all_rolling_and_originals %>%
+                      filter(
+                        Date >= as.character(as_date("2025-09-01") + days(45))
+                      )
+
+                    comnbined_statement_best_results <-
+                      post_preds_all_rolling_and_originals_2 %>%
+                      filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
+                      pull(Asset) %>%
+                      unique() %>%
+                      map(
+                        ~
+                          post_ss_model_analyse_condition(
+                            tagged_trade_col_data = post_preds_all_rolling_and_originals_2,
+                            actual_wins_losses = actual_wins_losses %>%
+                              filter(Date >= as.character(as_date("2025-09-01") + days(45))),
+                            trade_statement = trade_statement,
+                            Asset_Var = .x,
+                            win_thresh = win_thresh,
+                            trade_direction = "Long"
+                          ) %>%
+                          pluck(1) %>%
+                          ungroup() %>%
+                          # filter(Period <= 44) %>%
+                          filter(Period <= 35) %>%
+                          filter(Period >= 35) %>%
+                          filter(trade_col == "Long") %>%
+                          # group_by(Asset) %>%
+                          # slice_max(perc, n = 1) %>%
+                          group_by(Asset) %>%
+                          slice_max(Total_Returns) %>%
+                          ungroup()
+                      ) %>%
+                      keep(~ dim(.x)[1] > 0) %>%
+                      map_dfr(bind_rows)
+                    # janitor::adorn_totals()
+
+                    comnbined_statement_best_params <-
+                      comnbined_statement_best_results %>%
+                      dplyr::select(Asset, Period) %>%
+                      mutate(
+                        best_result = TRUE
+                      ) %>%
+                      distinct()
+
+                    comnbined_statement_control <-
+                      post_preds_all_rolling_and_originals_2 %>%
+                      pull(Asset) %>%
+                      unique() %>%
+                      map(
+                        ~
+                          post_ss_model_analyse_condition(
+                            tagged_trade_col_data = post_preds_all_rolling_and_originals_2,
+                            trade_statement = "pred_LM_period_return_24_Price > 0 |
+                          pred_LM_period_return_24_Price <= 0 |
+                          is.na(pred_LM_period_return_24_Price)|
+                          is.nan(pred_LM_period_return_24_Price) |
+                          is.infinite(pred_LM_period_return_24_Price)",
+                            Asset_Var = .x,
+                            win_thresh = win_thresh,
+                            trade_direction = "Long",
+                            actual_wins_losses = actual_wins_losses %>%
+                              filter(Date >= as.character(as_date("2025-09-01") + days(45)))
+                          ) %>%
+                          pluck(1) %>%
+                          ungroup()
+                      ) %>%
+                      keep(~ dim(.x)[1] > 0) %>%
+                      map_dfr(bind_rows) %>%
+                      dplyr::left_join(comnbined_statement_best_params) %>%
+                      filter(best_result == TRUE) %>%
+                      arrange(Total_Returns) %>%
+                      # janitor::adorn_totals() %>%
+                      dplyr::select(Asset, Period,
+                                    total_trades_control = total_trades,
+                                    Total_Returns_Control = Total_Returns,
+                                    Average_Return_Control = Average_Return,
+                                    perc_control = perc)
+
+                    comapre_results_summary <-
+                      comnbined_statement_best_results %>%
+                      dplyr::select(-trade_statement, -trade_col) %>%
+                      left_join(comnbined_statement_control) %>%
+                      mutate(
+                        trade_percent = total_trades/total_trades_control,
+                        Total_Returns_Control_adj = Total_Returns_Control*trade_percent
+                      ) %>%
+                      mutate(
+                        Returns_Diff = Total_Returns - Total_Returns_Control_adj,
+                        perc_diff = perc - perc_control
+                      )
+
+                    comapre_results_summary$perc_diff %>% mean()
+                    comapre_results_summary$Returns_Diff %>% mean()
+
+                    comapre_results_summary <-
+                      comapre_results_summary %>%
+                      janitor::adorn_totals() %>%
+                      mutate(
+                        macro_factor_tech = macro_factor_tech_vec[i],
+                        tech_factor = tech_factor_vec[j],
+                        macro_factor_daily = macro_factor_daily_vec[k],
+                        daily_factor = daily_factor_vec[o],
+                        macro_factor_post_pred = macro_factor_post_pred_vec[p],
+                        post_pred_factor = post_pred_factor_vec[q],
+                        macro_factor_copula = macro_factor_copula_vec[r],
+                        copula_factor = copula_factor_vec[s]
+                      ) %>%
+                      as_tibble()
+
+                    comapre_results_summary <-
+                      comnbined_statement_best_results %>%
+                      dplyr::select(-trade_statement, -trade_col) %>%
+                      left_join(comnbined_statement_control) %>%
+                      mutate(
+                        trade_percent = total_trades/total_trades_control,
+                        Total_Returns_Control_adj = Total_Returns_Control*trade_percent
+                      ) %>%
+                      mutate(
+                        Returns_Diff = Total_Returns - Total_Returns_Control_adj,
+                        perc_diff = perc - perc_control
+                      )
+
+                    trades_taken <-
+                      post_preds_all_rolling_and_originals_2 %>%
+                      filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
+                      mutate(
+                        trade_col =
+                          eval(parse(text = trade_statement))
+                      ) %>%
+                      filter(trade_col == TRUE) %>%
+                      distinct(Asset, Date) %>%
+                      left_join(
+                        comnbined_statement_best_params %>%
+                          distinct(Asset, Period)
+                      )
+
+                    margin_required <- create_porfolio_sim(
+                      trades_taken = trades_taken,
+                      actual_wins_losses = actual_wins_losses %>%
+                        filter(Date >= as.character(as_date("2025-09-01") + days(45)) )
+                    )
+
+                    margin_required_sum <-
+                      margin_required %>%
+                      ungroup()  %>%
+                      dplyr::filter(Adjusted_Date >= median(Adjusted_Date) ) %>%
+                      summarise(
+                        mean_margin = mean(margin_at_date, na.rm = T),
+                        margin_90 = quantile(margin_at_date, 0.95, na.rm = T),
+                        mean_portfolio = mean(running_PL, na.rm = T),
+                        portfolio_90 = quantile(running_PL, 0.95, na.rm = T)
+                      )
+
+                    trades_taken_ts_returns <-
+                      trades_taken %>%
+                      left_join(actual_wins_losses %>%
+                                  dplyr::select(Asset, Date, period_return_35_Price)) %>%
+                      group_by(Date) %>%
+                      summarise(Returns = sum(period_return_35_Price, na.rm = T )) %>%
+                      arrange(Date, .by_group = TRUE) %>%
+                      mutate(
+                        Returns_cumulative = cumsum(Returns)
+                      ) %>%
+                      mutate(
+                        trade_col = "Trade Long"
+                      )
+
+                    worst_loss <-
+                      trades_taken_ts_returns %>%
+                      arrange(Date) %>%
+                      mutate(
+                        loss_100 = Returns_cumulative - lag(Returns_cumulative, 100),
+                        max_100 = Returns_cumulative - lag(Returns_cumulative, 100)
+                      )  %>%
+                      filter(!is.na(loss_100)) %>%
+                      mutate(
+                        across(
+                          .cols = contains("loss"),
+                          .fns = ~ slider::slide_dbl(.x = ., .f = ~ min(.x, na.rm = T), .before = 500)
+                        ),
+                        across(
+                          .cols = contains("max_"),
+                          .fns = ~ slider::slide_dbl(.x = ., .f = ~ max(.x, na.rm = T), .before = 500)
+                        )
+                      ) %>%
+                      summarise(
+                        across(
+                          .cols = contains("loss"),
+                          .fns = ~ min(., na.rm = T)
+                        ),
+                        across(
+                          .cols = contains("max_"),
+                          .fns = ~ max(., na.rm = T)
+                        )
+                      ) %>%
+                      mutate(
+                        ratio_win_to_loss = abs(max_100/loss_100),
+                        mean_perc_diff_vs_control = comapre_results_summary$perc_diff %>% mean(),
+                        mean_return_diff_vs_control = comapre_results_summary$Returns_Diff %>% mean(),
+                        Total_Trades = comapre_results_summary$total_trades %>% sum(),
+                        Total_Returns = comapre_results_summary$Total_Returns %>% sum()
+                      ) %>%
+                      bind_cols(margin_required_sum) %>%
+                      mutate(
+                        macro_factor_tech = macro_factor_tech_vec[i],
+                        tech_factor = tech_factor_vec[j],
+                        macro_factor_daily = macro_factor_daily_vec[k],
+                        daily_factor = daily_factor_vec[o],
+                        macro_factor_post_pred = macro_factor_post_pred_vec[p],
+                        post_pred_factor = post_pred_factor_vec[q],
+                        macro_factor_copula = macro_factor_copula_vec[r],
+                        copula_factor = copula_factor_vec[s]
+                      ) %>%
+                      as_tibble()
+
+                    rm(post_preds_all_rolling_and_originals_2,
+                       trades_taken_ts_returns,
+                       trades_taken
+                       )
+
+                    gc()
+
+                    c = c + 1
+                    if(redo_db == TRUE & c == 1) {
+                      write_table_sql_lite(.data = worst_loss,
+                                           table_name = "single_asset_improved",
+                                           conn = save_db,
+                                           overwrite_true = TRUE)
+
+                      write_table_sql_lite(.data = comapre_results_summary,
+                                           table_name = "single_asset_improved_Asset",
+                                           conn = save_db,
+                                           overwrite_true = TRUE)
+                      redo_db = FALSE
+                    }
+
+                    if(redo_db == FALSE) {
+                      append_table_sql_lite(.data = worst_loss,
+                                            table_name = "single_asset_improved",
+                                            conn = save_db)
+                      append_table_sql_lite(.data = comapre_results_summary,
+                                            table_name = "single_asset_improved_Asset",
+                                            conn = save_db)
+                    }
+
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    DBI::dbDisconnect(save_db)
+    rm(save_db)
+    gc()
 
   }

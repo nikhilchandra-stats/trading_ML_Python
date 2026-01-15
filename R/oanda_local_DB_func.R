@@ -16,8 +16,8 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
                          time_frame = "D",
                          bid_or_ask = "ask") {
 
-  start_date_integer <- start_date %>% as_datetime() %>% as.integer()
-  end_date_integer <- (as_datetime(end_date) + days(1)) %>% as.integer()
+  start_date_integer <- start_date %>% as_datetime(tz = "Australia/Canberra") %>% as.integer()
+  end_date_integer <- (as_datetime(end_date, tz = "Australia/Canberra") + days(1)) %>% as.integer()
 
   # "Oanda_Asset_Data_ask_M15"
 
@@ -76,8 +76,8 @@ get_db_price_asset <- function(db_location = "C:/Users/Nikhil Chandra/Documents/
                          bid_or_ask = "ask",
                          asset = "AUD_USD") {
 
-  start_date_integer <- start_date %>% as_datetime() %>% as.integer()
-  end_date_integer <- (as_datetime(end_date) + days(1)) %>% as.integer()
+  start_date_integer <- start_date %>% as_datetime(tz = "Australia/Sydney") %>% as.integer()
+  end_date_integer <- (as_datetime(end_date, tz = "Australia/Sydney") + days(1)) %>% as.integer()
 
   "Oanda_Asset_Data_ask_M15"
 
@@ -239,7 +239,7 @@ update_local_db_file <- function(
     get_db_price(
       db_location = db_location,
       start_date = today() - days(100),
-      end_date = today(),
+      end_date = today() + days(1),
       time_frame = time_frame,
       bid_or_ask = bid_or_ask) %>%
     group_by(Asset) %>%
@@ -249,7 +249,8 @@ update_local_db_file <- function(
   current_latest_date <-
     dates_by_asset %>%
     pull(Date) %>%
-    min(na.rm = T)
+    min(na.rm = T) %>%
+    as_datetime(tz = "Australia/Canberra")
 
   current_latest_date <- current_latest_date - days(how_far_back)
 
@@ -271,13 +272,17 @@ update_local_db_file <- function(
 
   data_to_Update <-
     data_to_Update %>%
-    map_dfr(bind_rows)
+    map_dfr(bind_rows) %>%
+    mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
 
   for_upload <-
     data_to_Update %>%
     mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
     left_join(
-      dates_by_asset %>% ungroup() %>%  dplyr::select(Asset,  DB_Date = Date)
+      dates_by_asset %>%
+        ungroup() %>%
+        mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+        dplyr::select(Asset,  DB_Date = Date)
     ) %>%
     filter(Date > DB_Date| is.na(DB_Date)) %>%
     dplyr::select(-DB_Date)

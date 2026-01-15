@@ -8809,8 +8809,8 @@ get_Port_Buy_Data <- function(
 
   return(
     list(
-      XAG_SPX_US2000_USD,
-      XAG_SPX_US2000_USD_short
+      XAG_SPX_US2000_USD %>% mutate( Date = as_datetime(Date, tz = "Australia/Sydney") ),
+      XAG_SPX_US2000_USD_short %>% mutate( Date = as_datetime(Date, tz = "Australia/Sydney") )
     )
   )
 

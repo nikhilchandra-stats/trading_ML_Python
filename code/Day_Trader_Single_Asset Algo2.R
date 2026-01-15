@@ -279,7 +279,7 @@ safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 
 while (current_time < end_time) {
 
-  current_time <- now() %>% as_datetime()
+  current_time <- now() %>% as_datetime(tz = "Australia/Canberra")
   current_minute <- lubridate::minute(current_time)
   current_hour <- lubridate::hour(current_time)
   current_date <- now() %>% as_date(tz = "Australia/Canberra")
@@ -427,7 +427,7 @@ while (current_time < end_time) {
           read_csv_or_API = "API",
           time_frame = "H1",
           bid_or_ask = "ask",
-          how_far_back = 800,
+          how_far_back = 2,
           start_date = as.character(how_far_back_date)
         )%>%
         map_dfr(bind_rows) %>%
@@ -442,7 +442,7 @@ while (current_time < end_time) {
           read_csv_or_API = "API",
           time_frame = "H1",
           bid_or_ask = "bid",
-          how_far_back = 800,
+          how_far_back = 2,
           start_date = as.character(how_far_back_date)
         ) %>%
         map_dfr(bind_rows) %>%
@@ -469,6 +469,8 @@ while (current_time < end_time) {
             raw_macro_data = raw_macro_data,
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
+            # start_index = 1,
+            # end_index = 40,
             start_index = 19,
             end_index = 38,
             risk_dollar_value = 15,
@@ -477,10 +479,10 @@ while (current_time < end_time) {
             profit_value_var = 30,
             period_var = 24,
             bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-            date_train_end_pre = "2023-06-01",
-            date_train_phase_2_end_pre = "2024-06-01",
-            training_date_start_post = "2024-07-04",
-            training_date_end_post = "2025-09-01",
+            date_train_end_pre = as.character(as_date("2023-06-01") + days(0)),
+            date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(0)),
+            training_date_start_post = as.character(as_date("2024-07-04") + days(0)),
+            training_date_end_post = as.character(as_date("2025-09-01") + days(30)),
             test_end_date = as.character(today() + days(100)),
             post_bins_cols =
               c("period_return_24_Price",
@@ -494,6 +496,13 @@ while (current_time < end_time) {
         tictoc::toc()
 
       }
+
+      max_date_in_data <-
+        Indices_Metals_Bonds[[1]] %>%
+        slice_max(Date) %>%
+        pull(Date) %>%
+        unique() %>%
+        as_datetime(tz = "Australia/Canberra")
 
       single_asset_model_trades_filt <-
         single_asset_model_trades %>%
@@ -518,15 +527,26 @@ while (current_time < end_time) {
         group_by(Asset) %>%
         slice_max(Date) %>%
         ungroup() %>%
-        left_join(current_prices_ask) %>%
+        left_join(current_prices_ask %>%
+                    group_by(Asset) %>%
+                    slice_max(Date) %>%
+                    ungroup() %>%
+                    dplyr::select(-Date)) %>%
         mutate(
           time_diff =
-            abs(as.numeric( (Date) - (current_time), units = "mins"))
+            abs(
+              as.numeric(
+                as_datetime(Date, tz = "Australia/Canberra") -
+                  as_datetime(current_time, tz = "Australia/Canberra"),
+                units = "mins"
+                )
+              ),
+          date_check = max_date_in_data <= Date
         ) %>%
         group_by(Asset) %>%
         slice_min(time_diff) %>%
         ungroup() %>%
-        filter(time_diff < 60)
+        filter(time_diff <= 120 & date_check == TRUE)
 
 
 
