@@ -179,71 +179,55 @@ port_return_dfr <-
     Total_Return = sum(Return)
   )
 
+assets_to_get_results <-
+  c("EUR_USD", #1
+    "EU50_EUR", #2
+    "SPX500_USD", #3
+    "US2000_USD", #4
+    "USB10Y_USD", #5
+    "USD_JPY", #6
+    "AUD_USD", #7
+    "EUR_GBP", #8
+    "AU200_AUD" ,#9
+    "EUR_AUD", #10
+    "WTICO_USD", #11
+    "UK100_GBP", #12
+    "USD_CAD", #13
+    "GBP_USD", #14
+    "GBP_CAD", #15
+    "EUR_JPY", #16
+    "EUR_NZD", #17
+    "XAG_USD", #18
+    "XAG_EUR", #19
+    "XAG_AUD", #20
+    "XAG_NZD", #21
+    "HK33_HKD", #22
+    "FR40_EUR", #23
+    "BTC_USD", #24
+    "XAG_GBP", #25
+    "GBP_AUD", #26
+    "USD_SEK", #27
+    "USD_SGD", #28
+    "NZD_USD", #29
+    "GBP_NZD", #30
+    "XCU_USD", #31
+    "NATGAS_USD", #32
+    "GBP_JPY", #33
+    "SG30_SGD", #34
+    "XAU_USD", #35
+    "EUR_SEK", #36
+    "XAU_AUD", #37
+    "UK10YB_GBP", #38
+    "JP225Y_JPY", #39
+    "ETH_USD" #40
+  ) %>% unique()
+
 get_all_realised_generic(
   realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
   write_or_append = "append",
   account_var = 1,
-  algo_start_date = "2025-12-01",
-  distinct_assets =
-    c(
-      "EUR_USD", #1
-      "EU50_EUR", #2
-      "SPX500_USD", #3
-      "US2000_USD", #4
-      "USB10Y_USD", #5
-      "USD_JPY", #6
-      "AUD_USD", #7
-      "EUR_GBP", #8
-      "AU200_AUD" ,#9
-      "EUR_AUD", #10
-      "WTICO_USD", #11
-      "UK100_GBP", #12
-      "USD_CAD", #13
-      "GBP_USD", #14
-      "GBP_CAD", #15
-      "EUR_JPY", #16
-      "EUR_NZD", #17
-      "XAG_USD", #18
-      "XAG_EUR", #19
-      "XAG_AUD", #20
-      "XAG_NZD", #21
-      "HK33_HKD", #22
-      "FR40_EUR", #23
-      "BTC_USD", #24
-      "XAG_GBP", #25
-      "GBP_AUD", #26
-      "USD_SEK", #27
-      "USD_SGD", #28
-      "BTC_USD",
-      "XAU_USD",
-      "EUR_CHF", #1 EUR_CHF
-      "EUR_SEK" , #2 EUR_SEK
-      "GBP_CHF", #3 GBP_CHF
-      "GBP_JPY", #4 GBP_JPY
-      "USD_CZK", #5 USD_CZK
-      "USD_NOK" , #6 USD_NOK
-      "XAG_CAD", #7 XAG_CAD
-      "XAG_CHF", #8 XAG_CHF
-      "XAG_JPY" , #9 XAG_JPY
-      "GBP_NZD" , #10 GBP_NZD
-      "NZD_CHF" , #11 NZD_CHF
-      "USD_MXN" , #12 USD_MXN
-      # "XPD_USD" , #13 XPD_USD
-      # "XPT_USD" , #14 XPT_USD
-      "NATGAS_USD" , #15 NATGAS_USD
-      # "SG30_SGD" , #16 SG30_SGD
-      # "SOYBN_USD" , #17 SOYBN_USD
-      "WHEAT_USD" , #18 WHEAT_USD
-      "SUGAR_USD" , #19 SUGAR_USD
-      "DE30_EUR" , #20 DE30_EUR
-      "UK10YB_GBP" , #21 UK10YB_GBP
-      "JP225_USD" , #22 JP225_USD
-      "CH20_CHF" , #23 CH20_CHF
-      "NL25_EUR" , #24 NL25_EUR
-      "XAG_SGD"  #25 XAG_SGD
-      # "BCH_USD" , #26 BCH_USD
-      # "LTC_USD" #27 LTC_USD
-    )
+  algo_start_date = "2026-01-10",
+  distinct_assets = assets_to_get_results
 )
 
 newest_results <-
@@ -278,7 +262,8 @@ newest_results_sum <-
   slice_min(kk) %>%
   ungroup() %>%
   dplyr::select(-kk) %>%
-  mutate(filter_var = TRUE) %>% filter(Date >= "2025-11-17")
+  mutate(filter_var = TRUE) %>%
+  filter(Date >= "2026-01-01")
 
 
 results_sum <-
@@ -354,10 +339,12 @@ results_sum_asset <-
 
 newest_results_sum_actuals <-
   newest_results %>%
+  filter(date_open >= "2026-01-01") %>%
   dplyr::select(Asset, Date = date_open, initialUnits, date_closed , realizedPL, financing, dividendAdjustment) %>%
   mutate(
     across(.cols = c(realizedPL, financing, dividendAdjustment), .fns = ~ as.numeric(.)),
-    net_result = realizedPL + financing + dividendAdjustment
+    net_result = realizedPL + financing + dividendAdjustment,
+    gross_result = realizedPL
   ) %>%
   mutate(
     Date = floor_date(Date, unit = "hour"),
@@ -372,8 +359,9 @@ newest_results_sum_actuals <-
   filter(trade_col == "Long") %>%
   arrange(date_closed) %>%
   mutate(
+    cumulative_return_gross = cumsum(gross_result),
     cumulative_return = cumsum(net_result),
-    gross_result = cumsum(realizedPL)
+    gross_result = cumsum(gross_result)
   )
 
 newest_results_sum_actuals$financing %>% sum() + (newest_results_sum_actuals$dividendAdjustment %>% sum())
@@ -381,13 +369,15 @@ newest_results_sum_actuals$financing %>% sum() + (newest_results_sum_actuals$div
 
 newest_results_sum_actuals %>%
   ggplot(aes(x = date_closed)) +
-  # geom_line(aes(y = gross_result), color = "red") +
+  geom_line(aes(y = cumulative_return_gross), color = "red") +
   geom_line(aes(y = cumulative_return), color = "black") +
   theme_minimal()
 
 newest_results_sum_actuals <-
   newest_results %>%
-  dplyr::select(Asset, Date = date_open, initialUnits, date_closed , realizedPL, financing, dividendAdjustment) %>%
+  filter(date_open >= "2026-01-01") %>%
+  dplyr::select(Asset, Date = date_open, initialUnits,
+                date_closed , realizedPL, financing, dividendAdjustment) %>%
   mutate(
     across(.cols = c(realizedPL, financing, dividendAdjustment), .fns = ~ as.numeric(.)),
     net_result = realizedPL + financing + dividendAdjustment,
