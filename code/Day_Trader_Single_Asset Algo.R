@@ -139,16 +139,31 @@ All_Daily_Data <-
     ) %>% unique()
   )
 
-Indices_Metals_Bonds <- get_Port_Buy_Data(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1"
-)
+Indices_Metals_Bonds <- list()
 
-
+Indices_Metals_Bonds[[1]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    time_frame = "H1",
+    bid_or_ask = "ask",
+    assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
+                 "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
+                 "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
+                 "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
+                 "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
+                 "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
+                 "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
+                 "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
+                 "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
+                 "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
+                 "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
+                 "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+  ) %>%
+  distinct()
 Indices_Metals_Bonds[[2]] <- NULL
-# Indices_Metals_Bonds <- Indices_Metals_Bonds[[1]]
+
 gc()
 rm(missing_assets)
 gc()
@@ -246,33 +261,92 @@ assets_to_use <-
     "ETH_USD" #40
   )
 
+# trade_statement =
+#   "
+#   (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
+#   (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
+#   ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
+#     pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
+#   (mean_3_pred_GLM_period_return_24_Price >
+#           mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
+#   pred_GLM_period_return_24_Price >
+#             mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
+#   (mean_3_pred_GLM_period_return_24_Price >
+#           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
+#   pred_GLM_period_return_24_Price >
+#             mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
+#   (mean_3_pred_GLM_period_return_24_Price >
+#           mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
+#   pred_GLM_period_return_24_Price >
+#             mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
+#     (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
+#     pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
+#     pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
+#     (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
+#       pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
+#       pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
+#     ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
+#     ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
+#     ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
+# "
+
 trade_statement =
   "
-  (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
-  (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
-  ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
-    pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
-  pred_GLM_period_return_24_Price >
-            mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
-  pred_GLM_period_return_24_Price >
-            mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
-  pred_GLM_period_return_24_Price >
-            mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
-    (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
-    pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
-    pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
-    (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
-      pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
-      pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
-    ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
-    ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
-    ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
+        (
+          (
+           pred_index_1 <= pred_index_1_mean - pred_index_1_sd*1.5 &
+           pred_index_2 <= pred_index_2_mean - pred_index_2_sd*1.5 &
+           pred_index_3 <= pred_index_3_mean - pred_index_3_sd*1.5
+           )|
+          (
+
+          ((mean_3_pred_LM_period_return_24_Price >
+          mean_100_pred_LM_period_return_24_Price + sd_100_pred_LM_period_return_24_Price*2) &
+          (mean_3_pred_GLM_period_return_24_Price >
+          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2))|
+
+          ((mean_3_pred_LM_period_return_24_Price >
+          mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.5) &
+          (mean_3_pred_GLM_period_return_24_Price >
+          mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.5))|
+
+          ((mean_3_pred_LM_period_return_30_Price >
+          mean_100_pred_LM_period_return_30_Price + sd_100_pred_LM_period_return_30_Price*2) &
+          (mean_3_pred_GLM_period_return_30_Price >
+          mean_100_pred_GLM_period_return_30_Price + sd_100_pred_GLM_period_return_30_Price*2))|
+
+          ((mean_3_pred_LM_period_return_30_Price >
+          mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.5) &
+          (mean_3_pred_GLM_period_return_30_Price >
+          mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.5))
+
+          )|
+          (
+          pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*2.5 |
+          pred_copula_3 >= pred_copula_3_mean + pred_copula_3_sd*2.5 |
+          pred_copula_5 >= pred_copula_5_mean + pred_copula_5_sd*2.5 |
+          pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.25 |
+          pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.25 |
+          pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.25
+          )|
+          (
+          pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+          pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 &
+          pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*2 &
+          pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*2 &
+          pred_daily_5 >= pred_daily_5_mean + pred_daily_5_sd*2 &
+          pred_daily_6 >= pred_daily_6_mean + pred_daily_6_sd*2 &
+          (
+          (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*0 &
+          pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*0)|
+          (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*0 &
+          pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*0)
+          )
+          )
+
+
+       )
+
 "
 
 assets_to_use <- assets_to_use[1:20]
@@ -398,69 +472,60 @@ while (current_time < end_time) {
 
     if(u1 != "error" & u2 != "error" & u3 != "error" & u4 != "error") {
 
+      Indices_Metals_Bonds <- list()
+
       Indices_Metals_Bonds[[1]] <-
-        updated_data_internal(
-          starting_asset_data = Indices_Metals_Bonds[[1]],
-          end_date_day = now() + days(1),
+        get_db_data_quickly_algo(
+          db_location = db_location,
+          start_date = start_date,
+          end_date = as.character(today() + days(30)),
           time_frame = "H1",
           bid_or_ask = "ask",
-          db_location = db_location) %>%
+          assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
+                       "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
+                       "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
+                       "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
+                       "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
+                       "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
+                       "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
+                       "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
+                       "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
+                       "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
+                       "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
+                       "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+        ) %>%
         distinct() %>%
         filter(Asset %in% asset_list_oanda_single_asset)
 
-      All_Daily_Data <-
-        updated_data_internal(
-          starting_asset_data = All_Daily_Data,
-          end_date_day = now() + days(1),
-          time_frame = "D",
-          bid_or_ask = "ask",
-          db_location = db_location) %>%
-        distinct() %>%
-        filter(Asset %in% asset_list_oanda_single_asset)
+      if(current_hour == 0) {
+        All_Daily_Data <-
+          get_DAILY_ALGO_DATA_API_REQUEST() %>%
+          distinct() %>%
+          filter(Asset %in% asset_list_oanda_single_asset)
+      }
+
+      # All_Daily_Data <-
+      #   updated_data_internal(
+      #     starting_asset_data = All_Daily_Data,
+      #     end_date_day = now() + days(1),
+      #     time_frame = "D",
+      #     bid_or_ask = "ask",
+      #     db_location = db_location) %>%
+      #   distinct() %>%
+      #   filter(Asset %in% asset_list_oanda_single_asset)
 
 
       #--------------------------------------------------Macro Only Trades
-      current_prices_ask <-
-        read_all_asset_data_intra_day(
-          asset_list_oanda = asset_list_oanda,
-          save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
-          read_csv_or_API = "API",
-          time_frame = "H1",
-          bid_or_ask = "ask",
-          how_far_back = 2,
-          start_date = as.character(how_far_back_date)
-        )%>%
-        map_dfr(bind_rows) %>%
-        group_by(Asset) %>%
-        slice_max(Date) %>%
-        ungroup()
-
-      current_prices_bid <-
-        read_all_asset_data_intra_day(
-          asset_list_oanda = asset_list_oanda,
-          save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
-          read_csv_or_API = "API",
-          time_frame = "H1",
-          bid_or_ask = "bid",
-          how_far_back = 2,
-          start_date = as.character(how_far_back_date)
-        ) %>%
-        map_dfr(bind_rows) %>%
-        group_by(Asset) %>%
-        slice_max(Date) %>%
-        ungroup()
-
       if(current_hour %% 2 == 0) {
         total_trades_macro_only_port_stops <- NULL
       } else {
         total_trades_macro_only_port_stops <- NULL
       }
 
-
-
       #-----------Single Asset Model
 
-      if( current_hour %% 2 == 0 | current_hour %% 2 != 0 ) {
+      if( current_hour != 0 ) {
+
         tictoc::tic()
         single_asset_model_trades <-
           single_asset_algo_generate_preds(
@@ -493,61 +558,80 @@ while (current_time < end_time) {
           )
         tictoc::toc()
 
-      }
+        # max_date_in_data <-
+        #   Indices_Metals_Bonds[[1]] %>%
+        #   slice_max(Date) %>%
+        #   pull(Date) %>%
+        #   unique() %>%
+        #   as_datetime(tz = "Australia/Canberra")
 
+        max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
+        rm(Indices_Metals_Bonds)
+        gc()
 
-      max_date_in_data <-
-        Indices_Metals_Bonds[[1]] %>%
-        slice_max(Date) %>%
-        pull(Date) %>%
-        unique() %>%
-        as_datetime(tz = "Australia/Canberra")
+        single_asset_model_trades_filt <-
+          single_asset_model_trades %>%
+          filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
+          mutate(
+            trade_col =
+              eval(parse(text = trade_statement))
+          ) %>%
+          filter(trade_col == TRUE) %>%
+          distinct(Asset, Date)
 
-      single_asset_model_trades_filt <-
-        single_asset_model_trades %>%
-        filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
-        mutate(
-          trade_col =
-            eval(parse(text = trade_statement))
-        ) %>%
-        filter(trade_col == TRUE) %>%
-        distinct(Asset, Date)
+        current_prices_ask <-
+          read_all_asset_data_intra_day(
+            asset_list_oanda = asset_list_oanda,
+            save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
+            read_csv_or_API = "API",
+            time_frame = "H1",
+            bid_or_ask = "ask",
+            how_far_back = 2,
+            start_date = as.character(how_far_back_date)
+          )%>%
+          map_dfr(bind_rows) %>%
+          group_by(Asset) %>%
+          slice_max(Date) %>%
+          ungroup()
 
-
-      single_asset_model_trades_filt <-
-        single_asset_model_trades_filt %>%
-        distinct(Asset, Date) %>%
-        mutate(trade_col = "Long",
-               stop_factor = 5,
-               profit_factor = 30,
-               periods_ahead = 35,
-               risk_dollar_value = risk_dollar_value
-        ) %>%
-        group_by(Asset) %>%
-        slice_max(Date) %>%
-        ungroup() %>%
-        left_join(current_prices_ask %>%
-                    group_by(Asset) %>%
-                    slice_max(Date) %>%
-                    ungroup() %>%
-                    dplyr::select(-Date)) %>%
-        mutate(
-          time_diff =
-            abs(
-              as.numeric(
-                as_datetime(Date, tz = "Australia/Canberra") -
+        single_asset_model_trades_filt <-
+          single_asset_model_trades_filt %>%
+          distinct(Asset, Date) %>%
+          mutate(trade_col = "Long",
+                 stop_factor = 5,
+                 profit_factor = 30,
+                 periods_ahead = 35,
+                 risk_dollar_value = risk_dollar_value
+          ) %>%
+          group_by(Asset) %>%
+          slice_max(Date) %>%
+          ungroup() %>%
+          left_join(current_prices_ask %>%
+                      group_by(Asset) %>%
+                      slice_max(Date) %>%
+                      ungroup() %>%
+                      dplyr::select(-Date)) %>%
+          mutate(
+            time_diff =
+              abs(
+                as.numeric(
+                  as_datetime(Date, tz = "Australia/Canberra") -
                     as_datetime(current_time, tz = "Australia/Canberra"),
-                units = "mins"
+                  units = "mins"
                 )
               ),
-          date_check = max_date_in_data <= Date
-        ) %>%
-        group_by(Asset) %>%
-        slice_min(time_diff) %>%
-        ungroup() %>%
-        filter(time_diff <= 120 & date_check == TRUE)
+            date_check = max_date_in_data <= Date
+          ) %>%
+          group_by(Asset) %>%
+          slice_min(time_diff) %>%
+          ungroup() %>%
+          filter(time_diff <= 70 & date_check == TRUE)
 
+      } else {
 
+        single_asset_model_trades_filt <-  NULL
+
+      }
 
       if(dim(single_asset_model_trades_filt)[1] > 0) {
         single_asset_model_trades_filt <-
@@ -574,16 +658,7 @@ while (current_time < end_time) {
           mutate(
             periods_ahead = as.character(periods_ahead)
           ) %>%
-          # group_by(Asset, trade_col) %>%
-          # mutate(
-          #   trades_to_keep =
-          #     case_when(
-          #       minimal_loss <= 1.25*required_risk ~ "Keep",
-          #       minimal_loss > 1.25*required_risk & profit_factor == max(profit_factor, na.rm = T) ~ "Keep"
-          #     )
-          # ) %>%
           ungroup() %>%
-          # filter(trades_to_keep == "Keep") %>%
           distinct()
 
       } else {
@@ -596,7 +671,8 @@ while (current_time < end_time) {
              single_asset_model_trades_filt) %>%
         map_dfr(bind_rows)
 
-      rm(single_asset_model_trades_filt,
+      rm(
+        # single_asset_model_trades_filt,
          total_trades_macro_only_port_stops,
          single_asset_model_trades,
          raw_macro_data,

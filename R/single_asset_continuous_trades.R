@@ -15,15 +15,25 @@
 #' @examples
 create_running_profits <-
   function(
-    asset_of_interest = "EUR_JPY",
+    asset_of_interest = "XAU_USD",
     asset_data = Indices_Metals_Bonds,
-    stop_factor = 2,
-    profit_factor = 15,
-    risk_dollar_value = 4,
+    stop_factor = 5,
+    profit_factor = 30,
+    risk_dollar_value = 10,
     trade_direction = "Long",
     currency_conversion = currency_conversion,
     asset_infor = asset_infor
   ) {
+
+    mean_values_by_asset_for_loop_H1_ask <-
+      wrangle_asset_data(
+        asset_data_daily_raw = asset_data[[1]],
+        summarise_means = TRUE
+      ) %>%
+      dplyr::select(Asset,
+                    mean_movement = mean_daily,
+                    sd_movement = sd_daily) %>%
+      filter(Asset == asset_of_interest)
 
     bid_price <-
       asset_data[[2]] %>%
@@ -50,10 +60,11 @@ create_running_profits <-
       mutate(
         trade_col = trade_direction
       )  %>%
+      left_join(mean_values_by_asset_for_loop_H1_ask) %>%
       mutate(
 
-        mean_movement = mean(Ask_Price - lag(Ask_Price), na.rm = T),
-        sd_movement = sd(Ask_Price - lag(Ask_Price), na.rm = T),
+        # mean_movement = mean(Ask_Price - lag(Ask_Price), na.rm = T),
+        # sd_movement = sd(Ask_Price - lag(Ask_Price), na.rm = T),
         stop_value = stop_factor*sd_movement + mean_movement,
         profit_value = profit_factor*sd_movement + mean_movement,
         stop_point =
@@ -2405,7 +2416,14 @@ single_asset_Logit_indicator_adv_get_preds <-
       readRDS(
         glue::glue("{save_path}/{Asset_of_interest}_{trade_direction}_mean_sd_values.RDS")
       ) %>%
-      dplyr::select(-Asset_sd, -Asset_mean)
+      dplyr::select(-Asset_sd, -Asset_mean) %>%
+      dplyr::select(-Date) %>%
+      distinct() %>%
+      group_by(Asset) %>%
+      summarise(across(.cols = where(is.numeric),
+                       .fns = ~ mean(., na.rm = T))) %>%
+      ungroup()
+
 
     combined_preds <-
       single_asset_read_models_and_get_pred(

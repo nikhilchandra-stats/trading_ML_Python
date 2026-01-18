@@ -119,14 +119,50 @@ All_Daily_Data <-
     ) %>% unique()
   )
 
-Indices_Metals_Bonds <- get_Port_Buy_Data(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1"
-)
+Indices_Metals_Bonds <- list()
 
-gc()
+Indices_Metals_Bonds[[1]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    time_frame = "H1",
+    bid_or_ask = "ask",
+    assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
+                 "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
+                 "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
+                 "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
+                 "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
+                 "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
+                 "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
+                 "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
+                 "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
+                 "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
+                 "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
+                 "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+  ) %>%
+  distinct()
+Indices_Metals_Bonds[[2]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    time_frame = "H1",
+    bid_or_ask = "bid",
+    assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
+                 "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
+                 "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
+                 "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
+                 "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
+                 "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
+                 "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
+                 "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
+                 "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
+                 "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
+                 "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
+                 "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+  ) %>%
+  distinct()
 
 single_asset_algo_generate_models(
   All_Daily_Data = All_Daily_Data,
@@ -244,61 +280,60 @@ actual_wins_losses <-
 # Use this for Periods 24 only 3.91% Edge with 200 return edge (USE THIS)
 trade_statement =
   "
-  # (mean_3_pred_GLM_period_return_24_Price >
-  #         mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2 |
-  # pred_GLM_period_return_24_Price >
-  #           mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2)|
-  # (mean_3_pred_GLM_period_return_24_Price >
-  #         mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2.25 |
-  # pred_GLM_period_return_24_Price >
-  #           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2.25)|
-  # (mean_3_pred_GLM_period_return_24_Price >
-  #         mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*1.5 |
-  # pred_GLM_period_return_24_Price >
-  #           mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*1.5)|
+        (
+          (
+           pred_index_1 <= pred_index_1_mean - pred_index_1_sd*1.5 &
+           pred_index_2 <= pred_index_2_mean - pred_index_2_sd*1.5 &
+           pred_index_3 <= pred_index_3_mean - pred_index_3_sd*1.5
+           )|
+          (
+
+          ((mean_3_pred_LM_period_return_24_Price >
+          mean_100_pred_LM_period_return_24_Price + sd_100_pred_LM_period_return_24_Price*2) &
+          (mean_3_pred_GLM_period_return_24_Price >
+          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2))|
+
+          ((mean_3_pred_LM_period_return_24_Price >
+          mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.5) &
+          (mean_3_pred_GLM_period_return_24_Price >
+          mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.5))|
+
+          ((mean_3_pred_LM_period_return_30_Price >
+          mean_100_pred_LM_period_return_30_Price + sd_100_pred_LM_period_return_30_Price*2) &
+          (mean_3_pred_GLM_period_return_30_Price >
+          mean_100_pred_GLM_period_return_30_Price + sd_100_pred_GLM_period_return_30_Price*2))|
+
+          ((mean_3_pred_LM_period_return_30_Price >
+          mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.5) &
+          (mean_3_pred_GLM_period_return_30_Price >
+          mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.5))
+
+          )|
+          (
+          pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*2.5 |
+          pred_copula_3 >= pred_copula_3_mean + pred_copula_3_sd*2.5 |
+          pred_copula_5 >= pred_copula_5_mean + pred_copula_5_sd*2.5 |
+          pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.25 |
+          pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.25 |
+          pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.25
+          )|
+          (
+          pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+          pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 &
+          pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*2 &
+          pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*2 &
+          pred_daily_5 >= pred_daily_5_mean + pred_daily_5_sd*2 &
+          pred_daily_6 >= pred_daily_6_mean + pred_daily_6_sd*2 &
+          (
+          (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*0 &
+          pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*0)|
+          (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*0 &
+          pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*0)
+          )
+          )
 
 
-  # (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
-  # (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
-  # ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
-  #   pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
-  # (mean_3_pred_GLM_period_return_24_Price >
-  #         mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
-  # pred_GLM_period_return_24_Price >
-  #           mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
-  # (mean_3_pred_GLM_period_return_24_Price >
-  #         mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
-  # pred_GLM_period_return_24_Price >
-  #           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
-  # (mean_3_pred_GLM_period_return_24_Price >
-  #         mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
-  # pred_GLM_period_return_24_Price >
-  #           mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
-  #
-  #   (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
-  #   pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
-  #   pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
-  #
-  #   ( pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
-  #     pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
-  #     pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
-  #
-  #   ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
-  #   ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
-  #   ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
-  #   (pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*0.75 &
-  #   pred_daily_4 <= pred_daily_4_mean + pred_daily_4_sd*2 )
-
-  # (pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*20 &
-  # pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*20 &
-  # (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*0))
-
-    (
-    pred_macro_1 <= pred_macro_1_mean - pred_macro_1_sd*15 &
-    pred_macro_3 <= pred_macro_3_mean - pred_macro_3_sd*15 &
-    (mean_3_pred_GLM_period_return_24_Price >
-          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*0.5)
-    )
+       )
 
 "
 
@@ -390,11 +425,14 @@ comapre_results_summary <-
   left_join(comnbined_statement_control) %>%
   mutate(
     trade_percent = total_trades/total_trades_control,
-    Total_Returns_Control_adj = Total_Returns_Control*trade_percent
+    Total_Returns_Control_adj = Total_Returns_Control*trade_percent,
+
+    total_trade_percent = sum(wins)/sum(total_trades),
+    total_control_percent = sum(total_trades_control*perc_control)/sum(total_trades_control)
   ) %>%
   mutate(
     Returns_Diff = Total_Returns - Total_Returns_Control_adj,
-    perc_diff = perc - perc_control
+    perc_diff = total_trade_percent - total_control_percent
   )
 
 comapre_results_summary$perc_diff %>% mean()
@@ -410,11 +448,14 @@ comapre_results_summary <-
   left_join(comnbined_statement_control) %>%
   mutate(
     trade_percent = total_trades/total_trades_control,
-    Total_Returns_Control_adj = Total_Returns_Control*trade_percent
+    Total_Returns_Control_adj = Total_Returns_Control*trade_percent,
+
+    total_trade_percent = sum(wins)/sum(total_trades),
+    total_control_percent = sum(total_trades_control*perc_control)/sum(total_trades_control)
   ) %>%
   mutate(
     Returns_Diff = Total_Returns - Total_Returns_Control_adj,
-    perc_diff = perc - perc_control
+    perc_diff = total_trade_percent - total_control_percent
   )
 
 trades_taken <-
@@ -533,33 +574,33 @@ trades_taken_ts_returns %>%
 
 
 #-------------Simulate All factors
-
-simulate_factors(
-  post_preds_all_rolling_and_originals = post_preds_all_rolling_and_originals,
-  actual_wins_losses = actual_wins_losses,
-  win_thresh = 10,
-  macro_factor_tech_vec = c(0,5,10,15),
-  tech_factor_vec = c(0,1,2,3),
-
-  macro_factor_daily_vec = c(0,5,10,15),
-  daily_factor_vec = c(0,1,2,3),
-
-  macro_factor_post_pred_vec = c(0,5,10,15),
-  post_pred_factor_vec = c(0,1,2,3),
-
-  macro_factor_copula_vec = c(0,5,10,15),
-  copula_factor_vec = c(0,1,2,3),
-
-  sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
-)
-
-sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
-save_db <- connect_db(sim_save_db_path)
-sim_data <-
-  DBI::dbGetQuery(conn = save_db, statement = "SELECT * FROM single_asset_improved")
-DBI::dbDisconnect(save_db)
-
-sim_data_2 <-
-  sim_data %>%
-  mutate(mean_perc_diff_vs_control = round(mean_perc_diff_vs_control, 4)) %>%
-  filter(mean_perc_diff_vs_control > 0)
+#
+# simulate_factors(
+#   post_preds_all_rolling_and_originals = post_preds_all_rolling_and_originals,
+#   actual_wins_losses = actual_wins_losses,
+#   win_thresh = 10,
+#   macro_factor_tech_vec = c(0,5,10,15),
+#   tech_factor_vec = c(0,1,2,3),
+#
+#   macro_factor_daily_vec = c(0,5,10,15),
+#   daily_factor_vec = c(0,1,2,3),
+#
+#   macro_factor_post_pred_vec = c(0,5,10,15),
+#   post_pred_factor_vec = c(0,1,2,3),
+#
+#   macro_factor_copula_vec = c(0,5,10,15),
+#   copula_factor_vec = c(0,1,2,3),
+#
+#   sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
+# )
+#
+# sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
+# save_db <- connect_db(sim_save_db_path)
+# sim_data <-
+#   DBI::dbGetQuery(conn = save_db, statement = "SELECT * FROM single_asset_improved")
+# DBI::dbDisconnect(save_db)
+#
+# sim_data_2 <-
+#   sim_data %>%
+#   mutate(mean_perc_diff_vs_control = round(mean_perc_diff_vs_control, 4)) %>%
+#   filter(mean_perc_diff_vs_control > 0)

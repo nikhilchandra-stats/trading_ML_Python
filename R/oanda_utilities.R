@@ -391,8 +391,8 @@ get_oanda_data_position_book <- function(assets = assets_x){
 
 
 get_closed_positions <- function(save_csv = FALSE,
-                                 account_var = 2,
-                                 asset = "AUD_USD"){
+                                 account_var = 1,
+                                 asset = "XAU_USD"){
 
     headers = c(
       `Content-Type` = 'application/json',
@@ -413,7 +413,13 @@ get_closed_positions <- function(save_csv = FALSE,
 
     returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
 
-    returned_value$trades <-  returned_value$trades
+    returned_value$trades <-
+      returned_value$trades
+
+    stop_points <- returned_value$trades$stopLossOrder %>%
+      dplyr::select(id = tradeID, stop_price = price)
+    profit_points <- returned_value$trades$takeProfitOrder%>%
+      dplyr::select(id = tradeID, profit_price = price)
 
     complete_frame <- returned_value$trades  %>%
       select(-takeProfitOrder,-stopLossOrder) %>%
@@ -421,12 +427,18 @@ get_closed_positions <- function(save_csv = FALSE,
         date_open = as_datetime(openTime),
         date_closed = as_datetime(closeTime)
       )  %>%
-      distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits,
+      distinct(id, instrument,price ,realizedPL, date_closed, date_open, initialUnits,
                financing, dividendAdjustment) %>%
       mutate(
         account_var = account_var
       ) %>%
-      rename(Asset =instrument)
+      rename(Asset =instrument) %>%
+      left_join(stop_points) %>%
+      rename(open_price = price) %>%
+      mutate(
+        stop_price = as.numeric(stop_price),
+        open_price = as.numeric(open_price)
+      )
 
     return(complete_frame)
 

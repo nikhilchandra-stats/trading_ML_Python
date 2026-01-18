@@ -317,3 +317,76 @@ update_local_db_file <- function(
   return("Pass")
 
 }
+
+#' get_db_data_quickly_algo
+#'
+#' @param db_location
+#' @param start_date
+#' @param end_date
+#' @param time_frame
+#' @param bid_or_ask
+#' @param assets
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_db_data_quickly_algo <-
+  function(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    time_frame = "H1",
+    bid_or_ask = "ask",
+    assets = c("XAU_USD", "AUD_USD")
+  ) {
+
+    db_dat_accum <- list()
+
+    for (i in 1:length(assets)) {
+      start_date_integer <- start_date %>% as_datetime(tz = "Australia/Sydney") %>% as.integer()
+      end_date_integer <- (as_datetime(end_date, tz = "Australia/Sydney") + days(1)) %>% as.integer()
+      asset <- assets[i]
+
+      db_table <- glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
+      db_table <- case_when(
+        time_frame == "H1" ~ glue::glue("Oanda_Asset_Data_{bid_or_ask}"),
+        time_frame == "D" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}"),
+        time_frame == "M15" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
+      )
+
+      db_query <- glue::glue("SELECT * FROM {db_table}
+                         WHERE Date >= {start_date_integer} AND Date <= {end_date_integer} AND Asset = '{asset}'")
+
+      db_con <- connect_db(db_location)
+
+      db_dat_accum[[i]] <-
+        DBI::dbGetQuery(conn = db_con, statement = db_query) %>%
+        mutate(Date = as_datetime(Date, tz = "Australia/Sydney")) %>%
+        group_by(Asset, Date) %>%
+        mutate(
+          Price = mean(Price, na.rm = T),
+          Open = mean(Open, na.rm = T),
+          High = mean(High, na.rm = T),
+          Low = mean(Low, na.rm = T)
+        ) %>%
+        ungroup() %>%
+        group_by(Asset, Date) %>%
+        mutate(kk = row_number()) %>%
+        group_by(Asset, Date) %>%
+        slice_max(kk) %>%
+        ungroup() %>%
+        dplyr::select(-kk)
+
+      DBI::dbDisconnect(db_con)
+    }
+
+    returned <-
+      db_dat_accum %>%
+      map_dfr(bind_rows)
+
+    rm(db_dat_accum)
+
+    return(returned)
+
+  }
