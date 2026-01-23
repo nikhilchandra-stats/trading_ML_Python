@@ -290,68 +290,83 @@ assets_to_use <-
 #     ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
 # "
 
-trade_statement =
+trade_statement <-
   "
-        (
-          (
-           pred_index_1 <= pred_index_1_mean - pred_index_1_sd*1.5 &
-           pred_index_2 <= pred_index_2_mean - pred_index_2_sd*1.5 &
-           pred_index_3 <= pred_index_3_mean - pred_index_3_sd*1.5
-           )|
-          (
+      (
+       (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*2 &
+        pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*2 &
+        pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+        pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 )|
+        (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*2 &
+        pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*2 &
+        pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+        pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 )
+      )|
 
-          ((mean_3_pred_LM_period_return_24_Price >
-          mean_100_pred_LM_period_return_24_Price + sd_100_pred_LM_period_return_24_Price*2) &
-          (mean_3_pred_GLM_period_return_24_Price >
-          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2))|
+     (
+     pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*4.25|
+     pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*4.25|
+     pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*4.25
+     )|
 
-          ((mean_3_pred_LM_period_return_24_Price >
-          mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.5) &
-          (mean_3_pred_GLM_period_return_24_Price >
-          mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.5))|
+    ((mean_3_pred_LM_period_return_24_Price >
+     mean_500_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*2.25) &
+     (mean_3_pred_GLM_period_return_24_Price >
+     mean_500_pred_GLM_period_return_24_Price + sd_500_pred_GLM_period_return_24_Price*2.25))|
 
-          ((mean_3_pred_LM_period_return_30_Price >
-          mean_100_pred_LM_period_return_30_Price + sd_100_pred_LM_period_return_30_Price*2) &
-          (mean_3_pred_GLM_period_return_30_Price >
-          mean_100_pred_GLM_period_return_30_Price + sd_100_pred_GLM_period_return_30_Price*2))|
+     ((mean_3_pred_LM_period_return_30_Price >
+     mean_500_pred_LM_period_return_30_Price + sd_500_pred_LM_period_return_30_Price*2.25) &
+     (mean_3_pred_GLM_period_return_30_Price >
+     mean_500_pred_GLM_period_return_30_Price + sd_500_pred_GLM_period_return_30_Price*2.25))|
 
-          ((mean_3_pred_LM_period_return_30_Price >
-          mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.5) &
-          (mean_3_pred_GLM_period_return_30_Price >
-          mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.5))
+     ((mean_3_pred_LM_period_return_24_Price >
+     mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.25) &
+     (mean_3_pred_GLM_period_return_24_Price >
+     mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.25))|
 
-          )|
-          (
-          pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*2.5 |
-          pred_copula_3 >= pred_copula_3_mean + pred_copula_3_sd*2.5 |
-          pred_copula_5 >= pred_copula_5_mean + pred_copula_5_sd*2.5 |
-          pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.25 |
-          pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.25 |
-          pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.25
-          )|
-          (
-          pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
-          pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 &
-          pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*2 &
-          pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*2 &
-          pred_daily_5 >= pred_daily_5_mean + pred_daily_5_sd*2 &
-          pred_daily_6 >= pred_daily_6_mean + pred_daily_6_sd*2 &
-          (
-          (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*0 &
-          pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*0)|
-          (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*0 &
-          pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*0)
-          )
-          )
+    ((mean_3_pred_LM_period_return_30_Price >
+     mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.25) &
+     (mean_3_pred_GLM_period_return_30_Price >
+     mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.25))|
 
+    ((
+    mean_50_pred_LM_period_return_30_Price > mean_100_pred_LM_period_return_30_Price &
+    mean_100_pred_LM_period_return_30_Price > mean_200_pred_LM_period_return_30_Price &
+    mean_200_pred_LM_period_return_30_Price > mean_400_pred_LM_period_return_30_Price &
+    pred_LM_period_return_30_Price >
+      mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*1
+    ) &
 
-       )
+    (
+    mean_50_pred_LM_period_return_24_Price > mean_100_pred_LM_period_return_24_Price &
+    mean_100_pred_LM_period_return_24_Price > mean_200_pred_LM_period_return_24_Price &
+    mean_200_pred_LM_period_return_24_Price > mean_400_pred_LM_period_return_24_Price &
+    pred_LM_period_return_24_Price >
+      mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*1
+    ))|
+
+    ((
+    mean_50_pred_GLM_period_return_24_Price > mean_100_pred_GLM_period_return_24_Price &
+    mean_100_pred_GLM_period_return_24_Price > mean_200_pred_GLM_period_return_24_Price &
+    mean_200_pred_GLM_period_return_24_Price > mean_400_pred_GLM_period_return_24_Price &
+    pred_GLM_period_return_24_Price >
+      mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*0.5
+    ) &
+
+    (
+    mean_50_pred_GLM_period_return_30_Price > mean_100_pred_GLM_period_return_30_Price &
+    mean_100_pred_GLM_period_return_30_Price > mean_200_pred_GLM_period_return_30_Price &
+    mean_200_pred_GLM_period_return_30_Price > mean_400_pred_GLM_period_return_30_Price &
+    pred_GLM_period_return_30_Price >
+      mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*0.5
+    ))
 
 "
 
 assets_to_use <- assets_to_use[1:20]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
+run_trades = FALSE
 
 while (current_time < end_time) {
 
@@ -363,7 +378,8 @@ while (current_time < end_time) {
   #----------------------Refresh Data Stores and LM model
   if(current_minute > 0 &
      current_minute < 5 &
-     trades_opened == 0
+     trades_opened == 0 &
+     run_trades == TRUE
      # ( (current_hour) == 0)
   ) {
 
@@ -374,7 +390,7 @@ while (current_time < end_time) {
     #-------------------------------------Update Data
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
-    how_far_back_date <- seq(today() - days(25), today(), by =  "days" ) %>%
+    how_far_back_date <- seq(today() - days(12), today(), by =  "days" ) %>%
       keep(
         ~ wday(.x) == 3
       ) %>%
@@ -385,54 +401,29 @@ while (current_time < end_time) {
     how_far_back_var <-
       as.numeric(today() - how_far_back_date)
 
-    u1 <- safely_upload_to_db(
-      db_location = db_location,
-      time_frame = "D",
-      bid_or_ask = "ask",
-      asset_list_oanda = asset_list_oanda,
-      how_far_back = how_far_back_var
-    ) %>%
-      pluck('result')
+    u1 <- "pass"
 
     u2 <- safely_upload_to_db(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "ask",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = how_far_back_var
+      how_far_back = how_far_back_var,
+      take_last_value = TRUE
     )%>%
       pluck('result')
 
-    u3 <- safely_upload_to_db(
-      db_location = db_location,
-      time_frame = "D",
-      bid_or_ask = "bid",
-      asset_list_oanda = asset_list_oanda,
-      how_far_back = how_far_back_var
-    ) %>%
-      pluck('result')
+    u3 <- "pass"
 
     u4 <- safely_upload_to_db(
       db_location = db_location,
       time_frame = "H1",
       bid_or_ask = "bid",
       asset_list_oanda = asset_list_oanda,
-      how_far_back = how_far_back_var
+      how_far_back = how_far_back_var,
+      take_last_value = TRUE
     )%>%
       pluck('result')
-
-
-    if(u1 == "error") {
-      Sys.sleep(30)
-      u1 <- safely_upload_to_db(
-        db_location = db_location,
-        time_frame = "D",
-        bid_or_ask = "ask",
-        asset_list_oanda = asset_list_oanda,
-        how_far_back = how_far_back_var
-      ) %>%
-        pluck('result')
-    }
 
     if(u2 == "error") {
       Sys.sleep(30)
@@ -443,18 +434,6 @@ while (current_time < end_time) {
         asset_list_oanda = asset_list_oanda,
         how_far_back = how_far_back_var
       )%>%
-        pluck('result')
-    }
-
-    if(u3 == "error") {
-      Sys.sleep(30)
-      u3 <- safely_upload_to_db(
-        db_location = db_location,
-        time_frame = "D",
-        bid_or_ask = "bid",
-        asset_list_oanda = asset_list_oanda,
-        how_far_back = how_far_back_var
-      ) %>%
         pluck('result')
     }
 
@@ -494,10 +473,11 @@ while (current_time < end_time) {
                        "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
                        "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
         ) %>%
-        distinct() %>%
-        filter(Asset %in% asset_list_oanda_single_asset)
+        distinct()
 
-      if(current_hour == 0) {
+      Indices_Metals_Bonds[[2]] <- NULL
+
+      if(current_hour == 0 | current_hour == 6 | current_hour == 12 |current_hour == 18  ) {
         All_Daily_Data <-
           get_DAILY_ALGO_DATA_API_REQUEST() %>%
           distinct() %>%
@@ -524,7 +504,10 @@ while (current_time < end_time) {
 
       #-----------Single Asset Model
 
-      if( current_hour != 0 ) {
+      if(
+        run_trades == TRUE
+        # current_hour != 0
+        ) {
 
         tictoc::tic()
         single_asset_model_trades <-
@@ -625,11 +608,14 @@ while (current_time < end_time) {
           group_by(Asset) %>%
           slice_min(time_diff) %>%
           ungroup() %>%
-          filter(time_diff <= 70 & date_check == TRUE)
+          filter(time_diff <= 70 & date_check == TRUE) %>%
+          filter(max_date_in_data <= Date)
 
       } else {
 
-        single_asset_model_trades_filt <-  NULL
+        single_asset_model_trades_filt <-
+          tibble(xx = "a") %>%
+          filter(xx == "b")
 
       }
 
@@ -786,6 +772,8 @@ while (current_time < end_time) {
     gc()
     Sys.sleep(2)
     gc()
+    trades_closed = 0
+    trades_opened <- 0
 
   }
 

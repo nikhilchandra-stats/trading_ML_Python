@@ -278,62 +278,159 @@ actual_wins_losses <-
 )
 
 # Use this for Periods 24 only 3.91% Edge with 200 return edge (USE THIS)
+# trade_statement =
+#   "
+#         (
+#           (
+#
+#           ((mean_3_pred_LM_period_return_24_Price >
+#           mean_100_pred_LM_period_return_24_Price + sd_100_pred_LM_period_return_24_Price*2) &
+#           (mean_3_pred_GLM_period_return_24_Price >
+#           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2))|
+#
+#           ((mean_3_pred_LM_period_return_24_Price >
+#           mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.5) &
+#           (mean_3_pred_GLM_period_return_24_Price >
+#           mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.5))|
+#
+#           ((mean_3_pred_LM_period_return_30_Price >
+#           mean_100_pred_LM_period_return_30_Price + sd_100_pred_LM_period_return_30_Price*2) &
+#           (mean_3_pred_GLM_period_return_30_Price >
+#           mean_100_pred_GLM_period_return_30_Price + sd_100_pred_GLM_period_return_30_Price*2))|
+#
+#           ((mean_3_pred_LM_period_return_30_Price >
+#           mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.5) &
+#           (mean_3_pred_GLM_period_return_30_Price >
+#           mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.5))
+#
+#           )|
+#           (
+#           pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*2.5 |
+#           pred_copula_3 >= pred_copula_3_mean + pred_copula_3_sd*2.5 |
+#           pred_copula_5 >= pred_copula_5_mean + pred_copula_5_sd*2.5 |
+#           pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.25 |
+#           pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.25 |
+#           pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.25
+#           )|
+#           (
+#           pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+#           pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 &
+#           pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*2 &
+#           pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*2 &
+#           pred_daily_5 >= pred_daily_5_mean + pred_daily_5_sd*2 &
+#           pred_daily_6 >= pred_daily_6_mean + pred_daily_6_sd*2 &
+#           (
+#           (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*1 &
+#           pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*1)|
+#           (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*1 &
+#           pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*1)
+#           )
+#           )
+#
+#
+#        )
+#
+# "
+
 trade_statement =
   "
-        (
-          (
-           pred_index_1 <= pred_index_1_mean - pred_index_1_sd*1.5 &
-           pred_index_2 <= pred_index_2_mean - pred_index_2_sd*1.5 &
-           pred_index_3 <= pred_index_3_mean - pred_index_3_sd*1.5
-           )|
-          (
+  (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
+  (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
+  ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
+    pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
+  (mean_3_pred_GLM_period_return_24_Price >
+          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
+  pred_GLM_period_return_24_Price >
+            mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
+  (mean_3_pred_GLM_period_return_24_Price >
+          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
+  pred_GLM_period_return_24_Price >
+            mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
+  (mean_3_pred_GLM_period_return_24_Price >
+          mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
+  pred_GLM_period_return_24_Price >
+            mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
+    (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
+    pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
+    pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
+    (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
+      pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
+      pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
+    ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
+    ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
+    ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
+"
 
-          ((mean_3_pred_LM_period_return_24_Price >
-          mean_100_pred_LM_period_return_24_Price + sd_100_pred_LM_period_return_24_Price*2) &
-          (mean_3_pred_GLM_period_return_24_Price >
-          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2))|
+trade_statement <-
+  "
+      (
+       (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*2 &
+        pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*2 &
+        pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+        pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 )|
+        (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*2 &
+        pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*2 &
+        pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
+        pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 )
+      )|
 
-          ((mean_3_pred_LM_period_return_24_Price >
-          mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.5) &
-          (mean_3_pred_GLM_period_return_24_Price >
-          mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.5))|
+     (
+     pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*4.25|
+     pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*4.25|
+     pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*4.25
+     )|
 
-          ((mean_3_pred_LM_period_return_30_Price >
-          mean_100_pred_LM_period_return_30_Price + sd_100_pred_LM_period_return_30_Price*2) &
-          (mean_3_pred_GLM_period_return_30_Price >
-          mean_100_pred_GLM_period_return_30_Price + sd_100_pred_GLM_period_return_30_Price*2))|
+    ((mean_3_pred_LM_period_return_24_Price >
+     mean_500_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*2.25) &
+     (mean_3_pred_GLM_period_return_24_Price >
+     mean_500_pred_GLM_period_return_24_Price + sd_500_pred_GLM_period_return_24_Price*2.25))|
 
-          ((mean_3_pred_LM_period_return_30_Price >
-          mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.5) &
-          (mean_3_pred_GLM_period_return_30_Price >
-          mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.5))
+     ((mean_3_pred_LM_period_return_30_Price >
+     mean_500_pred_LM_period_return_30_Price + sd_500_pred_LM_period_return_30_Price*2.25) &
+     (mean_3_pred_GLM_period_return_30_Price >
+     mean_500_pred_GLM_period_return_30_Price + sd_500_pred_GLM_period_return_30_Price*2.25))|
 
-          )|
-          (
-          pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*2.5 |
-          pred_copula_3 >= pred_copula_3_mean + pred_copula_3_sd*2.5 |
-          pred_copula_5 >= pred_copula_5_mean + pred_copula_5_sd*2.5 |
-          pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.25 |
-          pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.25 |
-          pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.25
-          )|
-          (
-          pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
-          pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 &
-          pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*2 &
-          pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*2 &
-          pred_daily_5 >= pred_daily_5_mean + pred_daily_5_sd*2 &
-          pred_daily_6 >= pred_daily_6_mean + pred_daily_6_sd*2 &
-          (
-          (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*0 &
-          pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*0)|
-          (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*0 &
-          pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*0)
-          )
-          )
+     ((mean_3_pred_LM_period_return_24_Price >
+     mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.25) &
+     (mean_3_pred_GLM_period_return_24_Price >
+     mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.25))|
 
+    ((mean_3_pred_LM_period_return_30_Price >
+     mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.25) &
+     (mean_3_pred_GLM_period_return_30_Price >
+     mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.25))|
 
-       )
+    ((
+    mean_50_pred_LM_period_return_30_Price > mean_100_pred_LM_period_return_30_Price &
+    mean_100_pred_LM_period_return_30_Price > mean_200_pred_LM_period_return_30_Price &
+    mean_200_pred_LM_period_return_30_Price > mean_400_pred_LM_period_return_30_Price &
+    pred_LM_period_return_30_Price >
+      mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*1
+    ) &
+
+    (
+    mean_50_pred_LM_period_return_24_Price > mean_100_pred_LM_period_return_24_Price &
+    mean_100_pred_LM_period_return_24_Price > mean_200_pred_LM_period_return_24_Price &
+    mean_200_pred_LM_period_return_24_Price > mean_400_pred_LM_period_return_24_Price &
+    pred_LM_period_return_24_Price >
+      mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*1
+    ))|
+
+    ((
+    mean_50_pred_GLM_period_return_24_Price > mean_100_pred_GLM_period_return_24_Price &
+    mean_100_pred_GLM_period_return_24_Price > mean_200_pred_GLM_period_return_24_Price &
+    mean_200_pred_GLM_period_return_24_Price > mean_400_pred_GLM_period_return_24_Price &
+    pred_GLM_period_return_24_Price >
+      mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*0.5
+    ) &
+
+    (
+    mean_50_pred_GLM_period_return_30_Price > mean_100_pred_GLM_period_return_30_Price &
+    mean_100_pred_GLM_period_return_30_Price > mean_200_pred_GLM_period_return_30_Price &
+    mean_200_pred_GLM_period_return_30_Price > mean_400_pred_GLM_period_return_30_Price &
+    pred_GLM_period_return_30_Price >
+      mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*0.5
+    ))
 
 "
 

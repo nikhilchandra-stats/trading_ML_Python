@@ -286,7 +286,7 @@ get_oanda_data_candles <- function(assets = assets_x,
         `from` = glue::glue('{date_var}{time}'),
         `granularity` = granularity,
         `count` = how_far_back,
-        `alignmentTimezone` = "Australia/Sydney"
+        `alignmentTimezone` = "Australia/Canberra"
       )
     }else{
       params = list(
@@ -294,7 +294,7 @@ get_oanda_data_candles <- function(assets = assets_x,
         `from` = glue::glue('{date_var_start}{time}'),
         `granularity` = granularity,
         `count` = 2000,
-        `alignmentTimezone` = 'Australia/Sydney'
+        `alignmentTimezone` = 'Australia/Canberra'
       )
 
     }
@@ -343,7 +343,7 @@ get_oanda_data_candles <- function(assets = assets_x,
       ) %>%
       dplyr::mutate(time_frame = granularity ) %>%
       dplyr::mutate(
-        date_time = lubridate::as_datetime(date_time, tz = "Australia/Sydney"),
+        date_time = lubridate::as_datetime(date_time, tz = "Australia/Canberra"),
         date = lubridate::as_date(
           paste0( lubridate::year(date_time),"-",lubridate::month(date_time),"_",lubridate::day(date_time))
         ),

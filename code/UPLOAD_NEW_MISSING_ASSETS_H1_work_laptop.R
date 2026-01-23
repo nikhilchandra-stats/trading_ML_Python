@@ -9,7 +9,7 @@ asset_list_oanda =
 time_frame = "H1"
 bid_or_ask = "bid"
 how_far_back = 10
-ending_date = "2025-09-12"
+ending_date = "2026-01-17"
 starting_date = "2012-01-01"
 
 db_con <- connect_db(path = db_location)
@@ -51,7 +51,7 @@ write_table_sql_lite(.data = data_to_Update_dfr,
                       conn = db_con,
                       overwrite_true = TRUE)
 
-for (j in 1:length(asset_list_oanda)) {
+for (j in 75:length(asset_list_oanda)) {
 
   current_latest_data <-
     DBI::dbGetQuery(conn = db_con,
