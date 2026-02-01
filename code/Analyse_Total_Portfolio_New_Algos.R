@@ -263,7 +263,7 @@ newest_results_sum <-
   ungroup() %>%
   dplyr::select(-kk) %>%
   mutate(filter_var = TRUE) %>%
-  filter(Date >= "2026-01-01")
+  filter(Date >= "2026-01-19")
 
 
 results_sum <-
@@ -339,7 +339,7 @@ results_sum_asset <-
 
 newest_results_sum_actuals <-
   newest_results %>%
-  filter(date_open >= "2026-01-01") %>%
+  filter(date_open >= "2026-01-19") %>%
   dplyr::select(Asset, Date = date_open, initialUnits, date_closed , realizedPL, financing, dividendAdjustment) %>%
   mutate(
     across(.cols = c(realizedPL, financing, dividendAdjustment), .fns = ~ as.numeric(.)),
@@ -375,7 +375,7 @@ newest_results_sum_actuals %>%
 
 newest_results_sum_actuals <-
   newest_results %>%
-  filter(date_open >= "2026-01-01") %>%
+  filter(date_open >= "2026-01-19") %>%
   dplyr::select(Asset, Date = date_open, initialUnits,
                 date_closed , realizedPL, financing, dividendAdjustment) %>%
   mutate(
@@ -404,9 +404,11 @@ newest_results_sum_actuals <-
             Returns = sum(net_result),
             gross_result = sum(gross_result),
             financing = sum(financing),
-            financing_perc = abs(financing/gross_result)
+            financing_perc = abs(financing/gross_result),
+            trades = n()
             )
 
 newest_results_sum_actuals$Returns %>% sum()
 newest_results_sum_actuals$gross_result %>% sum()
 newest_results_sum_actuals$financing %>% sum()
+

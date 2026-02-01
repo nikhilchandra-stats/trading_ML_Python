@@ -1,7 +1,6 @@
 helpeR::load_custom_functions()
 
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-all_aud_symbols <- get_oanda_symbols()
 # asset_list_oanda =
 #   c("XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
 #     "XAG_NZD",
@@ -32,14 +31,13 @@ all_aud_symbols <- get_oanda_symbols()
 
 
 asset_list_oanda <-
-  get_oanda_symbols() %>%
-  keep( ~ str_detect(.x, "XAG|XAU|BTC|ETH|LTC|AUD_USD|EUR_USD|USD_JPY|USD_CHF|NZD_USD|GBP_USD|EUR_GBP|USD_CAD|USD_SEK|USD_NOK|USD_SGD"))
+  get_oanda_symbols()
 
-time_frame = "M15"
+time_frame = "H1"
 bid_or_ask = "bid"
 how_far_back = 10
 ending_date = "2025-09-12"
-starting_date = "2016-01-01"
+starting_date = "2012-01-01"
 
 db_con <- connect_db(path = db_location)
 table_name <-
