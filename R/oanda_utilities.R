@@ -637,7 +637,7 @@ get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
     pull(adjusted_conversion)
 
   SEK_ZAR_HUF_NOK_conversion <- asset_data_daily_raw %>%
-    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY|USD_MXN|USD_CNH"))  %>%
+    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY|USD_MXN|USD_CNH|USD_CZK"))  %>%
     group_by(Asset) %>%
     slice_max(Date)  %>%
     ungroup() %>%

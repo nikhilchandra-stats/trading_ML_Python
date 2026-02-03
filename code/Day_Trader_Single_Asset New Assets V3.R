@@ -1,7 +1,7 @@
 helpeR::load_custom_functions()
 
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CZK"))
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
@@ -90,7 +90,6 @@ asset_list_oanda =
   unique()
 
 asset_infor <- get_instrument_info()
-raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
@@ -352,6 +351,43 @@ Single_Asset_V3_Gen_Model <-
       map(~.x %>% pluck("testing_data")) %>%
       reduce(left_join)
 
+
+    complete_preds_train <-
+      AR_Train_Preds_mean %>%
+      left_join(
+        Copula_Train_Preds_mean
+      ) %>%
+      left_join(
+        state_space_Train_Preds_mean
+      )
+
+    first_non_NA_date <-
+      complete_preds_train %>%
+      filter(if_all(everything(), ~!is.na(.))) %>%
+      pull(Date) %>%
+      min(na.rm = T)
+
+
+    complete_preds_train <-
+      complete_preds_train %>%
+      filter(Date >= first_non_NA_date)
+
+    complete_preds_test <-
+      AR_Test_Preds %>%
+      left_join(
+        Copula_Test_Preds
+      ) %>%
+      left_join(
+        state_space_Test_Preds
+      )
+
+    return(
+      list(
+        "complete_preds_test" = complete_preds_test,
+        "complete_preds_train" = complete_preds_train
+      )
+    )
+
   }
 
 #' Single_Asset_V3_state_space
@@ -379,17 +415,26 @@ Single_Asset_V3_state_space <-
           slider::slide_dbl(.x = Price_diff, .f = ~ mean(.x, na.rm = T), .before = roll_period_state_space),
         state_space_sd =
           slider::slide_dbl(.x = Price_diff, .f = ~ mean(.x, na.rm = T), .before = roll_period_state_space)
+        # state_space_sd =
+        #   slider::slide_dbl(.x = Price_diff, .f = ~ sd(.x, na.rm = T), .before = roll_period_state_space)
 
       ) %>%
       mutate(
+
+        state_space_min =
+          case_when(
+            Price_diff <= state_space_mean - state_space_sd*2.5 ~ 1,
+            TRUE ~ 0
+          ),
+
         state_space_lowest =
           case_when(
-            Price_diff <= state_space_mean - state_space_sd*2 ~ 1,
+            Price_diff > state_space_mean - state_space_sd*2.5 & Price_diff <= state_space_mean - state_space_sd*1.5 ~ 1,
             TRUE ~ 0
           ),
         state_space_second_lowest =
           case_when(
-            Price_diff > state_space_mean - state_space_sd*2 & Price_diff <= state_space_mean - state_space_sd*1 ~ 1,
+            Price_diff > state_space_mean - state_space_sd*1.5 & Price_diff <= state_space_mean - state_space_sd*1 ~ 1,
             TRUE ~ 0
           ),
         state_space_third_lowest =
@@ -404,30 +449,37 @@ Single_Asset_V3_state_space <-
           ),
         state_space_second_highest =
           case_when(
-            Price_diff > state_space_mean + state_space_sd*1 & Price_diff <= state_space_mean + state_space_sd*2 ~ 1,
+            Price_diff > state_space_mean + state_space_sd*1 & Price_diff <= state_space_mean + state_space_sd*1.5 ~ 1,
             TRUE ~ 0
           ),
         state_space_highest =
           case_when(
-            Price_diff > state_space_mean + state_space_sd*2 ~ 1,
+            Price_diff > state_space_mean + state_space_sd*1.5 & Price_diff <= state_space_mean + state_space_sd*2.5 ~ 1,
+            TRUE ~ 0
+          ),
+        state_space_max =
+          case_when(
+            Price_diff > state_space_mean + state_space_sd*2.5 ~ 1,
             TRUE ~ 0
           )
 
       ) %>%
       mutate(
         across(
-          .cols = c(state_space_highest, state_space_second_highest, state_space_third_highest,
-                    state_space_third_lowest, state_space_second_lowest, state_space_lowest),
+          .cols = c(state_space_max, state_space_highest, state_space_second_highest, state_space_third_highest,
+                    state_space_third_lowest, state_space_second_lowest, state_space_lowest, state_space_min),
           .fns = ~
             slider::slide_dbl(.x = ., .f = ~ sum(.x, na.rm = T), .before = roll_period_state_space)
         )
       ) %>%
       filter(!is.na(Price_diff)) %>%
       mutate(
-        total_state_space = state_space_highest + state_space_second_highest + state_space_third_highest +
-          state_space_third_lowest + state_space_second_lowest + state_space_lowest,
+        total_state_space =
+          state_space_max + state_space_highest + state_space_second_highest + state_space_third_highest +
+          state_space_third_lowest + state_space_second_lowest + state_space_lowest + state_space_min,
 
-
+        !!as.name( glue::glue("perc_space_max_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_max/total_state_space,
         !!as.name( glue::glue("perc_space_highest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_highest/total_state_space,
         !!as.name( glue::glue("perc_space_second_highest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
@@ -439,7 +491,9 @@ Single_Asset_V3_state_space <-
         !!as.name( glue::glue("perc_space_second_lowest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_second_lowest/total_state_space,
         !!as.name( glue::glue("perc_space_space_lowest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
-          state_space_lowest/total_state_space
+          state_space_lowest/total_state_space,
+        !!as.name( glue::glue("perc_space_space_min_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_min/total_state_space
       ) %>%
       dplyr::select(Date, Asset, contains("perc_space_")) %>%
       arrange(Date) %>%
