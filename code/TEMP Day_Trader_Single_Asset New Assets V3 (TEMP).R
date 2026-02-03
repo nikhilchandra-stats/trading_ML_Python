@@ -307,7 +307,7 @@ training_end_date <- "2025-05-01"
 rolling_mean_pred_period = 500
 bin_threshold = 5
 
-for (i in 1:length(indicator_mapping$Asset) ) {
+for (i in 23:length(indicator_mapping$Asset) ) {
 
   asset_loop <- indicator_mapping$Asset[i]
   copula_assets <- indicator_mapping$couplua_assets[[i]]
