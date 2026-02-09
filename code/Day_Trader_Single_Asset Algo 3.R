@@ -90,7 +90,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 3.db"
 # start_date = "2016-01-01"
 start_date = "2019-06-01"
 end_date = today() %>% as.character()
@@ -190,7 +190,7 @@ trade_tracker_DB_path <-
   "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_daily_buy_close 2.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 3.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -251,7 +251,7 @@ trade_statement <-
         (averaged_35_LM_pred > 1  & averaged_35_GLM_pred > 0.6 & averaged_35_46_GLM_pred > 0.6)
    "
 
-assets_to_use <- assets_to_use[14:21]
+assets_to_use <- assets_to_use[9:13]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -265,7 +265,7 @@ while (current_time < end_time) {
 
   #----------------------Refresh Data Stores and LM model
   if(current_minute > 0 &
-     current_minute < 2 &
+     current_minute < 5 &
      trades_opened == 0 &
      run_trades == TRUE
      # ( (current_hour) == 0)
@@ -338,7 +338,7 @@ while (current_time < end_time) {
     }
 
     if(u1 != "error" & u2 != "error" & u3 != "error" & u4 != "error") {
-      tictoc::tic()
+
       Indices_Metals_Bonds <- list()
 
       Indices_Metals_Bonds[[1]] <-
@@ -367,8 +367,6 @@ while (current_time < end_time) {
         distinct()
 
       Indices_Metals_Bonds[[2]] <- NULL
-
-      tictoc::toc()
 
       if(current_hour == 0 | current_hour == 6 | current_hour == 12 |current_hour == 18  ) {
         # All_Daily_Data <-
@@ -401,7 +399,7 @@ while (current_time < end_time) {
         run_trades == TRUE
         # current_hour != 0
       ) {
-        message("Made it to Prob Finder Function")
+
         tictoc::tic()
         single_asset_model_trades <-
           Single_Asset_V3_get_all_preds(
@@ -411,8 +409,8 @@ while (current_time < end_time) {
             training_end_date = "2025-05-01",
             rolling_mean_pred_period = 500,
             bin_threshold = 5,
-            start_index = 14,
-            end_index = 21,
+            start_index = 8,
+            end_index = 14,
             base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
           )
         tictoc::toc()

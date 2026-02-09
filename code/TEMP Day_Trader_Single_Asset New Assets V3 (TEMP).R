@@ -307,7 +307,7 @@ training_end_date <- "2025-05-01"
 rolling_mean_pred_period = 500
 bin_threshold = 5
 
-for (i in 23:length(indicator_mapping$Asset) ) {
+for (i in 1:length(indicator_mapping$Asset) ) {
 
   asset_loop <- indicator_mapping$Asset[i]
   copula_assets <- indicator_mapping$couplua_assets[[i]]
@@ -327,7 +327,7 @@ for (i in 23:length(indicator_mapping$Asset) ) {
 
   all_preds <-
     pred_generated[[1]] %>%
-    bind_rows(pred_generated[[1]]) %>%
+    bind_rows(pred_generated[[2]]) %>%
     mutate(
       training_end_date = training_end_date,
       rolling_mean_pred_period = rolling_mean_pred_period,
@@ -351,6 +351,43 @@ for (i in 23:length(indicator_mapping$Asset) ) {
 
 }
 
+pred_generation_db_path <-
+  "C:/Users/Nikhil Chandra/Documents/trade_data/tech_preds.db"
+pred_gen_db_con <- connect_db(pred_generation_db_path)
+
+all_preds <-
+  Single_Asset_V3_get_all_preds(
+  Indices_Metals_Bonds = Indices_Metals_Bonds,
+  asset_of_interest = asset_loop,
+  actuals_periods_needed = c("period_return_35_Price", "period_return_46_Price"),
+  training_end_date = training_end_date,
+  bin_threshold = bin_threshold,
+  rolling_mean_pred_period = rolling_mean_pred_period,
+  correlation_rolling_periods = c(100,200, 300),
+  copula_assets = copula_assets,
+  training_end_date = "2025-05-01",
+  rolling_mean_pred_period = 500,
+  bin_threshold = 5,
+  start_index = 1,
+  end_index = 27
+)
+
+all_preds_dfr <-
+  all_preds %>%
+  map(
+    ~ .x[[1]] %>%
+      bind_rows(x[[2]])
+  ) %>%
+  mutate(
+    training_end_date = "2025-05-01",
+    rolling_mean_pred_period = 500,
+    bin_threshold = 5
+  )
+
+write_table_sql_lite(.data = all_preds_dfr,
+                     table_name = "tech_preds",
+                     conn = pred_gen_db_con,
+                     overwrite_true = TRUE)
 
 generated_preds_from_db <-
   DBI::dbGetQuery(conn = pred_gen_db_con,
@@ -397,15 +434,27 @@ test_performance <-
                     period_return_24_Price, period_return_35_Price, period_return_46_Price)
   ) %>%
   mutate(
-    trade_col = case_when(
+    trade_col =
+      case_when(
 
-      # state_space_GLM_Pred_period_return_35_Price > 0.6 & state_space_GLM_Pred_period_return_35_Price < 0.7|
-      # AR_GLM_Pred_period_return_35_Price > 0.8|
+      # These two together  1.59% Per Diff, 55.6% Trade > Control and 51.9% greater than 0
+      (
+      (AR_LM_Pred_period_return_35_Price >
+       AR_LM_Pred_period_return_35_Price_mean + AR_LM_Pred_period_return_35_Price_sd*0) &
+      (AR_GLM_Pred_period_return_35_Price > 0.7 & AR_GLM_Pred_period_return_35_Price < 0.99)
+      )|
 
-      # Copula_GLM_Pred_period_return_35_Price > 0.99 | ## Very Very Good meets all expectations
+      # Perc Diff 5.5%, 57% Trade > 0, 50% Greater than 0, Returns 99 = 5970, Returns 01 = -3014
+        (
+          (state_space_LM_Pred_period_return_35_Price >
+          state_space_LM_Pred_period_return_35_Price_mean + state_space_LM_Pred_period_return_35_Price_sd*0.5) &
+          (state_space_LM_Pred_period_return_35_Price > 5 & state_space_LM_Pred_period_return_35_Price < 15) &
+            (state_space_GLM_Pred_period_return_35_Price > 0.55 & state_space_GLM_Pred_period_return_35_Price < 0.9)
+        )
+
+      # Copula_GLM_Pred_period_return_35_Price > 0.999999  ## Very Very Good meets all expectations
       # averaged_35_46_GLM_pred > 0.55  ## Very Very Good meets all expectations
-
-      averaged_35_GLM_pred > 0.53
+      # averaged_35_GLM_pred > 0.50 & averaged_35_GLM_pred < 0.55
 
       # (averaged_35_GLM_pred > 0.5 & averaged_35_GLM_pred < 0.55 &
       # averaged_35_46_GLM_pred > 0.7)
@@ -478,11 +527,20 @@ control_data_asset <-
     control_total_trades = n_distinct(Date),
     control_wins = sum(wins, na.rm = T),
     control_returns_total = sum(period_return_35_Price, na.rm = T),
-    # returns_25 = quantile(cumulative_return, 0.25),
-    # returns_10 = quantile(cumulative_return, 0.1)
+    control_returns_25 = quantile(cumulative_return, 0.25)
   ) %>%
   mutate(
     control_Perc = control_wins/control_total_trades
+  ) %>%
+  mutate(
+    winning_greater_than_0_control = ifelse(control_returns_total > 0, 1, 0)
+  ) %>%
+  summarise(
+    control_returns = sum(control_total_trades, na.rm = T),
+    control_returns_25 = sum(control_returns_25, na.rm = T),
+    control_total_trades = sum(control_total_trades, na.rm = T),
+    control_perc = mean(control_Perc, na.rm = T),
+    winning_greater_than_0_control = sum(winning_greater_than_0_control, na.rm = T)/n_distinct(Asset)
   )
 
 trade_data <-
@@ -514,28 +572,25 @@ trade_data <-
     Perc = wins/total_trades
   ) %>%
   ungroup() %>%
-  left_join(
-    control_data_asset %>% ungroup()
+  mutate(
+    Perc = wins/total_trades
   ) %>%
   mutate(
-    perc_diff = Perc - control_Perc,
-    Return_diff = returns_total - control_returns_total
+    winning_greater_than_0 = ifelse(returns_total > 0, 1, 0)
   ) %>%
-  mutate(
-    winning_strat = ifelse(perc_diff > 0, 1, 0),
-    winning_return = ifelse(returns_total >  control_returns_total, 1, 0),
-    winning_greater_than_0 = ifelse(returns_total > 0, 1, 0),
-    winning_greater_than_0_control = ifelse(control_returns_total > 0, 1, 0)
+  summarise(
+    returns = sum(returns_total, na.rm = T),
+    returns_25 = sum(returns_25, na.rm = T),
+    total_trades = sum(total_trades, na.rm = T),
+    perc = mean(Perc, na.rm = T),
+    winning_greater_than_0 = sum(winning_greater_than_0, na.rm = T)/n_distinct(Asset)
   )
 
-trade_data %>%
-  summarise(
-    Perc_diff_mean = mean(perc_diff, na.rm = T),
-    winning_assets = sum(winning_strat, na.rm = T)/n_distinct(Asset),
-    winning_assets_return = sum(winning_return, na.rm = T)/n_distinct(Asset),
-    winning_greater_than_0 = sum(winning_greater_than_0, na.rm = T)/n_distinct(Asset),
-    winning_greater_than_0_control = sum(winning_greater_than_0_control, na.rm = T)/n_distinct(Asset)
-  )
+final_results <-
+  trade_data %>%
+  bind_cols(control_data_asset) %>%
+  mutate(ratio_adj = total_trades/control_total_trades) %>%
+  mutate(control_returns = control_returns*ratio_adj)
 
 plot_dat_Copula %>%
   filter(trade_col == "Long") %>%
@@ -551,3 +606,4 @@ plot_dat_Copula %>%
     returns_10 = quantile(Movement_300, 0.1, na.rm = T),
     returns_01 = quantile(Movement_300, 0.01, na.rm = T)
   )
+

@@ -16,8 +16,8 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
                          time_frame = "D",
                          bid_or_ask = "ask") {
 
-  start_date_integer <- start_date %>% as_datetime() %>% as.integer()
-  end_date_integer <- (as_datetime(end_date) + days(1)) %>% as.integer()
+  start_date_integer <- start_date %>% as_datetime(tz = "Australia/Canberra") %>% as.integer()
+  end_date_integer <- (as_datetime(end_date, tz = "Australia/Canberra") + days(1)) %>% as.integer()
 
   # "Oanda_Asset_Data_ask_M15"
 
@@ -35,7 +35,7 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
 
   query_data <-
     DBI::dbGetQuery(conn = db_con, statement = db_query) %>%
-    mutate(Date = as_datetime(Date, tz = "Australia/Sydney")) %>%
+    mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
     group_by(Asset, Date) %>%
     mutate(
       Price = mean(Price, na.rm = T),
@@ -70,14 +70,14 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
 #'
 #' @examples
 get_db_price_asset <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
-                         start_date = "2012-01-01",
-                         end_date = "2020-01-01",
-                         time_frame = "D",
-                         bid_or_ask = "ask",
-                         asset = "AUD_USD") {
+                               start_date = "2012-01-01",
+                               end_date = "2020-01-01",
+                               time_frame = "D",
+                               bid_or_ask = "ask",
+                               asset = "AUD_USD") {
 
-  start_date_integer <- start_date %>% as_datetime() %>% as.integer()
-  end_date_integer <- (as_datetime(end_date) + days(1)) %>% as.integer()
+  start_date_integer <- start_date %>% as_datetime(tz = "Australia/Canberra") %>% as.integer()
+  end_date_integer <- (as_datetime(end_date, tz = "Australia/Canberra") + days(1)) %>% as.integer()
 
   "Oanda_Asset_Data_ask_M15"
 
@@ -95,7 +95,7 @@ get_db_price_asset <- function(db_location = "C:/Users/Nikhil Chandra/Documents/
 
   query_data <-
     DBI::dbGetQuery(conn = db_con, statement = db_query) %>%
-    mutate(Date = as_datetime(Date, tz = "Australia/Sydney")) %>%
+    mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
     group_by(Asset, Date) %>%
     mutate(
       Price = mean(Price, na.rm = T),
@@ -232,33 +232,35 @@ update_local_db_file <- function(
         "JP225_USD", "SPX500_USD"),
     time_frame = "H1",
     bid_or_ask = "ask",
-    how_far_back = 10
+    how_far_back = 10,
+    take_last_value = FALSE
 ) {
 
   dates_by_asset <-
     get_db_price(
       db_location = db_location,
       start_date = today() - days(100),
-      end_date = today(),
+      end_date = today() + days(1),
       time_frame = time_frame,
       bid_or_ask = bid_or_ask) %>%
     group_by(Asset) %>%
     slice_max(Date) %>%
     mutate(Date = as_datetime(Date, "Australia/Canberra"))
 
-  current_latest_date <-
+  current_latest_date_data <-
     dates_by_asset %>%
     pull(Date) %>%
-    min(na.rm = T)
+    min(na.rm = T) %>%
+    as_datetime(tz = "Australia/Canberra")
 
-  current_latest_date <- current_latest_date - days(how_far_back)
+  current_latest_date <- current_latest_date_data - days(how_far_back)
 
   current_latest_date <-
     current_latest_date %>%
     str_remove_all("[A-Z]+") %>%
     str_trim()
 
-  data_to_Update <-
+  data_to_Update_list <-
     read_all_asset_data_intra_day(
       asset_list_oanda = asset_list_oanda,
       save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
@@ -269,18 +271,37 @@ update_local_db_file <- function(
       start_date = current_latest_date
     )
 
+  last_known_data_dates <-
+    dates_by_asset %>%
+    dplyr::select(Asset, last_known_date = Date)
+
   data_to_Update <-
-    data_to_Update %>%
-    map_dfr(bind_rows)
+    data_to_Update_list %>%
+    map_dfr(bind_rows) %>%
+    mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+    left_join(last_known_data_dates) %>%
+    filter(Date > last_known_date) %>%
+    dplyr::select(-last_known_date)
+
+  if(take_last_value == TRUE) {
+    data_to_Update <-
+      data_to_Update %>%
+      ungroup()
+  }
 
   for_upload <-
     data_to_Update %>%
     mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
-    left_join(
-      dates_by_asset %>% ungroup() %>%  dplyr::select(Asset,  DB_Date = Date)
-    ) %>%
-    filter(Date > DB_Date| is.na(DB_Date)) %>%
-    dplyr::select(-DB_Date)
+    ungroup()
+  # mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+  # left_join(
+  #   dates_by_asset %>%
+  #     ungroup() %>%
+  #     mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+  #     dplyr::select(Asset,  DB_Date = Date)
+  # ) %>%
+  # filter(Date > DB_Date| is.na(DB_Date)) %>%
+  # dplyr::select(-DB_Date)
 
   table_name <-
     case_when(
@@ -312,3 +333,76 @@ update_local_db_file <- function(
   return("Pass")
 
 }
+
+#' get_db_data_quickly_algo
+#'
+#' @param db_location
+#' @param start_date
+#' @param end_date
+#' @param time_frame
+#' @param bid_or_ask
+#' @param assets
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_db_data_quickly_algo <-
+  function(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    time_frame = "H1",
+    bid_or_ask = "ask",
+    assets = c("XAU_USD", "AUD_USD")
+  ) {
+
+    db_dat_accum <- list()
+
+    for (i in 1:length(assets)) {
+      start_date_integer <- start_date %>% as_datetime(tz = "Australia/Canberra") %>% as.integer()
+      end_date_integer <- (as_datetime(end_date, tz = "Australia/Canberra") + days(1)) %>% as.integer()
+      asset <- assets[i]
+
+      db_table <- glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
+      db_table <- case_when(
+        time_frame == "H1" ~ glue::glue("Oanda_Asset_Data_{bid_or_ask}"),
+        time_frame == "D" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}"),
+        time_frame == "M15" ~  glue::glue("Oanda_Asset_Data_{bid_or_ask}_{time_frame}")
+      )
+
+      db_query <- glue::glue("SELECT * FROM {db_table}
+                         WHERE Date >= {start_date_integer} AND Date <= {end_date_integer} AND Asset = '{asset}'")
+
+      db_con <- connect_db(db_location)
+
+      db_dat_accum[[i]] <-
+        DBI::dbGetQuery(conn = db_con, statement = db_query) %>%
+        mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+        group_by(Asset, Date) %>%
+        mutate(
+          Price = mean(Price, na.rm = T),
+          Open = mean(Open, na.rm = T),
+          High = mean(High, na.rm = T),
+          Low = mean(Low, na.rm = T)
+        ) %>%
+        ungroup() %>%
+        group_by(Asset, Date) %>%
+        mutate(kk = row_number()) %>%
+        group_by(Asset, Date) %>%
+        slice_max(kk) %>%
+        ungroup() %>%
+        dplyr::select(-kk)
+
+      DBI::dbDisconnect(db_con)
+    }
+
+    returned <-
+      db_dat_accum %>%
+      map_dfr(bind_rows)
+
+    rm(db_dat_accum)
+
+    return(returned)
+
+  }

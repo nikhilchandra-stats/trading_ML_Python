@@ -1,203 +1,3 @@
-helpeR::load_custom_functions()
-
-all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CZK"))
-asset_infor <- get_instrument_info()
-aud_assets <- read_all_asset_data_intra_day(
-  asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
-  read_csv_or_API = "API",
-  time_frame = "D",
-  bid_or_ask = "bid",
-  how_far_back = 10,
-  start_date = (today() - days(2)) %>% as.character()
-)
-aud_assets <- aud_assets %>% map_dfr(bind_rows)
-aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
-
-currency_conversion <-
-  aud_usd_today %>%
-  mutate(
-    not_aud_asset = ending_value
-  ) %>%
-  dplyr::select(not_aud_asset, adjusted_conversion) %>%
-  bind_rows(
-    tibble(not_aud_asset = "AUD", adjusted_conversion = 1)
-  )
-
-asset_list_oanda =
-  c("HK33_HKD", "USD_JPY",
-    "BTC_USD",
-    "AUD_NZD", "GBP_CHF",
-    "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
-    "USB02Y_USD",
-    "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
-    "DE30_EUR",
-    "AUD_CAD",
-    "UK10YB_GBP",
-    "XPD_USD",
-    "UK100_GBP",
-    "USD_CHF", "GBP_NZD",
-    "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
-    "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
-    "XAU_USD",
-    "DE10YB_EUR",
-    "USD_CZK", "AUD_SGD", "USD_HUF", "WHEAT_USD",
-    "EUR_USD", "SG30_SGD", "GBP_AUD", "NZD_CAD", "AU200_AUD", "XAG_USD",
-    "XAU_EUR", "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
-    "USB10Y_USD",
-    "EU50_EUR", "NATGAS_USD", "CAD_JPY", "FR40_EUR", "USD_ZAR", "XAU_GBP",
-    "CH20_CHF", "ESPIX_EUR",
-    "XPT_USD",
-    "EUR_AUD", "SOYBN_USD",
-    "US2000_USD",
-    "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
-    "XAG_NZD",
-    "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
-    "XAU_NZD",
-    "BTC_USD", "LTC_USD", "BCH_USD",
-    "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
-    "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
-    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
-    "EUR_CHF", #1 EUR_CHF
-    "EUR_SEK" , #2 EUR_SEK
-    "GBP_CHF", #3 GBP_CHF
-    "GBP_JPY", #4 GBP_JPY
-    "USD_CZK", #5 USD_CZK
-    "USD_NOK" , #6 USD_NOK
-    "XAG_CAD", #7 XAG_CAD
-    "XAG_CHF", #8 XAG_CHF
-    "XAG_JPY" , #9 XAG_JPY
-    "GBP_NZD" , #10 GBP_NZD
-    "NZD_CHF" , #11 NZD_CHF
-    "USD_MXN" , #12 USD_MXN
-    "XPD_USD" , #13 XPD_USD
-    "XPT_USD" , #14 XPT_USD
-    "NATGAS_USD" , #15 NATGAS_USD
-    "SG30_SGD" , #16 SG30_SGD
-    "SOYBN_USD" , #17 SOYBN_USD
-    "WHEAT_USD" , #18 WHEAT_USD
-    "SUGAR_USD" , #19 SUGAR_USD
-    "DE30_EUR" , #20 DE30_EUR
-    "UK10YB_GBP" , #21 UK10YB_GBP
-    "JP225_USD" , #22 JP225_USD
-    "CH20_CHF" , #23 CH20_CHF
-    "NL25_EUR" , #24 NL25_EUR
-    "XAG_SGD" , #25 XAG_SGD,
-    "BCH_USD" , #26 BCH_USD
-    "LTC_USD" #27 LTC_USD
-  ) %>%
-  unique()
-
-asset_infor <- get_instrument_info()
-#---------------------Data
-load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2019-06-01"
-end_date = today() %>% as.character()
-
-# bin_factor = NULL
-# stop_value_var = 2
-# profit_value_var = 15
-# period_var = 48
-
-All_Daily_Data <-
-  get_DAILY_ALGO_DATA_API_REQUEST()
-
-Indices_Metals_Bonds <- list()
-
-Indices_Metals_Bonds[[1]] <-
-  get_db_data_quickly_algo(
-  db_location = db_location,
-  start_date = start_date,
-  end_date = today() %>% as.character(),
-  time_frame = "H1",
-  bid_or_ask = "ask",
-  assets =   c("EUR_CHF" , "EUR_SEK" , "GBP_CHF", "GBP_JPY",
-               "USD_CZK", "USD_NOK" , "XAG_CAD", "XAG_CHF",
-               "XAG_JPY" , "GBP_NZD" , "NZD_CHF" , "USD_MXN",
-               "XPD_USD","XPT_USD","NATGAS_USD","SG30_SGD" ,
-               "SOYBN_USD", "WHEAT_USD", "SUGAR_USD" ,"DE30_EUR" ,
-               "UK10YB_GBP","JP225_USD","CH20_CHF","NL25_EUR" ,
-               "XAG_SGD", "BCH_USD", "LTC_USD" , "EUR_USD" ,
-               "EU50_EUR","SPX500_USD" , "US2000_USD" , "USB10Y_USD" ,
-               "USD_JPY" , "AUD_USD" , "XAG_USD" , "XAG_EUR" ,
-               "BTC_USD" , "XAU_USD" , "XAU_EUR" , "GBP_USD" , "USD_CAD" ,
-               "USD_SEK" , "EUR_AUD" , "GBP_AUD" , "XAG_GBP" ,"XAU_GBP" ,
-               "EUR_JPY" , "XAU_SGD" , "XAU_CAD" , "NZD_USD" , "XAU_NZD" ,
-               "XAG_NZD" , "FR40_EUR" , "UK100_GBP" , "AU200_AUD" ,
-               "HK33_HKD" , "SG30_SGD" , "US2000_USD" , "XAG_AUD" ,
-               "XAU_AUD" , "XAU_JPY" , "USB02Y_USD" , "USD_SGD" , "XAU_CHF")
-) %>%
-  distinct()
-
-Indices_Metals_Bonds[[2]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = today() %>% as.character(),
-    time_frame = "H1",
-    bid_or_ask = "bid",
-    assets =   c("EUR_CHF" , "EUR_SEK" , "GBP_CHF", "GBP_JPY",
-                 "USD_CZK", "USD_NOK" , "XAG_CAD", "XAG_CHF",
-                 "XAG_JPY" , "GBP_NZD" , "NZD_CHF" , "USD_MXN",
-                 "XPD_USD","XPT_USD","NATGAS_USD","SG30_SGD" ,
-                 "SOYBN_USD", "WHEAT_USD", "SUGAR_USD" ,"DE30_EUR" ,
-                 "UK10YB_GBP","JP225_USD","CH20_CHF","NL25_EUR" ,
-                 "XAG_SGD", "BCH_USD", "LTC_USD" , "EUR_USD" ,
-                 "EU50_EUR","SPX500_USD" , "US2000_USD" , "USB10Y_USD" ,
-                 "USD_JPY" , "AUD_USD" , "XAG_USD" , "XAG_EUR" ,
-                 "BTC_USD" , "XAU_USD" , "XAU_EUR" , "GBP_USD" , "USD_CAD" ,
-                 "USD_SEK" , "EUR_AUD" , "GBP_AUD" , "XAG_GBP" ,"XAU_GBP" ,
-                 "EUR_JPY" , "XAU_SGD" , "XAU_CAD" , "NZD_USD" , "XAU_NZD" ,
-                 "XAG_NZD" , "FR40_EUR" , "UK100_GBP" , "AU200_AUD" ,
-                 "HK33_HKD" , "SG30_SGD" , "US2000_USD" , "XAG_AUD" ,
-                 "XAU_AUD" , "XAU_JPY" , "USB02Y_USD" , "USD_SGD" , "XAU_CHF")
-  ) %>%
-  distinct()
-
-actual_wins_losses <-
-  get_actual_wins_losses(
-    assets_to_analyse =
-      c("EUR_CHF", #1 EUR_CHF
-        "EUR_SEK" , #2 EUR_SEK
-        "GBP_CHF", #3 GBP_CHF
-        "GBP_JPY", #4 GBP_JPY
-        "USD_CZK", #5 USD_CZK
-        "USD_NOK" , #6 USD_NOK
-        "XAG_CAD", #7 XAG_CAD
-        "XAG_CHF", #8 XAG_CHF
-        "XAG_JPY" , #9 XAG_JPY
-        "GBP_NZD" , #10 GBP_NZD
-        "NZD_CHF" , #11 NZD_CHF
-        "USD_MXN" , #12 USD_MXN
-        "XPD_USD" , #13 XPD_USD
-        "XPT_USD" , #14 XPT_USD
-        "NATGAS_USD" , #15 NATGAS_USD
-        "SG30_SGD" , #16 SG30_SGD
-        "SOYBN_USD" , #17 SOYBN_USD
-        "WHEAT_USD" , #18 WHEAT_USD
-        "SUGAR_USD" , #19 SUGAR_USD
-        "DE30_EUR" , #20 DE30_EUR
-        "UK10YB_GBP" , #21 UK10YB_GBP
-        "JP225_USD" , #22 JP225_USD
-        "CH20_CHF" , #23 CH20_CHF
-        "NL25_EUR" , #24 NL25_EUR
-        "XAG_SGD", #25 XAG_SGD
-        "BCH_USD" , #26 BCH_USD
-        "LTC_USD" #27 LTC_USD
-      ),
-    asset_data = Indices_Metals_Bonds,
-    stop_factor = 5,
-    profit_factor = 30,
-    risk_dollar_value = 10,
-    trade_direction = "Long",
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor,
-    periods_ahead = 24
-  )
-
-
 #' Single_Asset_V3_get_all_preds
 #'
 #' @param Indices_Metals_Bonds
@@ -222,20 +22,18 @@ Single_Asset_V3_get_all_preds <-
   function(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     actuals_periods_needed = c("period_return_35_Price", "period_return_46_Price"),
-    training_end_date = training_end_date,
-    bin_threshold = bin_threshold,
-    rolling_mean_pred_period = rolling_mean_pred_period,
     correlation_rolling_periods = c(100,200, 300),
-    copula_assets = copula_assets,
     training_end_date = "2025-05-01",
     rolling_mean_pred_period = 500,
     bin_threshold = 5,
     start_index = 1,
-    end_index = 27
-    ) {
+    end_index = 27,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+  ) {
 
     indicator_mapping <- list(
-      Asset = c("EUR_CHF", #1 EUR_CHF
+      Asset = c(
+                # "EUR_CHF", #1 EUR_CHF
                 "EUR_SEK" , #2 EUR_SEK
                 "GBP_CHF", #3 GBP_CHF
                 "GBP_JPY", #4 GBP_JPY
@@ -247,13 +45,13 @@ Single_Asset_V3_get_all_preds <-
                 "GBP_NZD" , #10 GBP_NZD
                 "NZD_CHF" , #11 NZD_CHF
                 "USD_MXN" , #12 USD_MXN
-                "XPD_USD" , #13 XPD_USD
-                "XPT_USD" , #14 XPT_USD
+                # "XPD_USD" , #13 XPD_USD
+                # "XPT_USD" , #14 XPT_USD
                 "NATGAS_USD" , #15 NATGAS_USD
                 "SG30_SGD" , #16 SG30_SGD
-                "SOYBN_USD" , #17 SOYBN_USD
-                "WHEAT_USD" , #18 WHEAT_USD
-                "SUGAR_USD" , #19 SUGAR_USD
+                # "SOYBN_USD" , #17 SOYBN_USD
+                # "WHEAT_USD" , #18 WHEAT_USD
+                # "SUGAR_USD" , #19 SUGAR_USD
                 "DE30_EUR" , #20 DE30_EUR
                 "UK10YB_GBP" , #21 UK10YB_GBP
                 "JP225_USD" , #22 JP225_USD
@@ -264,10 +62,10 @@ Single_Asset_V3_get_all_preds <-
                 "LTC_USD" ), #27 LTC_USD
       couplua_assets =
         list(
-          c(
-            "EUR_SEK", "DE30_EUR", "XAG_CHF", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
-            "EUR_AUD", "EUR_JPY", "FR40_EUR", "GBP_CHF", "NZD_CHF", "CH20_CHF", "XAU_USD"
-          ) %>% unique() , #1 EUR_CHF
+          # c(
+          #   "EUR_SEK", "DE30_EUR", "XAG_CHF", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
+          #   "EUR_AUD", "EUR_JPY", "FR40_EUR", "GBP_CHF", "NZD_CHF", "CH20_CHF", "XAU_USD"
+          # ) %>% unique() , #1 EUR_CHF
 
           c("EUR_CHF", "DE30_EUR", "NL25_EUR", "EUR_USD", "EU50_EUR", "XAG_EUR", "XAU_EUR",
             "EUR_AUD", "EUR_JPY", "FR40_EUR", "XAU_USD") %>% unique(), #2 EUR_SEK
@@ -306,13 +104,13 @@ Single_Asset_V3_get_all_preds <-
           c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
              "USD_CAD", "USD_SEK", "NZD_USD") %>% unique(), #12 USD_MXN
 
-          c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-             "USD_CAD", "USD_SEK", "NZD_USD",
-             "NATGAS_USD", "XPT_USD", "USB10Y_USD") %>% unique(), #13 XPD_USD
+          # c( "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+          #    "USD_CAD", "USD_SEK", "NZD_USD",
+          #    "NATGAS_USD", "XPT_USD", "USB10Y_USD") %>% unique(), #13 XPD_USD
 
-          c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-            "USD_CAD", "USD_SEK", "NZD_USD",
-            "NATGAS_USD", "XPD_USD", "USB10Y_USD") %>% unique(), #14 XPT_USD
+          # c("USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+          #   "USD_CAD", "USD_SEK", "NZD_USD",
+          #   "NATGAS_USD", "XPD_USD", "USB10Y_USD") %>% unique(), #14 XPT_USD
 
           c(
             "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
@@ -324,23 +122,23 @@ Single_Asset_V3_get_all_preds <-
             "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XPT_USD", "XAU_USD", "DE30_EUR",
             "CH20_CHF") %>% unique(), #16 SG30_SGD
 
-          c(
-            "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-            "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "WHEAT_USD",
-            "SUGAR_USD","SPX500_USD", "US2000_USD"
-          ) %>% unique(), #17 SOYBN_USD
+          # c(
+          #   "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+          #   "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "WHEAT_USD",
+          #   "SUGAR_USD","SPX500_USD", "US2000_USD"
+          # ) %>% unique(), #17 SOYBN_USD
 
-          c(
-            "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-            "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
-            "SUGAR_USD","SPX500_USD", "US2000_USD"
-          ) %>% unique(), #18 WHEAT_USD #####HERE
+          # c(
+          #   "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+          #   "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
+          #   "SUGAR_USD","SPX500_USD", "US2000_USD"
+          # ) %>% unique(), #18 WHEAT_USD #####HERE
 
-          c(
-            "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-            "USD_CAD", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
-            "WHEAT_USD","SPX500_USD", "US2000_USD"
-          ) %>% unique(), #19 SUGAR_USD
+          # c(
+          #   "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+          #   "USD_CAD", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "SOYBN_USD",
+          #   "WHEAT_USD","SPX500_USD", "US2000_USD"
+          # ) %>% unique(), #19 SUGAR_USD
 
           c(
             "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_EUR", "AU200_AUD", "US2000_USD", "SPX500_USD",
@@ -392,7 +190,7 @@ Single_Asset_V3_get_all_preds <-
       countries_for_int_strength =
         list(
 
-          c("GBP", "USD", "EUR", "AUD", "JPY"),  #1
+          # c("GBP", "USD", "EUR", "AUD", "JPY"),  #1
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #2
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #3
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #4
@@ -404,13 +202,13 @@ Single_Asset_V3_get_all_preds <-
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #10
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #11
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #12
-          c("GBP", "USD", "EUR", "AUD", "JPY"),  #13
-          c("GBP", "USD", "EUR", "AUD", "JPY"),  #14
+          # c("GBP", "USD", "EUR", "AUD", "JPY"),  #13
+          # c("GBP", "USD", "EUR", "AUD", "JPY"),  #14
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #15
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #16
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #17
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #18
-          c("GBP", "USD", "EUR", "AUD", "JPY"),  #19
+          # c("GBP", "USD", "EUR", "AUD", "JPY"),  #19
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #20
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #21
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #22
@@ -434,16 +232,18 @@ Single_Asset_V3_get_all_preds <-
       asset_loop <- indicator_mapping$Asset[i]
       copula_assets <- indicator_mapping$couplua_assets[[i]]
 
+
       pred_generated <-
         Single_Asset_V3_Read_in_Probs(
           Indices_Metals_Bonds = Indices_Metals_Bonds,
           asset_of_interest = asset_loop,
-          actuals_periods_needed = c("period_return_35_Price", "period_return_46_Price"),
+          actuals_periods_needed = actuals_periods_needed,
           training_end_date = training_end_date,
           bin_threshold = bin_threshold,
           rolling_mean_pred_period = rolling_mean_pred_period,
-          correlation_rolling_periods = c(100,200, 300),
-          copula_assets = copula_assets
+          correlation_rolling_periods = correlation_rolling_periods,
+          copula_assets = copula_assets,
+          base_path = base_path
         )
 
       raw_base_preds[[i]] <-
@@ -457,7 +257,40 @@ Single_Asset_V3_get_all_preds <-
       tictoc::toc()
     }
 
-    return(raw_base_preds)
+
+    returned <-
+      raw_base_preds %>%
+      map_dfr(bind_rows) %>%
+      ungroup() %>%
+      mutate(
+        averaged_35_LM_pred =
+          (state_space_LM_Pred_period_return_35_Price +
+             AR_LM_Pred_period_return_35_Price +
+             Copula_LM_Pred_period_return_35_Price)/3,
+
+        averaged_35_GLM_pred =
+          (state_space_GLM_Pred_period_return_35_Price +
+             AR_GLM_Pred_period_return_35_Price +
+             Copula_GLM_Pred_period_return_35_Price)/3,
+
+        averaged_35_46_GLM_pred =
+          (state_space_GLM_Pred_period_return_35_Price +
+             AR_GLM_Pred_period_return_35_Price +
+             Copula_GLM_Pred_period_return_35_Price +
+             state_space_GLM_Pred_period_return_46_Price +
+             AR_GLM_Pred_period_return_46_Price +
+             Copula_GLM_Pred_period_return_46_Price)/6,
+
+        averaged_35_46_LM_pred =
+          (state_space_LM_Pred_period_return_35_Price +
+             AR_LM_Pred_period_return_35_Price +
+             Copula_LM_Pred_period_return_35_Price +
+             state_space_LM_Pred_period_return_46_Price +
+             AR_LM_Pred_period_return_46_Price +
+             Copula_LM_Pred_period_return_46_Price)/6
+      )
+
+    return(returned)
 
   }
 
@@ -482,7 +315,8 @@ Single_Asset_V3_Gen_Model <-
            bin_threshold = 5,
            rolling_mean_pred_period = 500,
            correlation_rolling_periods = c(100,200, 300),
-           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD") ) {
+           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/") {
 
     asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
     actual_wins_losses_asset <- actual_wins_losses %>% filter(Asset == asset_of_interest)
@@ -514,7 +348,8 @@ Single_Asset_V3_Gen_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = 0.15
+        sig_thresh = 0.15,
+        base_path = base_path
       )
     }
 
@@ -523,12 +358,13 @@ Single_Asset_V3_Gen_Model <-
     for (i in 1:length(actuals_periods_needed)) {
       AR_preds_list[[i]] <-
         Single_Asset_V3_AR_read_model(
-        AR_model_data = AR_model_data,
-        asset_of_interest = asset_of_interest,
-        period_of_analysis = actuals_periods_needed[i],
-        training_end_date = training_end_date,
-        roll_mean_period = rolling_mean_pred_period
-      )
+          AR_model_data = AR_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
     }
 
     AR_Train_Preds_mean <-
@@ -569,7 +405,8 @@ Single_Asset_V3_Gen_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = 0.01
+        sig_thresh = 0.01,
+        base_path = base_path
       )
     }
 
@@ -582,7 +419,8 @@ Single_Asset_V3_Gen_Model <-
           asset_of_interest = asset_of_interest,
           period_of_analysis = actuals_periods_needed[i],
           training_end_date = training_end_date,
-          roll_mean_period = rolling_mean_pred_period
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
         )
     }
 
@@ -632,7 +470,8 @@ Single_Asset_V3_Gen_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = 0.01
+        sig_thresh = 0.01,
+        base_path = base_path
       )
     }
 
@@ -645,7 +484,8 @@ Single_Asset_V3_Gen_Model <-
           asset_of_interest = asset_of_interest,
           period_of_analysis = actuals_periods_needed[i],
           training_end_date = training_end_date,
-          roll_mean_period = rolling_mean_pred_period
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
         )
     }
 
@@ -718,7 +558,8 @@ Single_Asset_V3_Read_in_Probs <-
            bin_threshold = 5,
            rolling_mean_pred_period = 500,
            correlation_rolling_periods = c(100,200, 300),
-           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD") ) {
+           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/" ) {
 
     asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
 
@@ -750,7 +591,8 @@ Single_Asset_V3_Read_in_Probs <-
           asset_of_interest = asset_of_interest,
           period_of_analysis = actuals_periods_needed[i],
           training_end_date = training_end_date,
-          roll_mean_period = rolling_mean_pred_period
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
         )
     }
 
@@ -793,7 +635,8 @@ Single_Asset_V3_Read_in_Probs <-
           asset_of_interest = asset_of_interest,
           period_of_analysis = actuals_periods_needed[i],
           training_end_date = training_end_date,
-          roll_mean_period = rolling_mean_pred_period
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
         )
     }
 
@@ -844,7 +687,8 @@ Single_Asset_V3_Read_in_Probs <-
           asset_of_interest = asset_of_interest,
           period_of_analysis = actuals_periods_needed[i],
           training_end_date = training_end_date,
-          roll_mean_period = rolling_mean_pred_period
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
         )
     }
 
@@ -910,7 +754,7 @@ Single_Asset_V3_state_space <-
     Price_diff_lag = 20,
     roll_period_state_space = 100,
     price_col = "Price"
-    ) {
+  ) {
 
     state_space_dat <-
       asset_data %>%
@@ -1030,8 +874,9 @@ Single_Asset_V3_state_space_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.01
-    ) {
+    sig_thresh = 0.01,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+  ) {
 
     joined_data <-
       state_space_data %>%
@@ -1066,7 +911,7 @@ Single_Asset_V3_state_space_Gen_Model <-
     LM_model <- lm(formula = lm_form, data = joined_data)
 
     saveRDS(LM_model,
-            glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/LM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
+            glue::glue("{base_path}/LM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
     )
 
 
@@ -1087,7 +932,7 @@ Single_Asset_V3_state_space_Gen_Model <-
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
     saveRDS(GLM_model,
-            glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/GLM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
+            glue::glue("{base_path}/GLM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
     )
 
   }
@@ -1110,19 +955,20 @@ Single_Asset_V3_state_space_read_Model <-
     asset_of_interest = asset_of_interest,
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
-    roll_mean_period = 100
+    roll_mean_period = 100,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
   ) {
 
     LM_model <-
       readRDS(
-        glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/LM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
+        glue::glue("{base_path}/LM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
       )
 
     preds_all <- predict.lm(object = LM_model, newdata = state_space_data)
 
     GLM_model <-
       readRDS(
-        glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/GLM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
+        glue::glue("{base_path}/GLM_state_space_{period_of_analysis}_{asset_of_interest}.RDS")
       )
 
     preds_all_GLM <- predict(object = GLM_model, newdata = state_space_data, type = "response")
@@ -1217,7 +1063,7 @@ Single_Asset_V3_Cop_data <-
 
           !!as.name(paste0(col_prefix,"_" ,"cor_price", "_", rolling_period_cor)) :=
             slider::slide2_dbl(.x = (Price), .y = (Price_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
-           !!as.name(paste0(col_prefix,"_" ,"cor_Low", "_", rolling_period_cor)) :=
+          !!as.name(paste0(col_prefix,"_" ,"cor_Low", "_", rolling_period_cor)) :=
             slider::slide2_dbl(.x = (Low), .y = (Low_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
           !!as.name(paste0(col_prefix,"_" ,"cor_High", "_", rolling_period_cor)) :=
             slider::slide2_dbl(.x = (High), .y = (High_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
@@ -1277,7 +1123,8 @@ Single_Asset_V3_Copula_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.15
+    sig_thresh = 0.15,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
   ) {
 
     joined_data <-
@@ -1314,7 +1161,7 @@ Single_Asset_V3_Copula_Gen_Model <-
     LM_model <- lm(formula = lm_form, data = joined_data)
 
     saveRDS(LM_model,
-            glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/LM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
+            glue::glue("{base_path}/LM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
     )
 
     dependants <-
@@ -1334,7 +1181,7 @@ Single_Asset_V3_Copula_Gen_Model <-
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
     saveRDS(GLM_model,
-            glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/GLM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
+            glue::glue("{base_path}/GLM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
     )
 
     rm(GLM_model)
@@ -1359,19 +1206,20 @@ Single_Asset_V3_Copula_read_Model <-
     asset_of_interest = asset_of_interest,
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
-    roll_mean_period = 100
+    roll_mean_period = 100,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
   ) {
 
     LM_model <-
       readRDS(
-        glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/LM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
+        glue::glue("{base_path}/LM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
       )
 
     preds_all <- predict.lm(object = LM_model, newdata = copula_data)
 
     GLM_model <-
       readRDS(
-        glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/GLM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
+        glue::glue("{base_path}/GLM_Copula_{period_of_analysis}_{asset_of_interest}.RDS")
       )
 
     preds_all_GLM <- predict(object = GLM_model, newdata = copula_data, type = "response")
@@ -1440,19 +1288,20 @@ Single_Asset_V3_AR_read_model <-
     asset_of_interest = asset_of_interest,
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
-    roll_mean_period = 100
-    ) {
+    roll_mean_period = 100,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+  ) {
 
     LM_model <-
       readRDS(
-        glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/LM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
-        )
+        glue::glue("{base_path}/LM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
+      )
 
     preds_all <- predict.lm(object = LM_model, newdata = AR_model_data)
 
     GLM_model <-
       readRDS(
-        glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/GLM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
+        glue::glue("{base_path}/GLM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
       )
 
     preds_all_GLM <- predict(object = GLM_model, newdata = AR_model_data, type = "response")
@@ -1523,8 +1372,9 @@ Single_Asset_V3_AR_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.15
-    ) {
+    sig_thresh = 0.15,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+  ) {
 
     joined_data <-
       AR_model_data %>%
@@ -1557,8 +1407,8 @@ Single_Asset_V3_AR_Gen_Model <-
     LM_model <- lm(formula = lm_form, data = joined_data)
 
     saveRDS(LM_model,
-            glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/LM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
-            )
+            glue::glue("{base_path}/LM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
+    )
 
     rm(LM_model)
 
@@ -1579,7 +1429,7 @@ Single_Asset_V3_AR_Gen_Model <-
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
     saveRDS(GLM_model,
-            glue::glue("C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/GLM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
+            glue::glue("{base_path}/GLM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
     )
 
   }
@@ -1621,7 +1471,7 @@ Single_Asset_V3_AR_Model_data <-
     MA_period_4 = 20,
     MA_period_5 = 30,
     MA_period_6 = 40
-    ) {
+  ) {
 
     returned_data <-
       asset_data %>%
@@ -1629,35 +1479,35 @@ Single_Asset_V3_AR_Model_data <-
       filter(Asset == asset_of_interest) %>%
       arrange(Date) %>%
       mutate(
-             lagged_Price = lag(Price) - lag(Price, lag_value_1 + 1),
-             lagged_High = lag(High) - lag(Price, lag_value_1 + 1),
-             lagged_Low = lag(Low) - lag(Price, lag_value_1 + 1),
+        lagged_Price = lag(Price) - lag(Price, lag_value_1 + 1),
+        lagged_High = lag(High) - lag(Price, lag_value_1 + 1),
+        lagged_Low = lag(Low) - lag(Price, lag_value_1 + 1),
 
-             lagged_Price2 = lag(Price) - lag(Price, lag_value_2 + 1),
-             lagged_High2 = lag(High) - lag(Price, lag_value_2 + 1),
-             lagged_Low2 = lag(Low) - lag(Price, lag_value_2 + 1),
+        lagged_Price2 = lag(Price) - lag(Price, lag_value_2 + 1),
+        lagged_High2 = lag(High) - lag(Price, lag_value_2 + 1),
+        lagged_Low2 = lag(Low) - lag(Price, lag_value_2 + 1),
 
-             lagged_Price3 = lag(Price) - lag(Price, lag_value_3 + 1),
-             lagged_High3 = lag(High) - lag(Price, lag_value_3 + 1),
-             lagged_Low3 = lag(Low) - lag(Price, lag_value_3 + 1),
+        lagged_Price3 = lag(Price) - lag(Price, lag_value_3 + 1),
+        lagged_High3 = lag(High) - lag(Price, lag_value_3 + 1),
+        lagged_Low3 = lag(Low) - lag(Price, lag_value_3 + 1),
 
-             lagged_Price4 = lag(Price) - lag(Price, lag_value_4 + 1),
-             lagged_High4 = lag(High) - lag(Price, lag_value_4 + 1),
-             lagged_Low4 = lag(Low) - lag(Price, lag_value_4 + 1),
+        lagged_Price4 = lag(Price) - lag(Price, lag_value_4 + 1),
+        lagged_High4 = lag(High) - lag(Price, lag_value_4 + 1),
+        lagged_Low4 = lag(Low) - lag(Price, lag_value_4 + 1),
 
-             lagged_Price5 = lag(Price) - lag(Price, lag_value_5 + 1),
-             lagged_High5 = lag(High) - lag(Price, lag_value_5 + 1),
-             lagged_Low5 = lag(Low) - lag(Price, lag_value_5 + 1),
+        lagged_Price5 = lag(Price) - lag(Price, lag_value_5 + 1),
+        lagged_High5 = lag(High) - lag(Price, lag_value_5 + 1),
+        lagged_Low5 = lag(Low) - lag(Price, lag_value_5 + 1),
 
-             lagged_Price6 = lag(Price) - lag(Price, lag_value_6 + 1),
-             lagged_High6 = lag(High) - lag(Price, lag_value_6 + 1),
-             lagged_Low6 = lag(Low) - lag(Price, lag_value_6 + 1),
+        lagged_Price6 = lag(Price) - lag(Price, lag_value_6 + 1),
+        lagged_High6 = lag(High) - lag(Price, lag_value_6 + 1),
+        lagged_Low6 = lag(Low) - lag(Price, lag_value_6 + 1),
 
-             lagged_Price7 = lag(Price) - lag(Price, lag_value_7 + 1),
-             lagged_High7 = lag(High) - lag(Price, lag_value_7 + 1),
-             lagged_Low7 = lag(Low) - lag(Price, lag_value_7 + 1)
+        lagged_Price7 = lag(Price) - lag(Price, lag_value_7 + 1),
+        lagged_High7 = lag(High) - lag(Price, lag_value_7 + 1),
+        lagged_Low7 = lag(Low) - lag(Price, lag_value_7 + 1)
 
-             ) %>%
+      ) %>%
       mutate(
         MA_Price_1 = slider::slide_dbl(.x = lagged_Price, .f = ~ mean(.x, na.rm = T) ,.before = MA_period_1),
         MA_High_1 = slider::slide_dbl(.x = lagged_High, .f = ~ mean(.x, na.rm = T) ,.before = MA_period_1),
