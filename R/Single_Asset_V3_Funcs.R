@@ -49,13 +49,13 @@ Single_Asset_V3_get_all_preds <-
                 # "XPT_USD" , #14 XPT_USD
                 "NATGAS_USD" , #15 NATGAS_USD
                 "SG30_SGD" , #16 SG30_SGD
-                # "SOYBN_USD" , #17 SOYBN_USD
+                "SOYBN_USD" , #17 SOYBN_USD
                 # "WHEAT_USD" , #18 WHEAT_USD
                 # "SUGAR_USD" , #19 SUGAR_USD
                 "DE30_EUR" , #20 DE30_EUR
                 "UK10YB_GBP" , #21 UK10YB_GBP
                 "JP225_USD" , #22 JP225_USD
-                "CH20_CHF" , #23 CH20_CHF
+                # "CH20_CHF" , #23 CH20_CHF
                 "NL25_EUR" , #24 NL25_EUR
                 "XAG_SGD" , #25 XAG_SGD
                 "BCH_USD" , #26 BCH_USD
@@ -122,11 +122,11 @@ Single_Asset_V3_get_all_preds <-
             "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "JP225_USD", "XPT_USD", "XAU_USD", "DE30_EUR",
             "CH20_CHF") %>% unique(), #16 SG30_SGD
 
-          # c(
-          #   "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
-          #   "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "WHEAT_USD",
-          #   "SUGAR_USD","SPX500_USD", "US2000_USD"
-          # ) %>% unique(), #17 SOYBN_USD
+          c(
+            "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
+            "USD_CAD", "USD_SEK", "NZD_USD", "NATGAS_USD", "XPT_USD", "USB10Y_USD", "WHEAT_USD",
+            "SUGAR_USD","SPX500_USD", "US2000_USD"
+          ) %>% unique(), #17 SOYBN_USD
 
           # c(
           #   "USD_NOK", "EUR_USD", "USD_JPY", "AUD_USD", "XAG_USD", "XAU_USD", "GBP_USD",
@@ -158,11 +158,11 @@ Single_Asset_V3_get_all_preds <-
             "CH20_CHF", "XAU_EUR", "EUR_USD"
           ) %>% unique(), #22 JP225_USD
 
-          c(
-            "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_CHF", "AU200_AUD", "US2000_USD", "SPX500_USD",
-            "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "DE30_EUR", "XAG_USD",
-            "JP225_USD", "XAU_CHF", "EUR_CHF"
-          ) %>% unique(), #23 CH20_CHF
+          # c(
+          #   "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_CHF", "AU200_AUD", "US2000_USD", "SPX500_USD",
+          #   "NL25_EUR", "NL25_EUR", "FR40_EUR", "EU50_EUR", "DE30_EUR", "XAG_USD",
+          #   "JP225_USD", "XAU_CHF", "EUR_CHF"
+          # ) %>% unique(), #23 CH20_CHF
 
           c(
             "USB10Y_USD", "USD_SGD", "XAU_USD", "XAG_CHF", "AU200_AUD", "US2000_USD", "SPX500_USD",
@@ -212,7 +212,7 @@ Single_Asset_V3_get_all_preds <-
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #20
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #21
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #22
-          c("GBP", "USD", "EUR", "AUD", "JPY"),  #23
+          # c("GBP", "USD", "EUR", "AUD", "JPY"),  #23
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #24
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #25
           c("GBP", "USD", "EUR", "AUD", "JPY"),  #26

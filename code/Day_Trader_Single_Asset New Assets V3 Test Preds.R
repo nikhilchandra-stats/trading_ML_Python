@@ -92,7 +92,7 @@ asset_list_oanda =
 asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
 start_date = "2019-06-01"
 end_date = today() %>% as.character()
 
@@ -225,7 +225,7 @@ all_preds <-
     rolling_mean_pred_period = 500,
     bin_threshold = 5,
     start_index = 1,
-    end_index = 27,
+    end_index = 21,
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
   )
 

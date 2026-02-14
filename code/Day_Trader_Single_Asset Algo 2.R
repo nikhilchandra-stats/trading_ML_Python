@@ -226,13 +226,13 @@ assets_to_use <-
     # "XPT_USD" , #14 XPT_USD
     "NATGAS_USD" , #15 NATGAS_USD
     "SG30_SGD" , #16 SG30_SGD
-    # "SOYBN_USD" , #17 SOYBN_USD
+    "SOYBN_USD" , #17 SOYBN_USD
     # "WHEAT_USD" , #18 WHEAT_USD
     # "SUGAR_USD" , #19 SUGAR_USD
     "DE30_EUR" , #20 DE30_EUR
     "UK10YB_GBP" , #21 UK10YB_GBP
     "JP225_USD" , #22 JP225_USD
-    "CH20_CHF" , #23 CH20_CHF
+    # "CH20_CHF" , #23 CH20_CHF
     "NL25_EUR" , #24 NL25_EUR
     "XAG_SGD" , #25 XAG_SGD
     "BCH_USD" , #26 BCH_USD
@@ -251,7 +251,7 @@ trade_statement <-
         (averaged_35_LM_pred > 1  & averaged_35_GLM_pred > 0.6 & averaged_35_46_GLM_pred > 0.6)
    "
 
-assets_to_use <- assets_to_use[14:21]
+assets_to_use <- assets_to_use[15:21]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -411,7 +411,7 @@ while (current_time < end_time) {
             training_end_date = "2025-05-01",
             rolling_mean_pred_period = 500,
             bin_threshold = 5,
-            start_index = 14,
+            start_index = 15,
             end_index = 21,
             base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
           )
@@ -759,7 +759,7 @@ while (current_time < end_time) {
         summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                   EstimatedTotal_risk = risk_dollar_value*n())
 
-      if(estimated_running_profit$unrealizedPL[1] < 600 ) {
+      if(estimated_running_profit$unrealizedPL[1] < 1500 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(
@@ -768,7 +768,7 @@ while (current_time < end_time) {
           )
       }
 
-      if(estimated_running_profit$unrealizedPL[1] >= 600 ) {
+      if(estimated_running_profit$unrealizedPL[1] >= 1500 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(

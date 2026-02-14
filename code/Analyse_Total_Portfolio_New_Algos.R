@@ -219,7 +219,34 @@ assets_to_get_results <-
     "XAU_AUD", #37
     "UK10YB_GBP", #38
     "JP225Y_JPY", #39
-    "ETH_USD" #40
+    "ETH_USD", #40
+    # "EUR_CHF", #1 EUR_CHF
+    "EUR_SEK" , #2 EUR_SEK
+    "GBP_CHF", #3 GBP_CHF
+    "GBP_JPY", #4 GBP_JPY
+    "USD_CZK", #5 USD_CZK
+    "USD_NOK" , #6 USD_NOK
+    "XAG_CAD", #7 XAG_CAD
+    "XAG_CHF", #8 XAG_CHF
+    "XAG_JPY" , #9 XAG_JPY
+    "GBP_NZD" , #10 GBP_NZD
+    "NZD_CHF" , #11 NZD_CHF
+    "USD_MXN" , #12 USD_MXN
+    # "XPD_USD" , #13 XPD_USD
+    # "XPT_USD" , #14 XPT_USD
+    "NATGAS_USD" , #15 NATGAS_USD
+    "SG30_SGD" , #16 SG30_SGD
+    # "SOYBN_USD" , #17 SOYBN_USD
+    # "WHEAT_USD" , #18 WHEAT_USD
+    # "SUGAR_USD" , #19 SUGAR_USD
+    "DE30_EUR" , #20 DE30_EUR
+    "UK10YB_GBP" , #21 UK10YB_GBP
+    "JP225_USD" , #22 JP225_USD
+    "CH20_CHF" , #23 CH20_CHF
+    "NL25_EUR" , #24 NL25_EUR
+    "XAG_SGD" , #25 XAG_SGD
+    "BCH_USD" , #26 BCH_USD
+    "LTC_USD"
   ) %>% unique()
 
 get_all_realised_generic(
