@@ -253,7 +253,7 @@ get_all_realised_generic(
   realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
   write_or_append = "append",
   account_var = 1,
-  algo_start_date = "2026-01-10",
+  algo_start_date = "2026-02-10",
   distinct_assets = assets_to_get_results
 )
 
