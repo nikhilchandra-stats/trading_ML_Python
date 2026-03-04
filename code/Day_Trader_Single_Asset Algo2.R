@@ -262,111 +262,69 @@ assets_to_use <-
     "ETH_USD" #40
   )
 
-# trade_statement =
-#   "
-#   (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
-#   (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
-#   ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
-#     pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
-#   (mean_3_pred_GLM_period_return_24_Price >
-#           mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
-#   pred_GLM_period_return_24_Price >
-#             mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
-#   (mean_3_pred_GLM_period_return_24_Price >
-#           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
-#   pred_GLM_period_return_24_Price >
-#             mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
-#   (mean_3_pred_GLM_period_return_24_Price >
-#           mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
-#   pred_GLM_period_return_24_Price >
-#             mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
-#     (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
-#     pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
-#     pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
-#     (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
-#       pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
-#       pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
-#     ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
-#     ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
-#     ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
-# "
-
 trade_statement <-
   "
-      (
-       (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*2 &
-        pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*2 &
-        pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
-        pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 )|
-        (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*2 &
-        pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*2 &
-        pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
-        pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 )
-      )|
+  (Averaged_Multi_prob_GLM >= 0.8 & Asset == 'USB10Y_USD')|
+  (Averaged_Multi_prob_GLM >= 0.8 & Asset == 'GBP_CAD')|
+  (Averaged_Multi_prob_GLM >= 0.85 & Asset == 'GBP_USD')|
+  (Averaged_Multi_prob_GLM >= 0.4 & Asset == 'EU50_EUR')|
 
-     (
-     pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*4.25|
-     pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*4.25|
-     pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*4.25
-     )|
+  (Averaged_Multi_prob_GLM >= 0.25 & Asset == 'UK100_GBP')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'AUD_USD')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'USD_JPY')|
+  (Averaged_Multi_prob_GLM >= 0.15 & Asset == 'XCU_USD')|
+  (Averaged_Multi_prob_GLM >= 0.4 & Asset == 'EUR_JPY')|
+  (Averaged_Multi_prob_GLM >= 0.4 & Asset == 'NATGAS_USD')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'JP225Y_JPY')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'GBP_JPY')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'US2000_USD')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'WTICO_USD')|
+  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'NZD_USD')|
+  (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'EUR_GBP')|
+  (Averaged_Multi_prob_GLM >= 0.55 & Asset == 'HK33_HKD')|
 
-    ((mean_3_pred_LM_period_return_24_Price >
-     mean_500_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*2.25) &
-     (mean_3_pred_GLM_period_return_24_Price >
-     mean_500_pred_GLM_period_return_24_Price + sd_500_pred_GLM_period_return_24_Price*2.25))|
+  (pred_LM_period_return_24_Price >
+          mean_50_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*1.25 &
+      pred_LM_period_return_44_Price >
+          mean_50_pred_LM_period_return_44_Price + sd_500_pred_LM_period_return_44_Price*1.25 &
+      Asset == 'EUR_AUD')|
+    (pred_LM_period_return_24_Price <
+          mean_500_pred_LM_period_return_24_Price - sd_500_pred_LM_period_return_24_Price*1.25 &
+      pred_LM_period_return_44_Price <
+          mean_500_pred_LM_period_return_44_Price - sd_500_pred_LM_period_return_44_Price*1.25 &
+      Asset == 'EUR_USD')|
+          (pred_LM_period_return_24_Price >
+          mean_500_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*1.25 &
+      pred_LM_period_return_44_Price >
+          mean_500_pred_LM_period_return_44_Price + sd_500_pred_LM_period_return_44_Price*1.25 &
+      Asset == 'EUR_SEK')|
+      (pred_daily_3 >= 1 & pred_daily_5 >= 1 & Asset == 'EUR_USD')|
 
-     ((mean_3_pred_LM_period_return_30_Price >
-     mean_500_pred_LM_period_return_30_Price + sd_500_pred_LM_period_return_30_Price*2.25) &
-     (mean_3_pred_GLM_period_return_30_Price >
-     mean_500_pred_GLM_period_return_30_Price + sd_500_pred_GLM_period_return_30_Price*2.25))|
+      (Averaged_Multi_prob_GLM >= 0.6 & Asset == 'USD_SGD')|
+      (pred_copula_3 >= 3 & pred_copula_5 >= 3 & Asset == 'USD_SGD')|
+      (pred_copula_3 >= 5 & pred_copula_5 >= 5 & Asset == 'GBP_AUD')|
+      (pred_copula_3 >= 2 & pred_copula_5 >= 2 & Asset == 'EUR_USD')|
+      # (Averaged_Multi_prob_Momentum >= 0.6 & Asset == 'EUR_SEK')|
+      (pred_copula_3 >= 1.5 & pred_copula_5 >= 1.5 & Asset == 'EUR_SEK')|
 
-     ((mean_3_pred_LM_period_return_24_Price >
-     mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.25) &
-     (mean_3_pred_GLM_period_return_24_Price >
-     mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.25))|
+      (pred_copula_3 >= 2.5 & pred_copula_5 >= 2.5 & Asset == 'XAG_USD')|
+      (Averaged_Multi_prob_GLM >= 0.5 & Asset == 'XAG_GBP')|
+      (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAG_EUR')|
+      (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAU_USD')|
+      (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAU_AUD')|
 
-    ((mean_3_pred_LM_period_return_30_Price >
-     mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.25) &
-     (mean_3_pred_GLM_period_return_30_Price >
-     mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.25))|
-
-    ((
-    mean_50_pred_LM_period_return_30_Price > mean_100_pred_LM_period_return_30_Price &
-    mean_100_pred_LM_period_return_30_Price > mean_200_pred_LM_period_return_30_Price &
-    mean_200_pred_LM_period_return_30_Price > mean_400_pred_LM_period_return_30_Price &
-    pred_LM_period_return_30_Price >
-      mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*1
-    ) &
-
-    (
-    mean_50_pred_LM_period_return_24_Price > mean_100_pred_LM_period_return_24_Price &
-    mean_100_pred_LM_period_return_24_Price > mean_200_pred_LM_period_return_24_Price &
-    mean_200_pred_LM_period_return_24_Price > mean_400_pred_LM_period_return_24_Price &
-    pred_LM_period_return_24_Price >
-      mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*1
-    ))|
-
-    ((
-    mean_50_pred_GLM_period_return_24_Price > mean_100_pred_GLM_period_return_24_Price &
-    mean_100_pred_GLM_period_return_24_Price > mean_200_pred_GLM_period_return_24_Price &
-    mean_200_pred_GLM_period_return_24_Price > mean_400_pred_GLM_period_return_24_Price &
-    pred_GLM_period_return_24_Price >
-      mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*0.5
-    ) &
-
-    (
-    mean_50_pred_GLM_period_return_30_Price > mean_100_pred_GLM_period_return_30_Price &
-    mean_100_pred_GLM_period_return_30_Price > mean_200_pred_GLM_period_return_30_Price &
-    mean_200_pred_GLM_period_return_30_Price > mean_400_pred_GLM_period_return_30_Price &
-    pred_GLM_period_return_30_Price >
-      mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*0.5
-    ))
-
+  (!(Asset %in%
+      c('GBP_AUD', 'USB10Y_USD', 'GBP_CAD', 'EU50_EUR', 'GBP_USD', 'UK100_GBP',
+      'AUD_USD', 'USD_JPY', 'XCU_USD', 'EUR_JPY', 'NATGAS_USD', 'JP225Y_JPY', 'GBP_JPY',
+      'US2000_USD', 'WTICO_USD', 'NZD_USD', 'HK33_HKD', 'EUR_GBP', 'EUR_AUD', 'EUR_USD', 'EUR_SEK',
+      'USD_SGD', 'XAG_USD', 'XAG_EUR', 'XAG_GBP', 'XAU_USD', 'XAU_AUD')) &
+      Averaged_Multi_prob_GLM >= 0.4
+      )
 "
 
 assets_to_use <- assets_to_use[21:40]
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
-run_trades = FALSE
+run_trades = TRUE
 
 while (current_time < end_time) {
 
@@ -377,7 +335,7 @@ while (current_time < end_time) {
 
   #----------------------Refresh Data Stores and LM model
   if(current_minute > 0 &
-     current_minute < 5 &
+     current_minute < 2 &
      trades_opened == 0 &
      run_trades == TRUE
      # ( (current_hour) == 0)
@@ -530,10 +488,10 @@ while (current_time < end_time) {
             profit_value_var = 30,
             period_var = 24,
             bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-            date_train_end_pre = as.character(as_date("2023-06-01") + days(0)),
-            date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(0)),
-            training_date_start_post = as.character(as_date("2024-07-04") + days(0)),
-            training_date_end_post = as.character(as_date("2025-09-01") + days(30)),
+            date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+            date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24)),
+            training_date_start_post = as.character(as_date("2024-07-04") + days(24)),
+            training_date_end_post = as.character(as_date("2025-09-01") + days(40)),
             test_end_date = as.character(today() + days(100)),
             post_bins_cols =
               c("period_return_24_Price",
@@ -560,6 +518,34 @@ while (current_time < end_time) {
 
         single_asset_model_trades_filt <-
           single_asset_model_trades %>%
+          mutate(
+            Averaged_Multi_prob_Momentum =
+              (pred_index_2 + pred_daily_2 + pred_technical_2  +
+                 pred_index_4 + pred_daily_4 + pred_technical_4  +
+                 pred_index_6 + pred_daily_6 + pred_technical_6  )/9,
+
+            Averaged_Multi_prob_GLM =
+              (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2 +
+                 pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +
+                 pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 )/12,
+
+            Averaged_Multi_prob_macro_GLM =
+              (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2 + pred_macro_2 +
+                 pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +  pred_macro_4 +
+                 pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_macro_6  )/15,
+
+            Averaged_FULL_GLM =
+              (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2  + pred_GLM_period_return_24_Price +
+                 pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4  + pred_GLM_period_return_30_Price +
+                 pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_GLM_period_return_44_Price
+              )/15,
+
+            Averaged_FULL_LM =
+              (pred_index_1 + pred_daily_1 + pred_technical_1 + pred_copula_1   +
+                 pred_index_3 + pred_daily_3 + pred_technical_3 + pred_copula_3   +
+                 pred_index_5 + pred_daily_5 + pred_technical_5 + pred_copula_5
+              )/12
+          ) %>%
           filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
           mutate(
             trade_col =
@@ -895,7 +881,7 @@ while (current_time < end_time) {
         summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
                   EstimatedTotal_risk = risk_dollar_value*n())
 
-      if(estimated_running_profit$unrealizedPL[1] < 600 ) {
+      if(estimated_running_profit$unrealizedPL[1] < 10000 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(
@@ -904,7 +890,7 @@ while (current_time < end_time) {
           )
       }
 
-      if(estimated_running_profit$unrealizedPL[1] >= 600 ) {
+      if(estimated_running_profit$unrealizedPL[1] >= 10000 ) {
         positions_tagged_as_part_of_algo <-
           positions_tagged_as_part_of_algo_raw %>%
           filter(

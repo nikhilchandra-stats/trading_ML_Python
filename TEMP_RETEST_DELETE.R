@@ -194,89 +194,89 @@ single_asset_algo_generate_models(
 
 post_preds_all_rolling_and_originals <-
   single_asset_algo_generate_preds(
-  All_Daily_Data = All_Daily_Data,
-  Indices_Metals_Bonds = Indices_Metals_Bonds,
-  raw_macro_data = raw_macro_data,
-  currency_conversion = currency_conversion,
-  asset_infor = asset_infor,
-  # start_index = 1,
-  # end_index = 40,
-  start_index = 1,
-  end_index = 38,
-  risk_dollar_value = 15,
-  trade_direction = "Long",
-  stop_value_var = 5,
-  profit_value_var = 30,
-  period_var = 24,
-  bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-  date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
-  date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24)),
-  training_date_start_post = as.character(as_date("2024-07-04") + days(24)),
-  training_date_end_post = as.character(as_date("2025-09-01") + days(40)),
-  test_end_date = as.character(today()),
-  post_bins_cols =
-    c("period_return_24_Price",
-      "period_return_30_Price",
-      "period_return_44_Price"),
-  post_dependant_threshold = 5,
-  post_dependant_var = "period_return_24_Price",
-  model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
-  save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2/"
-)
+    All_Daily_Data = All_Daily_Data,
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    raw_macro_data = raw_macro_data,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    # start_index = 1,
+    # end_index = 40,
+    start_index = 1,
+    end_index = 38,
+    risk_dollar_value = 15,
+    trade_direction = "Long",
+    stop_value_var = 5,
+    profit_value_var = 30,
+    period_var = 24,
+    bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
+    date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+    date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24)),
+    training_date_start_post = as.character(as_date("2024-07-04") + days(24)),
+    training_date_end_post = as.character(as_date("2025-09-01") + days(40)),
+    test_end_date = as.character(today()),
+    post_bins_cols =
+      c("period_return_24_Price",
+        "period_return_30_Price",
+        "period_return_44_Price"),
+    post_dependant_threshold = 5,
+    post_dependant_var = "period_return_24_Price",
+    model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
+    save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2/"
+  )
 
 actual_wins_losses <-
   get_actual_wins_losses(
-  assets_to_analyse =
-    c("EUR_USD", #1
-      "EU50_EUR", #2
-      "SPX500_USD", #3
-      "US2000_USD", #4
-      "USB10Y_USD", #5
-      "USD_JPY", #6
-      "AUD_USD", #7
-      "EUR_GBP", #8
-      "AU200_AUD" ,#9
-      "EUR_AUD", #10
-      "WTICO_USD", #11
-      "UK100_GBP", #12
-      "USD_CAD", #13
-      "GBP_USD", #14
-      "GBP_CAD", #15
-      "EUR_JPY", #16
-      "EUR_NZD", #17
-      "XAG_USD", #18
-      "XAG_EUR", #19
-      "XAG_AUD", #20
-      "XAG_NZD", #21
-      "HK33_HKD", #22
-      "FR40_EUR", #23
-      "BTC_USD", #24
-      "XAG_GBP", #25
-      "GBP_AUD", #26
-      "USD_SEK", #27
-      "USD_SGD", #28
-      "NZD_USD", #29
-      "GBP_NZD", #30
-      "XCU_USD", #31
-      "NATGAS_USD", #32
-      "GBP_JPY", #33
-      "SG30_SGD", #34
-      "XAU_USD", #35
-      "EUR_SEK", #36
-      "XAU_AUD", #37
-      "UK10YB_GBP", #38
-      "JP225Y_JPY", #39
-      "ETH_USD" #40
-    ),
-  asset_data = Indices_Metals_Bonds,
-  stop_factor = 5,
-  profit_factor = 30,
-  risk_dollar_value = 10,
-  trade_direction = "Long",
-  currency_conversion = currency_conversion,
-  asset_infor = asset_infor,
-  periods_ahead = period_var
-)
+    assets_to_analyse =
+      c("EUR_USD", #1
+        "EU50_EUR", #2
+        "SPX500_USD", #3
+        "US2000_USD", #4
+        "USB10Y_USD", #5
+        "USD_JPY", #6
+        "AUD_USD", #7
+        "EUR_GBP", #8
+        "AU200_AUD" ,#9
+        "EUR_AUD", #10
+        "WTICO_USD", #11
+        "UK100_GBP", #12
+        "USD_CAD", #13
+        "GBP_USD", #14
+        "GBP_CAD", #15
+        "EUR_JPY", #16
+        "EUR_NZD", #17
+        "XAG_USD", #18
+        "XAG_EUR", #19
+        "XAG_AUD", #20
+        "XAG_NZD", #21
+        "HK33_HKD", #22
+        "FR40_EUR", #23
+        "BTC_USD", #24
+        "XAG_GBP", #25
+        "GBP_AUD", #26
+        "USD_SEK", #27
+        "USD_SGD", #28
+        "NZD_USD", #29
+        "GBP_NZD", #30
+        "XCU_USD", #31
+        "NATGAS_USD", #32
+        "GBP_JPY", #33
+        "SG30_SGD", #34
+        "XAU_USD", #35
+        "EUR_SEK", #36
+        "XAU_AUD", #37
+        "UK10YB_GBP", #38
+        "JP225Y_JPY", #39
+        "ETH_USD" #40
+      ),
+    asset_data = Indices_Metals_Bonds,
+    stop_factor = 5,
+    profit_factor = 30,
+    risk_dollar_value = 10,
+    trade_direction = "Long",
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    periods_ahead = period_var
+  )
 
 # Use this for Periods 24 only 3.91% Edge with 200 return edge (USE THIS)
 # trade_statement =
@@ -364,140 +364,37 @@ trade_statement =
 
 trade_statement <-
   "
-  # (pred_copula_2 >= 0.675 &
-  # pred_copula_4 >= 0.675 &
-  # pred_copula_6 >= 0.675 )|
-  # (pred_combined_1 >= 6.5 &
-  # pred_combined_3 >= 6.5 &
-  # pred_combined_5 >= 6.5)|
-  # Averaged_FULL_GLM >= 0.6 |
-  # Averaged_Multi_prob_GLM >= 0.65
+    (pred_copula_2 >= 0.675 &
+    pred_copula_4 >= 0.675 &
+    pred_copula_6 >= 0.675 )|
 
-  (pred_copula_2 >= 0.65 & pred_copula_2 <= 0.75 &
-  pred_copula_4 >= 0.65 & pred_copula_4 <= 0.75 &
-  pred_copula_6 >= 0.65 & pred_copula_6 <= 0.75 )|
-  (Averaged_FULL_GLM >= 0.65 & Averaged_FULL_GLM < 0.7)|
-  (Averaged_Multi_prob_GLM >= 0.65 & Averaged_Multi_prob_GLM < 0.7)|
-  (pred_technical_2 < 0.89 & pred_technical_2 >= 0.75 &
-  pred_technical_4 < 0.89 & pred_technical_4 >= 0.75 &
-  pred_technical_6 < 0.89 & pred_technical_6 >= 0.75)
+  # (pred_combined_2 >= pred_combined_2_mean + pred_combined_2_sd*2.5)|
 
+  (Averaged_FULL_GLM >= 0.6 |
+  Averaged_Multi_prob_GLM >= 0.65)|
 
-  # pred_technical_2 < 0.9 & pred_technical_2 >= 0.65
-
-  #     (pred_copula_2 >= 0.675 &
-  #   pred_copula_4 >= 0.675 &
-  #   pred_copula_6 >= 0.675 )|
-  #
-  # # (pred_combined_2 >= pred_combined_2_mean + pred_combined_2_sd*2.5)|
-  #
-  # (Averaged_FULL_GLM >= 0.6 |
-  # Averaged_Multi_prob_GLM >= 0.65)|
-  #
-  # (pred_technical_2 < 0.95 & pred_technical_2 >= 0.75 &
-  # pred_technical_4 < 0.95 & pred_technical_4 >= 0.75)
-
+  (pred_technical_2 < 0.95 & pred_technical_2 >= 0.75 &
+  pred_technical_4 < 0.95 & pred_technical_4 >= 0.75)
 "
-
-trade_statement_excl_Metals <-
-  "
-  (Averaged_Multi_prob_GLM >= 0.8 & Asset == 'USB10Y_USD')|
-  (Averaged_Multi_prob_GLM >= 0.8 & Asset == 'GBP_CAD')|
-  (Averaged_Multi_prob_GLM >= 0.85 & Asset == 'GBP_USD')|
-  (Averaged_Multi_prob_GLM >= 0.4 & Asset == 'EU50_EUR')|
-
-  (Averaged_Multi_prob_GLM >= 0.25 & Asset == 'UK100_GBP')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'AUD_USD')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'USD_JPY')|
-  (Averaged_Multi_prob_GLM >= 0.15 & Asset == 'XCU_USD')|
-  (Averaged_Multi_prob_GLM >= 0.4 & Asset == 'EUR_JPY')|
-  (Averaged_Multi_prob_GLM >= 0.4 & Asset == 'NATGAS_USD')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'JP225Y_JPY')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'GBP_JPY')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'US2000_USD')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'WTICO_USD')|
-  (Averaged_Multi_prob_GLM >= 0.51 & Asset == 'NZD_USD')|
-  (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'EUR_GBP')|
-  (Averaged_Multi_prob_GLM >= 0.55 & Asset == 'HK33_HKD')|
-
-  (pred_LM_period_return_24_Price >
-          mean_50_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*1.25 &
-      pred_LM_period_return_44_Price >
-          mean_50_pred_LM_period_return_44_Price + sd_500_pred_LM_period_return_44_Price*1.25 &
-      Asset == 'EUR_AUD')|
-    (pred_LM_period_return_24_Price <
-          mean_500_pred_LM_period_return_24_Price - sd_500_pred_LM_period_return_24_Price*1.25 &
-      pred_LM_period_return_44_Price <
-          mean_500_pred_LM_period_return_44_Price - sd_500_pred_LM_period_return_44_Price*1.25 &
-      Asset == 'EUR_USD')|
-          (pred_LM_period_return_24_Price >
-          mean_500_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*1.25 &
-      pred_LM_period_return_44_Price >
-          mean_500_pred_LM_period_return_44_Price + sd_500_pred_LM_period_return_44_Price*1.25 &
-      Asset == 'EUR_SEK')|
-      (pred_daily_3 >= 1 & pred_daily_5 >= 1 & Asset == 'EUR_USD')|
-
-      (Averaged_Multi_prob_GLM >= 0.6 & Asset == 'USD_SGD')|
-      (pred_copula_3 >= 3 & pred_copula_5 >= 3 & Asset == 'USD_SGD')|
-      (pred_copula_3 >= 5 & pred_copula_5 >= 5 & Asset == 'GBP_AUD')|
-      (pred_copula_3 >= 2 & pred_copula_5 >= 2 & Asset == 'EUR_USD')|
-      # (Averaged_Multi_prob_Momentum >= 0.6 & Asset == 'EUR_SEK')|
-      (pred_copula_3 >= 1.5 & pred_copula_5 >= 1.5 & Asset == 'EUR_SEK')|
-
-      # (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAG_USD')|
-      (pred_copula_3 >= 2.5 & pred_copula_5 >= 2.5 & Asset == 'XAG_USD')|
-      (Averaged_Multi_prob_GLM >= 0.5 & Asset == 'XAG_GBP')|
-      (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAG_EUR')|
-      (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAU_USD')|
-      (Averaged_Multi_prob_GLM >= 0.35 & Asset == 'XAU_AUD')|
-
-  (!(Asset %in%
-      c('GBP_AUD', 'USB10Y_USD', 'GBP_CAD', 'EU50_EUR', 'GBP_USD', 'UK100_GBP',
-      'AUD_USD', 'USD_JPY', 'XCU_USD', 'EUR_JPY', 'NATGAS_USD', 'JP225Y_JPY', 'GBP_JPY',
-      'US2000_USD', 'WTICO_USD', 'NZD_USD', 'HK33_HKD', 'EUR_GBP', 'EUR_AUD', 'EUR_USD', 'EUR_SEK',
-      'USD_SGD', 'XAG_USD', 'XAG_EUR', 'XAG_GBP', 'XAU_USD', 'XAU_AUD')) &
-      Averaged_Multi_prob_GLM >= 0.4
-      )
-"
-
-trade_statement <- trade_statement_excl_Metals
 
 win_thresh = 10
 
 post_preds_all_rolling_and_originals_2 <-
   post_preds_all_rolling_and_originals %>%
-  # filter(!str_detect(Asset, "XAG|XAU")) %>%
   filter(
     Date >= as.character(as_date("2025-09-01") + days(45))
   ) %>%
   mutate(
-    Averaged_Multi_prob_Momentum =
-      (pred_index_2 + pred_daily_2 + pred_technical_2  +
-         pred_index_4 + pred_daily_4 + pred_technical_4  +
-         pred_index_6 + pred_daily_6 + pred_technical_6  )/9,
-
     Averaged_Multi_prob_GLM =
       (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2 +
          pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +
          pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 )/12,
 
-    Averaged_Multi_prob_macro_GLM =
-      (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2 + pred_macro_2 +
-         pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +  pred_macro_4 +
-         pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_macro_6  )/15,
-
     Averaged_FULL_GLM =
       (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2  + pred_GLM_period_return_24_Price +
          pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4  + pred_GLM_period_return_30_Price +
          pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_GLM_period_return_44_Price
-       )/15,
-
-    Averaged_FULL_LM =
-      (pred_index_1 + pred_daily_1 + pred_technical_1 + pred_copula_1   +
-         pred_index_3 + pred_daily_3 + pred_technical_3 + pred_copula_3   +
-         pred_index_5 + pred_daily_5 + pred_technical_5 + pred_copula_5
-      )/12
-
+      )/15
   )
 
 comnbined_statement_best_results <-
@@ -729,19 +626,9 @@ trades_taken_ts_returns %>%
   theme(legend.position = "bottom")
 
 trades_taken_ts_returns %>%
-  pull(Returns_cumulative) %>%
-  min()
+  pull(Returns_cumulative) %>% min()
 
-trades_taken_ts_returns %>%
-  bind_rows(all_trades_ts_returns) %>%
-  filter(Date >= "2026-02-01") %>%
-  ggplot(aes(x = Date, y = Returns_cumulative, color = trade_col)) +
-  geom_line() +
-  facet_wrap(.~ trade_col, scales = "free_y") +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-
- #-------------Simulate All factors
+#-------------Simulate All factors
 #
 # simulate_factors(
 #   post_preds_all_rolling_and_originals = post_preds_all_rolling_and_originals,
