@@ -164,50 +164,6 @@ Indices_Metals_Bonds[[2]] <-
   ) %>%
   distinct()
 
-Single_Asset_V3_Gen_all_models(
-  Indices_Metals_Bonds = Indices_Metals_Bonds,
-  actuals_periods_needed = c("period_return_35_Price", "period_return_46_Price"),
-  correlation_rolling_periods = c(100,200, 300),
-  training_end_date = "2025-05-01",
-  rolling_mean_pred_period = 500,
-  bin_threshold = 5,
-  start_index = 1,
-  end_index = 2,
-  base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_trade_store_stop_2"
-)
-
-post_preds_all_rolling_and_originals <-
-  single_asset_algo_generate_preds(
-    All_Daily_Data = All_Daily_Data,
-    Indices_Metals_Bonds = Indices_Metals_Bonds,
-    raw_macro_data = raw_macro_data,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor,
-    # start_index = 1,
-    # end_index = 40,
-    start_index = 1,
-    end_index = 36,
-    risk_dollar_value = 10,
-    trade_direction = "Long",
-    stop_value_var = 5,
-    profit_value_var = 50,
-    period_var = 35,
-    bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-    date_train_end_pre = as.character(as_date("2021-06-01") + days(24) ),
-    date_train_phase_2_end_pre = as.character(as_date("2022-06-01") + days(24) ),
-    training_date_start_post = as.character(as_date("2022-07-04") + days(24) ),
-    training_date_end_post = as.character(as_date("2023-09-01") + days(24) ),
-    test_end_date = as.character(today()),
-    post_bins_cols =
-      c("period_return_24_Price",
-        "period_return_30_Price",
-        "period_return_44_Price"),
-    post_dependant_threshold = 0,
-    post_dependant_var = "period_return_24_Price",
-    model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_trade_store_stop_2.db",
-    save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_trade_store_stop_2"
-  )
-
 actual_wins_losses <-
   get_actual_wins_losses(
     assets_to_analyse =
@@ -262,419 +218,383 @@ actual_wins_losses <-
     periods_ahead = period_var
   )
 
-# Use this for Periods 24 only 3.91% Edge with 200 return edge (USE THIS)
-# trade_statement =
-#   "
-#         (
-#           (
-#
-#           ((mean_3_pred_LM_period_return_24_Price >
-#           mean_100_pred_LM_period_return_24_Price + sd_100_pred_LM_period_return_24_Price*2) &
-#           (mean_3_pred_GLM_period_return_24_Price >
-#           mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*2))|
-#
-#           ((mean_3_pred_LM_period_return_24_Price >
-#           mean_2000_pred_LM_period_return_24_Price + sd_2000_pred_LM_period_return_24_Price*2.5) &
-#           (mean_3_pred_GLM_period_return_24_Price >
-#           mean_2000_pred_GLM_period_return_24_Price + sd_2000_pred_GLM_period_return_24_Price*2.5))|
-#
-#           ((mean_3_pred_LM_period_return_30_Price >
-#           mean_100_pred_LM_period_return_30_Price + sd_100_pred_LM_period_return_30_Price*2) &
-#           (mean_3_pred_GLM_period_return_30_Price >
-#           mean_100_pred_GLM_period_return_30_Price + sd_100_pred_GLM_period_return_30_Price*2))|
-#
-#           ((mean_3_pred_LM_period_return_30_Price >
-#           mean_2000_pred_LM_period_return_30_Price + sd_2000_pred_LM_period_return_30_Price*2.5) &
-#           (mean_3_pred_GLM_period_return_30_Price >
-#           mean_2000_pred_GLM_period_return_30_Price + sd_2000_pred_GLM_period_return_30_Price*2.5))
-#
-#           )|
-#           (
-#           pred_copula_1 >= pred_copula_1_mean + pred_copula_1_sd*2.5 |
-#           pred_copula_3 >= pred_copula_3_mean + pred_copula_3_sd*2.5 |
-#           pred_copula_5 >= pred_copula_5_mean + pred_copula_5_sd*2.5 |
-#           pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.25 |
-#           pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.25 |
-#           pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.25
-#           )|
-#           (
-#           pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*2 &
-#           pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*2 &
-#           pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*2 &
-#           pred_daily_4 >= pred_daily_4_mean + pred_daily_4_sd*2 &
-#           pred_daily_5 >= pred_daily_5_mean + pred_daily_5_sd*2 &
-#           pred_daily_6 >= pred_daily_6_mean + pred_daily_6_sd*2 &
-#           (
-#           (pred_macro_1 >= pred_macro_1_mean + pred_macro_1_sd*1 &
-#           pred_macro_2 >= pred_macro_2_mean + pred_macro_2_sd*1)|
-#           (pred_macro_5 >= pred_macro_5_mean + pred_macro_5_sd*1 &
-#           pred_macro_6 >= pred_macro_6_mean + pred_macro_6_sd*1)
-#           )
-#           )
-#
-#
-#        )
-#
-# "
 
-trade_statement =
-  "
-  (pred_technical_1 >= pred_technical_1_mean + pred_technical_1_sd*3.15)|
-  (pred_technical_2 >= pred_technical_2_mean + pred_technical_2_sd*3.15)|
-  ( pred_technical_4 >= pred_technical_4_mean + pred_technical_4_sd*3.43|
-    pred_technical_6 >= pred_technical_6_mean + pred_technical_6_sd*3.43)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95 |
-  pred_GLM_period_return_24_Price >
-            mean_50_pred_GLM_period_return_24_Price + sd_50_pred_GLM_period_return_24_Price*2.95)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75 |
-  pred_GLM_period_return_24_Price >
-            mean_100_pred_GLM_period_return_24_Price + sd_100_pred_GLM_period_return_24_Price*3.75)|
-  (mean_3_pred_GLM_period_return_24_Price >
-          mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25 |
-  pred_GLM_period_return_24_Price >
-            mean_400_pred_GLM_period_return_24_Price + sd_400_pred_GLM_period_return_24_Price*3.25)|
-    (pred_copula_2 >= pred_copula_2_mean + pred_copula_2_sd*6 &
-    pred_copula_4 >= pred_copula_4_mean + pred_copula_4_sd*6 &
-    pred_copula_6 >= pred_copula_6_mean + pred_copula_6_sd*6 )|
-    (  pred_index_2 >= pred_index_2_mean + pred_index_2_sd*9 &
-      pred_index_4 >= pred_index_4_mean + pred_index_4_sd*9 &
-      pred_index_6 >= pred_index_6_mean + pred_index_6_sd*9 ) |
-    ( pred_daily_1 >= pred_daily_1_mean + pred_daily_1_sd*4.75)|
-    ( pred_daily_3 >= pred_daily_3_mean + pred_daily_3_sd*4.5)|
-    ( pred_daily_2 >= pred_daily_2_mean + pred_daily_2_sd*4)
-"
+# source("C:/Users/nikhi/Documents/Repos/trading_ML_Python/code/Temp From Work Pc/Single_Asset_V3_Funcs.R")
+load_custom_functions()
+assets_to_test <- c("EUR_USD", #1 EUR_USD
+                    "SPX500_USD", #2 SPX500_USD
+                    "US2000_USD", #3 US2000_USD
+                    "USD_JPY", #4 USD_JPY
+                    "EUR_JPY", #5 EUR_JPY
+                    "AUD_USD", #6 AUD_USD
+                    "GPB_USD", #7 GPB_USD
+                    "EUR_GBP", #8 EUR_GBP
+                    "AU200_AUD", #9 AU200_AUD
+                    "XAU_USD", #10 XAU_USD
+                    "UK100_GBP", #11 UK100_GBP
+                    "XAG_USD", #12 XAG_USD
+                    "GBP_JPY", #13 GBP_JPY
+                    "USD_CAD", #14 USD_CAD
+                    "EU50_EUR", #15 EU50_EUR
+                    "HK33_HKD" #16 HK33_HKD
+                    )
 
-trade_statement <-
-  "
-  # (pred_copula_2 >= 0.675 &
-  # pred_copula_4 >= 0.675 &
-  # pred_copula_6 >= 0.675 )|
-  # (pred_combined_1 >= 6.5 &
-  # pred_combined_3 >= 6.5 &
-  # pred_combined_5 >= 6.5)|
-  # Averaged_FULL_GLM >= 0.6 |
-  # Averaged_Multi_prob_GLM >= 0.65
+correlation_asset_list <-
+  list(
+    #1 EUR_USD,
+    c("XAU_EUR", "XAG_EUR", "EUR_JPY", "EU50_EUR", "EUR_AUD", "EUR_GBP",
+      "SPX500_USD", "XAU_USD", "USD_JPY", "GBP_USD", "EUR_NZD", "XAG_GBP", "XAU_GBP",
+      "EUR_SEK", "USD_CAD") %>% unique(),
 
-  (pred_copula_2 >= 0.65 & pred_copula_2 <= 0.75 &
-  pred_copula_4 >= 0.65 & pred_copula_4 <= 0.75 &
-  pred_copula_6 >= 0.65 & pred_copula_6 <= 0.75 )|
-  (Averaged_FULL_GLM >= 0.65 & Averaged_FULL_GLM < 0.7)|
-  (Averaged_Multi_prob_GLM >= 0.65 & Averaged_Multi_prob_GLM < 0.7)|
-  (pred_technical_2 < 0.89 & pred_technical_2 >= 0.75 &
-  pred_technical_4 < 0.89 & pred_technical_4 >= 0.75 &
-  pred_technical_6 < 0.89 & pred_technical_6 >= 0.75)
+    #2 SPX500_USD
+    c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
+      "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
+      "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(),
 
+    #3 US2000_USD
+    c("SPX500_USD",  "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
+      "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
+      "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP","XAG_USD" ) %>% unique(),
 
-  # pred_technical_2 < 0.9 & pred_technical_2 >= 0.65
+    #4 USD_JPY
+    c("EUR_JPY", "XAU_JPY", "XAG_JPY", "GBP_JPY", "XAU_USD", "SPX500_USD",
+      "XAG_USD","NZD_USD", "AUD_USD", "EUR_USD", "GBP_USD", "USD_CAD",
+      "USD_SEK", "USD_SGD", "USB10Y_USD") %>% unique(),
 
-  #     (pred_copula_2 >= 0.675 &
-  #   pred_copula_4 >= 0.675 &
-  #   pred_copula_6 >= 0.675 )|
-  #
-  # # (pred_combined_2 >= pred_combined_2_mean + pred_combined_2_sd*2.5)|
-  #
-  # (Averaged_FULL_GLM >= 0.6 |
-  # Averaged_Multi_prob_GLM >= 0.65)|
-  #
-  # (pred_technical_2 < 0.95 & pred_technical_2 >= 0.75 &
-  # pred_technical_4 < 0.95 & pred_technical_4 >= 0.75)
+    #5 "EUR_JPY"
+    c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_JPY", "USD_JPY", "EUR_AUD",
+      "EUR_GBP", "EUR_NZD", "EUR_SEK", "XAG_EUR", "XAU_USD", "XAG_USD", "USD_JPY",
+      "GBP_JPY", "FR40_EUR", "EU50_EUR") %>% unique(),
 
-"
+    #6 "AUD_USD"
+    c("XCU_USD", "AU200_AUD", "XAU_AUD", "GBP_AUD", "XAU_USD", "EUR_AUD",
+      "XAG_USD","NZD_USD", "USD_JPY", "EUR_USD", "GBP_USD", "USD_CAD",
+      "USD_SEK", "USD_SGD", "USB10Y_USD", "NZD_USD") %>% unique(),
 
-win_thresh = 10
+    #7 "GPB_USD"
+    c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP",
+      "XAU_USD", "XAG_USD", "EUR_GBP", "EUR_USD", "XAG_EUR", "XAU_EUR", "USD_JPY",
+      "EUR_JPY", "UK10YB_GBP", "AUD_USD", "USD_SEK", "USD_CAD") %>% unique(),
 
-post_preds_all_rolling_and_originals_2 <-
-  post_preds_all_rolling_and_originals %>%
-  filter(
-    Date >= as.character(as_date("2025-09-01") + days(45))
-  ) %>%
-  mutate(
-    Averaged_Multi_prob_GLM =
-      (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2 +
-         pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +
-         pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 )/12,
+    #8"EUR_GBP"
+    c("GBP_USD", "EUR_USD", "XAU_EUR", "XAU_GBP", "GBP_JPY", "EUR_JPY",
+      "XAG_EUR", "XAG_GBP", "USD_JPY", "UK100_GBP", "FR40_EUR", "EU50_EUR",
+      "EUR_SEK", "USD_SEK", "EUR_AUD", "EUR_NZD", "EUR_SEK") %>% unique(),
 
-    Averaged_Multi_prob_macro_GLM =
-      (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2 + pred_macro_2 +
-         pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +  pred_macro_4 +
-         pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_macro_6  )/15,
+    #9"AU200_AUD"
+    c("XCU_USD", "US2000_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
+      "HK33_HKD", "FR40_EUR", "WTICO_USD", "GBP_AUD", "EUR_AUD",
+      "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(),
 
-    Averaged_FULL_GLM =
-      (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2  + pred_GLM_period_return_24_Price +
-         pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4  + pred_GLM_period_return_30_Price +
-         pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_GLM_period_return_44_Price
-      )/15,
+    #10"XAU_USD"
+    c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAG_USD", "EU50_EUR", "SPX500_USD",
+      "XAG_NZD", "XAU_USD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD", "USD_JPY",
+      "GBP_AUD", "AUD_USD", "EUR_AUD", "AUD_USD") %>% unique(),
 
-    Averaged_FULL_LM =
-      (pred_index_1 + pred_daily_1 + pred_technical_1 + pred_copula_1   +
-         pred_index_3 + pred_daily_3 + pred_technical_3 + pred_copula_3   +
-         pred_index_5 + pred_daily_5 + pred_technical_5 + pred_copula_5
-      )/12
+    #11"UK100_GBP"
+    c("XAU_EUR", "XAG_EUR", "XAU_USD", "SG30_SGD", "EUR_GBP", "US2000_USD",
+      "SPX500_USD", "XAU_USD", "AU200_AUD", "CH20_CHF", "UK10YB_GBP", "USB10Y_USD",
+      "XAG_GBP", "XAU_GBP", "WTICO_USD", "FR40_EUR", "HK33_HKD") %>% unique(),
+
+    #12"XAG_USD"
+    c("XAU_EUR", "XAG_EUR", "XAU_USD", "SG30_SGD", "EUR_GBP", "US2000_USD",
+      "SPX500_USD", "XAU_USD", "AU200_AUD", "CH20_CHF", "UK10YB_GBP", "USB10Y_USD",
+      "XAG_GBP", "XAU_GBP", "WTICO_USD", "FR40_EUR", "HK33_HKD") %>% unique(),
+
+    #13"GBP_JPY"
+    c("GBP_CAD", "GBP_USD", "XAU_GBP", "XAG_GBP", "UK100_GBP",
+      "GBP_NZD", "XAG_USD", "EUR_GBP", "EUR_JPY", "XAU_JPY", "USD_JPY", "XAG_JPY",
+      "AUD_USD", "UK10YB_GBP") %>% unique(),
+
+    #14"USD_CAD"
+    c("XAU_JPY", "XAU_GBP", "XAU_EUR", "XAU_USD", "EUR_JPY", "GBP_JPY",
+      "XAG_USD","NZD_USD", "USD_JPY", "EUR_USD", "GBP_USD", "GBP_CAD",
+      "USD_SEK", "USD_SGD", "USB10Y_USD") %>% unique(),
+
+    #15"EU50_EUR"
+    c("XAU_EUR", "XAG_EUR", "XAU_USD", "UK100_GBP", "SG30_SGD", "EUR_GBP", "SPX500_USD",
+      "SPX500_USD", "XAU_USD", "AU200_AUD", "CH20_CHF", "US2000_USD",
+      "XAG_GBP", "XAU_GBP", "WTICO_USD", "FR40_EUR", "HK33_HKD") %>% unique(),
+
+    #15"HK33_HKD"
+    c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
+      "SPX500_USD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
+      "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD") %>% unique()
 
   )
+actuals_periods_needed = c("period_return_32_Price", "period_return_42_Price", "period_return_50_Price")
+correlation_rolling_periods = c(100,200, 300,400, 500)
+state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500)
+state_space_rolling = c(100, 200, 300, 400)
+sig_thresh_vec <- c(0.99, 0.1, 0.05, 0.01, 10^-3, 10^-5, 10^-7, 10^-9)
+bin_threshold_vec <- c(0, 3, 5, 7)
+result_db_path <- "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIG_THRESH_FINDER.DB"
+reset_DB <- TRUE
+c = 0
 
-comnbined_statement_best_results <-
-  post_preds_all_rolling_and_originals_2 %>%
-  filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
-  pull(Asset) %>%
-  unique() %>%
-  map(
-    ~
-      post_ss_model_analyse_condition(
-        tagged_trade_col_data = post_preds_all_rolling_and_originals_2,
-        actual_wins_losses = actual_wins_losses %>%
-          filter(Date >= as.character(as_date("2025-09-01") + days(45))),
-        trade_statement = trade_statement,
-        Asset_Var = .x,
-        win_thresh = win_thresh,
-        trade_direction = "Long"
-      ) %>%
-      pluck(1) %>%
-      ungroup() %>%
-      # filter(Period <= 44) %>%
-      filter(Period <= 35) %>%
-      filter(Period >= 35) %>%
-      filter(trade_col == "Long") %>%
-      # group_by(Asset) %>%
-      # slice_max(perc, n = 1) %>%
-      group_by(Asset) %>%
-      slice_max(Total_Returns) %>%
-      ungroup()
-  ) %>%
-  keep(~ dim(.x)[1] > 0) %>%
-  map_dfr(bind_rows)
-# janitor::adorn_totals()
+for (j in 1:length(assets_to_test)) {
+  for (i in 1:length(sig_thresh_vec)) {
+    for (k in 1:length(bin_threshold_vec)) {
 
-comnbined_statement_best_params <-
-  comnbined_statement_best_results %>%
-  dplyr::select(Asset, Period) %>%
+      c = c + 1
+      asset_of_interest <- assets_to_test[j]
+      correlation_assets_current <- correlation_asset_list[[j]]
+
+      sig_thresh_current <- sig_thresh_vec[i]
+      bin_threshold_current <- bin_threshold_vec[k]
+
+      pred_data <-
+        Single_Asset_V3_Gen_Model(
+          Indices_Metals_Bonds = Indices_Metals_Bonds,
+          actual_wins_losses = actual_wins_losses,
+          asset_of_interest = asset_of_interest,
+          actuals_periods_needed = actuals_periods_needed,
+          training_end_date = "2022-01-01",
+          bin_threshold = bin_threshold_current,
+          rolling_mean_pred_period = 500,
+          correlation_rolling_periods = correlation_rolling_periods,
+          state_space_periods = state_space_periods,
+          state_space_rolling = state_space_rolling,
+          copula_assets = correlation_assets_current,
+          base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+          sig_thresh_AR = sig_thresh_current,
+          sig_thresh_Copula = sig_thresh_current,
+          sig_thresh_statespace = sig_thresh_current,
+          raw_macro_data = raw_macro_data
+
+        )
+
+      testing_pred_data <-
+        pred_data[[1]] %>%
+        ungroup() %>%
+        mutate(
+          averaged_50_LM_pred =
+            (state_space_LM_Pred_period_return_50_Price +
+               AR_LM_Pred_period_return_50_Price)/2,
+
+          averaged_50_GLM_pred =
+            (state_space_GLM_Pred_period_return_50_Price +
+               AR_GLM_Pred_period_return_50_Price )/2,
+
+          averaged_42_50_GLM_pred =
+            (state_space_GLM_Pred_period_return_42_Price +
+               AR_GLM_Pred_period_return_42_Price +
+               state_space_GLM_Pred_period_return_50_Price +
+               AR_GLM_Pred_period_return_50_Price)/4,
+
+          averaged_42_50_LM_pred =
+            (state_space_LM_Pred_period_return_42_Price +
+               AR_LM_Pred_period_return_42_Price +
+               state_space_LM_Pred_period_return_50_Price +
+               AR_LM_Pred_period_return_50_Price)/4
+        )
+
+      AR_LM_Pred_analysis_LM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "AR_LM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          # thresh_vector = seq(0, 0.9, 0.05),
+          thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "AR_LM_Pred_period_return_50_Price")
+
+      AR_GLM_Pred_analysis_GLM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "AR_GLM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          thresh_vector = seq(0, 0.9, 0.05),
+          # thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "AR_GLM_Pred_period_return_50_Price")
+
+      state_space_LM_Pred_analysis_LM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "state_space_LM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          # thresh_vector = seq(0, 0.9, 0.05),
+          thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "state_space_LM_Pred_period_return_50_Price")
+
+      state_space_GLM_Pred_analysis_GLM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "state_space_GLM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          thresh_vector = seq(0, 0.9, 0.05),
+          # thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "state_space_GLM_Pred_period_return_50_Price")
+
+      copula_LM_Pred_analysis_LM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "Copula_LM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          # thresh_vector = seq(0, 0.9, 0.05),
+          thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "Copula_LM_Pred_period_return_50_Price")
+
+      copula_GLM_Pred_analysis_GLM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "Copula_GLM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          thresh_vector = seq(0, 0.9, 0.05),
+          # thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "Copula_GLM_Pred_period_return_50_Price")
+
+      Macro_LM_Pred_analysis_LM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "Macro_LM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          # thresh_vector = seq(0, 0.9, 0.05),
+          thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "Macro_LM_Pred_period_return_50_Price")
+
+      Macro_GLM_Pred_analysis_GLM <-
+        construct_Performance_to_Thresh_Curve(
+          pred_data = testing_pred_data,
+          pred_col = "Macro_GLM_Pred_period_return_50_Price",
+          actual_wins_losses = actual_wins_losses,
+          thresh_vector = seq(0, 0.9, 0.05),
+          # thresh_vector = seq(-15, 10, 1),
+          period_return_col = "period_return_50_Price",
+          sim_start_date = "2022-01-01"
+        ) %>%
+        mutate(Asset = asset_of_interest,
+               pred_col_used = "Macro_GLM_Pred_period_return_50_Price")
+
+      all_results_dfr <-
+        AR_LM_Pred_analysis_LM %>%
+        bind_rows(AR_GLM_Pred_analysis_GLM) %>%
+        bind_rows(state_space_LM_Pred_analysis_LM)%>%
+        bind_rows(state_space_GLM_Pred_analysis_GLM)%>%
+        bind_rows(copula_LM_Pred_analysis_LM) %>%
+        bind_rows(copula_GLM_Pred_analysis_GLM) %>%
+        bind_rows(Macro_LM_Pred_analysis_LM) %>%
+        bind_rows(Macro_GLM_Pred_analysis_GLM) %>%
+        mutate(
+          sig_thresh_current = sig_thresh_vec[i],
+          bin_threshold_current = bin_threshold_vec[k]
+        )
+
+      if(c == 1 & reset_DB == TRUE){
+        db_con <- connect_db(result_db_path)
+        write_table_sql_lite(.data = all_results_dfr,
+                             table_name = "SIG_THRESH_FINDER",
+                             conn = db_con,
+                             overwrite_true = TRUE)
+        DBI::dbDisconnect(db_con)
+      } else {
+        db_con <- connect_db(result_db_path)
+        append_table_sql_lite(.data = all_results_dfr,
+                             table_name = "SIG_THRESH_FINDER",
+                             conn = db_con)
+        DBI::dbDisconnect(db_con)
+      }
+
+    }
+  }
+}
+
+AR_LM_Pred_analysis %>%
+  filter(!is.na(threshold)) %>%
+  group_by(Asset) %>%
   mutate(
-    best_result = TRUE
-  ) %>%
-  distinct()
-
-comnbined_statement_control <-
-  post_preds_all_rolling_and_originals_2 %>%
-  pull(Asset) %>%
-  unique() %>%
-  map(
-    ~
-      post_ss_model_analyse_condition(
-        tagged_trade_col_data = post_preds_all_rolling_and_originals_2,
-        trade_statement = "pred_LM_period_return_24_Price > 0 |
-                          pred_LM_period_return_24_Price <= 0 |
-                          is.na(pred_LM_period_return_24_Price)|
-                          is.nan(pred_LM_period_return_24_Price) |
-                          is.infinite(pred_LM_period_return_24_Price)",
-        Asset_Var = .x,
-        win_thresh = win_thresh,
-        trade_direction = "Long",
-        actual_wins_losses = actual_wins_losses %>%
-          filter(Date >= as.character(as_date("2025-09-01") + days(45)))
-      ) %>%
-      pluck(1) %>%
-      ungroup()
-  ) %>%
-  keep(~ dim(.x)[1] > 0) %>%
-  map_dfr(bind_rows) %>%
-  dplyr::left_join(comnbined_statement_best_params) %>%
-  filter(best_result == TRUE) %>%
-  arrange(Total_Returns) %>%
-  # janitor::adorn_totals() %>%
-  dplyr::select(Asset, Period,
-                total_trades_control = total_trades,
-                Total_Returns_Control = Total_Returns,
-                Average_Return_Control = Average_Return,
-                perc_control = perc)
-
-comapre_results_summary <-
-  comnbined_statement_best_results %>%
-  dplyr::select(-trade_statement, -trade_col) %>%
-  left_join(comnbined_statement_control) %>%
-  mutate(
-    trade_percent = total_trades/total_trades_control,
-    Total_Returns_Control_adj = Total_Returns_Control*trade_percent,
-
-    total_trade_percent = sum(wins)/sum(total_trades),
-    total_control_percent = sum(total_trades_control*perc_control)/sum(total_trades_control)
-  ) %>%
-  mutate(
-    Returns_Diff = Total_Returns - Total_Returns_Control_adj,
-    perc_diff = total_trade_percent - total_control_percent
-  )
-
-comapre_results_summary$perc_diff %>% mean()
-comapre_results_summary$Returns_Diff %>% mean()
-
-comapre_results_summary <-
-  comapre_results_summary %>%
-  janitor::adorn_totals()
-
-comapre_results_summary <-
-  comnbined_statement_best_results %>%
-  dplyr::select(-trade_statement, -trade_col) %>%
-  left_join(comnbined_statement_control) %>%
-  mutate(
-    trade_percent = total_trades/total_trades_control,
-    Total_Returns_Control_adj = Total_Returns_Control*trade_percent,
-
-    total_trade_percent = sum(wins)/sum(total_trades),
-    total_control_percent = sum(total_trades_control*perc_control)/sum(total_trades_control)
-  ) %>%
-  mutate(
-    Returns_Diff = Total_Returns - Total_Returns_Control_adj,
-    Perc_Diff = total_trade_percent - perc_control,
-    perc_diff = total_trade_percent - total_control_percent
-  )
-
-trades_taken <-
-  post_preds_all_rolling_and_originals_2 %>%
-  filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
-  mutate(
-    trade_col =
-      eval(parse(text = trade_statement))
-  ) %>%
-  filter(trade_col == TRUE) %>%
-  distinct(Asset, Date) %>%
-  left_join(
-    comnbined_statement_best_params %>%
-      distinct(Asset, Period)
-  )
-
-margin_required <- create_porfolio_sim(
-  trades_taken = trades_taken,
-  actual_wins_losses = actual_wins_losses %>%
-    filter(Date >= as.character(as_date("2025-09-01") + days(45)) )
-)
-
-margin_required_sum <-
-  margin_required %>%
-  ungroup()  %>%
-  dplyr::filter(Adjusted_Date >= median(Adjusted_Date) ) %>%
-  summarise(
-    mean_margin = mean(margin_at_date, na.rm = T),
-    margin_90 = quantile(margin_at_date, 0.95, na.rm = T),
-    mean_portfolio = mean(running_PL, na.rm = T),
-    portfolio_90 = quantile(running_PL, 0.95, na.rm = T)
-  )
-
-trades_taken_ts_returns <-
-  trades_taken %>%
-  left_join(actual_wins_losses %>%
-              dplyr::select(Asset, Date, period_return_35_Price)) %>%
-  group_by(Date) %>%
-  summarise(Returns = sum(period_return_35_Price, na.rm = T )) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  mutate(
-    Returns_cumulative = cumsum(Returns)
-  ) %>%
-  mutate(
-    trade_col = "Trade Long"
-  )
-
-worst_loss <-
-  trades_taken_ts_returns %>%
-  arrange(Date) %>%
-  mutate(
-    # loss_20 = Returns_cumulative - lag(Returns_cumulative, 20),
-    # loss_30 = Returns_cumulative - lag(Returns_cumulative, 30),
-    # loss_40 = Returns_cumulative - lag(Returns_cumulative, 40),
-    loss_100 = Returns_cumulative - lag(Returns_cumulative, 100),
-    # loss_200 = Returns_cumulative - lag(Returns_cumulative, 200),
-    # loss_150 = Returns_cumulative - lag(Returns_cumulative, 150),
-
-    max_100 = Returns_cumulative - lag(Returns_cumulative, 100)
-  )  %>%
-  filter(!is.na(loss_100)) %>%
-  mutate(
-    across(
-      .cols = contains("loss"),
-      .fns = ~ slider::slide_dbl(.x = ., .f = ~ min(.x, na.rm = T), .before = 500)
-    ),
-    across(
-      .cols = contains("max_"),
-      .fns = ~ slider::slide_dbl(.x = ., .f = ~ max(.x, na.rm = T), .before = 500)
-    )
-  ) %>%
-  summarise(
-    across(
-      .cols = contains("loss"),
-      .fns = ~ min(., na.rm = T)
-    ),
-    across(
-      .cols = contains("max_"),
-      .fns = ~ max(., na.rm = T)
-    )
-  ) %>%
-  mutate(
-    ratio_win_to_loss = abs(max_100/loss_100),
-    mean_perc_diff_vs_control = comapre_results_summary$perc_diff %>% mean(),
-    mean_return_diff_vs_control = comapre_results_summary$Returns_Diff %>% mean(),
-    Total_Trades = comapre_results_summary$total_trades %>% sum(),
-    Total_Returns = comapre_results_summary$Total_Returns %>% sum()
-  ) %>%
-  bind_cols(margin_required_sum)
-
-min_date <- trades_taken_ts_returns %>%
-  pull(Date) %>% min()
-
-all_trades_ts_returns <-
-  actual_wins_losses %>%
-  filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
-  filter(Date >= min_date) %>%
-  dplyr::select(Asset, Date, period_return_35_Price) %>%
-  group_by(Date) %>%
-  summarise(Returns = sum(period_return_35_Price, na.rm = T )) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  mutate(
-    Returns_cumulative = cumsum(Returns)
+    trades_x =
+      case_when(
+        Final_Winnings == max(Final_Winnings, na.rm = T) ~
+          glue::glue("{total_trades}\n{round(Final_Winnings)}")
+      )
   ) %>%
   mutate(
-    trade_col = "Control"
-  )
+    sig_thresh = as.character(sig_thresh)
+  ) %>%
+  ggplot(aes(x = threshold, y = Final_Winnings, color = sig_thresh))  +
+  geom_line(show.legend = FALSE) +
+  geom_point(show.legend = FALSE) +
+  geom_label(aes(label = trades_x), size = 3, show.legend = FALSE, color = "black") +
+  facet_wrap(.~Asset, scales = "free") +
+  theme_minimal()
 
-trades_taken_ts_returns %>%
-  bind_rows(all_trades_ts_returns) %>%
-  ggplot(aes(x = Date, y = Returns_cumulative, color = trade_col)) +
+max_points <-
+  AR_LM_Pred_analysis %>%
+  filter(total_trades >= 500,
+         threshold >= 0) %>%
+  group_by(Asset) %>%
+  slice_max(Final_Winnings, n = 5) %>%
+  ungroup()
+
+TS_analysis <-
+  construct_time_series(
+    actual_wins_losses = actual_wins_losses,
+    pred_data = testing_pred_data,
+    Asset_Var = asset_of_interest,
+    # trade_statement = "AR_LM_Pred_period_return_50_Price >= 1 &
+    #                     state_space_LM_Pred_period_return_50_Price >= 2",
+    trade_statement = "Copula_GLM_Pred_period_return_50_Price >= 0.35",
+    trade_direction = "Long",
+    win_thresh = 0
+  ) %>%
+  filter(Period == 50)
+
+TS_analysis %>%
+  ggplot(aes(x = Date, y = Total_Returns_cumulative, color = trade_col)) +
   geom_line() +
-  facet_wrap(.~ trade_col, scales = "free_y") +
+  facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
   theme(legend.position = "bottom")
 
-trades_taken_ts_returns %>%
-  pull(Returns_cumulative) %>%
-  min()
+all_control_winnings <-
+  AR_LM_Pred_analysis %>%
+  filter(trade_col == "Control") %>%
+  distinct(Asset, sig_thresh, bin_threshold, Final_Winnings, Return_Middle, Ratio_of_25_to_75) %>%
+  rename(
+    Control_Winnings = Final_Winnings,
+    Control_Middle = Return_Middle,
+    Control_Ratio = Ratio_of_25_to_75
+  )
 
-#-------------Simulate All factors
-#
-# simulate_factors(
-#   post_preds_all_rolling_and_originals = post_preds_all_rolling_and_originals,
-#   actual_wins_losses = actual_wins_losses,
-#   win_thresh = 10,
-#   macro_factor_tech_vec = c(0,5,10,15),
-#   tech_factor_vec = c(0,1,2,3),
-#
-#   macro_factor_daily_vec = c(0,5,10,15),
-#   daily_factor_vec = c(0,1,2,3),
-#
-#   macro_factor_post_pred_vec = c(0,5,10,15),
-#   post_pred_factor_vec = c(0,1,2,3),
-#
-#   macro_factor_copula_vec = c(0,5,10,15),
-#   copula_factor_vec = c(0,1,2,3),
-#
-#   sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
-# )
-#
-# sim_save_db_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_condition_sim.db"
-# save_db <- connect_db(sim_save_db_path)
-# sim_data <-
-#   DBI::dbGetQuery(conn = save_db, statement = "SELECT * FROM single_asset_improved")
-# DBI::dbDisconnect(save_db)
-#
-# sim_data_2 <-
-#   sim_data %>%
-#   mutate(mean_perc_diff_vs_control = round(mean_perc_diff_vs_control, 4)) %>%
-#   filter(mean_perc_diff_vs_control > 0)
+comparison_frame <-
+  AR_LM_Pred_analysis %>%
+  dplyr::select(Asset, sig_thresh, bin_threshold, threshold, total_trades,
+                Final_Winnings, Return_Middle, Ratio_of_25_to_75) %>%
+  left_join(
+    all_control_winnings
+  ) %>%
+  mutate(
+    Final_Value_diff = Final_Winnings - Control_Winnings
+  ) %>%
+  group_by(Asset) %>%
+  slice_max(Final_Value_diff)
+
+
