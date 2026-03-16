@@ -1178,6 +1178,432 @@ Single_Asset_V3_Read_in_Probs <-
 
   }
 
+#' Single_Asset_V3_Gen_Model_No_data_gen
+#'
+#' @param Indices_Metals_Bonds
+#' @param actual_wins_losses
+#' @param asset_of_interest
+#' @param actuals_periods_needed
+#' @param training_end_date
+#' @param AR_model_data
+#' @param copula_data
+#' @param state_space_data
+#' @param macro_model_data
+#' @param bin_threshold
+#' @param rolling_mean_pred_period
+#' @param base_path
+#' @param sig_thresh_AR
+#' @param sig_thresh_Copula
+#' @param sig_thresh_statespace
+#' @param sig_thresh_macro
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Single_Asset_V3_Gen_Model_No_data_gen <-
+  function(Indices_Metals_Bonds,
+           actual_wins_losses,
+           AR_model_data = AR_model_data,
+           copula_data = copula_data,
+           state_space_data = state_space_data,
+           macro_model_data = macro_model_data,
+           asset_of_interest = "GBP_JPY",
+           actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
+           training_end_date = "2025-05-01",
+           bin_threshold = 5,
+           rolling_mean_pred_period = 500,
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/",
+           sig_thresh_AR = 0.01,
+           sig_thresh_Copula = 0.01,
+           sig_thresh_statespace = 0.01,
+           sig_thresh_macro = 0.01) {
+
+    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
+    actual_wins_losses_asset <- actual_wins_losses %>% filter(Asset == asset_of_interest)
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_AR_Gen_Model(
+        AR_model_data = AR_model_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_AR,
+        base_path = base_path
+      )
+    }
+
+    AR_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      AR_preds_list[[i]] <-
+        Single_Asset_V3_AR_read_model(
+          AR_model_data = AR_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    AR_Train_Preds_mean <-
+      AR_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    AR_Test_Preds <-
+      AR_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(AR_preds_list)
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_Copula_Gen_Model(
+        copula_data = copula_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_Copula,
+        base_path = base_path
+      )
+    }
+
+    copula_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      copula_preds_list[[i]] <-
+        Single_Asset_V3_Copula_read_Model(
+          copula_data = copula_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Copula_Train_Preds_mean <-
+      copula_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Copula_Test_Preds <-
+      copula_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(copula_preds_list)
+    gc()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_state_space_Gen_Model(
+        state_space_data = state_space_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_statespace,
+        base_path = base_path
+      )
+    }
+
+    state_space_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      state_space_preds_list[[i]] <-
+        Single_Asset_V3_state_space_read_Model(
+          state_space_data = state_space_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    state_space_Train_Preds_mean <-
+      state_space_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    state_space_Test_Preds <-
+      state_space_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(state_space_preds_list)
+    gc()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_Macro_Gen_Model(
+        macro_model_data = macro_model_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_macro,
+        base_path = base_path
+      )
+    }
+
+    Macro_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Macro_preds_list[[i]] <-
+        Single_Asset_V3_macro_read_Model(
+          macro_model_data = macro_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Macro_Train_Preds_mean <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Macro_Test_Preds <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(Macro_preds_list)
+    gc()
+
+
+    complete_preds_train <-
+      AR_Train_Preds_mean %>%
+      left_join(
+        Copula_Train_Preds_mean
+      ) %>%
+      left_join(
+        state_space_Train_Preds_mean
+      )%>%
+      left_join(
+        Macro_Train_Preds_mean
+      )
+
+    first_non_NA_date <-
+      complete_preds_train %>%
+      filter(if_all(everything(), ~!is.na(.))) %>%
+      pull(Date) %>%
+      min(na.rm = T)
+
+
+    complete_preds_train <-
+      complete_preds_train %>%
+      filter(Date >= first_non_NA_date)
+
+    complete_preds_test <-
+      AR_Test_Preds %>%
+      left_join(
+        Copula_Test_Preds
+      ) %>%
+      left_join(
+        state_space_Test_Preds
+      )%>%
+      left_join(
+        Macro_Test_Preds
+      )
+
+    return(
+      list(
+        "complete_preds_test" = complete_preds_test,
+        "complete_preds_train" = complete_preds_train
+      )
+    )
+
+  }
+
+#' Single_Asset_V3_get_all_data
+#'
+#' @param Indices_Metals_Bonds
+#' @param asset_of_interest
+#' @param copula_assets
+#' @param raw_macro_data
+#' @param correlation_rolling_periods
+#' @param state_space_periods
+#' @param state_space_rolling
+#' @param loop_list_cols
+#' @param state_space_periods
+#' @param state_space_rolling
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+Single_Asset_V3_get_all_data_for_model <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    asset_of_interest = asset_of_interest,
+    copula_assets = copula_assets,
+    raw_macro_data = raw_macro_data,
+    correlation_rolling_periods = c(100,200, 300,400, 500),
+    state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
+    state_space_rolling = c(100, 200, 300, 400),
+    loop_list_cols = c("Price", "Low", "High")
+  ) {
+
+    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
+
+    AR_model_data <-
+      Single_Asset_V3_AR_Model_data(
+        asset_data = asset_data,
+        asset_of_interest = asset_of_interest,
+        lag_value_1 = 10,
+        lag_value_2 = 20,
+        lag_value_3 = 30,
+        lag_value_4 = 40,
+        lag_value_5 = 50,
+        lag_value_6 = 60,
+        lag_value_7 = 70,
+        lag_value_8 = 100,
+        MA_period_1 = 10,
+        MA_period_2 = 20,
+        MA_period_3 = 30,
+        MA_period_4 = 40,
+        MA_period_5 = 20,
+        MA_period_6 = 20,
+        MA_period_7 = 55,
+        MA_period_8 = 80
+      )
+
+    copula_list <- list()
+
+    for (ii in 1:length(correlation_rolling_periods)) {
+
+      copula_list[[ii]] <-
+        Single_Asset_V3_Cop_data(
+          All_Asset_Data =
+            Indices_Metals_Bonds[[1]] %>%
+            filter(Asset == asset_of_interest| Asset %in% copula_assets),
+          asset_of_interest = asset_of_interest,
+          copula_assets = copula_assets,
+          rolling_period_cor = correlation_rolling_periods[ii]
+        )
+
+    }
+
+    copula_data <- copula_list %>% reduce(left_join)
+
+
+    loop_list_cols <- c("Price", "Low", "High")
+    state_space_list <- list()
+    c = 0
+    for (j in 1:length(loop_list_cols) ) {
+      for (i in 1:length(state_space_periods)) {
+        for (k in 1:length(state_space_rolling)) {
+          c = c + 1
+          state_space_list[[c]] <-
+            Single_Asset_V3_state_space(
+              asset_data = asset_data,
+              asset_of_interest = asset_of_interest,
+              Price_diff_lag = state_space_periods[i],
+              roll_period_state_space = state_space_rolling[k],
+              price_col = loop_list_cols[j]
+            )
+        }
+      }
+    }
+
+    state_space_data <-
+      state_space_list %>%
+      reduce(left_join)
+
+    interest_rates <-
+      get_interest_rates(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    cpi_data <-
+      get_cpi(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    sentiment_index <-
+      create_sentiment_index(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        date_start = "2011-01-01",
+        end_date = today() %>% as.character(),
+        first_difference = TRUE,
+        scale_values = FALSE
+      )
+
+    gdp_data <-
+      get_GDP_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    unemp_data <-
+      get_unemp_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    manufac_pmi <-
+      get_manufac_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    USD_Macro <-
+      get_additional_USD_Macro(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    EUR_Macro <-
+      get_additional_EUR_Macro(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    macro_model_data <-
+      prepare_macro_indicator_model_data(
+        asset_data = asset_data,
+        raw_macro_data = raw_macro_data,
+        Asset_of_interest = asset_of_interest,
+        interest_rates = interest_rates,
+        cpi_data = cpi_data,
+        gdp_data = gdp_data,
+        unemp_data = unemp_data,
+        manufac_pmi = manufac_pmi,
+        USD_Macro = USD_Macro,
+        EUR_Macro = EUR_Macro,
+        sentiment_index = sentiment_index,
+        countries_for_int_strength = c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"),
+        date_limit = as.character(today() + days(1))
+      ) %>%
+      mutate(
+        Asset = asset_of_interest
+      )
+
+    return(
+      list(
+        "AR_model_data" = AR_model_data,
+        "copula_data" = copula_data,
+        "state_space_data" = state_space_data,
+        "macro_model_data" = macro_model_data
+      )
+    )
+
+  }
+
 #' single_asset_v3_gen_state_space_Model
 #'
 #' @param asset_data

@@ -66,7 +66,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2016-01-01"
+start_date = "2018-06-01"
 end_date = today() %>% as.character()
 
 bin_factor = NULL
@@ -227,7 +227,7 @@ assets_to_test <- c("EUR_USD", #1 EUR_USD
                     "USD_JPY", #4 USD_JPY
                     "EUR_JPY", #5 EUR_JPY
                     "AUD_USD", #6 AUD_USD
-                    "GPB_USD", #7 GPB_USD
+                    "GBP_USD", #7 GBP_USD
                     "EUR_GBP", #8 EUR_GBP
                     "AU200_AUD", #9 AU200_AUD
                     "XAU_USD", #10 XAU_USD
@@ -271,7 +271,7 @@ correlation_asset_list <-
       "XAG_USD","NZD_USD", "USD_JPY", "EUR_USD", "GBP_USD", "USD_CAD",
       "USD_SEK", "USD_SGD", "USB10Y_USD", "NZD_USD") %>% unique(),
 
-    #7 "GPB_USD"
+    #7 "GBP_USD"
     c("GBP_JPY", "GBP_CAD", "GBP_AUD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP",
       "XAU_USD", "XAG_USD", "EUR_GBP", "EUR_USD", "XAG_EUR", "XAU_EUR", "USD_JPY",
       "EUR_JPY", "UK10YB_GBP", "AUD_USD", "USD_SEK", "USD_CAD") %>% unique(),
@@ -322,47 +322,86 @@ correlation_asset_list <-
       "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD") %>% unique()
 
   )
-actuals_periods_needed = c("period_return_32_Price", "period_return_42_Price", "period_return_50_Price")
+actuals_periods_needed = c("period_return_50_Price")
 correlation_rolling_periods = c(100,200, 300,400, 500)
 state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500)
 state_space_rolling = c(100, 200, 300, 400)
-sig_thresh_vec <- c(0.99, 0.1, 0.05, 0.01, 10^-3, 10^-5, 10^-7, 10^-9)
-bin_threshold_vec <- c(0, 3, 5, 7)
+# sig_thresh_vec <- c(0.99, 0.1, 0.05, 0.01, 10^-3, 10^-5, 10^-7, 10^-9)
+sig_thresh_vec <- c(0.99, 10^-3, 10^-5, 10^-7, 10^-9)
+bin_threshold_vec <- c(0)
 result_db_path <- "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIG_THRESH_FINDER.DB"
-reset_DB <- TRUE
+reset_DB <- FALSE
 c = 0
 
-for (j in 1:length(assets_to_test)) {
+for (j in 7:length(assets_to_test)) {
+
+  asset_of_interest <- assets_to_test[j]
+  correlation_assets_current <- correlation_asset_list[[j]]
+
+  tictoc::tic()
+  required_data <-
+    Single_Asset_V3_get_all_data_for_model(
+      Indices_Metals_Bonds = Indices_Metals_Bonds,
+      asset_of_interest = asset_of_interest,
+      copula_assets = correlation_assets_current,
+      raw_macro_data = raw_macro_data,
+      correlation_rolling_periods = correlation_rolling_periods,
+      state_space_periods = state_space_periods,
+      state_space_rolling = state_space_rolling,
+      loop_list_cols = c("Price", "Low", "High")
+    )
+  tictoc::toc()
+
   for (i in 1:length(sig_thresh_vec)) {
     for (k in 1:length(bin_threshold_vec)) {
 
       c = c + 1
-      asset_of_interest <- assets_to_test[j]
-      correlation_assets_current <- correlation_asset_list[[j]]
 
       sig_thresh_current <- sig_thresh_vec[i]
       bin_threshold_current <- bin_threshold_vec[k]
 
-      pred_data <-
-        Single_Asset_V3_Gen_Model(
-          Indices_Metals_Bonds = Indices_Metals_Bonds,
-          actual_wins_losses = actual_wins_losses,
-          asset_of_interest = asset_of_interest,
-          actuals_periods_needed = actuals_periods_needed,
-          training_end_date = "2022-01-01",
-          bin_threshold = bin_threshold_current,
-          rolling_mean_pred_period = 500,
-          correlation_rolling_periods = correlation_rolling_periods,
-          state_space_periods = state_space_periods,
-          state_space_rolling = state_space_rolling,
-          copula_assets = correlation_assets_current,
-          base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
-          sig_thresh_AR = sig_thresh_current,
-          sig_thresh_Copula = sig_thresh_current,
-          sig_thresh_statespace = sig_thresh_current,
-          raw_macro_data = raw_macro_data
+      # pred_data <-
+      #   Single_Asset_V3_Gen_Model(
+      #     Indices_Metals_Bonds = Indices_Metals_Bonds,
+      #     actual_wins_losses = actual_wins_losses,
+      #     asset_of_interest = asset_of_interest,
+      #     actuals_periods_needed = actuals_periods_needed,
+      #     training_end_date = "2021-06-01",
+      #     bin_threshold = bin_threshold_current,
+      #     rolling_mean_pred_period = 500,
+      #     correlation_rolling_periods = correlation_rolling_periods,
+      #     state_space_periods = state_space_periods,
+      #     state_space_rolling = state_space_rolling,
+      #     copula_assets = correlation_assets_current,
+      #     base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+      #     sig_thresh_AR = sig_thresh_current,
+      #     sig_thresh_Copula = sig_thresh_current,
+      #     sig_thresh_statespace = sig_thresh_current,
+      #     raw_macro_data = raw_macro_data
+      #
+      #   )
 
+      tictoc::tic()
+      pred_data <-
+        Single_Asset_V3_Gen_Model_No_data_gen(
+              Indices_Metals_Bonds = Indices_Metals_Bonds,
+              actual_wins_losses = actual_wins_losses,
+              AR_model_data = required_data$AR_model_data,
+              copula_data = required_data$copula_data,
+              state_space_data = required_data$state_space_data,
+              macro_model_data = required_data$macro_model_data,
+              asset_of_interest = asset_of_interest,
+              actuals_periods_needed = actuals_periods_needed,
+              training_end_date = "2022-01-01",
+              bin_threshold = bin_threshold_current,
+              rolling_mean_pred_period = 500,
+              base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+              sig_thresh_AR = sig_thresh_current,
+              sig_thresh_Copula = sig_thresh_current,
+              sig_thresh_statespace = sig_thresh_current,
+              sig_thresh_macro = sig_thresh_current
         )
+      tictoc::toc()
 
       testing_pred_data <-
         pred_data[[1]] %>%
@@ -374,19 +413,19 @@ for (j in 1:length(assets_to_test)) {
 
           averaged_50_GLM_pred =
             (state_space_GLM_Pred_period_return_50_Price +
-               AR_GLM_Pred_period_return_50_Price )/2,
+               AR_GLM_Pred_period_return_50_Price )/2
 
-          averaged_42_50_GLM_pred =
-            (state_space_GLM_Pred_period_return_42_Price +
-               AR_GLM_Pred_period_return_42_Price +
-               state_space_GLM_Pred_period_return_50_Price +
-               AR_GLM_Pred_period_return_50_Price)/4,
-
-          averaged_42_50_LM_pred =
-            (state_space_LM_Pred_period_return_42_Price +
-               AR_LM_Pred_period_return_42_Price +
-               state_space_LM_Pred_period_return_50_Price +
-               AR_LM_Pred_period_return_50_Price)/4
+          # averaged_42_50_GLM_pred =
+          #   (state_space_GLM_Pred_period_return_42_Price +
+          #      AR_GLM_Pred_period_return_42_Price +
+          #      state_space_GLM_Pred_period_return_50_Price +
+          #      AR_GLM_Pred_period_return_50_Price)/4,
+          #
+          # averaged_42_50_LM_pred =
+          #   (state_space_LM_Pred_period_return_42_Price +
+          #      AR_LM_Pred_period_return_42_Price +
+          #      state_space_LM_Pred_period_return_50_Price +
+          #      AR_LM_Pred_period_return_50_Price)/4
         )
 
       AR_LM_Pred_analysis_LM <-
@@ -508,12 +547,19 @@ for (j in 1:length(assets_to_test)) {
         )
 
       if(c == 1 & reset_DB == TRUE){
+        # db_con <- connect_db(result_db_path)
+        # write_table_sql_lite(.data = all_results_dfr,
+        #                      table_name = "SIG_THRESH_FINDER",
+        #                      conn = db_con,
+        #                      overwrite_true = TRUE)
+        # DBI::dbDisconnect(db_con)
+
         db_con <- connect_db(result_db_path)
-        write_table_sql_lite(.data = all_results_dfr,
-                             table_name = "SIG_THRESH_FINDER",
-                             conn = db_con,
-                             overwrite_true = TRUE)
+        append_table_sql_lite(.data = all_results_dfr,
+                              table_name = "SIG_THRESH_FINDER",
+                              conn = db_con)
         DBI::dbDisconnect(db_con)
+
       } else {
         db_con <- connect_db(result_db_path)
         append_table_sql_lite(.data = all_results_dfr,
