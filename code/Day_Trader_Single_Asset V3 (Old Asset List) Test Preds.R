@@ -93,7 +93,7 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-start_date = "2017-01-01"
+start_date = "2013-01-01"
 end_date = today() %>% as.character()
 
 # bin_factor = NULL
@@ -128,9 +128,7 @@ Indices_Metals_Bonds[[1]] <-
     #   unique()
 
     assets =
-      c("EUR_USD", "AUD_USD", "EUR_GBP", "USD_JPY", "GBP_JPY", "EUR_NZD", "GBP_AUD", "XAG_USD",
-        "EUR_JPY", "SPX500_USD", "HK33_HKD", "AU200_AUD", "GBP_CAD", "NZD_USD", "USD_CAD", "XAU_USD",
-        "EU50_EUR", "UK100_GBP", "NATGAS_USD", "WTICO_USD") %>% unique()
+      c("EUR_USD","SPX500_USD", "AUD_USD", "XAU_USD") %>% unique()
   ) %>%
   distinct()
 
@@ -155,18 +153,14 @@ Indices_Metals_Bonds[[2]] <-
     #              "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD") %>%
     #   unique(),
     assets =
-      c("EUR_USD", "AUD_USD", "EUR_GBP", "USD_JPY", "GBP_JPY", "EUR_NZD", "GBP_AUD", "XAG_USD",
-        "EUR_JPY", "SPX500_USD", "HK33_HKD", "AU200_AUD", "GBP_CAD", "NZD_USD", "USD_CAD", "XAU_USD",
-        "EU50_EUR", "UK100_GBP", "NATGAS_USD", "WTICO_USD") %>% unique()
+      c("EUR_USD","SPX500_USD", "AUD_USD", "XAU_USD") %>% unique()
   ) %>%
   distinct()
 
 actual_wins_losses <-
   get_actual_wins_losses(
     assets =
-      c("EUR_USD", "AUD_USD", "EUR_GBP", "USD_JPY", "GBP_JPY", "EUR_NZD", "GBP_AUD", "XAG_USD",
-        "EUR_JPY", "SPX500_USD", "HK33_HKD", "AU200_AUD", "GBP_CAD", "NZD_USD", "USD_CAD", "XAU_USD",
-        "EU50_EUR", "UK100_GBP", "NATGAS_USD", "WTICO_USD") %>% unique(),
+      c("EUR_USD","SPX500_USD", "AUD_USD", "XAU_USD") %>% unique(),
     asset_data = Indices_Metals_Bonds,
     stop_factor = 10,
     # profit_factor = 30,
@@ -185,17 +179,35 @@ AR_assets =
   c("EUR_USD", "AUD_USD", "EUR_GBP", "USD_JPY", "GBP_JPY", "EUR_NZD", "GBP_AUD", "XAG_USD",
     "EUR_JPY", "SPX500_USD", "HK33_HKD", "AU200_AUD", "GBP_CAD", "NZD_USD", "USD_CAD", "XAU_USD",
     "EU50_EUR", "UK100_GBP", "NATGAS_USD", "WTICO_USD") %>% unique()
-sig_threshes = c(0.99, 0.5, 0.1, 0.00001, 0.0000000000001)
+sig_threshes = c(0.99,0.75 ,0.5, 0.1,0.01,0.00001, 0.0000000000001)
 pred_col = "Averaged_AR_Pred_GLM"
 period_return_col = "period_return_46_Price"
-bin_threshold_vec = c(0, 3,  5, 7)
-db_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_Asset_V3_AR_test_conditions.db"
-training_end_date = "2022-06-01"
+bin_threshold_vec = c(0,1 ,3,  5, 7, 10, 12.5)
+db_save_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_Asset_V3_AR_test_conditions_V2.db"
+training_end_date = "2021-01-01"
+
+
+# Analyse MSI Pc REsults
+db_save_path_MSI = "C:/Users/Nikhil Chandra/Documents/trade_data/SIG_THRESH_FINDER_WORK_PC.DB"
+db_con_MSI <- connect_db(db_save_path_MSI)
+MSI_Results <- DBI::dbGetQuery(conn = db_con_MSI,
+                               statement = "SELECT * FROM SIG_THRESH_FINDER"  )
+
+best_percs <-
+  MSI_Results %>%
+  filter(average_win >= average_loss) %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_perc_mid)
+
 
 c = 0
-
 safely_gen_preds <-
   safely(single_asset_v3_gen_AR_Model, otherwise = NULL)
+
+i = 12
+j = 6
+k = 4
+
 
 for (i in 1:length(AR_assets)) {
   for (j in 1:length(sig_threshes)) {
@@ -311,8 +323,61 @@ db_con <- connect_db("C:/Users/Nikhil Chandra/Documents/trade_data/single_Asset_
 AR_LM_Pred_analysis <- DBI::dbGetQuery(db_con, "SELECT * FROM single_Asset_V3_AR_test_conditions")
 assets_done <- AR_LM_Pred_analysis %>% pull(Asset) %>% unique()
 
+
+internal_asset <- list()
+
+internal_asset[[1]] <-
+  Indices_Metals_Bonds[[1]] %>% filter(Asset == "XAU_USD")
+internal_asset[[2]] <-
+  Indices_Metals_Bonds[[2]] %>% filter(Asset == "XAU_USD")
+
+actual_wins_losses_internal <-
+  actual_wins_losses %>%
+  filter(Asset == "XAU_USD")
+
+AR_Test_SPX_lots_of_obs <-
+  single_asset_v3_gen_AR_Model(
+    Indices_Metals_Bonds = internal_asset[[1]],
+    actual_wins_losses = actual_wins_losses_internal,
+    asset_of_interest = "XAU_USD",
+    actuals_periods_needed = actuals_periods_needed,
+    training_end_date = training_end_date,
+    bin_threshold = 0,
+    rolling_mean_pred_period = 500,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/",
+    sig_thresh = 0.99
+  )
+
+generated_preds_from_db <-
+  AR_Test_SPX_lots_of_obs %>%
+  pluck("testing_data") %>%
+  mutate(
+    training_end_date = training_end_date
+  ) %>%
+  mutate(
+    Averaged_AR_Pred =
+      (AR_LM_Pred_period_return_46_Price + AR_LM_Pred_period_return_35_Price + AR_LM_Pred_period_return_24_Price)/3,
+    Averaged_AR_Pred_GLM =
+      (AR_GLM_Pred_period_return_46_Price + AR_GLM_Pred_period_return_35_Price + AR_GLM_Pred_period_return_24_Price)/3
+  )
+
+AR_LM_Pred_analysis <-
+  construct_Performance_to_Thresh_Curve(
+    pred_data = generated_preds_from_db,
+    pred_col = "Averaged_AR_Pred_GLM",
+    actual_wins_losses = actual_wins_losses_internal,
+    # thresh_vector = seq(-5,10, 0.25),
+    thresh_vector = seq(0, 0.85, 0.025),
+    period_return_col = period_return_col,
+    sim_start_date = training_end_date
+  ) %>%
+  mutate(
+    Asset = "XAU_USD"
+  )
+
 AR_LM_Pred_analysis %>%
-  filter(bin_threshold == 0) %>%
+  # filter(bin_threshold == 0) %>%
+  mutate(sig_thresh = 0.00001) %>%
   filter(!is.na(threshold)) %>%
   group_by(Asset) %>%
   mutate(
@@ -334,7 +399,7 @@ AR_LM_Pred_analysis %>%
 
 AR_LM_Pred_analysis %>%
   filter(!is.na(threshold)) %>%
-  ggplot(aes(x = threshold, y = Binomial_Expectation_Adj, color = Asset)) +
+  ggplot(aes(x = threshold, y = random_returns_mid, color = Asset)) +
   geom_line(show.legend = FALSE) +
   geom_point(show.legend = FALSE) +
   facet_wrap(.~Asset, scales = "free") +

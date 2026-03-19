@@ -28,7 +28,7 @@ Single_Asset_V3_Gen_all_models <-
     bin_threshold = 5,
     start_index = 1,
     end_index = 27,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     indicator_mapping <- list(
@@ -428,7 +428,7 @@ Single_Asset_V3_get_all_preds <-
     bin_threshold = 5,
     start_index = 1,
     end_index = 27,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     indicator_mapping <- list(
@@ -819,11 +819,186 @@ Single_Asset_V3_Gen_Model <-
            bin_threshold = 5,
            rolling_mean_pred_period = 500,
            correlation_rolling_periods = c(100,200, 300),
+           state_space_periods = c(20, 40, 60, 100, 200),
+           state_space_rolling = c(100, 200),
            copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
-           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/") {
+           raw_macro_data = raw_macro_data,
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/",
+           sig_thresh_AR = 0.01,
+           sig_thresh_Copula = 0.01,
+           sig_thresh_statespace = 0.01,
+           sig_thresh_macro = 0.01) {
 
     asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
     actual_wins_losses_asset <- actual_wins_losses %>% filter(Asset == asset_of_interest)
+
+    AR_preds_list <-
+      single_asset_v3_gen_AR_Model(
+        Indices_Metals_Bonds = asset_data,
+        actual_wins_losses = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        base_path = base_path,
+        sig_thresh = sig_thresh_AR
+      )
+
+    AR_Train_Preds_mean <-
+      AR_preds_list %>%
+      pluck("training_data")
+
+    AR_Test_Preds <-
+      AR_preds_list %>%
+      pluck("testing_data")
+
+    rm(AR_preds_list)
+
+    copula_preds_list <-
+      single_asset_v3_gen_Copula_Model(
+        Indices_Metals_Bonds = Indices_Metals_Bonds,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        sig_thresh = sig_thresh_Copula,
+        copula_assets = copula_assets,
+        correlation_rolling_periods = correlation_rolling_periods,
+        base_path = base_path
+      )
+
+    Copula_Train_Preds_mean <-
+      copula_preds_list %>%
+      pluck("training_data")
+
+    Copula_Test_Preds <-
+      copula_preds_list %>%
+      pluck("testing_data")
+
+    rm(copula_preds_list)
+    gc()
+
+    loop_list_cols <- c("Price", "Low", "High")
+    state_space_periods = c(20, 40, 60, 100, 200)
+    state_space_rolling = c(100, 200)
+
+    state_space_preds_list <-
+      single_asset_v3_gen_state_space_Model(
+        asset_data = asset_data,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        sig_thresh = sig_thresh_statespace,
+        state_space_periods = state_space_periods,
+        state_space_rolling = state_space_rolling,
+        base_path = base_path
+      )
+
+    state_space_Train_Preds_mean <-
+      state_space_preds_list %>%
+      pluck("training_data")
+
+    state_space_Test_Preds <-
+      state_space_preds_list %>%
+      pluck("testing_data")
+
+    Macro_preds_list <-
+      single_asset_v3_gen_macro_Model(
+        asset_data_macro  = asset_data,
+        actual_wins_losses = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        sig_thresh = sig_thresh_macro,
+        raw_macro_data = raw_macro_data,
+        base_path = base_path
+      )
+
+    Macro_Train_Preds_mean <-
+      Macro_preds_list %>%
+      pluck("training_data")
+
+    Macro_Test_Preds <-
+      Macro_preds_list %>%
+      pluck("testing_data")
+
+
+    complete_preds_train <-
+      AR_Train_Preds_mean %>%
+      left_join(
+        Copula_Train_Preds_mean
+      ) %>%
+      left_join(
+        state_space_Train_Preds_mean
+      )%>%
+      left_join(
+        Macro_Train_Preds_mean
+      )
+
+    first_non_NA_date <-
+      complete_preds_train %>%
+      filter(if_all(everything(), ~!is.na(.))) %>%
+      pull(Date) %>%
+      min(na.rm = T)
+
+
+    complete_preds_train <-
+      complete_preds_train %>%
+      filter(Date >= first_non_NA_date)
+
+    complete_preds_test <-
+      AR_Test_Preds %>%
+      left_join(
+        Copula_Test_Preds
+      ) %>%
+      left_join(
+        state_space_Test_Preds
+      )%>%
+      left_join(
+        Macro_Test_Preds
+      )
+
+    return(
+      list(
+        "complete_preds_test" = complete_preds_test,
+        "complete_preds_train" = complete_preds_train
+      )
+    )
+
+  }
+
+#' Single_Asset_V3_Read_in_Probs
+#'
+#' @param Indices_Metals_Bonds
+#' @param actual_wins_losses
+#' @param asset_of_interest
+#' @param actuals_periods_needed
+#' @param training_end_date
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Single_Asset_V3_Read_in_Probs <-
+  function(Indices_Metals_Bonds,
+           asset_of_interest = "GBP_JPY",
+           actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
+           training_end_date = "2025-05-01",
+           bin_threshold = 5,
+           rolling_mean_pred_period = 500,
+           correlation_rolling_periods = c(100,200, 300),
+           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/" ) {
+
+    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
 
     AR_model_data <-
       Single_Asset_V3_AR_Model_data(
@@ -836,28 +1011,13 @@ Single_Asset_V3_Gen_Model <-
         lag_value_5 = 50,
         lag_value_6 = 60,
         lag_value_7 = 70,
-        lag_value_8 = 100,
         MA_period_1 = 10,
         MA_period_2 = 20,
         MA_period_3 = 30,
         MA_period_4 = 40,
         MA_period_5 = 20,
-        MA_period_6 = 20,
-        MA_period_7 = 55
+        MA_period_6 = 20
       )
-
-    for (i in 1:length(actuals_periods_needed)) {
-      Single_Asset_V3_AR_Gen_Model(
-        AR_model_data = AR_model_data,
-        asset_of_interest = asset_of_interest,
-        actual_wins_losses_asset = actual_wins_losses_asset,
-        period_of_analysis = actuals_periods_needed[i],
-        training_end_date = training_end_date,
-        bin_threshold = bin_threshold,
-        sig_thresh = 0.15,
-        base_path = base_path
-      )
-    }
 
     AR_preds_list <- list()
 
@@ -902,19 +1062,6 @@ Single_Asset_V3_Gen_Model <-
     }
 
     copula_data <- copula_list %>% reduce(left_join)
-
-    for (i in 1:length(actuals_periods_needed)) {
-      Single_Asset_V3_Copula_Gen_Model(
-        copula_data = copula_data,
-        asset_of_interest = asset_of_interest,
-        actual_wins_losses_asset = actual_wins_losses_asset,
-        period_of_analysis = actuals_periods_needed[i],
-        training_end_date = training_end_date,
-        bin_threshold = bin_threshold,
-        sig_thresh = 0.01,
-        base_path = base_path
-      )
-    }
 
     copula_preds_list <- list()
 
@@ -967,19 +1114,6 @@ Single_Asset_V3_Gen_Model <-
     state_space_data <-
       state_space_list %>%
       reduce(left_join)
-
-    for (i in 1:length(actuals_periods_needed)) {
-      Single_Asset_V3_state_space_Gen_Model(
-        state_space_data = state_space_data,
-        asset_of_interest = asset_of_interest,
-        actual_wins_losses_asset = actual_wins_losses_asset,
-        period_of_analysis = actuals_periods_needed[i],
-        training_end_date = training_end_date,
-        bin_threshold = bin_threshold,
-        sig_thresh = 0.01,
-        base_path = base_path
-      )
-    }
 
     state_space_preds_list <- list()
 
@@ -1044,51 +1178,62 @@ Single_Asset_V3_Gen_Model <-
 
   }
 
-#' Single_Asset_V3_Read_in_Probs
+#' Single_Asset_V3_Gen_Model_No_data_gen
 #'
 #' @param Indices_Metals_Bonds
 #' @param actual_wins_losses
 #' @param asset_of_interest
 #' @param actuals_periods_needed
 #' @param training_end_date
+#' @param AR_model_data
+#' @param copula_data
+#' @param state_space_data
+#' @param macro_model_data
+#' @param bin_threshold
+#' @param rolling_mean_pred_period
+#' @param base_path
+#' @param sig_thresh_AR
+#' @param sig_thresh_Copula
+#' @param sig_thresh_statespace
+#' @param sig_thresh_macro
 #'
 #' @return
 #' @export
 #'
 #' @examples
-Single_Asset_V3_Read_in_Probs <-
+Single_Asset_V3_Gen_Model_No_data_gen <-
   function(Indices_Metals_Bonds,
+           actual_wins_losses,
+           AR_model_data = AR_model_data,
+           copula_data = copula_data,
+           state_space_data = state_space_data,
+           macro_model_data = macro_model_data,
            asset_of_interest = "GBP_JPY",
            actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
            training_end_date = "2025-05-01",
            bin_threshold = 5,
            rolling_mean_pred_period = 500,
-           correlation_rolling_periods = c(100,200, 300),
-           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
-           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/" ) {
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/",
+           sig_thresh_AR = 0.01,
+           sig_thresh_Copula = 0.01,
+           sig_thresh_statespace = 0.01,
+           sig_thresh_macro = 0.01) {
 
     asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
+    actual_wins_losses_asset <- actual_wins_losses %>% filter(Asset == asset_of_interest)
 
-    AR_model_data <-
-      Single_Asset_V3_AR_Model_data(
-        asset_data = asset_data,
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_AR_Gen_Model(
+        AR_model_data = AR_model_data,
         asset_of_interest = asset_of_interest,
-        lag_value_1 = 10,
-        lag_value_2 = 20,
-        lag_value_3 = 30,
-        lag_value_4 = 40,
-        lag_value_5 = 50,
-        lag_value_6 = 60,
-        lag_value_7 = 70,
-        lag_value_8 = 100,
-        MA_period_1 = 10,
-        MA_period_2 = 20,
-        MA_period_3 = 30,
-        MA_period_4 = 40,
-        MA_period_5 = 20,
-        MA_period_6 = 20,
-        MA_period_7 = 55
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_AR,
+        base_path = base_path
       )
+    }
 
     AR_preds_list <- list()
 
@@ -1116,23 +1261,18 @@ Single_Asset_V3_Read_in_Probs <-
 
     rm(AR_preds_list)
 
-    copula_list <- list()
-
-    for (i in 1:length(correlation_rolling_periods)) {
-
-      copula_list[[i]] <-
-        Single_Asset_V3_Cop_data(
-          All_Asset_Data =
-            Indices_Metals_Bonds[[1]] %>%
-            filter(Asset == asset_of_interest| Asset %in% copula_assets),
-          asset_of_interest = asset_of_interest,
-          copula_assets = copula_assets,
-          rolling_period_cor = correlation_rolling_periods[i]
-        )
-
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_Copula_Gen_Model(
+        copula_data = copula_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_Copula,
+        base_path = base_path
+      )
     }
-
-    copula_data <- copula_list %>% reduce(left_join)
 
     copula_preds_list <- list()
 
@@ -1159,32 +1299,20 @@ Single_Asset_V3_Read_in_Probs <-
       reduce(left_join)
 
     rm(copula_preds_list)
+    gc()
 
-    state_space_list <- list()
-    loop_list_cols <- c("Price", "Low", "High")
-    state_space_periods = c(20, 40, 60, 100, 200)
-    state_space_rolling = c(100, 200)
-    c = 0
-
-    for (j in 1:length(loop_list_cols) ) {
-      for (i in 1:length(state_space_periods)) {
-        for (k in 1:length(state_space_rolling)) {
-          c = c + 1
-          state_space_list[[c]] <-
-            Single_Asset_V3_state_space(
-              asset_data = asset_data,
-              asset_of_interest = asset_of_interest,
-              Price_diff_lag = state_space_periods[i],
-              roll_period_state_space = state_space_rolling[k],
-              price_col = loop_list_cols[j]
-            )
-        }
-      }
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_state_space_Gen_Model(
+        state_space_data = state_space_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_statespace,
+        base_path = base_path
+      )
     }
-
-    state_space_data <-
-      state_space_list %>%
-      reduce(left_join)
 
     state_space_preds_list <- list()
 
@@ -1210,6 +1338,49 @@ Single_Asset_V3_Read_in_Probs <-
       map(~.x %>% pluck("testing_data")) %>%
       reduce(left_join)
 
+    rm(state_space_preds_list)
+    gc()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_Macro_Gen_Model(
+        macro_model_data = macro_model_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh_macro,
+        base_path = base_path
+      )
+    }
+
+    Macro_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Macro_preds_list[[i]] <-
+        Single_Asset_V3_macro_read_Model(
+          macro_model_data = macro_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Macro_Train_Preds_mean <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Macro_Test_Preds <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(Macro_preds_list)
+    gc()
+
 
     complete_preds_train <-
       AR_Train_Preds_mean %>%
@@ -1218,6 +1389,9 @@ Single_Asset_V3_Read_in_Probs <-
       ) %>%
       left_join(
         state_space_Train_Preds_mean
+      )%>%
+      left_join(
+        Macro_Train_Preds_mean
       )
 
     first_non_NA_date <-
@@ -1238,12 +1412,296 @@ Single_Asset_V3_Read_in_Probs <-
       ) %>%
       left_join(
         state_space_Test_Preds
+      )%>%
+      left_join(
+        Macro_Test_Preds
       )
 
     return(
       list(
         "complete_preds_test" = complete_preds_test,
         "complete_preds_train" = complete_preds_train
+      )
+    )
+
+  }
+
+#' Single_Asset_V3_get_all_data
+#'
+#' @param Indices_Metals_Bonds
+#' @param asset_of_interest
+#' @param copula_assets
+#' @param raw_macro_data
+#' @param correlation_rolling_periods
+#' @param state_space_periods
+#' @param state_space_rolling
+#' @param loop_list_cols
+#' @param state_space_periods
+#' @param state_space_rolling
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+Single_Asset_V3_get_all_data_for_model <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    asset_of_interest = asset_of_interest,
+    copula_assets = copula_assets,
+    raw_macro_data = raw_macro_data,
+    correlation_rolling_periods = c(100,200, 300,400, 500),
+    state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
+    state_space_rolling = c(100, 200, 300, 400),
+    loop_list_cols = c("Price", "Low", "High")
+  ) {
+
+    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
+
+    AR_model_data <-
+      Single_Asset_V3_AR_Model_data(
+        asset_data = asset_data,
+        asset_of_interest = asset_of_interest,
+        lag_value_1 = 10,
+        lag_value_2 = 20,
+        lag_value_3 = 30,
+        lag_value_4 = 40,
+        lag_value_5 = 50,
+        lag_value_6 = 60,
+        lag_value_7 = 70,
+        lag_value_8 = 100,
+        MA_period_1 = 10,
+        MA_period_2 = 20,
+        MA_period_3 = 30,
+        MA_period_4 = 40,
+        MA_period_5 = 20,
+        MA_period_6 = 20,
+        MA_period_7 = 55,
+        MA_period_8 = 80
+      )
+
+    copula_list <- list()
+
+    for (ii in 1:length(correlation_rolling_periods)) {
+
+      copula_list[[ii]] <-
+        Single_Asset_V3_Cop_data(
+          All_Asset_Data =
+            Indices_Metals_Bonds[[1]] %>%
+            filter(Asset == asset_of_interest| Asset %in% copula_assets),
+          asset_of_interest = asset_of_interest,
+          copula_assets = copula_assets,
+          rolling_period_cor = correlation_rolling_periods[ii]
+        )
+
+    }
+
+    copula_data <- copula_list %>% reduce(left_join)
+
+
+    loop_list_cols <- c("Price", "Low", "High")
+    state_space_list <- list()
+    c = 0
+    for (j in 1:length(loop_list_cols) ) {
+      for (i in 1:length(state_space_periods)) {
+        for (k in 1:length(state_space_rolling)) {
+          c = c + 1
+          state_space_list[[c]] <-
+            Single_Asset_V3_state_space(
+              asset_data = asset_data,
+              asset_of_interest = asset_of_interest,
+              Price_diff_lag = state_space_periods[i],
+              roll_period_state_space = state_space_rolling[k],
+              price_col = loop_list_cols[j]
+            )
+        }
+      }
+    }
+
+    state_space_data <-
+      state_space_list %>%
+      reduce(left_join)
+
+    interest_rates <-
+      get_interest_rates(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    cpi_data <-
+      get_cpi(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    sentiment_index <-
+      create_sentiment_index(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        date_start = "2011-01-01",
+        end_date = today() %>% as.character(),
+        first_difference = TRUE,
+        scale_values = FALSE
+      )
+
+    gdp_data <-
+      get_GDP_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    unemp_data <-
+      get_unemp_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    manufac_pmi <-
+      get_manufac_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    USD_Macro <-
+      get_additional_USD_Macro(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    EUR_Macro <-
+      get_additional_EUR_Macro(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    macro_model_data <-
+      prepare_macro_indicator_model_data(
+        asset_data = asset_data,
+        raw_macro_data = raw_macro_data,
+        Asset_of_interest = asset_of_interest,
+        interest_rates = interest_rates,
+        cpi_data = cpi_data,
+        gdp_data = gdp_data,
+        unemp_data = unemp_data,
+        manufac_pmi = manufac_pmi,
+        USD_Macro = USD_Macro,
+        EUR_Macro = EUR_Macro,
+        sentiment_index = sentiment_index,
+        countries_for_int_strength = c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"),
+        date_limit = as.character(today() + days(1))
+      ) %>%
+      mutate(
+        Asset = asset_of_interest
+      )
+
+    return(
+      list(
+        "AR_model_data" = AR_model_data,
+        "copula_data" = copula_data,
+        "state_space_data" = state_space_data,
+        "macro_model_data" = macro_model_data
+      )
+    )
+
+  }
+
+#' single_asset_v3_gen_state_space_Model
+#'
+#' @param asset_data
+#' @param actual_wins_losses
+#' @param asset_of_interest
+#' @param actuals_periods_needed
+#' @param training_end_date
+#' @param bin_threshold
+#' @param rolling_mean_pred_period
+#' @param sig_thresh
+#' @param state_space_periods
+#' @param state_space_rolling
+#' @param base_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+single_asset_v3_gen_state_space_Model <-
+  function(
+    asset_data = asset_data,
+    actual_wins_losses_asset = actual_wins_losses_asset,
+    asset_of_interest = "EUR_USD",
+    actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
+    training_end_date = "2025-05-01",
+    bin_threshold = 5,
+    rolling_mean_pred_period = 500,
+    sig_thresh = 0.15,
+    state_space_periods = c(20, 40, 60, 100, 200),
+    state_space_rolling = c(100, 200),
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+  ) {
+
+    state_space_list <- list()
+    loop_list_cols <- c("Price", "Low", "High")
+    c = 0
+
+    for (j in 1:length(loop_list_cols) ) {
+      for (i in 1:length(state_space_periods)) {
+        for (k in 1:length(state_space_rolling)) {
+          c = c + 1
+          state_space_list[[c]] <-
+            Single_Asset_V3_state_space(
+              asset_data = asset_data,
+              asset_of_interest = asset_of_interest,
+              Price_diff_lag = state_space_periods[i],
+              roll_period_state_space = state_space_rolling[k],
+              price_col = loop_list_cols[j]
+            )
+        }
+      }
+    }
+
+    state_space_data <-
+      state_space_list %>%
+      reduce(left_join)
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_state_space_Gen_Model(
+        state_space_data = state_space_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh,
+        base_path = base_path
+      )
+    }
+
+    state_space_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      state_space_preds_list[[i]] <-
+        Single_Asset_V3_state_space_read_Model(
+          state_space_data = state_space_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    state_space_Train_Preds_mean <-
+      state_space_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    state_space_Test_Preds <-
+      state_space_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    return(
+      list(
+        "training_data" = state_space_Train_Preds_mean,
+        "testing_data" = state_space_Test_Preds
       )
     )
 
@@ -1282,7 +1740,19 @@ Single_Asset_V3_state_space <-
 
         state_space_min =
           case_when(
-            Price_diff <= state_space_mean - state_space_sd*3 ~ 1,
+            Price_diff <= state_space_mean - state_space_sd*4 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_below_min_3 =
+          case_when(
+            Price_diff > state_space_mean - state_space_sd*4 & Price_diff <= state_space_mean - state_space_sd*3.5 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_below_min_2 =
+          case_when(
+            Price_diff > state_space_mean - state_space_sd*3.5 & Price_diff <= state_space_mean - state_space_sd*3 ~ 1,
             TRUE ~ 0
           ),
 
@@ -1294,7 +1764,13 @@ Single_Asset_V3_state_space <-
 
         state_space_lowest =
           case_when(
-            Price_diff > state_space_mean - state_space_sd*2.5 & Price_diff <= state_space_mean - state_space_sd*1.5 ~ 1,
+            Price_diff > state_space_mean - state_space_sd*2.5 & Price_diff <= state_space_mean - state_space_sd*2 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_lowest_middle =
+          case_when(
+            Price_diff > state_space_mean - state_space_sd*2 & Price_diff <= state_space_mean - state_space_sd*1.5 ~ 1,
             TRUE ~ 0
           ),
 
@@ -1309,15 +1785,27 @@ Single_Asset_V3_state_space <-
             TRUE ~ 0
           ),
 
+        state_space_fourth_lowest_middle =
+          case_when(
+            Price_diff > state_space_mean - state_space_sd*0.5 & Price_diff <= state_space_mean - state_space_sd*0.25 ~ 1,
+            TRUE ~ 0
+          ),
+
         state_space_fourth_lowest =
           case_when(
-            Price_diff > state_space_mean - state_space_sd*0.5 & Price_diff <= state_space_mean - state_space_sd*0 ~ 1,
+            Price_diff > state_space_mean - state_space_sd*0.25 & Price_diff <= state_space_mean - state_space_sd*0 ~ 1,
             TRUE ~ 0
           ),
 
         state_space_fourth_highest =
           case_when(
-            Price_diff > state_space_mean + state_space_sd*0 & Price_diff <= state_space_mean + state_space_sd*0.5 ~ 1,
+            Price_diff > state_space_mean + state_space_sd*0 & Price_diff <= state_space_mean + state_space_sd*0.25 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_fourth_highest_middle =
+          case_when(
+            Price_diff > state_space_mean + state_space_sd*0.25 & Price_diff <= state_space_mean + state_space_sd*0.5 ~ 1,
             TRUE ~ 0
           ),
 
@@ -1333,30 +1821,55 @@ Single_Asset_V3_state_space <-
           ),
         state_space_highest =
           case_when(
-            Price_diff > state_space_mean + state_space_sd*1.5 & Price_diff <= state_space_mean + state_space_sd*2.5 ~ 1,
+            Price_diff > state_space_mean + state_space_sd*1.5 & Price_diff <= state_space_mean + state_space_sd*2 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_highest_middle =
+          case_when(
+            Price_diff > state_space_mean + state_space_sd*2 & Price_diff <= state_space_mean + state_space_sd*2.5 ~ 1,
             TRUE ~ 0
           ),
 
         state_space_below_max =
           case_when(
-            Price_diff > state_space_mean + state_space_sd*3 & Price_diff <= state_space_mean + state_space_sd*2.5 ~ 1,
+            Price_diff > state_space_mean + state_space_sd*2.5 & Price_diff <= state_space_mean + state_space_sd*3 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_below_max_2 =
+          case_when(
+            Price_diff > state_space_mean + state_space_sd*3 & Price_diff <= state_space_mean + state_space_sd*3.5 ~ 1,
+            TRUE ~ 0
+          ),
+
+        state_space_below_max_3 =
+          case_when(
+            Price_diff > state_space_mean + state_space_sd*3.5 & Price_diff <= state_space_mean + state_space_sd*4 ~ 1,
             TRUE ~ 0
           ),
 
         state_space_max =
           case_when(
-            Price_diff > state_space_mean + state_space_sd*3 ~ 1,
+            Price_diff > state_space_mean + state_space_sd*4 ~ 1,
             TRUE ~ 0
           )
 
       ) %>%
       mutate(
         across(
-          .cols = c(state_space_max, state_space_below_max,
-                    state_space_highest, state_space_second_highest, state_space_third_highest,
+          .cols = c(state_space_max, state_space_below_max_3, state_space_below_max_2, state_space_below_max,
+                    state_space_highest, state_space_second_highest,
+                    state_space_highest_middle,
+                    state_space_third_highest,
                     state_space_fourth_highest,
-                    state_space_fourth_lowest , state_space_third_lowest, state_space_second_lowest,
-                    state_space_lowest, state_space_below_min,  state_space_min),
+                    state_space_fourth_highest_middle,
+                    state_space_fourth_lowest ,
+                    state_space_fourth_lowest_middle,
+                    state_space_third_lowest, state_space_second_lowest,
+                    state_space_lowest_middle,
+                    state_space_lowest, state_space_below_min, state_space_below_min_2,
+                    state_space_below_min_3, state_space_min),
           .fns = ~
             slider::slide_dbl(.x = ., .f = ~ sum(.x, na.rm = T), .before = roll_period_state_space)
         )
@@ -1365,25 +1878,69 @@ Single_Asset_V3_state_space <-
       mutate(
         total_state_space =
           state_space_max + state_space_below_max +
-          state_space_highest + state_space_second_highest + state_space_third_highest +
+          state_space_below_max_3 + state_space_below_max_2 +
+          state_space_highest + state_space_second_highest +
+          state_space_highest_middle +
+          state_space_third_highest +
           state_space_fourth_highest +
-          state_space_fourth_lowest + state_space_third_lowest + state_space_second_lowest + state_space_lowest +
-          state_space_below_min + state_space_min,
+          state_space_fourth_highest_middle +
+          state_space_fourth_lowest +
+          state_space_fourth_lowest_middle +
+          state_space_third_lowest + state_space_second_lowest +
+          state_space_lowest_middle + state_space_lowest +
+          state_space_below_min + state_space_below_min_2 +
+          state_space_below_min_3 + state_space_min,
 
         !!as.name( glue::glue("perc_space_max_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_max/total_state_space,
+        !!as.name( glue::glue("perc_state_space_below_max_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_below_max/total_state_space,
+        !!as.name( glue::glue("perc_state_space_below_max_2_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_below_max_2/total_state_space,
+        !!as.name( glue::glue("perc_state_space_below_max_3_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_below_max_3/total_state_space,
+
         !!as.name( glue::glue("perc_space_highest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_highest/total_state_space,
         !!as.name( glue::glue("perc_space_second_highest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_second_highest/total_state_space,
+
+        !!as.name( glue::glue("perc_state_space_highest_middle_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_highest_middle/total_state_space,
+
+
         !!as.name( glue::glue("perc_space_third_highest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_third_highest/total_state_space,
+        !!as.name( glue::glue("perc_state_space_fourth_highest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_fourth_highest/total_state_space,
+
+        !!as.name( glue::glue("perc_state_space_fourth_highest_middle_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_fourth_highest_middle/total_state_space,
+
+        !!as.name( glue::glue("perc_state_space_fourth_lowest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_fourth_lowest/total_state_space,
+
+        !!as.name( glue::glue("perc_state_space_fourth_lowest_middle_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_fourth_lowest_middle/total_state_space,
+
         !!as.name( glue::glue("perc_space_third_lowest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_third_lowest/total_state_space,
         !!as.name( glue::glue("perc_space_second_lowest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_second_lowest/total_state_space,
+
+        !!as.name( glue::glue("perc_state_space_lowest_middle_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_lowest_middle/total_state_space,
+
         !!as.name( glue::glue("perc_space_space_lowest_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_lowest/total_state_space,
+
+        !!as.name( glue::glue("perc_state_space_below_min_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_below_min/total_state_space,
+        !!as.name( glue::glue("perc_state_space_below_min_2_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_below_min_2/total_state_space,
+        !!as.name( glue::glue("perc_state_space_below_min_3_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
+          state_space_below_min_3/total_state_space,
+
         !!as.name( glue::glue("perc_space_space_min_{Price_diff_lag}_{roll_period_state_space}_{price_col}") ) :=
           state_space_min/total_state_space
       ) %>%
@@ -1416,7 +1973,7 @@ Single_Asset_V3_state_space_Gen_Model <-
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
     sig_thresh = 0.01,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     joined_data <-
@@ -1497,7 +2054,7 @@ Single_Asset_V3_state_space_read_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     roll_mean_period = 100,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     LM_model <-
@@ -1601,6 +2158,37 @@ Single_Asset_V3_Cop_data <-
         arrange(Date) %>%
         fill(c(Price_2, High_2, Low_2), .direction = "down") %>%
         mutate(
+          High_Max_1 = slider::slide_dbl(.x = High,
+                                         .f = ~ max(.x, na.rm = TRUE),
+                                         .before = rolling_period_cor),
+          High_Max_2 = slider::slide_dbl(.x = High_2,
+                                         .f = ~ max(.x, na.rm = TRUE),
+                                         .before = rolling_period_cor),
+
+          Low_Min_1 = slider::slide_dbl(.x = Low,
+                                        .f = ~ min(.x, na.rm = TRUE),
+                                        .before = rolling_period_cor),
+          Low_Min_2 = slider::slide_dbl(.x = Low_2,
+                                        .f = ~ min(.x, na.rm = TRUE),
+                                        .before = rolling_period_cor),
+
+          MA_Price_1 = slider::slide_dbl(.x = Price,
+                                         .f = ~ mean(.x, na.rm = T),
+                                         .before = rolling_period_cor ),
+
+          MA_Price_2 = slider::slide_dbl(.x = Price,
+                                         .f = ~ mean(.x, na.rm = T),
+                                         .before = rolling_period_cor ),
+
+          SD_Price_1 = slider::slide_dbl(.x = Price,
+                                         .f = ~ sd(.x, na.rm = T),
+                                         .before = rolling_period_cor ),
+
+          SD_Price_2 = slider::slide_dbl(.x = Price,
+                                         .f = ~ sd(.x, na.rm = T),
+                                         .before = rolling_period_cor )
+        ) %>%
+        mutate(
 
           !!as.name(paste0(col_prefix,"_" ,"cor_price", "_", rolling_period_cor)) :=
             slider::slide2_dbl(.x = (Price), .y = (Price_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
@@ -1621,10 +2209,28 @@ Single_Asset_V3_Cop_data <-
           !!as.name(paste0(col_prefix,"_" ,"cor_Low_sd", "_", rolling_period_cor)) :=
             slider::slide_dbl(.x = !!as.name(paste0(col_prefix,"_" ,"cor_Low", "_", rolling_period_cor)),  .f = ~ sd(.x, na.rm = T), .before = rolling_period_cor),
           !!as.name(paste0(col_prefix,"_" ,"cor_High_sd", "_", rolling_period_cor)) :=
-            slider::slide_dbl(.x = !!as.name(paste0(col_prefix,"_" ,"cor_High", "_", rolling_period_cor)), .f = ~ sd(.x, na.rm = T), .before = rolling_period_cor)
+            slider::slide_dbl(.x = !!as.name(paste0(col_prefix,"_" ,"cor_High", "_", rolling_period_cor)), .f = ~ sd(.x, na.rm = T), .before = rolling_period_cor),
+
+
+          !!as.name(paste0(col_prefix,"_" ,"cor_price_max_point", "_", rolling_period_cor)) :=
+            slider::slide2_dbl(.x = (High_Max_1), .y = (High_Max_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
+          !!as.name(paste0(col_prefix,"_" ,"cor_price_min_point", "_", rolling_period_cor)) :=
+            slider::slide2_dbl(.x = (Low_Min_1), .y = (Low_Min_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
+
+          !!as.name(paste0(col_prefix,"_" ,"cor_price_max_point_price_diff", "_", rolling_period_cor)) :=
+            slider::slide2_dbl(.x = (High_Max_1 - Price ), .y = (High_Max_2 - Price_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
+          !!as.name(paste0(col_prefix,"_" ,"cor_price_min_point_price_diff", "_", rolling_period_cor)) :=
+            slider::slide2_dbl(.x = (Low_Min_1 - Price), .y = (Low_Min_2 - Price_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
+
+          !!as.name(paste0(col_prefix,"_" ,"cor_price_MA_Price", "_", rolling_period_cor)) :=
+            slider::slide2_dbl(.x = (MA_Price_1), .y = (MA_Price_2), .f = ~ cor(.x, .y), .before = rolling_period_cor),
+
+          !!as.name(paste0(col_prefix,"_" ,"cor_price_SD_Price", "_", rolling_period_cor)) :=
+            slider::slide2_dbl(.x = (SD_Price_1), .y = (SD_Price_2), .f = ~ cor(.x, .y), .before = rolling_period_cor)
 
         ) %>%
-        dplyr::select(-Price, -Price_2, -High, -High_2, -Low, -Low_2, -Vol., -Open) %>%
+        dplyr::select(-Price, -Price_2, -High, -High_2, -Low, -Low_2, -Vol., -Open, -High_Max_1, -High_Max_2, -Low_Min_1, -Low_Min_2,
+                      -MA_Price_1, -MA_Price_2, -SD_Price_1, -SD_Price_2) %>%
         group_by(Asset) %>%
         arrange(Date, .by_group = TRUE) %>%
         group_by(Asset) %>%
@@ -1639,6 +2245,104 @@ Single_Asset_V3_Cop_data <-
       cop_accumulator %>%
       reduce(left_join)
 
+
+  }
+
+#' Title
+#'
+#' @param Indices_Metals_Bonds
+#' @param actual_wins_losses
+#' @param asset_of_interest
+#' @param actuals_periods_needed
+#' @param training_end_date
+#' @param bin_threshold
+#' @param rolling_mean_pred_period
+#' @param sig_thresh
+#' @param base_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+single_asset_v3_gen_Copula_Model <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    actual_wins_losses_asset = actual_wins_losses_asset,
+    asset_of_interest = "EUR_USD",
+    actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
+    training_end_date = "2025-05-01",
+    bin_threshold = 5,
+    rolling_mean_pred_period = 500,
+    sig_thresh = 0.15,
+    copula_assets = copula_assets,
+    correlation_rolling_periods = correlation_rolling_periods,
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
+  ) {
+
+    copula_list <- list()
+
+    for (i in 1:length(correlation_rolling_periods)) {
+
+      copula_list[[i]] <-
+        Single_Asset_V3_Cop_data(
+          All_Asset_Data =
+            Indices_Metals_Bonds[[1]] %>%
+            filter(Asset == asset_of_interest| Asset %in% copula_assets),
+          asset_of_interest = asset_of_interest,
+          copula_assets = copula_assets,
+          rolling_period_cor = correlation_rolling_periods[i]
+        )
+
+    }
+
+    copula_data <- copula_list %>% reduce(left_join)
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_Copula_Gen_Model(
+        copula_data = copula_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh,
+        base_path = base_path
+      )
+    }
+
+    copula_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      copula_preds_list[[i]] <-
+        Single_Asset_V3_Copula_read_Model(
+          copula_data = copula_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Copula_Train_Preds_mean <-
+      copula_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Copula_Test_Preds <-
+      copula_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(copula_preds_list)
+    gc()
+
+    return(
+      list(
+        "training_data" = Copula_Train_Preds_mean,
+        "testing_data" = Copula_Test_Preds
+      )
+    )
 
   }
 
@@ -1665,7 +2369,7 @@ Single_Asset_V3_Copula_Gen_Model <-
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
     sig_thresh = 0.15,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     joined_data <-
@@ -1748,7 +2452,7 @@ Single_Asset_V3_Copula_read_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     roll_mean_period = 100,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     LM_model <-
@@ -1835,10 +2539,10 @@ single_asset_v3_gen_AR_Model <-
     bin_threshold = 5,
     rolling_mean_pred_period = 500,
     sig_thresh = 0.15,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
-    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
+    asset_data = Indices_Metals_Bonds %>% filter(Asset == asset_of_interest)
     actual_wins_losses_asset <- actual_wins_losses %>% filter(Asset == asset_of_interest)
 
     AR_model_data <-
@@ -1931,7 +2635,7 @@ Single_Asset_V3_AR_read_model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     roll_mean_period = 100,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     LM_model <-
@@ -2015,7 +2719,7 @@ Single_Asset_V3_AR_Gen_Model <-
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
     sig_thresh = 0.15,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
     joined_data <-
@@ -2039,24 +2743,14 @@ Single_Asset_V3_AR_Gen_Model <-
     lm_form <-
       create_lm_formula(dependant = period_of_analysis, independant = dependants)
 
-    LM_model <- lm(formula = lm_form,
-                   data = joined_data
-                     # filter(
-                     #   if_all(.cols = everything(), .fns = ~  !is.infinite(.))
-                     # )
-                   )
+    LM_model <- lm(formula = lm_form, data = joined_data)
 
     sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh)
 
     lm_form <-
       create_lm_formula(dependant = period_of_analysis, independant = sig_coefs)
 
-    LM_model <- lm(formula = lm_form,
-                   data = joined_data
-                     # filter(
-                     #   if_all(.cols = everything(), .fns = ~  !is.infinite(.))
-                     # )
-                   )
+    LM_model <- lm(formula = lm_form, data = joined_data)
 
     saveRDS(LM_model,
             glue::glue("{base_path}/LM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
@@ -2071,26 +2765,14 @@ Single_Asset_V3_AR_Gen_Model <-
     Glm_form <-
       create_lm_formula(dependant = "bin_var", independant = dependants)
 
-    GLM_model <- glm(formula = Glm_form,
-                     data = joined_data
-                       # filter(
-                       #   if_all(.cols = everything(), .fns = ~  !is.infinite(.))
-                       # )
-                     ,
-                     family = binomial("logit"))
+    GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
     sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh)
 
     Glm_form <-
       create_lm_formula(dependant = "bin_var", independant = sig_coefs)
 
-    GLM_model <- glm(formula = Glm_form,
-                     data = joined_data
-                       # filter(
-                       #   if_all(.cols = everything(), .fns = ~ !is.infinite(.))
-                       # )
-                     ,
-                     family = binomial("logit"))
+    GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
     saveRDS(GLM_model,
             glue::glue("{base_path}/GLM_AR_{period_of_analysis}_{asset_of_interest}.RDS")
@@ -2410,8 +3092,8 @@ Single_Asset_V3_AR_Model_data <-
                                                    .before = MA_period_8),
 
         lagged_Pos_Neg_1_Price_cum = slider::slide_dbl(.x = lagged_Pos_Neg_1_Price,
-                                                   .f = ~ sum(.x, na.rm = T),
-                                                   .before = MA_period_1),
+                                                       .f = ~ sum(.x, na.rm = T),
+                                                       .before = MA_period_1),
 
         lagged_Pos_Neg_2_Price_cum = slider::slide_dbl(.x = lagged_Pos_Neg_2_Price,
                                                        .f = ~ sum(.x, na.rm = T),
@@ -2545,6 +3227,858 @@ Single_Asset_V3_AR_Model_data <-
 
   }
 
+#' prepare_macro_indicator_model_data
+#'
+#' @param asset_data
+#' @param Asset_of_interest
+#' @param interest_rates
+#' @param cpi_data
+#' @param sentiment_index
+#' @param countries_for_int_strength
+#' @param date_limit
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+prepare_macro_indicator_model_data <-
+  function(
+    asset_data = Indices_Metals_Bonds[[1]],
+    raw_macro_data = raw_macro_data,
+    Asset_of_interest = "EUR_USD",
+    interest_rates = interest_rates,
+    cpi_data = cpi_data,
+    gdp_data = gdp_data,
+    unemp_data = unemp_data,
+    manufac_pmi = manufac_pmi,
+    USD_Macro = USD_Macro,
+    EUR_Macro = EUR_Macro,
+    sentiment_index = sentiment_index,
+    countries_for_int_strength = countries_for_int_strength,
+    date_limit = post_train_date_start
+  ) {
+
+    internal_asset_data <-
+      asset_data %>%
+      filter(Asset == Asset_of_interest) %>%
+      filter(Date <= date_limit)
+
+    interest_rates_diffs <-
+      interest_rates %>%
+      dplyr::select(Date_for_Join= Date, contains("_Diff"))
+
+    cpi_data_diffs <-
+      cpi_data %>%
+      dplyr::select(Date_for_Join = Date, contains("_Diff"))
+
+    interest_rate_strength_Index <-
+      get_Interest_Rate_strength(
+        interest_rates =interest_rates_diffs %>% mutate(Date = Date_for_Join),
+        countries = countries_for_int_strength
+      ) %>%
+      mutate(Date_for_Join = Date)
+
+    CPI_strength_index <-
+      get_CPI_Rate_strength(
+        cpi_data =cpi_data_diffs %>% mutate(Date = Date_for_Join),
+        countries = countries_for_int_strength
+      ) %>%
+      mutate(Date_for_Join = Date)
+
+    gdp_data_transform <-
+      gdp_data %>%
+      mutate(Date_for_Join = date) %>%
+      dplyr::select(-date)
+
+    unemp_data_transform <-
+      unemp_data %>%
+      mutate(Date_for_Join = date) %>%
+      dplyr::select(-date)
+
+    manufac_pmi_transform <-
+      manufac_pmi %>%
+      mutate(Date_for_Join = date) %>%
+      dplyr::select(-date)
+
+    USD_Macro <-
+      USD_Macro %>%
+      mutate(Date_for_Join = date) %>%
+      dplyr::select(-date)
+
+    EUR_Macro <-
+      EUR_Macro %>%
+      mutate(Date_for_Join = date) %>%
+      dplyr::select(-date)
+
+    macro_for_join <-
+      internal_asset_data %>%
+      distinct(Date) %>%
+      mutate(Date_for_Join = as_date(Date)) %>%
+      arrange(Date) %>%
+      left_join(CPI_strength_index) %>%
+      left_join(interest_rate_strength_Index) %>%
+      left_join(sentiment_index %>% mutate(Date_for_Join = Date)) %>%
+      left_join(gdp_data_transform) %>%
+      left_join(unemp_data_transform) %>%
+      left_join(manufac_pmi_transform) %>%
+      left_join(USD_Macro) %>%
+      left_join(EUR_Macro) %>%
+      dplyr::select(-Date_for_Join) %>%
+      arrange(Date) %>%
+      mutate(
+        across(.cols = !contains("Date"),
+               .fns = ~ lag(.))
+      ) %>%
+      fill(!contains("Date"), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
+      distinct()
+
+    return(macro_for_join)
+
+  }
+
+#' Single_Asset_V3_Macro_Gen_Model
+#'
+#' @param AR_model_data
+#' @param asset_of_interest
+#' @param actual_wins_losses_asset
+#' @param period_of_analysis
+#' @param training_end_date
+#' @param bin_threshold
+#' @param sig_thresh
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Single_Asset_V3_Macro_Gen_Model <-
+  function(
+    macro_model_data = macro_model_data,
+    asset_of_interest = asset_of_interest,
+    actual_wins_losses_asset = actual_wins_losses_asset,
+    period_of_analysis = actuals_periods_needed[1],
+    training_end_date = training_end_date,
+    bin_threshold = bin_threshold,
+    sig_thresh = 0.15,
+    base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/"
+  ) {
+
+    joined_data <-
+      macro_model_data %>%
+      left_join(
+        actual_wins_losses_asset %>%
+          filter(Asset == asset_of_interest) %>%
+          dplyr::select(Date, Asset, !!as.name(period_of_analysis))
+      ) %>%
+      filter(
+        Date <= training_end_date
+      ) %>%
+      mutate(
+        bin_var = ifelse( !!as.name(period_of_analysis) >= bin_threshold, 1, 0)
+      )
+
+    dependants <-
+      names(joined_data) %>%
+      keep(~ str_detect(.x, "GBP|AUD|JPY|USD|EUR|CAD|NZD|CNY|CHF"))
+
+    lm_form <-
+      create_lm_formula(dependant = period_of_analysis, independant = dependants)
+
+    LM_model <- lm(formula = lm_form, data = joined_data)
+
+    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh)
+
+    lm_form <-
+      create_lm_formula(dependant = period_of_analysis, independant = sig_coefs)
+
+    LM_model <- lm(formula = lm_form, data = joined_data)
+
+    saveRDS(LM_model,
+            glue::glue("{base_path}/LM_Macro_{period_of_analysis}_{asset_of_interest}.RDS")
+    )
+
+    rm(LM_model)
+
+    dependants <-
+      names(joined_data) %>%
+      keep(~ str_detect(.x, "GBP|AUD|JPY|USD|EUR|CAD|NZD|CNY|CHF"))
+
+    Glm_form <-
+      create_lm_formula(dependant = "bin_var", independant = dependants)
+
+    GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
+
+    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh)
+
+    Glm_form <-
+      create_lm_formula(dependant = "bin_var", independant = sig_coefs)
+
+    GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
+
+    saveRDS(GLM_model,
+            glue::glue("{base_path}/GLM_Macro_{period_of_analysis}_{asset_of_interest}.RDS")
+    )
+
+  }
+
+#' Single_Asset_V3_macro_read_Model
+#'
+#' @param state_space_data
+#' @param asset_of_interest
+#' @param period_of_analysis
+#' @param training_end_date
+#' @param roll_mean_period
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Single_Asset_V3_macro_read_Model <-
+  function(
+    macro_model_data = macro_model_data,
+    asset_of_interest = asset_of_interest,
+    period_of_analysis = actuals_periods_needed[1],
+    training_end_date = training_end_date,
+    roll_mean_period = 100,
+    base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/"
+  ) {
+
+    LM_model <-
+      readRDS(
+        glue::glue("{base_path}/LM_Macro_{period_of_analysis}_{asset_of_interest}.RDS")
+      )
+
+    preds_all <- predict.lm(object = LM_model, newdata = macro_model_data)
+
+    GLM_model <-
+      readRDS(
+        glue::glue("{base_path}/GLM_Macro_{period_of_analysis}_{asset_of_interest}.RDS")
+      )
+
+    preds_all_GLM <- predict(object = GLM_model, newdata = macro_model_data, type = "response")
+
+    complete_Macro_data <-
+      macro_model_data %>%
+      filter(Asset == asset_of_interest) %>%
+      distinct(Date, Asset) %>%
+      mutate(
+        !!as.name(glue::glue("Macro_LM_Pred_{period_of_analysis}")) := preds_all,
+        !!as.name(glue::glue("Macro_GLM_Pred_{period_of_analysis}")) := preds_all_GLM
+      ) %>%
+      mutate(
+        !!as.name(glue::glue("Macro_LM_Pred_{period_of_analysis}_mean")) :=
+          slider::slide_dbl(.x =
+                              !!as.name(glue::glue("Macro_LM_Pred_{period_of_analysis}")),
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = roll_mean_period),
+        !!as.name(glue::glue("Macro_LM_Pred_{period_of_analysis}_sd")) :=
+          slider::slide_dbl(.x =
+                              !!as.name(glue::glue("Macro_LM_Pred_{period_of_analysis}")),
+                            .f = ~ sd(.x, na.rm = T),
+                            .before = roll_mean_period),
+
+        !!as.name(glue::glue("Macro_GLM_Pred_{period_of_analysis}_mean")) :=
+          slider::slide_dbl(.x =
+                              !!as.name(glue::glue("Macro_GLM_Pred_{period_of_analysis}")),
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = roll_mean_period),
+        !!as.name(glue::glue("Macro_GLM_Pred_{period_of_analysis}_sd")) :=
+          slider::slide_dbl(.x =
+                              !!as.name(glue::glue("Macro_GLM_Pred_{period_of_analysis}")),
+                            .f = ~ sd(.x, na.rm = T),
+                            .before = roll_mean_period)
+      )
+
+    testing_data <-
+      complete_Macro_data %>%
+      filter(Date > training_end_date)
+
+    training_data <-
+      complete_Macro_data %>%
+      filter(Date <= training_end_date)
+
+    return(list("testing_data" = testing_data, "training_data" = training_data) )
+
+  }
+
+#' single_asset_v3_gen_macro_Model
+#'
+#' @param asset_data_macro
+#' @param actual_wins_losses
+#' @param asset_of_interest
+#' @param actuals_periods_needed
+#' @param training_end_date
+#' @param bin_threshold
+#' @param rolling_mean_pred_period
+#' @param sig_thresh
+#' @param raw_macro_data
+#' @param base_path
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+single_asset_v3_gen_macro_Model <-
+  function(
+    asset_data_macro = Indices_Metals_Bonds[[1]] %>% filter(Asset == "EUR_USD"),
+    actual_wins_losses,
+    asset_of_interest = "EUR_USD",
+    actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
+    training_end_date = "2025-05-01",
+    bin_threshold = 5,
+    rolling_mean_pred_period = 500,
+    sig_thresh = 0.15,
+    raw_macro_data = raw_macro_data,
+    base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/"
+  ) {
+
+    asset_data = asset_data_macro %>% filter(Asset == asset_of_interest)
+    actual_wins_losses_asset <-
+      actual_wins_losses %>% filter(Asset == asset_of_interest)
+
+    interest_rates <-
+      get_interest_rates(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    cpi_data <-
+      get_cpi(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    sentiment_index <-
+      create_sentiment_index(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1,
+        date_start = "2011-01-01",
+        end_date = today() %>% as.character(),
+        first_difference = TRUE,
+        scale_values = FALSE
+      )
+
+    gdp_data <-
+      get_GDP_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    unemp_data <-
+      get_unemp_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    manufac_pmi <-
+      get_manufac_countries(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    USD_Macro <-
+      get_additional_USD_Macro(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    EUR_Macro <-
+      get_additional_EUR_Macro(
+        raw_macro_data = raw_macro_data,
+        lag_days = 1
+      )
+
+    macro_model_data <-
+      prepare_macro_indicator_model_data(
+        asset_data = asset_data,
+        raw_macro_data = raw_macro_data,
+        Asset_of_interest = asset_of_interest,
+        interest_rates = interest_rates,
+        cpi_data = cpi_data,
+        gdp_data = gdp_data,
+        unemp_data = unemp_data,
+        manufac_pmi = manufac_pmi,
+        USD_Macro = USD_Macro,
+        EUR_Macro = EUR_Macro,
+        sentiment_index = sentiment_index,
+        countries_for_int_strength = c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"),
+        date_limit = as.character(today() + days(1))
+      ) %>%
+      mutate(
+        Asset = asset_of_interest
+      )
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Single_Asset_V3_Macro_Gen_Model(
+        macro_model_data = macro_model_data,
+        asset_of_interest = asset_of_interest,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        period_of_analysis = actuals_periods_needed[i],
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        sig_thresh = sig_thresh,
+        base_path = base_path
+      )
+    }
+
+    Macro_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Macro_preds_list[[i]] <-
+        Single_Asset_V3_macro_read_Model(
+          macro_model_data = macro_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Macro_Train_Preds_mean <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Macro_Test_Preds <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(Macro_preds_list)
+    gc()
+
+    return(
+      list(
+        "training_data" = Macro_Train_Preds_mean,
+        "testing_data" = Macro_Test_Preds
+      )
+    )
+
+  }
+
+#' get_GDP_countries
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_GDP_countries <-
+  function(raw_macro_data = raw_macro_data,
+           lag_days = 3 ) {
+
+    GDP_data <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+
+            str_detect(event, "Public Deficit") &
+              str_detect(event, "GDP") &
+              symbol == "EUR" ~ "EUR GDP",
+
+            str_detect(event, "Current Account") &
+              symbol == "USD" ~ "USD GDP",
+
+            str_detect(event, "Current Account") &
+              str_detect(event, "QoQ") &
+              symbol == "NZD" ~ "NZD GDP",
+
+            str_detect(event, "Current Account Balance") &
+              str_detect(event, "Q") &
+              symbol == "AUD" ~ "AUD GDP",
+
+            str_detect(event, "Current Account") &
+              str_detect(event, "Q") &
+              symbol == "GBP" ~ "GBP GDP",
+
+            str_detect(event, "Current Account") &
+              str_detect(event, "Q") &
+              symbol == "CAD" ~ "CAD GDP",
+
+            str_detect(event, "Gross Domestic Product") &
+              str_detect(event, "(QoQ)") &
+              symbol == "CHF" ~ "CHF GDP",
+
+            str_detect(event, "Gross Domestic Product") &
+              str_detect(event, "(QoQ)") &
+              symbol == "JPY" ~ "JPY GDP",
+
+            str_detect(event, "Gross Domestic Product") &
+              str_detect(event, "(QoQ)") &
+              symbol == "CNY" ~ "CNY GDP"
+
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual =
+          case_when(
+            !(Index_Type %in% c("CHF GDP", "CNY GDP", "EUR GDP", "JPY GDP")) ~
+              (actual - lag(actual))/lag(actual),
+            TRUE ~ actual
+          )
+      ) %>%
+      ungroup() %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.) ))
+
+    return(GDP_data)
+
+  }
+
+
+#' get_unemp_countries
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_unemp_countries <-
+  function(raw_macro_data = raw_macro_data,
+           lag_days = 3 ) {
+
+    UR_data <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "EUR" ~ "EUR UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "USD" ~ "USD UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "NZD" ~ "NZD UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "AUD" ~ "AUD UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "GBP" ~ "GBP UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "CAD" ~ "CAD UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "CHF" ~ "CHF UR",
+
+            str_detect(event, "Unemployment Rate") &
+              symbol == "JPY" ~ "JPY UR"
+
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      ungroup() %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.) ))
+
+    return(UR_data)
+
+  }
+
+#' get_manufac_countries
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_manufac_countries <-
+  function(raw_macro_data = raw_macro_data,
+           lag_days = 3 ) {
+
+    Manufac_data <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+
+            str_detect(event, "Manufacturing PMI") &
+              symbol == "EUR" ~ "EUR Manufac PMI",
+
+            str_detect(event, "Manufacturing PMI") &
+              symbol == "USD" ~ "USD Manufac PMI",
+
+            str_detect(event, "Manufacturing Sales") &
+              symbol == "NZD" ~ "NZD Manufac PMI",
+
+            (str_detect(event, "Manufacturing PMI") &
+               symbol == "AUD")|
+              (str_detect(event, "AiG Performance of Mfg") &
+                 symbol == "AUD") ~ "AUD Manufac PMI",
+
+            str_detect(event, "Manufacturing PMI") &
+              symbol == "GBP" ~ "GBP Manufac PMI",
+
+            str_detect(event, "Manufacturing PMI") &
+              symbol == "CAD" ~ "CAD Manufac PMI",
+
+            # str_detect(event, "Unemployment Rate") &
+            #   symbol == "CHF" ~ "CHF UR",
+
+            str_detect(event, "Manufacturing PMI") &
+              symbol == "JPY" ~ "JPY Manufac PMI",
+
+            str_detect(event, "Manufacturing PMI") &
+              symbol == "CNY" ~ "CNY Manufac PMI"
+
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      ungroup() %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      filter(if_all(everything(), ~ !is.na(.) ))
+
+    return(Manufac_data)
+
+  }
+
+
+#' get_additional_USD_Macro
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_additional_USD_Macro <-
+  function(raw_macro_data = raw_macro_data,
+           lag_days = 3 ) {
+
+    USD_Macro <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+
+            str_detect(event, "Consumer Credit Change") &
+              symbol == "USD" ~ "USD_Consumer_Credit",
+
+            str_detect(event, "Goods and Services Trade Balance") &
+              symbol == "USD" ~ "USD_Trade_Balance",
+
+            str_detect(event, "Export Price Index") &
+              str_detect(event, "MoM") &
+              symbol == "USD" ~ "USD_Export_Price",
+
+            str_detect(event, "Monthly Budget Statement") &
+              symbol == "USD" ~ "USD_Budget_Statement",
+
+            str_detect(event, "Continuing Jobless Claims") &
+              symbol == "USD" ~ "USD_Jobless",
+
+            str_detect(event, "ADP Employment Change") &
+              str_detect(event, "\\(") &
+              symbol == "USD" ~ "USD_Employment_Change",
+
+            str_detect(event, "Net Long\\-Term TIC Flows") &
+              symbol == "USD" ~ "USD_TIC_Flows",
+
+            str_detect(event, "Nonfarm Payrolls") &
+              symbol == "USD" ~ "USD_Payrolls",
+
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      ungroup() %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = log(actual/lag(actual))
+      ) %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      mutate(
+        across(
+          .cols = !contains("date"),
+          .fns = ~ ifelse( is.infinite(.), mean(., na.rm = T), .)
+        )
+      ) %>%
+      filter(if_all(everything(), ~ !is.na(.) )) %>%
+      # mutate(
+      #   # USD_Consumer_Credit = scale(USD_Consumer_Credit) %>% as.vector() %>% as.numeric(),
+      #   USD_Consumer_Credit = log(USD_Consumer_Credit/lag(USD_Consumer_Credit)),
+      #   USD_Trade_Balance = log(USD_Trade_Balance/lag(USD_Trade_Balance)),
+      #   USD_Budget_Statement = log(USD_Budget_Statement/lag(USD_Budget_Statement))
+      # ) %>%
+      filter(if_all(everything(), ~ !is.na(.) ))
+
+    return(USD_Macro)
+
+  }
+
+#' get_additional_USD_Macro
+#'
+#' @param raw_macro_data
+#' @param lag_days
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+get_additional_EUR_Macro <-
+  function(raw_macro_data = raw_macro_data,
+           lag_days = 3 ) {
+
+    EUR_Macro <-
+      raw_macro_data %>%
+      mutate(
+        Index_Type =
+          case_when(
+
+            str_detect(event, "Trade Balance EUR") &
+              symbol == "EUR" ~ "EUR_Trade_Balance",
+
+            str_detect(event, "Current Account n\\.s\\.a.") &
+              symbol == "EUR" ~ "EUR_CA_nsa",
+
+            str_detect(event, "Budget") &
+              symbol == "EUR" ~ "EUR_Budget",
+
+            str_detect(event, "Imports") &
+              str_detect(event, "EUR") &
+              !str_detect(event, "MoM") &
+              symbol == "EUR" ~ "EUR_Imports",
+
+            str_detect(event, "Exports\\, EUR") &
+              !str_detect(event, "MoM") &
+              symbol == "EUR" ~ "EUR_Exports"
+
+          )
+      ) %>%
+      filter(!is.na(Index_Type)) %>%
+      dplyr::select(Index_Type, actual,date ) %>%
+      dplyr::group_by(Index_Type,date ) %>%
+      summarise(
+        actual = median(actual, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      mutate(date = date + lubridate::days(lag_days) ) %>%
+      mutate(
+        date =
+          case_when(
+            lubridate::wday(date) == 7 ~ date + lubridate::days(2),
+            lubridate::wday(date) == 1 ~ date + lubridate::days(1),
+            TRUE ~ date
+          )
+      ) %>%
+      group_by(Index_Type) %>%
+      arrange(date, .by_group = TRUE) %>%
+      ungroup() %>%
+      group_by(Index_Type) %>%
+      mutate(
+        actual = log(actual/lag(actual))
+      ) %>%
+      pivot_wider(names_from = Index_Type, values_from = actual, values_fn = median) %>%
+      arrange(date) %>%
+      fill(everything(), .direction = "down") %>%
+      mutate(
+        across(
+          .cols = !contains("date"),
+          .fns = ~ ifelse( is.infinite(.), mean(., na.rm = T), .)
+        )
+      ) %>%
+      filter(if_all(everything(), ~ !is.na(.) )) %>%
+      # mutate(
+      #   # USD_Consumer_Credit = scale(USD_Consumer_Credit) %>% as.vector() %>% as.numeric(),
+      #   USD_Consumer_Credit = log(USD_Consumer_Credit/lag(USD_Consumer_Credit)),
+      #   USD_Trade_Balance = log(USD_Trade_Balance/lag(USD_Trade_Balance)),
+      #   USD_Budget_Statement = log(USD_Budget_Statement/lag(USD_Budget_Statement))
+      # ) %>%
+      filter(if_all(everything(), ~ !is.na(.) ))
+
+    return(EUR_Macro)
+
+  }
+
 
 #' construct_Performance_to_Thresh_Curve
 #'
@@ -2574,9 +4108,7 @@ construct_Performance_to_Thresh_Curve <-
       filter(Date >= as_datetime(sim_start_date)) %>%
       left_join(
         actual_wins_losses %>%
-          dplyr::select(Date, Asset,
-                        period_return_8_Price, period_return_12_Price, period_return_16_Price,
-                        period_return_24_Price, period_return_35_Price, period_return_46_Price)
+          dplyr::select(Date, Asset, !!as.name(period_return_col))
       )
 
     control_data <-
@@ -2628,6 +4160,32 @@ construct_Performance_to_Thresh_Curve <-
         trade_col = "Control"
       )
 
+    random_testing_perc <- numeric()
+    random_testing_return <- numeric()
+
+    for (j in 1:3000) {
+      random_testing_perc[j] <-
+        sum(control_data$win_loss %>% sample(size = 480), na.rm = T)/480
+      random_testing_return[j] <-
+        sum(control_data %>% pull(!!as.name(period_return_col)) %>% sample(size = 480), na.rm = T)
+    }
+
+    control_win_loss_summary <-
+      control_win_loss_summary %>%
+      mutate(
+        random_returns_mid = mean(random_testing_return, na.rm = T),
+        random_returns_05 = quantile(random_testing_return, 0.05 , na.rm = T),
+        random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T),
+        random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T),
+        random_returns_sd = sd(random_testing_return, na.rm = T),
+
+        random_perc_mid = mean(random_testing_perc, na.rm = T),
+        random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T),
+        random_perc_25 = quantile(random_testing_perc, 0.25 , na.rm = T),
+        random_perc_75 = quantile(random_testing_perc, 0.75 , na.rm = T),
+        random_perc_sd = sd(random_testing_perc, na.rm = T)
+      )
+
     rm(test_performance)
 
     Trade_win_loss_summary <- list()
@@ -2644,9 +4202,7 @@ construct_Performance_to_Thresh_Curve <-
         filter(Date >= as_datetime(sim_start_date)) %>%
         left_join(
           actual_wins_losses %>%
-            dplyr::select(Date, Asset,
-                          period_return_8_Price, period_return_12_Price, period_return_16_Price,
-                          period_return_24_Price, period_return_35_Price, period_return_46_Price)
+            dplyr::select(Date, Asset,!!as.name(period_return_col))
         ) %>%
         mutate(
           trade_col =
@@ -2712,6 +4268,49 @@ construct_Performance_to_Thresh_Curve <-
           threshold = thresh_vector[i]
         )
 
+      random_testing_perc <- numeric()
+      random_testing_return <- numeric()
+      required_sample_length <-
+        round(length(Trade_Data$win_loss)/20)
+
+      if(required_sample_length >= 50) {
+
+        for (j in 1:3000) {
+          random_testing_perc[j] <-
+            sum(Trade_Data$win_loss %>% sample(size = required_sample_length), na.rm = T)/required_sample_length
+          random_testing_return[j] <-
+            sum(Trade_Data %>% pull(!!as.name(period_return_col)) %>% sample(size = required_sample_length), na.rm = T)
+        }
+
+        random_returns_mid = mean(random_testing_return, na.rm = T)
+        random_returns_05 = quantile(random_testing_return, 0.05 , na.rm = T)
+        random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T)
+        random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T)
+        random_returns_sd = sd(random_testing_return, na.rm = T)
+
+        random_perc_mid = mean(random_testing_perc, na.rm = T)
+        random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T)
+        random_perc_25 = quantile(random_testing_perc, 0.25 , na.rm = T)
+        random_perc_75 = quantile(random_testing_perc, 0.75 , na.rm = T)
+        random_perc_sd = sd(random_testing_perc, na.rm = T)
+
+        Trade_win_loss_summary[[i]] <-
+          Trade_win_loss_summary[[i]] %>%
+          mutate(
+            random_returns_mid = random_returns_mid,
+            random_returns_05 = random_returns_05,
+            random_returns_25 = random_returns_25,
+            random_returns_75 = random_returns_75,
+            random_returns_sd = random_returns_sd,
+
+            random_perc_mid = random_perc_mid,
+            random_perc_05 = random_perc_05,
+            random_perc_25 = random_perc_25,
+            random_perc_75 = random_perc_75,
+            random_perc_sd = random_perc_sd
+          )
+
+      }
 
     }
 
@@ -2721,5 +4320,381 @@ construct_Performance_to_Thresh_Curve <-
       bind_rows(control_win_loss_summary)
 
     return(Trade_win_loss_summary_dfr)
+
+  }
+
+#' construct_Performance_to_Thresh_Curve
+#'
+#' @param pred_data
+#' @param pred_col
+#' @param actual_wins_losses
+#' @param thresh_vector
+#' @param period_return_col
+#' @param sim_start_date
+#'
+#' @return
+#' @export
+#'
+#' @examples
+construct_Performance_to_2_Thresh_Curve <-
+  function(
+    pred_data = generated_preds_from_db,
+    pred_col1 = "AR_LM_Pred_period_return_46_Price",
+    pred_col2 = NULL,
+    pred_col3 = NULL,
+    actual_wins_losses = actual_wins_losses,
+    thresh_vector = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+    period_return_col = "period_return_35_Price",
+    sim_start_date = "2023-01-01"
+  ) {
+
+    test_performance <-
+      pred_data %>%
+      filter(Date >= as_datetime(sim_start_date)) %>%
+      left_join(
+        actual_wins_losses %>%
+          dplyr::select(Date, Asset, !!as.name(period_return_col))
+      )
+
+    control_data <-
+      test_performance %>%
+      group_by(Date) %>%
+      summarise(
+        !!as.name(period_return_col) := sum(!!as.name(period_return_col), na.rm = T)
+      ) %>%
+      ungroup() %>%
+      arrange(Date) %>%
+      mutate(
+        cumulative_return = cumsum(!!as.name(period_return_col))
+      ) %>%
+      mutate(
+        trade_col = "Control"
+      ) %>%
+      mutate(
+        win_loss = ifelse(!!as.name(period_return_col) > 0, 1, 0)
+      )
+
+    control_win_loss_summary <-
+      control_data %>%
+      summarise(
+        wins = sum(win_loss, na.rm = T) ,
+        total_trades = n(),
+        average_win = mean(
+          ifelse( !!as.name(period_return_col) > 0,!!as.name(period_return_col), NA  ),
+          na.rm = T),
+        average_loss = mean(
+          ifelse( !!as.name(period_return_col) <= 0,!!as.name(period_return_col), NA  ),
+          na.rm = T),
+        Final_Winnings = sum(!!as.name(period_return_col)),
+
+        Return_25 = quantile(!!as.name(period_return_col), 0.25 ,na.rm = T),
+        Return_Middle = median(!!as.name(period_return_col), na.rm = T),
+        Return_75 = quantile(!!as.name(period_return_col), 0.75 ,na.rm = T),
+        Ratio_of_25_to_75 = abs(Return_75)/abs(Return_25),
+        Return_SD = sd(!!as.name(period_return_col), na.rm = T)
+      ) %>%
+      mutate(
+        required_adjustment_var =
+          ifelse( (100 - total_trades) < 0, 0,  (100 - total_trades)),
+        Perc_UnAdj = (wins )/(total_trades),
+        Perc_Adj = (wins)/(total_trades + required_adjustment_var),
+        Binomial_Expectation_Adj = (Perc_Adj*average_win) + (average_loss*(1 - Perc_Adj)),
+        Binomial_Expectation_Adj_1000 = (1000*Perc_Adj*average_win) + (1000*average_loss*(1 - Perc_Adj))
+      ) %>%
+      mutate(
+        trade_col = "Control"
+      )
+
+    random_testing_perc <- numeric()
+    random_testing_return <- numeric()
+
+    for (j in 1:3000) {
+      random_testing_perc[j] <-
+        sum(control_data$win_loss %>% sample(size = 480), na.rm = T)/480
+      random_testing_return[j] <-
+        sum(control_data %>% pull(!!as.name(period_return_col)) %>% sample(size = 480), na.rm = T)
+    }
+
+    control_win_loss_summary <-
+      control_win_loss_summary %>%
+      mutate(
+        random_returns_mid = mean(random_testing_return, na.rm = T),
+        random_returns_05 = quantile(random_testing_return, 0.05 , na.rm = T),
+        random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T),
+        random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T),
+        random_returns_sd = sd(random_testing_return, na.rm = T),
+
+        random_perc_mid = mean(random_testing_perc, na.rm = T),
+        random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T),
+        random_perc_25 = quantile(random_testing_perc, 0.25 , na.rm = T),
+        random_perc_75 = quantile(random_testing_perc, 0.75 , na.rm = T),
+        random_perc_sd = sd(random_testing_perc, na.rm = T)
+      )
+
+    rm(test_performance)
+
+    Trade_win_loss_summary <- list()
+
+    for (i in 1:length(thresh_vector)) {
+
+      if(
+        !is.null(pred_col2) & !is.null(pred_col1) & is.null(pred_col3)
+        ){
+        trade_statement <-  glue::glue("{pred_col1} >= {thresh_vector[i]} & {pred_col2} >= {thresh_vector[i]}")
+      }
+
+      if(
+        is.null(pred_col2) & !is.null(pred_col1) & !is.null(pred_col3)
+      ){
+        trade_statement <-  glue::glue("{pred_col1} >= {thresh_vector[i]} & {pred_col3} >= {thresh_vector[i]}")
+      }
+
+      if(
+        !is.null(pred_col2) & !is.null(pred_col3) & !is.null(pred_col1)
+      ){
+        trade_statement <-
+          glue::glue("{pred_col1} >= {thresh_vector[i]} &
+                        {pred_col2} >= {thresh_vector[i]} &
+                        {pred_col3} >= {thresh_vector[i]}")
+      }
+
+
+      total_periods = as.numeric(control_win_loss_summary$total_trades[1])
+
+      test_performance <-
+        pred_data %>%
+        filter(Date >= as_datetime(sim_start_date)) %>%
+        left_join(
+          actual_wins_losses %>%
+            dplyr::select(Date, Asset,!!as.name(period_return_col))
+        ) %>%
+        mutate(
+          trade_col =
+            eval(parse(text = trade_statement))
+        ) %>%
+        mutate(
+          trade_col =
+            case_when(
+              trade_col == TRUE ~ "Long"
+            )
+        )
+
+      Trade_Data <-
+        test_performance %>%
+        filter(trade_col == "Long") %>%
+        group_by(Date) %>%
+        summarise(
+          !!as.name(period_return_col) := sum(!!as.name(period_return_col), na.rm = T)
+        ) %>%
+        ungroup() %>%
+        arrange(Date) %>%
+        mutate(
+          cumulative_return := cumsum(!!as.name(period_return_col))
+        ) %>%
+        mutate(
+          trade_col = "Long"
+        ) %>%
+        mutate(
+          win_loss = ifelse(!!as.name(period_return_col) > 0, 1, 0)
+        )
+
+      Trade_win_loss_summary[[i]] <-
+        Trade_Data %>%
+        summarise(
+          wins = sum(win_loss, na.rm = T) ,
+          total_trades = n(),
+          average_win = mean(
+            ifelse( !!as.name(period_return_col) > 0,!!as.name(period_return_col), NA  ),
+            na.rm = T),
+          average_loss = mean(
+            ifelse( !!as.name(period_return_col) <= 0,!!as.name(period_return_col), NA  ),
+            na.rm = T),
+          Final_Winnings = sum(!!as.name(period_return_col)),
+          Detection_Perc = total_trades/total_periods,
+
+          Return_25 = quantile(!!as.name(period_return_col), 0.25 ,na.rm = T),
+          Return_Middle = median(!!as.name(period_return_col), na.rm = T),
+          Return_75 = quantile(!!as.name(period_return_col), 0.75 ,na.rm = T),
+          Ratio_of_25_to_75 = abs(Return_75)/abs(Return_25),
+          Return_SD = sd(!!as.name(period_return_col), na.rm = T)
+        ) %>%
+        mutate(
+          required_adjustment_var =
+            ifelse( (100 - total_trades) < 0, 0,  (100 - total_trades)),
+          Perc_UnAdj = (wins )/(total_trades),
+          Perc_Adj = (wins)/(total_trades + (required_adjustment_var) ),
+          Binomial_Expectation_Adj = (Perc_Adj*average_win) + (average_loss*(1 - Perc_Adj)),
+          Binomial_Expectation_Adj_1000 = (1000*Perc_Adj*average_win) + (1000*average_loss*(1 - Perc_Adj)),
+          Binomial_Expectation_Adj_1000_Detected = Detection_Perc*Binomial_Expectation_Adj_1000
+        ) %>%
+        mutate(
+          trade_col = "Long",
+          threshold = thresh_vector[i]
+        )
+
+      random_testing_perc <- numeric()
+      random_testing_return <- numeric()
+      required_sample_length <-
+        round(length(Trade_Data$win_loss)/20)
+
+      if(required_sample_length >= 50) {
+
+        for (j in 1:3000) {
+          random_testing_perc[j] <-
+            sum(Trade_Data$win_loss %>% sample(size = required_sample_length), na.rm = T)/required_sample_length
+          random_testing_return[j] <-
+            sum(Trade_Data %>% pull(!!as.name(period_return_col)) %>% sample(size = required_sample_length), na.rm = T)
+        }
+
+        random_returns_mid = mean(random_testing_return, na.rm = T)
+        random_returns_05 = quantile(random_testing_return, 0.05 , na.rm = T)
+        random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T)
+        random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T)
+        random_returns_sd = sd(random_testing_return, na.rm = T)
+
+        random_perc_mid = mean(random_testing_perc, na.rm = T)
+        random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T)
+        random_perc_25 = quantile(random_testing_perc, 0.25 , na.rm = T)
+        random_perc_75 = quantile(random_testing_perc, 0.75 , na.rm = T)
+        random_perc_sd = sd(random_testing_perc, na.rm = T)
+
+        Trade_win_loss_summary[[i]] <-
+          Trade_win_loss_summary[[i]] %>%
+          mutate(
+            random_returns_mid = random_returns_mid,
+            random_returns_05 = random_returns_05,
+            random_returns_25 = random_returns_25,
+            random_returns_75 = random_returns_75,
+            random_returns_sd = random_returns_sd,
+
+            random_perc_mid = random_perc_mid,
+            random_perc_05 = random_perc_05,
+            random_perc_25 = random_perc_25,
+            random_perc_75 = random_perc_75,
+            random_perc_sd = random_perc_sd
+          )
+
+      }
+
+    }
+
+    Trade_win_loss_summary_dfr <-
+      Trade_win_loss_summary %>%
+      map_dfr(bind_rows) %>%
+      bind_rows(control_win_loss_summary)
+
+    return(Trade_win_loss_summary_dfr)
+
+  }
+
+
+#' construct_time_series
+#'
+#' @param actual_wins_losses
+#' @param pred_data
+#' @param Asset_Var
+#' @param trade_statement
+#' @param trade_direction
+#' @param win_thresh
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+construct_time_series <-
+  function(
+    actual_wins_losses = actual_wins_losses,
+    pred_data = testing_pred_data,
+    Asset_Var = "EUR_USD",
+    trade_statement = "state_space_LM_Pred_period_return_50_Price >= 2",
+    trade_direction = "Long",
+    win_thresh = 0
+  ) {
+
+
+    tagged_trade_combined <-
+      pred_data %>%
+      ungroup() %>%
+      filter(Asset == Asset_Var) %>%
+      mutate(
+        trade_col =
+          eval(parse(text = trade_statement)),
+        trade_col =
+          ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ", trade_direction) )
+      )  %>%
+      dplyr::select(Date, Asset,trade_col,
+                    -contains("period_return_") ) %>%
+      distinct() %>%
+      left_join(actual_wins_losses %>%
+                  dplyr::select(Date, Asset, trade_col,  contains("period_return_")) %>%
+                  filter(Asset == Asset_Var) %>%
+                  filter(trade_col == trade_direction) %>%
+                  dplyr::select(-trade_col) %>%
+                  dplyr::select(Date, Asset,  contains("period_return_")) %>%
+                  distinct()
+      ) %>%
+      pivot_longer(-c(Date, Asset, trade_col),
+                   values_to = "Returns", names_to = "Period") %>%
+      mutate(
+        Period = str_remove_all(Period, "[A-Z]+|[a-z]+|_") %>% str_trim() %>% as.numeric()
+      )
+
+    summary_data <-
+      tagged_trade_combined %>%
+      filter(!is.na(trade_col)) %>%
+      mutate(
+        wins = ifelse(
+          Returns > win_thresh,
+          1,
+          0
+        )
+      ) %>%
+      group_by(Asset, trade_col, Period) %>%
+      summarise(
+        total_trades = n_distinct(Date),
+        wins = sum(wins, na.rm = T),
+        Total_Returns = sum(Returns, na.rm = T),
+        Average_Return = mean(Returns, na.rm = T),
+        Return_25 = quantile(Returns, 0.25, na.rm = T),
+        Return_75 = quantile(Returns, 0.75, na.rm = T)
+
+      ) %>%
+      ungroup() %>%
+      mutate(
+        perc =wins/total_trades
+      ) %>%
+      mutate(
+        trade_statement = trade_statement
+      )
+
+
+    portfolio_ts_long <-
+      tagged_trade_combined %>%
+      filter(!is.na(trade_col)) %>%
+      filter(trade_col == "Long") %>%
+      group_by(trade_col, Period) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(trade_col, Period) %>%
+      mutate(
+        Total_Returns_cumulative =
+          cumsum(Returns)
+      )
+
+    portfolio_ts_control <-
+      tagged_trade_combined %>%
+      group_by(Period) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Period) %>%
+      mutate(
+        trade_col = "Control",
+        Total_Returns_cumulative =
+          cumsum(Returns)
+      )
+
+    portfolio_ts <-
+      portfolio_ts_long %>%
+      bind_rows(portfolio_ts_control)
+
+    return(portfolio_ts)
 
   }
