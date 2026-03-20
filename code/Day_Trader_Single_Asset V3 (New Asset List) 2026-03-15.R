@@ -313,13 +313,13 @@ state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500)
 state_space_rolling = c(100, 200, 300, 400)
 # sig_thresh_vec <- c(0.99, 0.1, 0.05, 0.01, 10^-3, 10^-5, 10^-7, 10^-9)
 sig_thresh_vec <- c(0.99, 10^-3, 10^-5, 10^-7, 10^-9)
-bin_threshold_vec <- c(0)
+bin_threshold_vec <- c(5)
 safely_gen_models <- safely(Single_Asset_V3_Gen_Model_No_data_gen, otherwise = NULL)
 result_db_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIG_THRESH_FINDER_WORK_PC_2026-03-18.DB"
-reset_DB <- TRUE
+reset_DB <- FALSE
 c = 0
 
-for (j in 1:length(assets_to_test)) {
+for (j in 12:length(assets_to_test)) {
 
   asset_of_interest <- assets_to_test[j]
   correlation_assets_current <- correlation_asset_list[[j]]
@@ -632,18 +632,18 @@ for (j in 1:length(assets_to_test)) {
           )
 
         if(c == 1 & reset_DB == TRUE){
-          db_con <- connect_db(result_db_path)
-          write_table_sql_lite(.data = all_results_dfr,
-                               table_name = "SIG_THRESH_FINDER",
-                               conn = db_con,
-                               overwrite_true = TRUE)
-          DBI::dbDisconnect(db_con)
-
           # db_con <- connect_db(result_db_path)
-          # append_table_sql_lite(.data = all_results_dfr,
-          #                       table_name = "SIG_THRESH_FINDER",
-          #                       conn = db_con)
+          # write_table_sql_lite(.data = all_results_dfr,
+          #                      table_name = "SIG_THRESH_FINDER",
+          #                      conn = db_con,
+          #                      overwrite_true = TRUE)
           # DBI::dbDisconnect(db_con)
+
+          db_con <- connect_db(result_db_path)
+          append_table_sql_lite(.data = all_results_dfr,
+                                table_name = "SIG_THRESH_FINDER",
+                                conn = db_con)
+          DBI::dbDisconnect(db_con)
 
         } else {
           db_con <- connect_db(result_db_path)
@@ -665,20 +665,120 @@ AR_LM_Pred_analysis <-
                   statement = "SELECT * FROM SIG_THRESH_FINDER")
 DBI::dbDisconnect(db_con)
 
-max_percs <-
+analyse_control_vs_model <-
+  function(pred_analysis_data = AR_LM_Pred_analysis,
+           thresh_min_LM = 0.5,
+           thresh_min_GLM = 0.5) {
+
+    control_data <-
+      pred_analysis_data %>%
+      filter(trade_col == "Control") %>%
+      dplyr::select(Asset,
+                    pred_col_used,
+                    Final_Winnings_Control = Final_Winnings,
+                    random_returns_mid_control = random_returns_mid,
+                    random_perc_mid_control = random_perc_mid,
+                    random_returns_05_control = random_returns_05,
+                    random_returns_75_control = random_returns_75,
+                    Perc_Control = Perc_UnAdj) %>%
+      distinct() %>%
+      group_by(pred_col_used, Asset) %>%
+      slice_max(random_perc_mid_control) %>%
+      ungroup() %>%
+      distinct()
+
+
+    model_data <-
+      pred_analysis_data %>%
+      filter(
+        (str_detect(pred_col_used, "GLM") & threshold >= thresh_min_GLM) |
+        (str_detect(pred_col_used, "_LM") & threshold >= thresh_min_LM)
+        ) %>%
+      dplyr::select(Asset,
+                    pred_col_used,
+                    total_trades,
+                    Final_Winnings,
+                    random_returns_mid,
+                    random_returns_05,
+                    random_returns_75,
+                    random_perc_mid,
+                    Perc_Adj,
+                    sig_thresh_current,
+                    threshold) %>%
+      distinct() %>%
+      left_join(
+        control_data
+      ) %>%
+      mutate(
+        Final_Winnings_Diff = Final_Winnings - Final_Winnings_Control,
+        random_returns_mid_Diff = random_returns_mid - random_returns_mid_control,
+        perc_diff = random_perc_mid - Perc_Control
+      )
+
+    return(model_data)
+
+  }
+
+
+control_diffs <-
+  analyse_control_vs_model(
+    pred_analysis_data = AR_LM_Pred_analysis,
+    thresh_min_LM = 0.5,
+    thresh_min_GLM = 0.5
+  ) %>%
+  filter(total_trades >= 1000)
+
+final_winnings_diff <-
+  control_diffs %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(Final_Winnings_Diff) %>%
+  ungroup() %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_perc_mid) %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_returns_mid)
+
+random_returns_diff <-
+  control_diffs %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_returns_mid_Diff) %>%
+  ungroup() %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(Final_Winnings) %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_returns_mid)
+
+
+max_returns_single <-
   AR_LM_Pred_analysis %>%
   filter(total_trades >= 1000) %>%
-  filter(threshold > 0, random_returns_mid > 0, str_detect(pred_col_used, "_LM")) %>%
+  filter(threshold >= 0.5, str_detect(pred_col_used, "_GLM") ,
+         !str_detect(pred_col_used, "&")) %>%
+  # filter(average_win > average_loss) %>%
+  group_by(pred_col_used, Asset) %>%
+  slice_max(Final_Winnings) %>%
+  group_by(pred_col_used, Asset) %>%
+  slice_max(random_returns_mid) %>%
   group_by(pred_col_used, Asset) %>%
   slice_max(random_perc_mid)
 
-max_returns <-
+max_returns_multi <-
   AR_LM_Pred_analysis %>%
-  filter(total_trades >= 1000) %>%
-  filter(threshold > 0, random_returns_mid > 0, str_detect(pred_col_used, "_LM")) %>%
+  # filter(total_trades >= 1000) %>%
+  filter(threshold > 0.4, random_returns_mid > 0, str_detect(pred_col_used, "_GLM") ,
+         str_detect(pred_col_used, "&")) %>%
   filter(average_win > average_loss) %>%
   group_by(pred_col_used, Asset) %>%
-  slice_max(random_returns_mid)
+  slice_max(Final_Winnings) %>%
+  group_by(pred_col_used, Asset) %>%
+  slice_max(random_returns_mid) %>%
+  group_by(pred_col_used, Asset) %>%
+  slice_max(random_perc_mid)
+
+max_returns_multi_no_XAG <-
+  max_returns_multi %>%
+  ungroup() %>%
+  filter(!str_detect(Asset, "XAG"))
 
 max_returns <-
   AR_LM_Pred_analysis %>%
