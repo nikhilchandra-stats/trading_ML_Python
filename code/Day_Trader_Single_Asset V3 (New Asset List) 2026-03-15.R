@@ -319,7 +319,7 @@ result_db_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Singl
 reset_DB <- FALSE
 c = 0
 
-for (j in 12:length(assets_to_test)) {
+for (j in 1:length(assets_to_test)) {
 
   asset_of_interest <- assets_to_test[j]
   correlation_assets_current <- correlation_asset_list[[j]]
@@ -704,6 +704,7 @@ analyse_control_vs_model <-
                     random_perc_mid,
                     Perc_Adj,
                     sig_thresh_current,
+                    bin_threshold_current,
                     threshold) %>%
       distinct() %>%
       left_join(
@@ -723,20 +724,10 @@ analyse_control_vs_model <-
 control_diffs <-
   analyse_control_vs_model(
     pred_analysis_data = AR_LM_Pred_analysis,
-    thresh_min_LM = 0.5,
-    thresh_min_GLM = 0.5
+    thresh_min_LM = 0,
+    thresh_min_GLM = 0.3
   ) %>%
   filter(total_trades >= 1000)
-
-final_winnings_diff <-
-  control_diffs %>%
-  group_by(Asset, pred_col_used) %>%
-  slice_max(Final_Winnings_Diff) %>%
-  ungroup() %>%
-  group_by(Asset, pred_col_used) %>%
-  slice_max(random_perc_mid) %>%
-  group_by(Asset, pred_col_used) %>%
-  slice_max(random_returns_mid)
 
 random_returns_diff <-
   control_diffs %>%
@@ -746,7 +737,19 @@ random_returns_diff <-
   group_by(Asset, pred_col_used) %>%
   slice_max(Final_Winnings) %>%
   group_by(Asset, pred_col_used) %>%
-  slice_max(random_returns_mid)
+  slice_max(random_perc_mid_control)
+
+required_sig_threshes <-
+  random_returns_diff %>%
+  group_by(pred_col_used, Asset) %>%
+  distinct(sig_thresh_current, threshold, bin_threshold_current)
+
+db_con <- connect_db(result_db_path)
+write_table_sql_lite(.data = required_sig_threshes,
+                      table_name = "BEST_SIG_PER_ASSET",
+                      conn = db_con,
+                     overwrite_true = TRUE)
+DBI::dbDisconnect(db_con)
 
 
 max_returns_single <-
