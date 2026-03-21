@@ -4178,6 +4178,8 @@ construct_Performance_to_Thresh_Curve <-
         random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T),
         random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T),
         random_returns_sd = sd(random_testing_return, na.rm = T),
+        random_total_trades = 480,
+        random_return_per_trade = random_returns_mid/480,
 
         random_perc_mid = mean(random_testing_perc, na.rm = T),
         random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T),
@@ -4287,6 +4289,8 @@ construct_Performance_to_Thresh_Curve <-
         random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T)
         random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T)
         random_returns_sd = sd(random_testing_return, na.rm = T)
+        random_total_trades = required_sample_length
+        random_return_per_trade = random_returns_mid/required_sample_length
 
         random_perc_mid = mean(random_testing_perc, na.rm = T)
         random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T)
@@ -4302,6 +4306,8 @@ construct_Performance_to_Thresh_Curve <-
             random_returns_25 = random_returns_25,
             random_returns_75 = random_returns_75,
             random_returns_sd = random_returns_sd,
+            random_total_trades = random_total_trades,
+            random_return_per_trade = random_return_per_trade,
 
             random_perc_mid = random_perc_mid,
             random_perc_05 = random_perc_05,
@@ -4323,6 +4329,275 @@ construct_Performance_to_Thresh_Curve <-
 
   }
 
+#' construct_Performance_to_Thresh_Curve
+#'
+#' @param pred_data
+#' @param pred_col
+#' @param actual_wins_losses
+#' @param thresh_vector
+#' @param period_return_col
+#' @param sim_start_date
+#'
+#' @return
+#' @export
+#'
+#' @examples
+construct_Performance_to_2_Thresh_Curve <-
+  function(
+    pred_data = generated_preds_from_db,
+    pred_col1 = "AR_LM_Pred_period_return_46_Price",
+    pred_col2 = NULL,
+    pred_col3 = NULL,
+    actual_wins_losses = actual_wins_losses,
+    thresh_vector = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+    period_return_col = "period_return_35_Price",
+    sim_start_date = "2023-01-01"
+  ) {
+
+    test_performance <-
+      pred_data %>%
+      filter(Date >= as_datetime(sim_start_date)) %>%
+      left_join(
+        actual_wins_losses %>%
+          dplyr::select(Date, Asset, !!as.name(period_return_col))
+      )
+
+    control_data <-
+      test_performance %>%
+      group_by(Date) %>%
+      summarise(
+        !!as.name(period_return_col) := sum(!!as.name(period_return_col), na.rm = T)
+      ) %>%
+      ungroup() %>%
+      arrange(Date) %>%
+      mutate(
+        cumulative_return = cumsum(!!as.name(period_return_col))
+      ) %>%
+      mutate(
+        trade_col = "Control"
+      ) %>%
+      mutate(
+        win_loss = ifelse(!!as.name(period_return_col) > 0, 1, 0)
+      )
+
+    control_win_loss_summary <-
+      control_data %>%
+      summarise(
+        wins = sum(win_loss, na.rm = T) ,
+        total_trades = n(),
+        average_win = mean(
+          ifelse( !!as.name(period_return_col) > 0,!!as.name(period_return_col), NA  ),
+          na.rm = T),
+        average_loss = mean(
+          ifelse( !!as.name(period_return_col) <= 0,!!as.name(period_return_col), NA  ),
+          na.rm = T),
+        Final_Winnings = sum(!!as.name(period_return_col)),
+
+        Return_25 = quantile(!!as.name(period_return_col), 0.25 ,na.rm = T),
+        Return_Middle = median(!!as.name(period_return_col), na.rm = T),
+        Return_75 = quantile(!!as.name(period_return_col), 0.75 ,na.rm = T),
+        Ratio_of_25_to_75 = abs(Return_75)/abs(Return_25),
+        Return_SD = sd(!!as.name(period_return_col), na.rm = T)
+      ) %>%
+      mutate(
+        required_adjustment_var =
+          ifelse( (100 - total_trades) < 0, 0,  (100 - total_trades)),
+        Perc_UnAdj = (wins )/(total_trades),
+        Perc_Adj = (wins)/(total_trades + required_adjustment_var),
+        Binomial_Expectation_Adj = (Perc_Adj*average_win) + (average_loss*(1 - Perc_Adj)),
+        Binomial_Expectation_Adj_1000 = (1000*Perc_Adj*average_win) + (1000*average_loss*(1 - Perc_Adj))
+      ) %>%
+      mutate(
+        trade_col = "Control"
+      )
+
+    random_testing_perc <- numeric()
+    random_testing_return <- numeric()
+
+    for (j in 1:3000) {
+      random_testing_perc[j] <-
+        sum(control_data$win_loss %>% sample(size = 480), na.rm = T)/480
+      random_testing_return[j] <-
+        sum(control_data %>% pull(!!as.name(period_return_col)) %>% sample(size = 480), na.rm = T)
+    }
+
+    control_win_loss_summary <-
+      control_win_loss_summary %>%
+      mutate(
+        random_returns_mid = mean(random_testing_return, na.rm = T),
+        random_returns_05 = quantile(random_testing_return, 0.05 , na.rm = T),
+        random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T),
+        random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T),
+        random_returns_sd = sd(random_testing_return, na.rm = T),
+        random_total_trades = 480,
+        random_return_per_trade = random_returns_mid/480,
+
+        random_perc_mid = mean(random_testing_perc, na.rm = T),
+        random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T),
+        random_perc_25 = quantile(random_testing_perc, 0.25 , na.rm = T),
+        random_perc_75 = quantile(random_testing_perc, 0.75 , na.rm = T),
+        random_perc_sd = sd(random_testing_perc, na.rm = T)
+      )
+
+    rm(test_performance)
+
+    Trade_win_loss_summary <- list()
+
+    for (i in 1:length(thresh_vector)) {
+
+      if(
+        !is.null(pred_col2) & !is.null(pred_col1) & is.null(pred_col3)
+      ){
+        trade_statement <-  glue::glue("{pred_col1} >= {thresh_vector[i]} & {pred_col2} >= {thresh_vector[i]}")
+      }
+
+      if(
+        is.null(pred_col2) & !is.null(pred_col1) & !is.null(pred_col3)
+      ){
+        trade_statement <-  glue::glue("{pred_col1} >= {thresh_vector[i]} & {pred_col3} >= {thresh_vector[i]}")
+      }
+
+      if(
+        !is.null(pred_col2) & !is.null(pred_col3) & !is.null(pred_col1)
+      ){
+        trade_statement <-
+          glue::glue("{pred_col1} >= {thresh_vector[i]} &
+                        {pred_col2} >= {thresh_vector[i]} &
+                        {pred_col3} >= {thresh_vector[i]}")
+      }
+
+
+      total_periods = as.numeric(control_win_loss_summary$total_trades[1])
+
+      test_performance <-
+        pred_data %>%
+        filter(Date >= as_datetime(sim_start_date)) %>%
+        left_join(
+          actual_wins_losses %>%
+            dplyr::select(Date, Asset,!!as.name(period_return_col))
+        ) %>%
+        mutate(
+          trade_col =
+            eval(parse(text = trade_statement))
+        ) %>%
+        mutate(
+          trade_col =
+            case_when(
+              trade_col == TRUE ~ "Long"
+            )
+        )
+
+      Trade_Data <-
+        test_performance %>%
+        filter(trade_col == "Long") %>%
+        group_by(Date) %>%
+        summarise(
+          !!as.name(period_return_col) := sum(!!as.name(period_return_col), na.rm = T)
+        ) %>%
+        ungroup() %>%
+        arrange(Date) %>%
+        mutate(
+          cumulative_return := cumsum(!!as.name(period_return_col))
+        ) %>%
+        mutate(
+          trade_col = "Long"
+        ) %>%
+        mutate(
+          win_loss = ifelse(!!as.name(period_return_col) > 0, 1, 0)
+        )
+
+      Trade_win_loss_summary[[i]] <-
+        Trade_Data %>%
+        summarise(
+          wins = sum(win_loss, na.rm = T) ,
+          total_trades = n(),
+          average_win = mean(
+            ifelse( !!as.name(period_return_col) > 0,!!as.name(period_return_col), NA  ),
+            na.rm = T),
+          average_loss = mean(
+            ifelse( !!as.name(period_return_col) <= 0,!!as.name(period_return_col), NA  ),
+            na.rm = T),
+          Final_Winnings = sum(!!as.name(period_return_col)),
+          Detection_Perc = total_trades/total_periods,
+
+          Return_25 = quantile(!!as.name(period_return_col), 0.25 ,na.rm = T),
+          Return_Middle = median(!!as.name(period_return_col), na.rm = T),
+          Return_75 = quantile(!!as.name(period_return_col), 0.75 ,na.rm = T),
+          Ratio_of_25_to_75 = abs(Return_75)/abs(Return_25),
+          Return_SD = sd(!!as.name(period_return_col), na.rm = T)
+        ) %>%
+        mutate(
+          required_adjustment_var =
+            ifelse( (100 - total_trades) < 0, 0,  (100 - total_trades)),
+          Perc_UnAdj = (wins )/(total_trades),
+          Perc_Adj = (wins)/(total_trades + (required_adjustment_var) ),
+          Binomial_Expectation_Adj = (Perc_Adj*average_win) + (average_loss*(1 - Perc_Adj)),
+          Binomial_Expectation_Adj_1000 = (1000*Perc_Adj*average_win) + (1000*average_loss*(1 - Perc_Adj)),
+          Binomial_Expectation_Adj_1000_Detected = Detection_Perc*Binomial_Expectation_Adj_1000
+        ) %>%
+        mutate(
+          trade_col = "Long",
+          threshold = thresh_vector[i]
+        )
+
+      random_testing_perc <- numeric()
+      random_testing_return <- numeric()
+      required_sample_length <-
+        round(length(Trade_Data$win_loss)/20)
+
+      if(required_sample_length >= 50) {
+
+        for (j in 1:3000) {
+          random_testing_perc[j] <-
+            sum(Trade_Data$win_loss %>% sample(size = required_sample_length), na.rm = T)/required_sample_length
+          random_testing_return[j] <-
+            sum(Trade_Data %>% pull(!!as.name(period_return_col)) %>% sample(size = required_sample_length), na.rm = T)
+        }
+
+        random_returns_mid = mean(random_testing_return, na.rm = T)
+        random_returns_05 = quantile(random_testing_return, 0.05 , na.rm = T)
+        random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T)
+        random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T)
+        random_returns_sd = sd(random_testing_return, na.rm = T)
+        random_total_trades = required_sample_length
+        random_return_per_trade = random_returns_mid/required_sample_length
+
+        random_perc_mid = mean(random_testing_perc, na.rm = T)
+        random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T)
+        random_perc_25 = quantile(random_testing_perc, 0.25 , na.rm = T)
+        random_perc_75 = quantile(random_testing_perc, 0.75 , na.rm = T)
+        random_perc_sd = sd(random_testing_perc, na.rm = T)
+
+        Trade_win_loss_summary[[i]] <-
+          Trade_win_loss_summary[[i]] %>%
+          mutate(
+            random_returns_mid = random_returns_mid,
+            random_returns_05 = random_returns_05,
+            random_returns_25 = random_returns_25,
+            random_returns_75 = random_returns_75,
+            random_returns_sd = random_returns_sd,
+            random_total_trades = random_total_trades,
+            random_return_per_trade = random_return_per_trade,
+
+            random_perc_mid = random_perc_mid,
+            random_perc_05 = random_perc_05,
+            random_perc_25 = random_perc_25,
+            random_perc_75 = random_perc_75,
+            random_perc_sd = random_perc_sd
+          )
+
+      }
+
+    }
+
+    Trade_win_loss_summary_dfr <-
+      Trade_win_loss_summary %>%
+      map_dfr(bind_rows) %>%
+      bind_rows(control_win_loss_summary)
+
+    return(Trade_win_loss_summary_dfr)
+
+  }
 
 #' construct_time_series
 #'

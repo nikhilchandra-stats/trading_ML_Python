@@ -477,7 +477,8 @@ state_space_rolling = c(100, 200, 300, 400)
 # sig_thresh_vec <- c(0.99, 0.1, 0.05, 0.01, 10^-3, 10^-5, 10^-7, 10^-9)
 sig_thresh_vec <- c(0.99, 10^-3, 10^-5, 10^-7, 10^-9)
 bin_threshold_vec <- c(0)
-result_db_path <- "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIG_THRESH_FINDER_Redone.DB"
+safely_gen <- safely(Single_Asset_V3_Gen_Model_No_data_gen, otherwise = NULL)
+result_db_path <- "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIG_THRESH_FINDER_Redone_MULTI_COND.DB"
 reset_DB <- TRUE
 c = 0
 
@@ -531,7 +532,7 @@ for (j in 1:length(assets_to_test)) {
 
       tictoc::tic()
       pred_data <-
-        Single_Asset_V3_Gen_Model_No_data_gen(
+        safely_gen(
               Indices_Metals_Bonds = Indices_Metals_Bonds,
               actual_wins_losses = actual_wins_losses,
               AR_model_data = required_data$AR_model_data,
@@ -548,186 +549,419 @@ for (j in 1:length(assets_to_test)) {
               sig_thresh_Copula = sig_thresh_current,
               sig_thresh_statespace = sig_thresh_current,
               sig_thresh_macro = sig_thresh_current
-        )
+        ) %>%
+        pluck('result')
       tictoc::toc()
 
-      testing_pred_data <-
-        pred_data[[1]] %>%
-        ungroup() %>%
-        mutate(
-          averaged_50_LM_pred =
-            (state_space_LM_Pred_period_return_50_Price +
-               AR_LM_Pred_period_return_50_Price)/2,
+      if(!is.null(pred_data)) {
+        testing_pred_data <-
+          pred_data[[1]] %>%
+          ungroup() %>%
+          mutate(
+            averaged_50_LM_pred =
+              (state_space_LM_Pred_period_return_50_Price +
+                 AR_LM_Pred_period_return_50_Price)/2,
 
-          averaged_50_GLM_pred =
-            (state_space_GLM_Pred_period_return_50_Price +
-               AR_GLM_Pred_period_return_50_Price )/2
+            averaged_50_GLM_pred =
+              (state_space_GLM_Pred_period_return_50_Price +
+                 AR_GLM_Pred_period_return_50_Price )/2
 
-          # averaged_42_50_GLM_pred =
-          #   (state_space_GLM_Pred_period_return_42_Price +
-          #      AR_GLM_Pred_period_return_42_Price +
-          #      state_space_GLM_Pred_period_return_50_Price +
-          #      AR_GLM_Pred_period_return_50_Price)/4,
-          #
-          # averaged_42_50_LM_pred =
-          #   (state_space_LM_Pred_period_return_42_Price +
-          #      AR_LM_Pred_period_return_42_Price +
-          #      state_space_LM_Pred_period_return_50_Price +
-          #      AR_LM_Pred_period_return_50_Price)/4
-        )
+            # averaged_42_50_GLM_pred =
+            #   (state_space_GLM_Pred_period_return_42_Price +
+            #      AR_GLM_Pred_period_return_42_Price +
+            #      state_space_GLM_Pred_period_return_50_Price +
+            #      AR_GLM_Pred_period_return_50_Price)/4,
+            #
+            # averaged_42_50_LM_pred =
+            #   (state_space_LM_Pred_period_return_42_Price +
+            #      AR_LM_Pred_period_return_42_Price +
+            #      state_space_LM_Pred_period_return_50_Price +
+            #      AR_LM_Pred_period_return_50_Price)/4
+          )
 
-      AR_LM_Pred_analysis_LM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "AR_LM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          # thresh_vector = seq(0, 0.9, 0.05),
-          thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "AR_LM_Pred_period_return_50_Price")
+        AR_LM_Pred_analysis_LM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "AR_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "AR_LM_Pred_period_return_50_Price")
 
-      AR_GLM_Pred_analysis_GLM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "AR_GLM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          thresh_vector = seq(0, 0.9, 0.05),
-          # thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "AR_GLM_Pred_period_return_50_Price")
+        AR_GLM_Pred_analysis_GLM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "AR_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "AR_GLM_Pred_period_return_50_Price")
 
-      state_space_LM_Pred_analysis_LM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "state_space_LM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          # thresh_vector = seq(0, 0.9, 0.05),
-          thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "state_space_LM_Pred_period_return_50_Price")
+        state_space_LM_Pred_analysis_LM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "state_space_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "state_space_LM_Pred_period_return_50_Price")
 
-      state_space_GLM_Pred_analysis_GLM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "state_space_GLM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          thresh_vector = seq(0, 0.9, 0.05),
-          # thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "state_space_GLM_Pred_period_return_50_Price")
+        state_space_GLM_Pred_analysis_GLM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "state_space_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "state_space_GLM_Pred_period_return_50_Price")
 
-      copula_LM_Pred_analysis_LM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "Copula_LM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          # thresh_vector = seq(0, 0.9, 0.05),
-          thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "Copula_LM_Pred_period_return_50_Price")
+        copula_LM_Pred_analysis_LM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "Copula_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "Copula_LM_Pred_period_return_50_Price")
 
-      copula_GLM_Pred_analysis_GLM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "Copula_GLM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          thresh_vector = seq(0, 0.9, 0.05),
-          # thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "Copula_GLM_Pred_period_return_50_Price")
+        copula_GLM_Pred_analysis_GLM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "Copula_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "Copula_GLM_Pred_period_return_50_Price")
 
-      Macro_LM_Pred_analysis_LM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "Macro_LM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          # thresh_vector = seq(0, 0.9, 0.05),
-          thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "Macro_LM_Pred_period_return_50_Price")
+        Macro_LM_Pred_analysis_LM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "Macro_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "Macro_LM_Pred_period_return_50_Price")
 
-      Macro_GLM_Pred_analysis_GLM <-
-        construct_Performance_to_Thresh_Curve(
-          pred_data = testing_pred_data,
-          pred_col = "Macro_GLM_Pred_period_return_50_Price",
-          actual_wins_losses = actual_wins_losses,
-          thresh_vector = seq(0, 0.9, 0.05),
-          # thresh_vector = seq(-15, 10, 1),
-          period_return_col = "period_return_50_Price",
-          sim_start_date = "2022-01-01"
-        ) %>%
-        mutate(Asset = asset_of_interest,
-               pred_col_used = "Macro_GLM_Pred_period_return_50_Price")
+        Macro_GLM_Pred_analysis_GLM <-
+          construct_Performance_to_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col = "Macro_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "Macro_GLM_Pred_period_return_50_Price")
 
-      all_results_dfr <-
-        AR_LM_Pred_analysis_LM %>%
-        bind_rows(AR_GLM_Pred_analysis_GLM) %>%
-        bind_rows(state_space_LM_Pred_analysis_LM)%>%
-        bind_rows(state_space_GLM_Pred_analysis_GLM)%>%
-        bind_rows(copula_LM_Pred_analysis_LM) %>%
-        bind_rows(copula_GLM_Pred_analysis_GLM) %>%
-        bind_rows(Macro_LM_Pred_analysis_LM) %>%
-        bind_rows(Macro_GLM_Pred_analysis_GLM) %>%
-        mutate(
-          sig_thresh_current = sig_thresh_vec[i],
-          bin_threshold_current = bin_threshold_vec[k]
-        )
+        AR_Macro_pred_analysis_LM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "Macro_LM_Pred_period_return_50_Price",
+            pred_col2 = "AR_LM_Pred_period_return_50_Price",
+            pred_col3 = NULL,
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "Macro_LM_Pred_period_return_50_Price & AR_LM_Pred_period_return_50_Price")
 
-      if(c == 1 & reset_DB == TRUE){
-        db_con <- connect_db(result_db_path)
-        write_table_sql_lite(.data = all_results_dfr,
-                             table_name = "SIG_THRESH_FINDER",
-                             conn = db_con,
-                             overwrite_true = TRUE)
-        DBI::dbDisconnect(db_con)
+        AR_Macro_pred_analysis_GLM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "Macro_GLM_Pred_period_return_50_Price",
+            pred_col2 = "AR_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "Macro_GLM_Pred_period_return_50_Price & AR_GLM_Pred_period_return_50_Price")
 
-        # db_con <- connect_db(result_db_path)
-        # append_table_sql_lite(.data = all_results_dfr,
-        #                       table_name = "SIG_THRESH_FINDER",
-        #                       conn = db_con)
-        # DBI::dbDisconnect(db_con)
+        AR_state_space_pred_analysis_LM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "state_space_LM_Pred_period_return_50_Price",
+            pred_col2 = "AR_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "state_space_LM_Pred_period_return_50_Price & AR_LM_Pred_period_return_50_Price")
 
-      } else {
-        db_con <- connect_db(result_db_path)
-        append_table_sql_lite(.data = all_results_dfr,
-                             table_name = "SIG_THRESH_FINDER",
-                             conn = db_con)
-        DBI::dbDisconnect(db_con)
+        AR_state_space_pred_analysis_GLM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "state_space_GLM_Pred_period_return_50_Price",
+            pred_col2 = "AR_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "state_space_GLM_Pred_period_return_50_Price & AR_GLM_Pred_period_return_50_Price")
+
+
+        state_space_Macro_pred_analysis_LM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "state_space_LM_Pred_period_return_50_Price",
+            pred_col2 = "Macro_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "state_space_LM_Pred_period_return_50_Price & Macro_LM_Pred_period_return_50_Price")
+
+
+        state_space_Macro_pred_analysis_GLM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "state_space_GLM_Pred_period_return_50_Price",
+            pred_col2 = "Macro_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used = "state_space_GLM_Pred_period_return_50_Price & Macro_GLM_Pred_period_return_50_Price")
+
+
+        AR_state_space_macro_pred_analysis_LM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "state_space_LM_Pred_period_return_50_Price",
+            pred_col2 = "AR_LM_Pred_period_return_50_Price",
+            pred_col3 = "Macro_LM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            # thresh_vector = seq(0, 0.9, 0.05),
+            thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used =
+                   "state_space_LM_Pred_period_return_50_Price & AR_LM_Pred_period_return_50_Price & Macro_LM_Pred_period_return_50_Price")
+
+        AR_state_space_macro_pred_analysis_GLM <-
+          construct_Performance_to_2_Thresh_Curve(
+            pred_data = testing_pred_data,
+            pred_col1 = "state_space_GLM_Pred_period_return_50_Price",
+            pred_col2 = "AR_GLM_Pred_period_return_50_Price",
+            pred_col3 = "Macro_GLM_Pred_period_return_50_Price",
+            actual_wins_losses = actual_wins_losses,
+            thresh_vector = seq(0, 0.9, 0.05),
+            # thresh_vector = seq(-15, 10, 1),
+            period_return_col = "period_return_50_Price",
+            sim_start_date = "2022-01-01"
+          ) %>%
+          mutate(Asset = asset_of_interest,
+                 pred_col_used =
+                   "state_space_GLM_Pred_period_return_50_Price & AR_GLM_Pred_period_return_50_Price & Macro_GLM_Pred_period_return_50_Price")
+
+        all_results_dfr <-
+          AR_LM_Pred_analysis_LM %>%
+          bind_rows(AR_GLM_Pred_analysis_GLM) %>%
+          bind_rows(state_space_LM_Pred_analysis_LM)%>%
+          bind_rows(state_space_GLM_Pred_analysis_GLM)%>%
+          bind_rows(copula_LM_Pred_analysis_LM) %>%
+          bind_rows(copula_GLM_Pred_analysis_GLM) %>%
+          bind_rows(Macro_LM_Pred_analysis_LM) %>%
+          bind_rows(Macro_GLM_Pred_analysis_GLM) %>%
+          bind_rows(AR_Macro_pred_analysis_LM) %>%
+          bind_rows(AR_Macro_pred_analysis_GLM) %>%
+          bind_rows(AR_state_space_pred_analysis_LM) %>%
+          bind_rows(AR_state_space_pred_analysis_GLM) %>%
+          bind_rows(state_space_Macro_pred_analysis_LM) %>%
+          bind_rows(state_space_Macro_pred_analysis_GLM) %>%
+          bind_rows(AR_state_space_macro_pred_analysis_LM) %>%
+          bind_rows(AR_state_space_macro_pred_analysis_GLM) %>%
+          mutate(
+            sig_thresh_current = sig_thresh_vec[i],
+            bin_threshold_current = bin_threshold_vec[k]
+          )
+
+        rm(pred_data)
+
+        if(c == 1 & reset_DB == TRUE){
+          db_con <- connect_db(result_db_path)
+          write_table_sql_lite(.data = all_results_dfr,
+                               table_name = "SIG_THRESH_FINDER",
+                               conn = db_con,
+                               overwrite_true = TRUE)
+          DBI::dbDisconnect(db_con)
+
+          # db_con <- connect_db(result_db_path)
+          # append_table_sql_lite(.data = all_results_dfr,
+          #                       table_name = "SIG_THRESH_FINDER",
+          #                       conn = db_con)
+          # DBI::dbDisconnect(db_con)
+
+        } else {
+          db_con <- connect_db(result_db_path)
+          append_table_sql_lite(.data = all_results_dfr,
+                                table_name = "SIG_THRESH_FINDER",
+                                conn = db_con)
+          DBI::dbDisconnect(db_con)
+        }
+
       }
-
     }
   }
 }
 
 db_con <- connect_db(result_db_path)
-sim_results <- DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM SIG_THRESH_FINDER")
+AR_LM_Pred_analysis <-
+  DBI::dbGetQuery(conn = db_con,
+                  statement = "SELECT * FROM SIG_THRESH_FINDER")
 DBI::dbDisconnect(db_con)
 
-sim_results_max <-
+analyse_control_vs_model <-
+  function(pred_analysis_data = AR_LM_Pred_analysis,
+           thresh_min_LM = 0.5,
+           thresh_min_GLM = 0.5) {
+
+    control_data <-
+      pred_analysis_data %>%
+      filter(trade_col == "Control") %>%
+      dplyr::select(Asset,
+                    pred_col_used,
+                    Final_Winnings_Control = Final_Winnings,
+                    random_returns_mid_control = random_returns_mid,
+                    random_perc_mid_control = random_perc_mid,
+                    random_returns_05_control = random_returns_05,
+                    random_returns_75_control = random_returns_75,
+                    Perc_Control = Perc_UnAdj) %>%
+      distinct() %>%
+      group_by(pred_col_used, Asset) %>%
+      slice_max(random_perc_mid_control) %>%
+      ungroup() %>%
+      distinct()
+
+
+    model_data <-
+      pred_analysis_data %>%
+      filter(
+        (str_detect(pred_col_used, "GLM") & threshold >= thresh_min_GLM) |
+          (str_detect(pred_col_used, "_LM") & threshold >= thresh_min_LM)
+      ) %>%
+      dplyr::select(Asset,
+                    pred_col_used,
+                    total_trades,
+                    Final_Winnings,
+                    random_returns_mid,
+                    random_returns_05,
+                    random_returns_75,
+                    random_perc_mid,
+                    Perc_Adj,
+                    sig_thresh_current,
+                    bin_threshold_current,
+                    threshold) %>%
+      distinct() %>%
+      left_join(
+        control_data
+      ) %>%
+      mutate(
+        Final_Winnings_Diff = Final_Winnings - Final_Winnings_Control,
+        random_returns_mid_Diff = random_returns_mid - random_returns_mid_control,
+        perc_diff = random_perc_mid - Perc_Control
+      )
+
+    return(model_data)
+
+  }
+
+
+control_diffs <-
+  analyse_control_vs_model(
+    pred_analysis_data = AR_LM_Pred_analysis,
+    thresh_min_LM = 0.1,
+    thresh_min_GLM = 0.5
+  ) %>%
+  filter(total_trades >= 1000)
+
+random_returns_diff <-
+  control_diffs %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_returns_mid_Diff) %>%
+  ungroup() %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_perc_mid_control) %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(Final_Winnings)
+
+
+required_sig_threshes <-
+  random_returns_diff %>%
+  group_by(pred_col_used, Asset) %>%
+  distinct(sig_thresh_current, threshold, bin_threshold_current)
+
+db_con <- connect_db(result_db_path)
+write_table_sql_lite(.data = required_sig_threshes,
+                     table_name = "BEST_SIG_PER_ASSET",
+                     conn = db_con,
+                     overwrite_true = TRUE)
+DBI::dbDisconnect(db_con)
+
+
+sim_results_max_LM <-
   sim_results %>%
-  filter(threshold > 0) %>%
-  group_by(Asset) %>%
+  filter(threshold > 0, str_detect(pred_col_used, "_LM"), total_trades >= 1000) %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(Final_Winnings) %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_returns_mid)  %>%
+  group_by(Asset, pred_col_used) %>%
+  slice_max(random_perc_mid)
+
+sim_results_max_GLM <-
+  sim_results %>%
+  filter(threshold > 0, str_detect(pred_col_used, "_GLM")) %>%
+  group_by(Asset, pred_col_used) %>%
   slice_max(Final_Winnings)
 
 sim_results_max <-
