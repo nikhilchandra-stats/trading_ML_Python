@@ -314,9 +314,6 @@ Single_Asset_V3_Read_in_Probs_Exclude_Copula <-
     complete_preds_test <-
       AR_Test_Preds %>%
       left_join(
-        Copula_Test_Preds
-      ) %>%
-      left_join(
         state_space_Test_Preds
       )%>%
       left_join(
@@ -354,6 +351,7 @@ Single_Asset_V3_Read_in_Probs_Exclude_Copula <-
 Single_Asset_V3_get_all_preds <-
   function(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
+    raw_macro_data = raw_macro_data,
     base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
     actuals_periods_needed = c("period_return_50_Price"),
     correlation_rolling_periods = c(100,200, 300,400, 500),
@@ -384,13 +382,13 @@ Single_Asset_V3_get_all_preds <-
                         "EUR_JPY", #16
                         "EUR_NZD", #17
                         "XAG_USD", #18
-                        "XAG_EUR", #19
-                        "XAG_AUD", #20
-                        "XAG_NZD", #21
+                        # "XAG_EUR", #19
+                        # "XAG_AUD", #20
+                        # "XAG_NZD", #21
                         "HK33_HKD", #22
                         "FR40_EUR", #23
                         "BTC_USD", #24
-                        "XAG_GBP", #25
+                        # "XAG_GBP", #25
                         "GBP_AUD", #26
                         "USD_SEK", #27
                         "USD_SGD", #28
@@ -402,7 +400,7 @@ Single_Asset_V3_get_all_preds <-
                         "SG30_SGD", #34
                         "XAU_USD", #35
                         "EUR_SEK", #36
-                        "XAU_AUD", #37
+                        # "XAU_AUD", #37
                         "UK10YB_GBP", #38
                         "JP225Y_JPY", #39
                         "ETH_USD" #40
@@ -503,20 +501,20 @@ Single_Asset_V3_get_all_preds <-
           "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "EUR_USD", "USD_JPY",
           "GBP_USD", "AUD_USD", "USD_CAD", "USD_SEK") %>% unique(), #18
 
-        # "XAG_EUR", #19
-        c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD",
-          "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "EUR_USD", "EUR_JPY",
-          "EUR_GBP", "EUR_AUD", "EUR_SEK", "EUR_NZD") %>% unique(), #19
-
-        # "XAG_AUD", #20
-        c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
-          "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD",
-          "AUD_USD", "EUR_AUD", "GBP_AUD") %>% unique(), #20
-
-        # "XAG_NZD", #21
-        c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
-          "XAG_AUD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD",
-          "NZD_USD", "GBP_NZD", "EUR_NZD") %>% unique(), #21
+        # # "XAG_EUR", #19
+        # c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD",
+        #   "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "EUR_USD", "EUR_JPY",
+        #   "EUR_GBP", "EUR_AUD", "EUR_SEK", "EUR_NZD") %>% unique(), #19
+        #
+        # # "XAG_AUD", #20
+        # c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
+        #   "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD",
+        #   "AUD_USD", "EUR_AUD", "GBP_AUD") %>% unique(), #20
+        #
+        # # "XAG_NZD", #21
+        # c("XAG_JPY", "XAG_GBP", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
+        #   "XAG_AUD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD",
+        #   "NZD_USD", "GBP_NZD", "EUR_NZD") %>% unique(), #21
 
         # "HK33_HKD", #22
         c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
@@ -533,10 +531,10 @@ Single_Asset_V3_get_all_preds <-
           "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
           "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(), #24
 
-        # "XAG_GBP", #25
-        c("XAG_JPY", "XAG_NZD", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
-          "XAG_AUD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "UK100_GBP",
-          "GBP_USD", "GBP_NZD", "GBP_AUD") %>% unique(), #25
+        # # "XAG_GBP", #25
+        # c("XAG_JPY", "XAG_NZD", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
+        #   "XAG_AUD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "UK100_GBP",
+        #   "GBP_USD", "GBP_NZD", "GBP_AUD") %>% unique(), #25
 
         # "GBP_AUD" #26
         c("GBP_JPY", "GBP_CAD", "GBP_USD", "GBP_NZD", "XAU_GBP", "XAG_GBP", "UK100_GBP",
@@ -594,10 +592,10 @@ Single_Asset_V3_get_all_preds <-
           "EUR_GBP", "EUR_NZD", "EUR_JPY", "XAG_EUR", "XAU_USD", "XAG_USD",
           "GBP_JPY", "FR40_EUR", "EU50_EUR") %>% unique(), #36
 
-        # "XAU_AUD", #37
-        c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAG_USD", "EU50_EUR", "SPX500_USD",
-          "XAG_NZD", "XAU_USD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD", "USD_JPY",
-          "GBP_AUD", "AUD_USD", "EUR_AUD", "AUD_USD") %>% unique(), #37
+        # # "XAU_AUD", #37
+        # c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAG_USD", "EU50_EUR", "SPX500_USD",
+        #   "XAG_NZD", "XAU_USD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "AU200_AUD", "USD_JPY",
+        #   "GBP_AUD", "AUD_USD", "EUR_AUD", "AUD_USD") %>% unique(), #37
 
         # "UK10YB_GBP", #38
         c("XAU_GBP", "XAG_GBP", "XAU_USD", "EUR_GBP", "XAU_EUR", "GBP_AUD", "GBP_NZD",
