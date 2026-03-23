@@ -824,26 +824,31 @@ Single_Asset_V3_Gen_Model <-
            copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
            raw_macro_data = raw_macro_data,
            base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/",
-           sig_thresh_AR = 0.01,
-           sig_thresh_Copula = 0.01,
-           sig_thresh_statespace = 0.01,
-           sig_thresh_macro = 0.01) {
+           sig_thresh_AR_LM = 0.01,
+           sig_thresh_AR_GLM = 0.01,
+           sig_thresh_Copula_LM = 0.01,
+           sig_thresh_Copula_GLM = 0.01,
+           sig_thresh_statespace_LM = 0.01,
+           sig_thresh_statespace_GLM = 0.01,
+           sig_thresh_macro_LM = 0.01,
+           sig_thresh_macro_GLM = 0.01) {
 
     asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
     actual_wins_losses_asset <- actual_wins_losses %>% filter(Asset == asset_of_interest)
 
     AR_preds_list <-
       single_asset_v3_gen_AR_Model(
-      Indices_Metals_Bonds = asset_data,
-      actual_wins_losses = actual_wins_losses_asset,
-      asset_of_interest = asset_of_interest,
-      actuals_periods_needed = actuals_periods_needed,
-      training_end_date = training_end_date,
-      bin_threshold = bin_threshold,
-      rolling_mean_pred_period = rolling_mean_pred_period,
-      base_path = base_path,
-      sig_thresh = sig_thresh_AR
-    )
+        Indices_Metals_Bonds = asset_data,
+        actual_wins_losses = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        base_path = base_path,
+        sig_thresh_LM = sig_thresh_AR_LM,
+        sig_thresh_GLM = sig_thresh_AR_GLM
+      )
 
     AR_Train_Preds_mean <-
       AR_preds_list %>%
@@ -857,18 +862,19 @@ Single_Asset_V3_Gen_Model <-
 
     copula_preds_list <-
       single_asset_v3_gen_Copula_Model(
-      Indices_Metals_Bonds = Indices_Metals_Bonds,
-      actual_wins_losses_asset = actual_wins_losses_asset,
-      asset_of_interest = asset_of_interest,
-      actuals_periods_needed = actuals_periods_needed,
-      training_end_date = training_end_date,
-      bin_threshold = bin_threshold,
-      rolling_mean_pred_period = rolling_mean_pred_period,
-      sig_thresh = sig_thresh_Copula,
-      copula_assets = copula_assets,
-      correlation_rolling_periods = correlation_rolling_periods,
-      base_path = base_path
-    )
+        Indices_Metals_Bonds = Indices_Metals_Bonds,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        sig_thresh_LM = sig_thresh_Copula_LM,
+        sig_thresh_GLM = sig_thresh_Copula_GLM,
+        copula_assets = copula_assets,
+        correlation_rolling_periods = correlation_rolling_periods,
+        base_path = base_path
+      )
 
     Copula_Train_Preds_mean <-
       copula_preds_list %>%
@@ -887,18 +893,19 @@ Single_Asset_V3_Gen_Model <-
 
     state_space_preds_list <-
       single_asset_v3_gen_state_space_Model(
-      asset_data = asset_data,
-      actual_wins_losses_asset = actual_wins_losses_asset,
-      asset_of_interest = asset_of_interest,
-      actuals_periods_needed = actuals_periods_needed,
-      training_end_date = training_end_date,
-      bin_threshold = bin_threshold,
-      rolling_mean_pred_period = rolling_mean_pred_period,
-      sig_thresh = sig_thresh_statespace,
-      state_space_periods = state_space_periods,
-      state_space_rolling = state_space_rolling,
-      base_path = base_path
-    )
+        asset_data = asset_data,
+        actual_wins_losses_asset = actual_wins_losses_asset,
+        asset_of_interest = asset_of_interest,
+        actuals_periods_needed = actuals_periods_needed,
+        training_end_date = training_end_date,
+        bin_threshold = bin_threshold,
+        rolling_mean_pred_period = rolling_mean_pred_period,
+        sig_thresh_LM = sig_thresh_statespace_LM,
+        sig_thresh_GLM = sig_thresh_statespace_GLM,
+        state_space_periods = state_space_periods,
+        state_space_rolling = state_space_rolling,
+        base_path = base_path
+      )
 
     state_space_Train_Preds_mean <-
       state_space_preds_list %>%
@@ -917,7 +924,8 @@ Single_Asset_V3_Gen_Model <-
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
         rolling_mean_pred_period = rolling_mean_pred_period,
-        sig_thresh = sig_thresh_macro,
+        sig_thresh_LM = sig_thresh_macro_LM,
+        sig_thresh_GLM = sig_thresh_macro_GLM,
         raw_macro_data = raw_macro_data,
         base_path = base_path
       )
@@ -972,6 +980,215 @@ Single_Asset_V3_Gen_Model <-
         "complete_preds_train" = complete_preds_train
       )
     )
+
+  }
+
+#' Single_Asset_V3_Read_in_Probs_with_Macro
+#'
+#' @param Indices_Metals_Bonds
+#' @param asset_of_interest
+#' @param actuals_periods_needed
+#' @param training_end_date
+#' @param rolling_mean_pred_period
+#' @param correlation_rolling_periods
+#' @param state_space_periods
+#' @param state_space_rolling
+#' @param copula_assets
+#' @param raw_macro_data
+#' @param base_path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Single_Asset_V3_Read_in_Probs_with_Macro <-
+  function(Indices_Metals_Bonds,
+           asset_of_interest = "GBP_JPY",
+           actuals_periods_needed = c("period_return_24_Price", "period_return_35_Price", "period_return_46_Price"),
+           training_end_date = "2025-05-01",
+           rolling_mean_pred_period = 500,
+           correlation_rolling_periods = c(100,200, 300,400, 500),
+           state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
+           state_space_rolling = c(100, 200, 300, 400),
+           copula_assets = c("GBP_USD", "EUR_JPY", "USD_JPY", "XAU_JPY", "GBP_CHF", "XAG_GBP", "GBP_NZD", "UK100_GBP", "EUR_USD", "GBP_AUD"),
+           raw_macro_data = raw_macro_data,
+           base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/" ) {
+
+    asset_data = Indices_Metals_Bonds[[1]] %>% filter(Asset == asset_of_interest)
+
+    all_data_list <-
+      Single_Asset_V3_get_all_data_for_model(
+        Indices_Metals_Bonds = Indices_Metals_Bonds,
+        asset_of_interest = asset_of_interest,
+        copula_assets = copula_assets,
+        raw_macro_data = raw_macro_data,
+        correlation_rolling_periods = correlation_rolling_periods,
+        state_space_periods = state_space_periods,
+        state_space_rolling = state_space_rolling,
+        loop_list_cols = c("Price", "Low", "High")
+      )
+
+    AR_model_data <-
+      all_data_list$AR_model_data
+
+    copula_data <-
+      all_data_list$copula_data
+
+    state_space_data <-
+      all_data_list$state_space_data
+
+    macro_model_data <-
+      all_data_list$macro_model_data
+
+    rm(all_data_list)
+    gc()
+
+    AR_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      AR_preds_list[[i]] <-
+        Single_Asset_V3_AR_read_model(
+          AR_model_data = AR_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    AR_Train_Preds_mean <-
+      AR_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    AR_Test_Preds <-
+      AR_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(AR_preds_list)
+
+    copula_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      copula_preds_list[[i]] <-
+        Single_Asset_V3_Copula_read_Model(
+          copula_data = copula_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Copula_Train_Preds_mean <-
+      copula_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Copula_Test_Preds <-
+      copula_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(copula_preds_list)
+
+    state_space_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      state_space_preds_list[[i]] <-
+        Single_Asset_V3_state_space_read_Model(
+          state_space_data = state_space_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    state_space_Train_Preds_mean <-
+      state_space_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    state_space_Test_Preds <-
+      state_space_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    Macro_preds_list <- list()
+
+    for (i in 1:length(actuals_periods_needed)) {
+      Macro_preds_list[[i]] <-
+        Single_Asset_V3_macro_read_Model(
+          macro_model_data = macro_model_data,
+          asset_of_interest = asset_of_interest,
+          period_of_analysis = actuals_periods_needed[i],
+          training_end_date = training_end_date,
+          roll_mean_period = rolling_mean_pred_period,
+          base_path = base_path
+        )
+    }
+
+    Macro_Train_Preds_mean <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("training_data")) %>%
+      reduce(left_join)
+
+    Macro_Test_Preds <-
+      Macro_preds_list %>%
+      map(~.x %>% pluck("testing_data")) %>%
+      reduce(left_join)
+
+    rm(Macro_preds_list)
+    gc()
+
+
+    complete_preds_train <-
+      AR_Train_Preds_mean %>%
+      left_join(
+        Copula_Train_Preds_mean
+      ) %>%
+      left_join(
+        state_space_Train_Preds_mean
+      )%>%
+      left_join(
+        Macro_Train_Preds_mean
+      )
+
+    first_non_NA_date <-
+      complete_preds_train %>%
+      filter(if_all(everything(), ~!is.na(.))) %>%
+      pull(Date) %>%
+      min(na.rm = T)
+
+
+    complete_preds_train <-
+      complete_preds_train %>%
+      filter(Date >= first_non_NA_date)
+
+    complete_preds_test <-
+      AR_Test_Preds %>%
+      left_join(
+        Copula_Test_Preds
+      ) %>%
+      left_join(
+        state_space_Test_Preds
+      )%>%
+      left_join(
+        Macro_Test_Preds
+      )
+
+    return(
+      list(
+        "complete_preds_test" = complete_preds_test,
+        "complete_preds_train" = complete_preds_train
+      )
+    )
+
 
   }
 
@@ -1230,7 +1447,8 @@ Single_Asset_V3_Gen_Model_No_data_gen <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh_AR,
+        sig_thresh_LM = sig_thresh_AR,
+        sig_thresh_GLM = sig_thresh_AR,
         base_path = base_path
       )
     }
@@ -1269,7 +1487,8 @@ Single_Asset_V3_Gen_Model_No_data_gen <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh_Copula,
+        sig_thresh_LM = sig_thresh_Copula,
+        sig_thresh_GLM = sig_thresh_Copula,
         base_path = base_path
       )
     }
@@ -1309,7 +1528,8 @@ Single_Asset_V3_Gen_Model_No_data_gen <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh_statespace,
+        sig_thresh_LM = sig_thresh_statespace,
+        sig_thresh_GLM = sig_thresh_statespace,
         base_path = base_path
       )
     }
@@ -1631,7 +1851,8 @@ single_asset_v3_gen_state_space_Model <-
     training_end_date = "2025-05-01",
     bin_threshold = 5,
     rolling_mean_pred_period = 500,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.01,
+    sig_thresh_GLM = 0.01,
     state_space_periods = c(20, 40, 60, 100, 200),
     state_space_rolling = c(100, 200),
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v1/"
@@ -1669,7 +1890,8 @@ single_asset_v3_gen_state_space_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh,
+        sig_thresh_LM = sig_thresh_LM,
+        sig_thresh_GLM = sig_thresh_GLM,
         base_path = base_path
       )
     }
@@ -1972,7 +2194,8 @@ Single_Asset_V3_state_space_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.01,
+    sig_thresh_LM = 0.01,
+    sig_thresh_GLM = 0.01,
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
@@ -2001,7 +2224,7 @@ Single_Asset_V3_state_space_Gen_Model <-
 
     LM_model <- lm(formula = lm_form, data = joined_data)
 
-    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
 
     lm_form <-
       create_lm_formula(dependant = period_of_analysis, independant = sig_coefs)
@@ -2022,7 +2245,7 @@ Single_Asset_V3_state_space_Gen_Model <-
 
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
-    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh_GLM)
 
     Glm_form <-
       create_lm_formula(dependant = "bin_var", independant = sig_coefs)
@@ -2159,18 +2382,18 @@ Single_Asset_V3_Cop_data <-
         fill(c(Price_2, High_2, Low_2), .direction = "down") %>%
         mutate(
           High_Max_1 = slider::slide_dbl(.x = High,
-                                          .f = ~ max(.x, na.rm = TRUE),
-                                          .before = rolling_period_cor),
+                                         .f = ~ max(.x, na.rm = TRUE),
+                                         .before = rolling_period_cor),
           High_Max_2 = slider::slide_dbl(.x = High_2,
-                                          .f = ~ max(.x, na.rm = TRUE),
-                                          .before = rolling_period_cor),
+                                         .f = ~ max(.x, na.rm = TRUE),
+                                         .before = rolling_period_cor),
 
           Low_Min_1 = slider::slide_dbl(.x = Low,
-                                         .f = ~ min(.x, na.rm = TRUE),
-                                         .before = rolling_period_cor),
+                                        .f = ~ min(.x, na.rm = TRUE),
+                                        .before = rolling_period_cor),
           Low_Min_2 = slider::slide_dbl(.x = Low_2,
-                                         .f = ~ min(.x, na.rm = TRUE),
-                                         .before = rolling_period_cor),
+                                        .f = ~ min(.x, na.rm = TRUE),
+                                        .before = rolling_period_cor),
 
           MA_Price_1 = slider::slide_dbl(.x = Price,
                                          .f = ~ mean(.x, na.rm = T),
@@ -2273,7 +2496,8 @@ single_asset_v3_gen_Copula_Model <-
     training_end_date = "2025-05-01",
     bin_threshold = 5,
     rolling_mean_pred_period = 500,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.15,
+    sig_thresh_GLM = 0.15,
     copula_assets = copula_assets,
     correlation_rolling_periods = correlation_rolling_periods,
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
@@ -2305,7 +2529,8 @@ single_asset_v3_gen_Copula_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh,
+        sig_thresh_LM = sig_thresh_LM,
+        sig_thresh_GLM = sig_thresh_GLM,
         base_path = base_path
       )
     }
@@ -2368,7 +2593,8 @@ Single_Asset_V3_Copula_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.15,
+    sig_thresh_GLM = 0.15,
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
@@ -2398,7 +2624,7 @@ Single_Asset_V3_Copula_Gen_Model <-
 
     LM_model <- lm(formula = lm_form, data = joined_data)
 
-    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
 
     lm_form <-
       create_lm_formula(dependant = period_of_analysis, independant = sig_coefs)
@@ -2418,7 +2644,7 @@ Single_Asset_V3_Copula_Gen_Model <-
 
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
-    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh_GLM)
 
     Glm_form <-
       create_lm_formula(dependant = "bin_var", independant = sig_coefs)
@@ -2538,7 +2764,8 @@ single_asset_v3_gen_AR_Model <-
     training_end_date = "2025-05-01",
     bin_threshold = 5,
     rolling_mean_pred_period = 500,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.15,
+    sig_thresh_GLM = 0.15,
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
@@ -2575,7 +2802,8 @@ single_asset_v3_gen_AR_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh,
+        sig_thresh_LM = sig_thresh_LM,
+        sig_thresh_GLM = sig_thresh_GLM,
         base_path = base_path
       )
     }
@@ -2718,7 +2946,8 @@ Single_Asset_V3_AR_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.15,
+    sig_thresh_GLM = 0.15,
     base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/single_asset_models_v3/"
   ) {
 
@@ -2745,7 +2974,7 @@ Single_Asset_V3_AR_Gen_Model <-
 
     LM_model <- lm(formula = lm_form, data = joined_data)
 
-    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
 
     lm_form <-
       create_lm_formula(dependant = period_of_analysis, independant = sig_coefs)
@@ -2767,7 +2996,7 @@ Single_Asset_V3_AR_Gen_Model <-
 
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
-    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh_GLM)
 
     Glm_form <-
       create_lm_formula(dependant = "bin_var", independant = sig_coefs)
@@ -3359,7 +3588,8 @@ Single_Asset_V3_Macro_Gen_Model <-
     period_of_analysis = actuals_periods_needed[1],
     training_end_date = training_end_date,
     bin_threshold = bin_threshold,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.15,
+    sig_thresh_GLM = 0.15,
     base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/"
   ) {
 
@@ -3386,7 +3616,7 @@ Single_Asset_V3_Macro_Gen_Model <-
 
     LM_model <- lm(formula = lm_form, data = joined_data)
 
-    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
 
     lm_form <-
       create_lm_formula(dependant = period_of_analysis, independant = sig_coefs)
@@ -3408,7 +3638,7 @@ Single_Asset_V3_Macro_Gen_Model <-
 
     GLM_model <- glm(formula = Glm_form, data = joined_data, family = binomial("logit"))
 
-    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh)
+    sig_coefs <- get_sig_coefs(GLM_model, p_value_thresh_for_inputs = sig_thresh_GLM)
 
     Glm_form <-
       create_lm_formula(dependant = "bin_var", independant = sig_coefs)
@@ -3527,7 +3757,8 @@ single_asset_v3_gen_macro_Model <-
     training_end_date = "2025-05-01",
     bin_threshold = 5,
     rolling_mean_pred_period = 500,
-    sig_thresh = 0.15,
+    sig_thresh_LM = 0.15,
+    sig_thresh_GLM = 0.15,
     raw_macro_data = raw_macro_data,
     base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/"
   ) {
@@ -3616,7 +3847,8 @@ single_asset_v3_gen_macro_Model <-
         period_of_analysis = actuals_periods_needed[i],
         training_end_date = training_end_date,
         bin_threshold = bin_threshold,
-        sig_thresh = sig_thresh,
+        sig_thresh_LM = sig_thresh_LM,
+        sig_thresh_GLM = sig_thresh_GLM,
         base_path = base_path
       )
     }
@@ -4178,8 +4410,6 @@ construct_Performance_to_Thresh_Curve <-
         random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T),
         random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T),
         random_returns_sd = sd(random_testing_return, na.rm = T),
-        random_total_trades = 480,
-        random_return_per_trade = random_returns_mid/480,
 
         random_perc_mid = mean(random_testing_perc, na.rm = T),
         random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T),
@@ -4289,8 +4519,6 @@ construct_Performance_to_Thresh_Curve <-
         random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T)
         random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T)
         random_returns_sd = sd(random_testing_return, na.rm = T)
-        random_total_trades = required_sample_length
-        random_return_per_trade = random_returns_mid/required_sample_length
 
         random_perc_mid = mean(random_testing_perc, na.rm = T)
         random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T)
@@ -4306,8 +4534,6 @@ construct_Performance_to_Thresh_Curve <-
             random_returns_25 = random_returns_25,
             random_returns_75 = random_returns_75,
             random_returns_sd = random_returns_sd,
-            random_total_trades = random_total_trades,
-            random_return_per_trade = random_return_per_trade,
 
             random_perc_mid = random_perc_mid,
             random_perc_05 = random_perc_05,
@@ -4429,8 +4655,6 @@ construct_Performance_to_2_Thresh_Curve <-
         random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T),
         random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T),
         random_returns_sd = sd(random_testing_return, na.rm = T),
-        random_total_trades = 480,
-        random_return_per_trade = random_returns_mid/480,
 
         random_perc_mid = mean(random_testing_perc, na.rm = T),
         random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T),
@@ -4559,8 +4783,6 @@ construct_Performance_to_2_Thresh_Curve <-
         random_returns_25 = quantile(random_testing_return, 0.25 , na.rm = T)
         random_returns_75 = quantile(random_testing_return, 0.75 , na.rm = T)
         random_returns_sd = sd(random_testing_return, na.rm = T)
-        random_total_trades = required_sample_length
-        random_return_per_trade = random_returns_mid/required_sample_length
 
         random_perc_mid = mean(random_testing_perc, na.rm = T)
         random_perc_05 = quantile(random_testing_perc, 0.05 , na.rm = T)
@@ -4576,8 +4798,6 @@ construct_Performance_to_2_Thresh_Curve <-
             random_returns_25 = random_returns_25,
             random_returns_75 = random_returns_75,
             random_returns_sd = random_returns_sd,
-            random_total_trades = random_total_trades,
-            random_return_per_trade = random_return_per_trade,
 
             random_perc_mid = random_perc_mid,
             random_perc_05 = random_perc_05,
@@ -4598,6 +4818,7 @@ construct_Performance_to_2_Thresh_Curve <-
     return(Trade_win_loss_summary_dfr)
 
   }
+
 
 #' construct_time_series
 #'
