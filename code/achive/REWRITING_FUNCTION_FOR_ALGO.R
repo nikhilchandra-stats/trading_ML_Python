@@ -1,4 +1,4 @@
-#' Single_Asset_V3_get_all_data
+#' Single_Asset_V3_get_all_data_for_model_Exc_copula
 #'
 #' @param Indices_Metals_Bonds
 #' @param asset_of_interest
@@ -157,7 +157,7 @@ Single_Asset_V3_get_all_data_for_model_Exc_copula <-
   }
 
 
-#' Single_Asset_V3_Read_in_Probs_with_Macro
+#' Single_Asset_V3_Read_in_Probs_Exclude_Copula
 #'
 #' @param Indices_Metals_Bonds
 #' @param asset_of_interest
