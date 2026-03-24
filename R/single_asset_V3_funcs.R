@@ -68,9 +68,9 @@ Single_Asset_V3_get_all_preds <-
                         "XAU_USD", #35
                         "EUR_SEK", #36
                         # "XAU_AUD", #37
-                        "UK10YB_GBP", #38
-                        "JP225Y_JPY", #39
-                        "ETH_USD" #40
+                        "UK10YB_GBP" #38
+                        # "JP225Y_JPY", #39
+                        # "ETH_USD" #40
     )
 
     correlation_asset_list <-
@@ -329,7 +329,11 @@ Single_Asset_V3_get_all_preds <-
       }
     }
 
-    return(all_probs)
+    all_preds_dfr <-
+      all_probs %>%
+      map_dfr(bind_rows)
+
+    return(all_preds_dfr)
 
   }
 
@@ -1039,42 +1043,42 @@ Single_Asset_V3_Read_in_Probs_Exclude_Copula <-
       map(~.x %>% pluck("testing_data")) %>%
       reduce(left_join)
 
-    Macro_preds_list <- list()
-
-    for (i in 1:length(actuals_periods_needed)) {
-      Macro_preds_list[[i]] <-
-        Single_Asset_V3_macro_read_Model(
-          macro_model_data = macro_model_data,
-          asset_of_interest = asset_of_interest,
-          period_of_analysis = actuals_periods_needed[i],
-          training_end_date = training_end_date,
-          roll_mean_period = rolling_mean_pred_period,
-          base_path = base_path
-        )
-    }
-
-    Macro_Train_Preds_mean <-
-      Macro_preds_list %>%
-      map(~.x %>% pluck("training_data")) %>%
-      reduce(left_join)
-
-    Macro_Test_Preds <-
-      Macro_preds_list %>%
-      map(~.x %>% pluck("testing_data")) %>%
-      reduce(left_join)
-
-    rm(Macro_preds_list)
-    gc()
+    # Macro_preds_list <- list()
+    #
+    # for (i in 1:length(actuals_periods_needed)) {
+    #   Macro_preds_list[[i]] <-
+    #     Single_Asset_V3_macro_read_Model(
+    #       macro_model_data = macro_model_data,
+    #       asset_of_interest = asset_of_interest,
+    #       period_of_analysis = actuals_periods_needed[i],
+    #       training_end_date = training_end_date,
+    #       roll_mean_period = rolling_mean_pred_period,
+    #       base_path = base_path
+    #     )
+    # }
+    #
+    # Macro_Train_Preds_mean <-
+    #   Macro_preds_list %>%
+    #   map(~.x %>% pluck("training_data")) %>%
+    #   reduce(left_join)
+    #
+    # Macro_Test_Preds <-
+    #   Macro_preds_list %>%
+    #   map(~.x %>% pluck("testing_data")) %>%
+    #   reduce(left_join)
+    #
+    # rm(Macro_preds_list)
+    # gc()
 
 
     complete_preds_train <-
       AR_Train_Preds_mean %>%
       left_join(
         state_space_Train_Preds_mean
-      )%>%
-      left_join(
-        Macro_Train_Preds_mean
       )
+      # left_join(
+      #   Macro_Train_Preds_mean
+      # )
 
     first_non_NA_date <-
       complete_preds_train %>%
@@ -1090,10 +1094,10 @@ Single_Asset_V3_Read_in_Probs_Exclude_Copula <-
       AR_Test_Preds %>%
       left_join(
         state_space_Test_Preds
-      )%>%
-      left_join(
-        Macro_Test_Preds
       )
+      # left_join(
+      #   Macro_Test_Preds
+      # )
 
     return(
       list(

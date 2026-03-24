@@ -499,16 +499,6 @@ trade_statement <-
     Asset == 'GBP_AUD'
   )|
 
-  (
-    Macro_LM_Pred_period_return_50_Price >=
-      Macro_LM_Pred_period_return_50_Price_mean + 1.35*Macro_LM_Pred_period_return_50_Price_sd &
-    Macro_LM_Pred_period_return_50_Price >= 0 &
-    state_space_LM_Pred_period_return_50_Price >=
-      state_space_LM_Pred_period_return_50_Price_mean + 0*state_space_LM_Pred_period_return_50_Price_sd &
-    state_space_LM_Pred_period_return_50_Price > 0 &
-    Asset == 'USD_SGD'
-    )|
-
     (AR_LM_Pred_period_return_50_Price >=
     AR_LM_Pred_period_return_50_Price_mean + 0*AR_LM_Pred_period_return_50_Price_sd &
     AR_LM_Pred_period_return_50_Price >= 0 &
@@ -527,16 +517,6 @@ trade_statement <-
     (state_space_GLM_Pred_period_return_50_Price > 0.925) &
     Asset == 'BTC_USD'
   )|
-
-    (
-    Macro_LM_Pred_period_return_50_Price >=
-    Macro_LM_Pred_period_return_50_Price_mean + 1.9*Macro_LM_Pred_period_return_50_Price_sd &
-    Macro_LM_Pred_period_return_50_Price >= 0 &
-    AR_LM_Pred_period_return_50_Price >=
-    AR_LM_Pred_period_return_50_Price_mean + 1*AR_LM_Pred_period_return_50_Price_sd &
-    AR_LM_Pred_period_return_50_Price >= 0 &
-    Asset == 'BTC_USD'
-    )|
 
   (
     AR_LM_Pred_period_return_50_Price >=
@@ -631,7 +611,7 @@ trade_statement <-
   )
 "
 
-assets_to_use <- assets_to_use[1:17]
+assets_to_use <- assets_to_use[1:16]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -784,7 +764,7 @@ while (current_time < end_time) {
           date_for_true_simualtion = "2019-01-01",
           training_end_date = "2021-01-01",
           asset_index_start = 1,
-          asset_index_end = 17
+          asset_index_end = 16
         )
         tictoc::toc()
 

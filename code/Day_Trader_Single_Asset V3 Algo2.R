@@ -94,51 +94,6 @@ db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
-All_Daily_Data <-
-  get_DAILY_ALGO_DATA_API_REQUEST(
-    c("EUR_USD", #1
-      "EU50_EUR", #2
-      "SPX500_USD", #3
-      "US2000_USD", #4
-      "USB10Y_USD", #5
-      "USD_JPY", #6
-      "AUD_USD", #7
-      "EUR_GBP", #8
-      "AU200_AUD" ,#9
-      "EUR_AUD", #10
-      "WTICO_USD", #11
-      "UK100_GBP", #12
-      "USD_CAD", #13
-      "GBP_USD", #14
-      "GBP_CAD", #15
-      "EUR_JPY", #16
-      "EUR_NZD", #17
-      "XAG_USD", #18
-      "XAG_EUR", #19
-      "XAG_AUD", #20
-      "XAG_NZD", #21
-      "HK33_HKD", #22
-      "FR40_EUR", #23
-      "BTC_USD", #24
-      "XAG_GBP", #25
-      "GBP_AUD", #26
-      "USD_SEK", #27
-      "USD_SGD", #28
-      "NZD_USD", #29
-      "GBP_NZD", #30
-      "XCU_USD", #31
-      "NATGAS_USD", #32
-      "GBP_JPY", #33
-      "SG30_SGD", #34
-      "XAU_USD", #35
-      "EUR_SEK", #36
-      "XAU_AUD", #37
-      "UK10YB_GBP", #38
-      "JP225Y_JPY", #39
-      "ETH_USD" #40
-    ) %>% unique()
-  )
-
 Indices_Metals_Bonds <- list()
 
 Indices_Metals_Bonds[[1]] <-
@@ -499,16 +454,6 @@ trade_statement <-
     Asset == 'GBP_AUD'
   )|
 
-  (
-    Macro_LM_Pred_period_return_50_Price >=
-      Macro_LM_Pred_period_return_50_Price_mean + 1.35*Macro_LM_Pred_period_return_50_Price_sd &
-    Macro_LM_Pred_period_return_50_Price >= 0 &
-    state_space_LM_Pred_period_return_50_Price >=
-      state_space_LM_Pred_period_return_50_Price_mean + 0*state_space_LM_Pred_period_return_50_Price_sd &
-    state_space_LM_Pred_period_return_50_Price > 0 &
-    Asset == 'USD_SGD'
-    )|
-
     (AR_LM_Pred_period_return_50_Price >=
     AR_LM_Pred_period_return_50_Price_mean + 0*AR_LM_Pred_period_return_50_Price_sd &
     AR_LM_Pred_period_return_50_Price >= 0 &
@@ -527,16 +472,6 @@ trade_statement <-
     (state_space_GLM_Pred_period_return_50_Price > 0.925) &
     Asset == 'BTC_USD'
   )|
-
-    (
-    Macro_LM_Pred_period_return_50_Price >=
-    Macro_LM_Pred_period_return_50_Price_mean + 1.9*Macro_LM_Pred_period_return_50_Price_sd &
-    Macro_LM_Pred_period_return_50_Price >= 0 &
-    AR_LM_Pred_period_return_50_Price >=
-    AR_LM_Pred_period_return_50_Price_mean + 1*AR_LM_Pred_period_return_50_Price_sd &
-    AR_LM_Pred_period_return_50_Price >= 0 &
-    Asset == 'BTC_USD'
-    )|
 
   (
     AR_LM_Pred_period_return_50_Price >=
@@ -631,7 +566,7 @@ trade_statement <-
   )
 "
 
-assets_to_use <- assets_to_use[18:35]
+assets_to_use <- assets_to_use[17:33]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -782,7 +717,7 @@ while (current_time < end_time) {
             date_for_true_simualtion = "2019-01-01",
             training_end_date = "2021-01-01",
             asset_index_start = 18,
-            asset_index_end = 35
+            asset_index_end = 33
           )
         tictoc::toc()
 
