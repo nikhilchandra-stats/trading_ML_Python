@@ -819,6 +819,75 @@ trade_statement <-
     state_space_GLM_Pred_period_return_50_Price_mean + 1.9*state_space_GLM_Pred_period_return_50_Price_sd) &
     (state_space_GLM_Pred_period_return_50_Price > 0.75) &
     Asset == 'HK33_HKD'
+  )|
+
+  (
+    AR_LM_Pred_period_return_50_Price >=
+      AR_LM_Pred_period_return_50_Price_mean + 1*AR_LM_Pred_period_return_50_Price_sd &
+    AR_LM_Pred_period_return_50_Price <=
+      AR_LM_Pred_period_return_50_Price_mean + 1.9*AR_LM_Pred_period_return_50_Price_sd &
+    AR_LM_Pred_period_return_50_Price >= 3.5 &
+    Asset == 'US2000_USD'
+    )|
+
+  (
+    (state_space_LM_Pred_period_return_50_Price >=
+    state_space_LM_Pred_period_return_50_Price_mean + 0*state_space_LM_Pred_period_return_50_Price_sd) &
+    (state_space_LM_Pred_period_return_50_Price > 6) &
+    Asset == 'US2000_USD'
+  )|
+
+  (
+    AR_LM_Pred_period_return_50_Price >=
+      AR_LM_Pred_period_return_50_Price_mean + 2*AR_LM_Pred_period_return_50_Price_sd &
+    AR_LM_Pred_period_return_50_Price <=
+      AR_LM_Pred_period_return_50_Price_mean + 10*AR_LM_Pred_period_return_50_Price_sd &
+    AR_LM_Pred_period_return_50_Price >= 0 &
+    Asset == 'FR40_EUR'
+    )|
+
+  (
+    (state_space_LM_Pred_period_return_50_Price >=
+    state_space_LM_Pred_period_return_50_Price_mean + 1*state_space_LM_Pred_period_return_50_Price_sd) &
+    (state_space_LM_Pred_period_return_50_Price > 15) &
+    Asset == 'FR40_EUR'
+  )|
+
+  (
+    (state_space_LM_Pred_period_return_50_Price >=
+    state_space_LM_Pred_period_return_50_Price_mean + 0*state_space_LM_Pred_period_return_50_Price_sd) &
+    (state_space_LM_Pred_period_return_50_Price > 6) &
+    Asset == 'USD_SEK'
+  )|
+
+  (
+    (state_space_GLM_Pred_period_return_50_Price >=
+    state_space_GLM_Pred_period_return_50_Price_mean + 2*state_space_GLM_Pred_period_return_50_Price_sd) &
+    (state_space_GLM_Pred_period_return_50_Price <=
+    state_space_GLM_Pred_period_return_50_Price_mean + 2.5*state_space_GLM_Pred_period_return_50_Price_sd) &
+    (state_space_GLM_Pred_period_return_50_Price > 0.6) &
+    Asset == 'USD_SEK'
+  )|
+
+  (
+    (state_space_LM_Pred_period_return_50_Price >=
+    state_space_LM_Pred_period_return_50_Price_mean + 2.75*state_space_LM_Pred_period_return_50_Price_sd) &
+    (state_space_LM_Pred_period_return_50_Price > 0) &
+    Asset == 'EUR_AUD'
+  )|
+
+  (
+    (state_space_GLM_Pred_period_return_50_Price >=
+    state_space_GLM_Pred_period_return_50_Price_mean + 2.3*state_space_GLM_Pred_period_return_50_Price_sd) &
+    (state_space_GLM_Pred_period_return_50_Price > 0.5) &
+    Asset == 'EUR_AUD'
+  )|
+
+  (
+    AR_GLM_Pred_period_return_50_Price >=
+    AR_GLM_Pred_period_return_50_Price_mean + 2.25*AR_GLM_Pred_period_return_50_Price_sd &
+    AR_GLM_Pred_period_return_50_Price >= 0 & AR_GLM_Pred_period_return_50_Price <= 1 &
+    Asset == 'XAG_USD'
   )
 
   )
@@ -850,10 +919,46 @@ asset_summaries <-
     samples = 50
   )
 
-traded_assets <- c("SPX500_USD", "EUR_USD", "AUD_USD", "XAU_USD", "USD_JPY", "NATGAS_USD",
-                   "XAG_USD", "EU50_EUR", "AU200_AUD", "XCU_USD", "HK33_HKD", "GBP_AUD",
-                   "WTICO_USD", "USD_CAD", "EUR_AUD", "NZD_USD", "USD_SEK", "GBP_CAD", "GBP_USD",
-                   "FR40_EUR", "BTC_USD") %>% unique()
+traded_assets <- c("EUR_USD", #1
+                   "EU50_EUR", #2
+                   "SPX500_USD", #3
+                   "US2000_USD", #4
+                   "USB10Y_USD", #5
+                   "USD_JPY", #6
+                   "AUD_USD", #7
+                   "EUR_GBP", #8
+                   "AU200_AUD" ,#9
+                   "EUR_AUD", #10
+                   "WTICO_USD", #11
+                   "UK100_GBP", #12
+                   "USD_CAD", #13
+                   "GBP_USD", #14
+                   "GBP_CAD", #15
+                   "EUR_JPY", #16
+                   "EUR_NZD", #17
+                   "XAG_USD", #18
+                   "XAG_EUR", #19
+                   "XAG_AUD", #20
+                   "XAG_NZD", #21
+                   "HK33_HKD", #22
+                   "FR40_EUR", #23
+                   "BTC_USD", #24
+                   "XAG_GBP", #25
+                   "GBP_AUD", #26
+                   "USD_SEK", #27
+                   "USD_SGD", #28
+                   "NZD_USD", #29
+                   "GBP_NZD", #30
+                   "XCU_USD", #31
+                   "NATGAS_USD", #32
+                   "GBP_JPY", #33
+                   "SG30_SGD", #34
+                   "XAU_USD", #35
+                   "EUR_SEK", #36
+                   "XAU_AUD", #37
+                   "UK10YB_GBP" #38
+                   ) %>% unique()
+
 portfolio_structure <- list()
 
 for (i in 1:length(traded_assets)) {
@@ -937,5 +1042,16 @@ construct_portfolio_sim <-
       geom_line() +
       theme_minimal()
 
+    max_portfolio_deviation <-
+      all_portfolio_NAV %>%
+      dplyr::select(adjusted_Date, Return) %>%
+      mutate(
+        Deviation = starting_capital + Return
+      )
+
+    max_portfolio_deviation %>%
+      ggplot(aes(x = adjusted_Date, y = Deviation)) +
+      geom_line() +
+      theme_minimal()
 
   }
