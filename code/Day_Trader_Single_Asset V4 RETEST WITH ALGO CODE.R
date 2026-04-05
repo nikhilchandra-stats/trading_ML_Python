@@ -66,7 +66,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location =  "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-start_date = "2015-01-01"
+start_date = "2013-06-01"
 end_date = today() %>% as.character()
 
 bin_factor = NULL
@@ -187,7 +187,8 @@ assets_to_test <- c(
   "SOYBN_USD", #19
   "JP225_USD", #20
   "XPD_USD", #21
-  "NL25_EUR" #22
+  "NL25_EUR", #22
+  "USB02Y_USD" #23
 )
 
 correlation_asset_list <-
@@ -309,10 +310,10 @@ correlation_asset_list <-
 
   )
 
-result_db_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIG_THRESH_FINDER_WORK_PC_2026-03-18.DB"
+result_db_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V4_Expanded_Models/SIG_THRESH_FINDER_WORK_PC_2026-03-18.DB"
 db_con <- connect_db(result_db_path)
 Best_Sigs <- DBI::dbGetQuery(conn = db_con,
-                statement = "SELECT * FROM BEST_SIG_PER_ASSET" )
+                             statement = "SELECT * FROM BEST_SIG_PER_ASSET" )
 DBI::dbDisconnect(db_con)
 
 actuals_periods_needed = c("period_return_50_Price")
@@ -323,7 +324,7 @@ state_space_rolling = c(100, 200, 300, 400)
 sig_thresh_vec <- c(0.99, 10^-3, 10^-5, 10^-7, 10^-9)
 bin_threshold_vec <- c(0)
 safely_gen_models <- safely(Single_Asset_V3_Gen_Model_No_data_gen, otherwise = NULL)
-result_db_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/SIM_RESULTS_WORK_PC"
+result_db_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V4_Expanded_Models/SIM_RESULTS_WORK_PC"
 date_for_true_simualtion <- "2019-01-01"
 training_end_date <- "2021-01-01"
 reset_DB <- TRUE
@@ -389,6 +390,8 @@ for (j in 1:length(assets_to_test)) {
   sig_thresh_macro_LM <- ifelse(sig_thresh_macro_LM > 10^-7, 10^-7, sig_thresh_macro_LM)
   sig_thresh_macro_GLM <- ifelse(sig_thresh_macro_GLM > 10^-7, 10^-7, sig_thresh_macro_GLM)
 
+  message(asset_of_interest)
+
   Single_Asset_V3_Gen_Model(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     actual_wins_losses = actual_wins_losses,
@@ -402,7 +405,7 @@ for (j in 1:length(assets_to_test)) {
     state_space_rolling = state_space_rolling,
     copula_assets = correlation_assets_current,
     raw_macro_data = raw_macro_data,
-    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+    base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V4_Expanded_Models/",
     sig_thresh_AR_LM = sig_thresh_AR_LM,
     sig_thresh_AR_GLM = sig_thresh_AR_GLM,
     sig_thresh_Copula_LM = sig_thresh_Copula_LM,
@@ -427,7 +430,7 @@ for (j in 1:length(assets_to_test)) {
       state_space_rolling = state_space_rolling,
       copula_assets = correlation_assets_current,
       raw_macro_data = raw_macro_data,
-      base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/"
+      base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V4_Expanded_Models/"
     )
 
   simulated_probs <-
@@ -796,155 +799,65 @@ get_asset_random_sim_returns <-
 
 trade_statement <-
   "
-  (AR_LM_Pred_period_return_50_Price > 0.2 &
-  # AR_LM_Pred_period_return_50_Price >
-  #   AR_LM_Pred_period_return_50_Price_mean + 1*AR_LM_Pred_period_return_50_Price_sd &
-      Asset == 'WHEAT_USD')|
-  (
-    state_space_GLM_Pred_period_return_50_Price > 0.89 &
-    state_space_GLM_Pred_period_return_50_Price < 0.95 &
-    Asset == 'WHEAT_USD'
-   )|
-    (
-    state_space_GLM_Pred_period_return_50_Price >
-      state_space_GLM_Pred_period_return_50_Price_mean + 2.4*state_space_GLM_Pred_period_return_50_Price_sd &
-    Asset == 'WHEAT_USD'
-   )
-  (
-    AR_GLM_Pred_period_return_50_Price >
-      AR_GLM_Pred_period_return_50_Price_mean + 1.9*AR_GLM_Pred_period_return_50_Price_sd &
-     Asset == 'WHEAT_USD'
-   )|
+  # (state_space_GLM_Pred_period_return_50_Price > 0.91 &
+  # state_space_GLM_Pred_period_return_50_Price < 0.98 &
+  #     Asset == 'WHEAT_USD')|
 
+  # (
+  # state_space_LM_Pred_period_return_50_Price > 1 &
+  # state_space_LM_Pred_period_return_50_Price < 5 &
+  #     Asset == 'WHEAT_USD'
+  # )
 
-  (AR_LM_Pred_period_return_50_Price > 1 &
-    AR_LM_Pred_period_return_50_Price < 1.65 &
-      Asset == 'SUGAR_USD')|
+  # (
+  # AR_GLM_Pred_period_return_50_Price > 0.47 &
+  # AR_GLM_Pred_period_return_50_Price < 0.9999999999 &
+  #     Asset == 'WHEAT_USD'
+  # )|
 
-  (AR_GLM_Pred_period_return_50_Price > 0.505 &
-  AR_GLM_Pred_period_return_50_Price < 0.55 &
-    Asset == 'SUGAR_USD')|
+  # (
+  # AR_LM_Pred_period_return_50_Price > -0.1 &
+  # AR_LM_Pred_period_return_50_Price < 5 &
+  #     Asset == 'WHEAT_USD'
+  # )|
 
-  (state_space_LM_Pred_period_return_50_Price < -0.5 &
-   state_space_LM_Pred_period_return_50_Price > -7 &
-      Asset == 'SUGAR_USD')|
+  # (state_space_GLM_Pred_period_return_50_Price < 0.075 &
+  # state_space_GLM_Pred_period_return_50_Price > 0 &
+  #     Asset == 'SUGAR_USD')
 
-  (AR_LM_Pred_period_return_50_Price > 1.3 &
-      Asset == 'DE30_EUR')|
+  # (state_space_LM_Pred_period_return_50_Price < -8 &
+  # state_space_LM_Pred_period_return_50_Price > -500 &
+  #     Asset == 'SUGAR_USD')|
 
-  (AR_GLM_Pred_period_return_50_Price > 0.635 &
-    AR_GLM_Pred_period_return_50_Price < 0.7 &
-      Asset == 'DE30_EUR')|
+  # (
+  # AR_GLM_Pred_period_return_50_Price > 0.45 &
+  # AR_GLM_Pred_period_return_50_Price < 0.49 &
+  #     Asset == 'SUGAR_USD'
+  # )|
 
-  (state_space_GLM_Pred_period_return_50_Price <= 0.68 &
-  state_space_GLM_Pred_period_return_50_Price >= 0.55 &
-      Asset == 'DE30_EUR')|
+  # (
+  # AR_LM_Pred_period_return_50_Price > 0.25 &
+  # AR_LM_Pred_period_return_50_Price < 500 &
+  #     Asset == 'SUGAR_USD'
+  # )
 
-  (AR_LM_Pred_period_return_50_Price > 2.5 &
-      Asset == 'EUR_CHF')|
-  (state_space_GLM_Pred_period_return_50_Price <= 0.12 &
-      Asset == 'EUR_CHF')|
-  (state_space_LM_Pred_period_return_50_Price <= -8 &
-      Asset == 'EUR_CHF')|
+  # (state_space_GLM_Pred_period_return_50_Price > 0.91 &
+  # state_space_GLM_Pred_period_return_50_Price < 0.98 &
+  #     Asset == 'WHEAT_USD')|
 
-  (AR_LM_Pred_period_return_50_Price > 0.5 &
-      Asset == 'GBP_CHF')|
-
-  (AR_GLM_Pred_period_return_50_Price > 0.7 &
-     Asset == 'GBP_CHF')|
-
-  (AR_LM_Pred_period_return_50_Price > 0.1 &
-      Asset == 'USD_CZK')|
-
-  (state_space_LM_Pred_period_return_50_Price > 2 &
-  state_space_LM_Pred_period_return_50_Price < 3.75 &
-      Asset == 'USD_CZK')|
-
-  (state_space_GLM_Pred_period_return_50_Price > 0.95 &
-      Asset == 'USD_CZK')|
-
-  (AR_LM_Pred_period_return_50_Price < -2.75 &
-  AR_LM_Pred_period_return_50_Price > -8 &
-     Asset == 'USD_NOK')|
-
-  (state_space_LM_Pred_period_return_50_Price >= 3.75 &
-  state_space_LM_Pred_period_return_50_Price <= 6.5 &
-     Asset == 'USD_NOK')|
-
-  (state_space_GLM_Pred_period_return_50_Price >= 0.725 &
-  state_space_GLM_Pred_period_return_50_Price <= 0.85 &
-     Asset == 'USD_NOK')|
-
-  (AR_LM_Pred_period_return_50_Price > 0.2 &
-  AR_LM_Pred_period_return_50_Price < 0.45 &
-     Asset == 'GBP_NZD')|
-
-  (AR_GLM_Pred_period_return_50_Price > 0.54 &
-     Asset == 'GBP_NZD')|
-
-  (AR_LM_Pred_period_return_50_Price > 1.75 &
-     Asset == 'NZD_CHF')|
-  (AR_GLM_Pred_period_return_50_Price >= 0.53 &
-     Asset == 'NZD_CHF')|
-  (state_space_LM_Pred_period_return_50_Price < -7 &
-     Asset == 'NZD_CHF')|
-
-  (
-    state_space_LM_Pred_period_return_50_Price >= 0 &
-    state_space_LM_Pred_period_return_50_Price <= 3.5 &
-     Asset == 'CH20_CHF'
-     )|
-
-  (
-    state_space_GLM_Pred_period_return_50_Price >= 0.58 &
-    state_space_GLM_Pred_period_return_50_Price <= 0.63 &
-     Asset == 'CH20_CHF'
-  )|
-
-    (
-    AR_LM_Pred_period_return_50_Price >= 12 &
-    AR_LM_Pred_period_return_50_Price <= 17 &
-     Asset == 'CH20_CHF'
-     )|
-
-    (
-    AR_LM_Pred_period_return_50_Price >= 15 &
-    AR_LM_Pred_period_return_50_Price <= 30 &
-     Asset == 'XPT_USD'
-     )|
-
-    (
-    AR_GLM_Pred_period_return_50_Price >= 0.58 &
-    AR_GLM_Pred_period_return_50_Price <= 0.63 &
-     Asset == 'XPT_USD'
-     )|
-
-  (
-    state_space_GLM_Pred_period_return_50_Price >= 0.97 &
-     Asset == 'XPT_USD'
-  )|
-
-  (
-    state_space_GLM_Pred_period_return_50_Price <= 0.0005 &
-     Asset == 'XPT_USD'
-  )|
-
-    (
-    state_space_GLM_Pred_period_return_50_Price >= 0.83 &
-    Asset == 'SOYBN_USD'
-    )|
-    (
-    state_space_LM_Pred_period_return_50_Price >= 3 &
-    Asset == 'SOYBN_USD'
-    )
+  # (
+  # state_space_LM_Pred_period_return_50_Price > 1 &
+  # state_space_LM_Pred_period_return_50_Price < 5 &
+  #     Asset == 'WHEAT_USD'
+  # )
 
   "
 
 cumulative_returns_sim_data <-
   get_total_portfolio_summary(
-    generated_preds = generated_preds_from_db  ,
+    generated_preds = generated_preds_from_db %>% filter(Asset == "SUGAR_USD") ,
     trade_statement = trade_statement,
-    actual_wins_losses =actual_wins_losses  ,
+    actual_wins_losses =actual_wins_losses %>% filter(Asset == "SUGAR_USD")  ,
     trade_direction = "Long",
     return_col = "period_return_50_Price"
   )
@@ -958,9 +871,9 @@ cumulative_returns_sim_data %>%
 
 asset_summaries <-
   get_asset_random_sim_returns(
-    generated_preds = generated_preds_from_db  ,
+    generated_preds = generated_preds_from_db %>% filter(Asset == "SUGAR_USD") ,
     trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses  ,
+    actual_wins_losses = actual_wins_losses %>% filter(Asset == "SUGAR_USD") ,
     trade_direction = "Long",
     return_col = "period_return_50_Price",
     simulations = 5000,
@@ -969,9 +882,9 @@ asset_summaries <-
 
 asset_summaries_control <-
   get_asset_random_sim_returns(
-    generated_preds = generated_preds_from_db ,
+    generated_preds = generated_preds_from_db %>% filter(Asset == "SUGAR_USD") ,
     trade_statement = "str_detect(Asset, '[A-Z]')",
-    actual_wins_losses = actual_wins_losses ,
+    actual_wins_losses = actual_wins_losses %>% filter(Asset == "SUGAR_USD"),
     trade_direction = "Long",
     return_col = "period_return_50_Price",
     simulations = 5000,
