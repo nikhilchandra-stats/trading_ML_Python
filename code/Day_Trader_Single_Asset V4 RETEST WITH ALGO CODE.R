@@ -841,23 +841,96 @@ trade_statement <-
   #     Asset == 'SUGAR_USD'
   # )
 
-  # (state_space_GLM_Pred_period_return_50_Price > 0.91 &
-  # state_space_GLM_Pred_period_return_50_Price < 0.98 &
-  #     Asset == 'WHEAT_USD')|
-
+  # (state_space_GLM_Pred_period_return_50_Price > 0.71 &
+  # state_space_GLM_Pred_period_return_50_Price < 0.96 &
+  #     Asset == 'DE30_EUR')|
+  #
   # (
   # state_space_LM_Pred_period_return_50_Price > 1 &
-  # state_space_LM_Pred_period_return_50_Price < 5 &
-  #     Asset == 'WHEAT_USD'
+  # state_space_LM_Pred_period_return_50_Price < 4.25 &
+  #     Asset == 'DE30_EUR'
+  # )|
+  #
+  # (
+  # AR_GLM_Pred_period_return_50_Price > 0.61 &
+  # AR_GLM_Pred_period_return_50_Price < 0.64 &
+  #     Asset == 'DE30_EUR'
+  # )|
+  # (
+  # AR_LM_Pred_period_return_50_Price > 0 &
+  # AR_LM_Pred_period_return_50_Price < 100 &
+  #     Asset == 'DE30_EUR'
   # )
+
+  # (state_space_GLM_Pred_period_return_50_Price > 0.65 &
+  # state_space_GLM_Pred_period_return_50_Price < 0.7 &
+  #     Asset == 'UK10YB_GBP')
+
+ # (state_space_GLM_Pred_period_return_50_Price > 0.92 &
+ # state_space_GLM_Pred_period_return_50_Price < 0.95 &
+ #     Asset == 'EUR_CHF')
+
+
+# (state_space_LM_Pred_period_return_50_Price > 0  &
+#  state_space_LM_Pred_period_return_50_Price < 0.1  &
+#       Asset == 'GBP_CHF')|
+# (AR_LM_Pred_period_return_50_Price > 0.52  &
+#       Asset == 'GBP_CHF')|
+# (AR_GLM_Pred_period_return_50_Price >
+#     AR_GLM_Pred_period_return_50_Price_mean + 1.4*AR_GLM_Pred_period_return_50_Price_sd &
+# AR_GLM_Pred_period_return_50_Price <
+#     AR_GLM_Pred_period_return_50_Price_mean + 1.75*AR_GLM_Pred_period_return_50_Price_sd &
+#       Asset == 'GBP_CHF')
+
+# (state_space_GLM_Pred_period_return_50_Price < 0.085 &
+#   state_space_GLM_Pred_period_return_50_Price > 0.04 &
+#       Asset == 'USD_CZK')|
+# (state_space_GLM_Pred_period_return_50_Price >
+#     state_space_GLM_Pred_period_return_50_Price_mean + 2.25*state_space_GLM_Pred_period_return_50_Price_sd &
+#       Asset == 'USD_CZK')|
+# (state_space_LM_Pred_period_return_50_Price >
+#     state_space_LM_Pred_period_return_50_Price_mean + 1.25*state_space_LM_Pred_period_return_50_Price_sd &
+# state_space_LM_Pred_period_return_50_Price <
+#     state_space_LM_Pred_period_return_50_Price_mean + 1.5*state_space_LM_Pred_period_return_50_Price_sd &
+#       Asset == 'USD_CZK')|
+#   (
+#   AR_LM_Pred_period_return_50_Price > 0 &
+#   AR_LM_Pred_period_return_50_Price < 20 &
+#       Asset == 'USD_CZK'
+#   )|
+#   (
+#   AR_LM_Pred_period_return_50_Price >
+#     AR_LM_Pred_period_return_50_Price_mean + 2*AR_LM_Pred_period_return_50_Price_sd &
+#   AR_LM_Pred_period_return_50_Price <
+#     AR_LM_Pred_period_return_50_Price_mean + 2.5*AR_LM_Pred_period_return_50_Price_sd &
+#       Asset == 'USD_CZK'
+#   )
+
+  # (state_space_GLM_Pred_period_return_50_Price >
+  #   state_space_GLM_Pred_period_return_50_Price_mean + 1.2*state_space_GLM_Pred_period_return_50_Price_sd &
+  # state_space_GLM_Pred_period_return_50_Price <
+  #   state_space_GLM_Pred_period_return_50_Price_mean + 1.5*state_space_GLM_Pred_period_return_50_Price_sd &
+  # state_space_GLM_Pred_period_return_50_Price > 0.5 &
+  #     Asset == 'USD_NOK')|
+  # (state_space_GLM_Pred_period_return_50_Price >
+  #   state_space_GLM_Pred_period_return_50_Price_mean + 1.85*state_space_GLM_Pred_period_return_50_Price_sd &
+  # state_space_GLM_Pred_period_return_50_Price <
+  #   state_space_GLM_Pred_period_return_50_Price_mean + 2.4*state_space_GLM_Pred_period_return_50_Price_sd &
+  # state_space_GLM_Pred_period_return_50_Price > 0.5 &
+  #     Asset == 'USD_NOK')
+
+  (state_space_GLM_Pred_period_return_50_Price > 0.65 &
+  state_space_GLM_Pred_period_return_50_Price < 1 &
+      Asset == 'GBP_NZD')
+
 
   "
 
 cumulative_returns_sim_data <-
   get_total_portfolio_summary(
-    generated_preds = generated_preds_from_db %>% filter(Asset == "SUGAR_USD") ,
+    generated_preds = generated_preds_from_db %>% filter(Asset == "GBP_NZD") ,
     trade_statement = trade_statement,
-    actual_wins_losses =actual_wins_losses %>% filter(Asset == "SUGAR_USD")  ,
+    actual_wins_losses =actual_wins_losses %>% filter(Asset == "GBP_NZD")  ,
     trade_direction = "Long",
     return_col = "period_return_50_Price"
   )
@@ -871,9 +944,9 @@ cumulative_returns_sim_data %>%
 
 asset_summaries <-
   get_asset_random_sim_returns(
-    generated_preds = generated_preds_from_db %>% filter(Asset == "SUGAR_USD") ,
+    generated_preds = generated_preds_from_db %>% filter(Asset == "GBP_NZD") ,
     trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses %>% filter(Asset == "SUGAR_USD") ,
+    actual_wins_losses = actual_wins_losses %>% filter(Asset == "GBP_NZD") ,
     trade_direction = "Long",
     return_col = "period_return_50_Price",
     simulations = 5000,
@@ -882,9 +955,9 @@ asset_summaries <-
 
 asset_summaries_control <-
   get_asset_random_sim_returns(
-    generated_preds = generated_preds_from_db %>% filter(Asset == "SUGAR_USD") ,
+    generated_preds = generated_preds_from_db %>% filter(Asset == "GBP_NZD") ,
     trade_statement = "str_detect(Asset, '[A-Z]')",
-    actual_wins_losses = actual_wins_losses %>% filter(Asset == "SUGAR_USD"),
+    actual_wins_losses = actual_wins_losses %>% filter(Asset == "GBP_NZD"),
     trade_direction = "Long",
     return_col = "period_return_50_Price",
     simulations = 5000,
