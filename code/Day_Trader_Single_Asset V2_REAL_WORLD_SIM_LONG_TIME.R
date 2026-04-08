@@ -852,6 +852,32 @@ trade_statement <-
   pred_technical_6 <= 0.86 &
   Asset == 'USB10Y_USD'
   )|
+  (
+  pred_index_6 >= 0.96 &
+  Asset == 'USB10Y_USD'
+  )|
+  (
+  pred_index_4 >= 0.55 &
+  Asset == 'USB10Y_USD'
+  )|
+   (
+   pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
+   pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
+   pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
+   pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
+   pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
+   pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
+   pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
+   pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
+   mean_100_pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
+   mean_100_pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
+   mean_200_pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
+   mean_50_pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
+   mean_50_pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
+   mean_100_pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
+   mean_100_pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
+   Asset == 'USB10Y_USD'
+   )|
 
   (
   pred_LM_period_return_50_Price >
@@ -1246,6 +1272,59 @@ trade_statement <-
  mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
  pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
  Asset == 'GBP_USD'
+ )|
+  (
+  pred_combined_2 >= 0.99 &
+  pred_combined_6 >= 0.99 &
+  pred_combined_4 >= 0.99 &
+  mean_100_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
+  mean_3_pred_LM_period_return_50_Price < mean_100_pred_LM_period_return_50_Price &
+  Asset == 'GBP_CAD'
+  )|
+  (
+  pred_daily_6 >= 0.99 &
+  pred_daily_4 >= 0.99 &
+  pred_daily_2 >= 0.955 &
+  Asset == 'GBP_CAD'
+  )|
+  (
+  pred_index_6 >= 0.525 &
+  pred_index_4 >= 0.525 &
+  Asset == 'GBP_CAD'
+  )|
+  (
+  pred_LM_period_return_50_Price >
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1 &
+  pred_LM_period_return_50_Price <
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.5 &
+  Asset == 'EUR_JPY'
+  )|
+  (
+  pred_combined_6 >= 0.99999999 &
+  pred_combined_4 >= 0.99999999 &
+  mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
+  mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
+  mean_50_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
+  mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
+  mean_50_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
+  mean_50_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
+  Asset == 'EUR_JPY'
+  )|
+  (
+  pred_index_6 >= 0.8 &
+  pred_index_6 <= 0.85 &
+  pred_index_4 >= 0.675 &
+  pred_index_4 <= 1 &
+  Asset == 'EUR_JPY'
+  )|
+ (
+ pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
+ pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
+ pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
+ pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
+ mean_200_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
+ mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
+ Asset == 'EUR_JPY'
  )
 
   "
@@ -1253,34 +1332,22 @@ trade_statement <-
 trade_statement <-
 "
  #  (
- #  pred_combined_2 >= 0.525 &
- #  pred_combined_2 < 0.575 &
- #  Asset == 'GBP_USD'
- #  )|
- #  (
  #  pred_combined_6 >= 0.6 &
  #  pred_combined_6 < 0.65 &
- #  Asset == 'GBP_USD'
- #  )|
- #  (
- #  pred_LM_period_return_50_Price >
- #            mean_500_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.55 &
- #  pred_LM_period_return_50_Price <
- #            mean_500_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.8 &
- #  Asset == 'GBP_USD'
+ #  Asset == 'GBP_CAD'
  #  )|
  #  (
  #  pred_LM_period_return_50_Price >
  #            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2.5 &
  #  pred_LM_period_return_50_Price <
  #            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*10 &
- #  Asset == 'GBP_USD'
+ #  Asset == 'GBP_CAD'
  #  )|
- #  (
- #  pred_GLM_period_return_50_Price > 0.75 &
- #  pred_GLM_period_return_50_Price < 0.775 &
- #  Asset == 'GBP_USD'
- #  )|
+  # (
+  # pred_GLM_period_return_50_Price > 0.65 &
+  # pred_GLM_period_return_50_Price < 1 &
+  # Asset == 'GBP_CAD'
+  # )|
  # (
  # pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
  # pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
@@ -1288,30 +1355,66 @@ trade_statement <-
  # pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
  # mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
  # pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- # Asset == 'GBP_USD'
+ # Asset == 'GBP_CAD'
  # )|
  # (
  # pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
  # pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
  # pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
  # pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- # mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
  # pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- # Asset == 'GBP_USD'
+ # pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
+ # pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
+ # pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
+ # Asset == 'GBP_CAD'
  # )
 
+  (
+  pred_LM_period_return_50_Price >
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1 &
+  pred_LM_period_return_50_Price <
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.5 &
+  Asset == 'EUR_JPY'
+  )|
+  (
+  pred_combined_6 >= 0.99999999 &
+  pred_combined_4 >= 0.99999999 &
+  mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
+  mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
+  mean_50_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
+  mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
+  mean_50_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
+  mean_50_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
+  Asset == 'EUR_JPY'
+  )|
+  (
+  pred_index_6 >= 0.8 &
+  pred_index_6 <= 0.85 &
+  pred_index_4 >= 0.675 &
+  pred_index_4 <= 1 &
+  Asset == 'EUR_JPY'
+  )|
+ (
+ pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
+ pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
+ pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
+ pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
+ mean_200_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
+ mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
+ Asset == 'EUR_JPY'
+ )
 "
 
 cumulative_returns_sim_data <-
   get_total_portfolio_summary(
     generated_preds = generated_preds %>%
-      # filter(Asset == "GBP_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_JPY")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses =actual_wins_losses %>%
-      # filter(Asset == "GBP_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_JPY")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
     return_col = "period_return_50_Price"
@@ -1327,13 +1430,13 @@ cumulative_returns_sim_data %>%
 asset_summaries_control <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "GBP_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_JPY")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = "str_detect(Asset, '[A-Z]')",
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "GBP_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_JPY")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
     return_col = "period_return_50_Price",
@@ -1344,13 +1447,13 @@ asset_summaries_control <-
 asset_summaries <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "GBP_USD")
-    filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_JPY")
+    # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "GBP_USD")
-    filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_JPY")
+    # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
     return_col = "period_return_50_Price",
