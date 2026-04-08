@@ -1562,7 +1562,7 @@ get_actual_wins_losses <- function(
     temp_actual_wins_losses[[i]] <-
       create_running_profits(
         asset_of_interest = assets_to_analyse[i],
-        asset_data = Indices_Metals_Bonds,
+        asset_data = asset_data,
         stop_factor = stop_factor,
         profit_factor = profit_factor,
         risk_dollar_value = risk_dollar_value,

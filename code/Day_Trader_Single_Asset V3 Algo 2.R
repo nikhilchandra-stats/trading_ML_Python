@@ -246,149 +246,234 @@ assets_to_use <-
 
 trade_statement <-
   "
-  (AR_LM_Pred_period_return_50_Price > 0.2 &
-  # AR_LM_Pred_period_return_50_Price >
-  #   AR_LM_Pred_period_return_50_Price_mean + 1*AR_LM_Pred_period_return_50_Price_sd &
+  (state_space_GLM_Pred_period_return_50_Price > 0.91 &
+  state_space_GLM_Pred_period_return_50_Price < 0.98 &
       Asset == 'WHEAT_USD')|
-  (
-    state_space_GLM_Pred_period_return_50_Price > 0.89 &
-    state_space_GLM_Pred_period_return_50_Price < 0.95 &
-    Asset == 'WHEAT_USD'
-   )|
-    (
-    state_space_GLM_Pred_period_return_50_Price >
-      state_space_GLM_Pred_period_return_50_Price_mean + 2.4*state_space_GLM_Pred_period_return_50_Price_sd &
-    Asset == 'WHEAT_USD'
-   )
-  (
-    AR_GLM_Pred_period_return_50_Price >
-      AR_GLM_Pred_period_return_50_Price_mean + 1.9*AR_GLM_Pred_period_return_50_Price_sd &
-     Asset == 'WHEAT_USD'
-   )|
-
-
-  (AR_LM_Pred_period_return_50_Price > 1 &
-    AR_LM_Pred_period_return_50_Price < 1.65 &
-      Asset == 'SUGAR_USD')|
-
-  (AR_GLM_Pred_period_return_50_Price > 0.505 &
-  AR_GLM_Pred_period_return_50_Price < 0.55 &
-    Asset == 'SUGAR_USD')|
-
-  (state_space_LM_Pred_period_return_50_Price < -0.5 &
-   state_space_LM_Pred_period_return_50_Price > -7 &
-      Asset == 'SUGAR_USD')|
-
-  (AR_LM_Pred_period_return_50_Price > 1.3 &
-      Asset == 'DE30_EUR')|
-
-  (AR_GLM_Pred_period_return_50_Price > 0.635 &
-    AR_GLM_Pred_period_return_50_Price < 0.7 &
-      Asset == 'DE30_EUR')|
-
-  (state_space_GLM_Pred_period_return_50_Price <= 0.68 &
-  state_space_GLM_Pred_period_return_50_Price >= 0.55 &
-      Asset == 'DE30_EUR')|
-
-
-  (state_space_GLM_Pred_period_return_50_Price <= 0.1 &
-  AR_GLM_Pred_period_return_50_Price >= 0.5 &
-      Asset == 'DE30_EUR')|
-
-  (AR_LM_Pred_period_return_50_Price > 2.5 &
-      Asset == 'EUR_CHF')|
-  (state_space_GLM_Pred_period_return_50_Price <= 0.12 &
-      Asset == 'EUR_CHF')|
-  (state_space_LM_Pred_period_return_50_Price <= -8 &
-      Asset == 'EUR_CHF')|
-
-  (AR_LM_Pred_period_return_50_Price > 0.5 &
-      Asset == 'GBP_CHF')|
-
-  (AR_GLM_Pred_period_return_50_Price > 0.7 &
-     Asset == 'GBP_CHF')|
-
-  (AR_LM_Pred_period_return_50_Price > 0.1 &
-      Asset == 'USD_CZK')|
-
-  (state_space_LM_Pred_period_return_50_Price > 2 &
-  state_space_LM_Pred_period_return_50_Price < 3.75 &
-      Asset == 'USD_CZK')|
-
-  (state_space_GLM_Pred_period_return_50_Price > 0.95 &
-      Asset == 'USD_CZK')|
-
-  (AR_LM_Pred_period_return_50_Price < -2.75 &
-  AR_LM_Pred_period_return_50_Price > -8 &
-     Asset == 'USD_NOK')|
-
-  (state_space_LM_Pred_period_return_50_Price >= 3.75 &
-  state_space_LM_Pred_period_return_50_Price <= 6.5 &
-     Asset == 'USD_NOK')|
-
-  (state_space_GLM_Pred_period_return_50_Price >= 0.725 &
-  state_space_GLM_Pred_period_return_50_Price <= 0.85 &
-     Asset == 'USD_NOK')|
-
-  (AR_LM_Pred_period_return_50_Price > 0.2 &
-  AR_LM_Pred_period_return_50_Price < 0.45 &
-     Asset == 'GBP_NZD')|
-
-  (AR_GLM_Pred_period_return_50_Price > 0.54 &
-     Asset == 'GBP_NZD')|
-
-  (AR_LM_Pred_period_return_50_Price > 1.75 &
-     Asset == 'NZD_CHF')|
-  (AR_GLM_Pred_period_return_50_Price >= 0.53 &
-     Asset == 'NZD_CHF')|
-  (state_space_LM_Pred_period_return_50_Price < -7 &
-     Asset == 'NZD_CHF')|
-    (
-    state_space_GLM_Pred_period_return_50_Price >= 0.83 &
-    Asset == 'SOYBN_USD'
-    )|
-    (
-    state_space_LM_Pred_period_return_50_Price >= 3 &
-    Asset == 'SOYBN_USD'
-    )|
-
-    (
-    state_space_LM_Pred_period_return_50_Price >= 0 &
-    state_space_LM_Pred_period_return_50_Price <= 3.5 &
-     Asset == 'CH20_CHF'
-     )|
 
   (
-    state_space_GLM_Pred_period_return_50_Price >= 0.58 &
-    state_space_GLM_Pred_period_return_50_Price <= 0.63 &
-     Asset == 'CH20_CHF'
+  state_space_LM_Pred_period_return_50_Price > 1 &
+  state_space_LM_Pred_period_return_50_Price < 5 &
+      Asset == 'WHEAT_USD'
   )|
 
-    (
-    AR_LM_Pred_period_return_50_Price >= 12 &
-    AR_LM_Pred_period_return_50_Price <= 17 &
-     Asset == 'CH20_CHF'
-     )|
-
-    (
-    AR_LM_Pred_period_return_50_Price >= 10 &
-    AR_LM_Pred_period_return_50_Price <= 12 &
-     Asset == 'XPT_USD'
-     )|
-
-    (
-    AR_GLM_Pred_period_return_50_Price >= 0.62 &
-    AR_GLM_Pred_period_return_50_Price <= 0.65 &
-     Asset == 'XPT_USD'
-     )|
   (
-    state_space_GLM_Pred_period_return_50_Price >= 0.96 &
-     Asset == 'XPT_USD'
+  AR_GLM_Pred_period_return_50_Price > 0.47 &
+  AR_GLM_Pred_period_return_50_Price < 0.9999999999 &
+      Asset == 'WHEAT_USD'
+  )|
+
+  (
+  AR_LM_Pred_period_return_50_Price > -0.1 &
+  AR_LM_Pred_period_return_50_Price < 5 &
+      Asset == 'WHEAT_USD'
+  )|
+
+  (state_space_GLM_Pred_period_return_50_Price < 0.075 &
+  state_space_GLM_Pred_period_return_50_Price > 0 &
+      Asset == 'SUGAR_USD')
+
+  (state_space_LM_Pred_period_return_50_Price < -8 &
+  state_space_LM_Pred_period_return_50_Price > -500 &
+      Asset == 'SUGAR_USD')|
+
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.45 &
+  AR_GLM_Pred_period_return_50_Price < 0.49 &
+      Asset == 'SUGAR_USD'
+  )|
+
+  (
+  AR_LM_Pred_period_return_50_Price > 0.25 &
+  AR_LM_Pred_period_return_50_Price < 500 &
+      Asset == 'SUGAR_USD'
+  )|
+
+  (state_space_GLM_Pred_period_return_50_Price > 0.71 &
+  state_space_GLM_Pred_period_return_50_Price < 0.96 &
+      Asset == 'DE30_EUR')|
+
+  (
+  state_space_LM_Pred_period_return_50_Price > 1 &
+  state_space_LM_Pred_period_return_50_Price < 4.25 &
+      Asset == 'DE30_EUR'
+  )|
+
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.61 &
+  AR_GLM_Pred_period_return_50_Price < 0.64 &
+      Asset == 'DE30_EUR'
+  )|
+  (
+  AR_LM_Pred_period_return_50_Price > 0 &
+  AR_LM_Pred_period_return_50_Price < 100 &
+      Asset == 'DE30_EUR'
+  )|
+
+  (state_space_GLM_Pred_period_return_50_Price > 0.65 &
+  state_space_GLM_Pred_period_return_50_Price < 0.7 &
+      Asset == 'UK10YB_GBP')|
+
+ (state_space_GLM_Pred_period_return_50_Price > 0.92 &
+ state_space_GLM_Pred_period_return_50_Price < 0.95 &
+     Asset == 'EUR_CHF')|
+
+
+  (state_space_LM_Pred_period_return_50_Price > 0  &
+   state_space_LM_Pred_period_return_50_Price < 0.1  &
+        Asset == 'GBP_CHF')|
+  (AR_LM_Pred_period_return_50_Price > 0.52  &
+        Asset == 'GBP_CHF')|
+  (AR_GLM_Pred_period_return_50_Price >
+      AR_GLM_Pred_period_return_50_Price_mean + 1.4*AR_GLM_Pred_period_return_50_Price_sd &
+  AR_GLM_Pred_period_return_50_Price <
+      AR_GLM_Pred_period_return_50_Price_mean + 1.75*AR_GLM_Pred_period_return_50_Price_sd &
+        Asset == 'GBP_CHF')|
+
+  (state_space_GLM_Pred_period_return_50_Price < 0.085 &
+    state_space_GLM_Pred_period_return_50_Price > 0.04 &
+        Asset == 'USD_CZK')|
+  (state_space_GLM_Pred_period_return_50_Price >
+      state_space_GLM_Pred_period_return_50_Price_mean + 2.25*state_space_GLM_Pred_period_return_50_Price_sd &
+        Asset == 'USD_CZK')|
+  (state_space_LM_Pred_period_return_50_Price >
+      state_space_LM_Pred_period_return_50_Price_mean + 1.25*state_space_LM_Pred_period_return_50_Price_sd &
+  state_space_LM_Pred_period_return_50_Price <
+      state_space_LM_Pred_period_return_50_Price_mean + 1.5*state_space_LM_Pred_period_return_50_Price_sd &
+        Asset == 'USD_CZK')|
+    (
+    AR_LM_Pred_period_return_50_Price > 0 &
+    AR_LM_Pred_period_return_50_Price < 20 &
+        Asset == 'USD_CZK'
+    )|
+    (
+    AR_LM_Pred_period_return_50_Price >
+      AR_LM_Pred_period_return_50_Price_mean + 2*AR_LM_Pred_period_return_50_Price_sd &
+    AR_LM_Pred_period_return_50_Price <
+      AR_LM_Pred_period_return_50_Price_mean + 2.5*AR_LM_Pred_period_return_50_Price_sd &
+        Asset == 'USD_CZK'
+    )|
+
+    (state_space_GLM_Pred_period_return_50_Price >
+      state_space_GLM_Pred_period_return_50_Price_mean + 1.2*state_space_GLM_Pred_period_return_50_Price_sd &
+    state_space_GLM_Pred_period_return_50_Price <
+      state_space_GLM_Pred_period_return_50_Price_mean + 1.5*state_space_GLM_Pred_period_return_50_Price_sd &
+    state_space_GLM_Pred_period_return_50_Price > 0.5 &
+        Asset == 'USD_NOK')|
+    (state_space_GLM_Pred_period_return_50_Price >
+      state_space_GLM_Pred_period_return_50_Price_mean + 1.85*state_space_GLM_Pred_period_return_50_Price_sd &
+    state_space_GLM_Pred_period_return_50_Price <
+      state_space_GLM_Pred_period_return_50_Price_mean + 2.4*state_space_GLM_Pred_period_return_50_Price_sd &
+    state_space_GLM_Pred_period_return_50_Price > 0.5 &
+        Asset == 'USD_NOK')|
+    (
+    state_space_GLM_Pred_period_return_50_Price < 0.05 &
+    state_space_GLM_Pred_period_return_50_Price > 0.00 &
+    Asset == 'GBP_NZD'
+    )|
+    (
+    state_space_LM_Pred_period_return_50_Price < -7.5 &
+    state_space_LM_Pred_period_return_50_Price > -1000 &
+    Asset == 'GBP_NZD'
+    )|
+    (
+    AR_LM_Pred_period_return_50_Price > 0.4 &
+    AR_LM_Pred_period_return_50_Price < 0.95 &
+    Asset == 'GBP_NZD'
+    )|
+    (
+    AR_GLM_Pred_period_return_50_Price > 0.5 &
+    AR_GLM_Pred_period_return_50_Price < 1 &
+    Asset == 'GBP_NZD'
+    )|
+  (
+  AR_LM_Pred_period_return_50_Price > 1 &
+  AR_LM_Pred_period_return_50_Price < 1000 &
+  Asset == 'NZD_CHF'
+  )|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.565 &
+  AR_GLM_Pred_period_return_50_Price < 1 &
+  Asset == 'NZD_CHF'
+  )|
+  (
+  state_space_LM_Pred_period_return_50_Price > 1.6 &
+  state_space_LM_Pred_period_return_50_Price < 2.1 &
+  Asset == 'USD_MXN'
+  )|
+  (
+  state_space_GLM_Pred_period_return_50_Price > 0.57 &
+  state_space_GLM_Pred_period_return_50_Price < 0.61 &
+  Asset == 'USD_MXN'
+  )|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.6 &
+  AR_GLM_Pred_period_return_50_Price < 0.7 &
+  Asset == 'USD_MXN'
+  )|
+  (
+  AR_LM_Pred_period_return_50_Price > 0.7 &
+  AR_LM_Pred_period_return_50_Price < 0.9 &
+  Asset == 'USD_MXN'
+  )|
+  (
+  state_space_LM_Pred_period_return_50_Price > 28 &
+  state_space_LM_Pred_period_return_50_Price < 50 &
+  Asset == 'CH20_CHF'
+  )|
+  (
+  state_space_GLM_Pred_period_return_50_Price > 0.675 &
+  state_space_GLM_Pred_period_return_50_Price < 0.725 &
+  Asset == 'CH20_CHF'
+  )|
+  (
+  state_space_LM_Pred_period_return_50_Price > 39 &
+  state_space_LM_Pred_period_return_50_Price < 50 &
+  Asset == 'XPT_USD'
+  )|
+  (
+  state_space_GLM_Pred_period_return_50_Price > 0.8 &
+  state_space_GLM_Pred_period_return_50_Price < 0.85 &
+  Asset == 'XPT_USD'
+  )|
+  (
+  state_space_GLM_Pred_period_return_50_Price > 0.5 &
+  state_space_GLM_Pred_period_return_50_Price < 0.54 &
+  Asset == 'SOYBN_USD'
+  )|
+  (
+  AR_LM_Pred_period_return_50_Price > 0.25 &
+  AR_LM_Pred_period_return_50_Price < 1 &
+  Asset == 'SOYBN_USD'
+  )|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.61 &
+  AR_GLM_Pred_period_return_50_Price < 0.75 &
+  Asset == 'SOYBN_USD'
+  )|
+  (
+  state_space_GLM_Pred_period_return_50_Price > 0.665 &
+  state_space_GLM_Pred_period_return_50_Price < 0.7 &
+  Asset == 'JP225_USD'
+  )|
+  (
+  state_space_LM_Pred_period_return_50_Price > 0.25 &
+  state_space_LM_Pred_period_return_50_Price < 0.86 &
+  Asset == 'JP225_USD'
+  )|
+  (
+  AR_LM_Pred_period_return_50_Price > 0.5 &
+  AR_LM_Pred_period_return_50_Price < 1.3 &
+  Asset == 'JP225_USD'
+  )|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.55 &
+  AR_GLM_Pred_period_return_50_Price < 1 &
+  Asset == 'JP225_USD'
   )
 
   "
 
-assets_to_use <- assets_to_use[7:12]
+assets_to_use <- assets_to_use[7:13]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -546,7 +631,7 @@ while (current_time < end_time) {
           Single_Asset_V3_get_all_preds(
             Indices_Metals_Bonds = Indices_Metals_Bonds,
             raw_macro_data = raw_macro_data,
-            base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+            base_path = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Single_Asset_V4_Expanded_Models/",
             actuals_periods_needed = c("period_return_50_Price"),
             correlation_rolling_periods = c(100,200, 300,400, 500),
             state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
@@ -554,7 +639,7 @@ while (current_time < end_time) {
             date_for_true_simualtion = "2019-01-01",
             training_end_date = "2021-01-01",
             asset_index_start = 7,
-            asset_index_end = 12
+            asset_index_end = 13
           )
         tictoc::toc()
 
