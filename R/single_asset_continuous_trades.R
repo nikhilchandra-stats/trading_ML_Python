@@ -2831,7 +2831,7 @@ prepare_macro_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = macro_indicator_model,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       rm(macro_indicator_model)
@@ -2869,7 +2869,7 @@ prepare_macro_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = macro_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       macro_indicator_formula_lin <-
@@ -3679,7 +3679,7 @@ prepare_index_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = index_indicator_model,
-                      p_value_thresh_for_inputs = 0.25)
+                      p_value_thresh_for_inputs = 10^-3)
 
       rm(index_indicator_model)
       gc()
@@ -3715,7 +3715,7 @@ prepare_index_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = index_indicator_model_lin,
-                      p_value_thresh_for_inputs = 0.25)
+                      p_value_thresh_for_inputs = 10^-3)
 
       index_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -3982,7 +3982,7 @@ prepare_daily_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = daily_indicator_model,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       rm(daily_indicator_model)
@@ -4020,7 +4020,7 @@ prepare_daily_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = daily_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       daily_indicator_formula_lin <-
@@ -4212,7 +4212,7 @@ prepare_copula_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = copula_indicator_model,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       rm(copula_indicator_model)
@@ -4250,7 +4250,7 @@ prepare_copula_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = copula_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       copula_indicator_formula_lin <-
@@ -4385,7 +4385,7 @@ prepare_combined_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = combined_indicator_model,
-                      p_value_thresh_for_inputs = 0.00001)
+                      p_value_thresh_for_inputs = 10^-3)
 
       rm(combined_indicator_model)
       gc()
@@ -4421,7 +4421,7 @@ prepare_combined_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = combined_indicator_model_lin,
-                      p_value_thresh_for_inputs = 0.00001)
+                      p_value_thresh_for_inputs = 10^-3)
 
       combined_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -4559,7 +4559,7 @@ prepare_technical_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = technical_indicator_model,
                       # p_value_thresh_for_inputs = 0.15
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       rm(technical_indicator_model)
@@ -4597,7 +4597,7 @@ prepare_technical_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = technical_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.15
-                      p_value_thresh_for_inputs = 0.9
+                      p_value_thresh_for_inputs = 10^-3
                       )
 
       technical_indicator_formula_lin <-
@@ -5238,7 +5238,7 @@ prepare_post_ss_gen2_model <-
 
     sig_coefs <-
       get_sig_coefs(model_object_of_interest = lm_model,
-                    p_value_thresh_for_inputs = 0.99)
+                    p_value_thresh_for_inputs = 10^-3)
 
     lm_form <-
       create_lm_formula(dependant = dependant_var, independant = sig_coefs)
@@ -5262,7 +5262,7 @@ prepare_post_ss_gen2_model <-
 
     sig_coefs <-
       get_sig_coefs(model_object_of_interest = glm_model,
-                    p_value_thresh_for_inputs = 0.99)
+                    p_value_thresh_for_inputs = 10^-3)
 
     glm_form <-
       create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = sig_coefs)
@@ -6199,7 +6199,7 @@ single_asset_algo_generate_models <-
     c = 0
     redo_db = TRUE
 
-    for (j in 1:length(indicator_mapping$Asset) ) {
+    for (j in start_index:end_index ) {
 
       countries_for_int_strength <-
         unlist(indicator_mapping$countries_for_int_strength[j])
@@ -6524,8 +6524,8 @@ single_asset_algo_generate_preds <-
                 "XAG_AUD", #20
                 "XAG_NZD", #21
                 "HK33_HKD", #22
-                # "FR40_EUR", #23
-                # "BTC_USD", #24
+                "FR40_EUR", #23
+                "BTC_USD", #24
                 "XAG_GBP", #25
                 "GBP_AUD", #26
                 "USD_SEK", #27
@@ -6658,15 +6658,15 @@ single_asset_algo_generate_preds <-
             "SPX500_USD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
             "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD") %>% unique(), #22
 
-          # # "FR40_EUR" #23
-          # c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD",
-          #   "XAU_USD", "USB10Y_USD", "SPX500_USD", "EUR_USD", "EUR_AUD",
-          #   "XAU_EUR", "XAG_EUR", "EUR_NZD", "EUR_JPY") %>% unique(), #23
+          # "FR40_EUR" #23
+          c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD",
+            "XAU_USD", "USB10Y_USD", "SPX500_USD", "EUR_USD", "EUR_AUD",
+            "XAU_EUR", "XAG_EUR", "EUR_NZD", "EUR_JPY") %>% unique(), #23
 
-          # # "BTC_USD", #24
-          # c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
-          #   "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
-          #   "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(), #24
+          # "BTC_USD", #24
+          c("US2000_USD", "AU200_AUD", "USB10Y_USD", "UK100_GBP", "XAU_USD", "EU50_EUR",
+            "HK33_HKD", "FR40_EUR", "WTICO_USD", "USD_JPY", "EUR_USD", "GBP_USD", "AU200_AUD",
+            "SG30_SGD", "XAU_EUR", "XAG_EUR", "XAG_GBP", "XAU_GBP", "XAG_USD" ) %>% unique(), #24
 
           # "XAG_GBP", #25
           c("XAG_JPY", "XAG_NZD", "XAG_USD", "XAG_EUR", "XAU_USD", "EU50_EUR", "SPX500_USD",
@@ -6774,8 +6774,8 @@ single_asset_algo_generate_preds <-
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #20
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #21
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #22
-          # c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #23
-          # c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #24
+          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #23
+          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #24
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #25
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #26
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #27
@@ -6794,7 +6794,6 @@ single_asset_algo_generate_preds <-
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD") #40
         )
     )
-
     assets_to_analyse <-
       indicator_mapping$Asset
 
@@ -6811,6 +6810,7 @@ single_asset_algo_generate_preds <-
       couplua_assets = unlist(indicator_mapping$couplua_assets[j])
       Asset_of_interest = unlist(indicator_mapping$Asset[j])
 
+      message(Asset_of_interest)
 
       long_sim <-
         single_asset_Logit_indicator_adv_get_preds(
@@ -6904,7 +6904,7 @@ single_asset_algo_generate_preds <-
       get_rolling_post_preds(
         post_pred_data = post_preds_all,
         rolling_periods = c(3,50,100,200,400,500,2000),
-        test_date_start = "2025-10-01",
+        test_date_start = training_date_end_post,
         test_date_end = as.character(today() + days(100)),
         pred_price_cols = post_bins_cols
       )

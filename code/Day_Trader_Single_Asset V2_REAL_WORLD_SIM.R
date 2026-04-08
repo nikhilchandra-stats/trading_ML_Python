@@ -164,33 +164,33 @@ Indices_Metals_Bonds[[2]] <-
   ) %>%
   distinct()
 
-# single_asset_algo_generate_models(
-#   All_Daily_Data = All_Daily_Data,
-#   Indices_Metals_Bonds = Indices_Metals_Bonds,
-#   raw_macro_data = raw_macro_data,
-#   currency_conversion = currency_conversion,
-#   asset_infor = asset_infor,
-#   start_index = 1,
-#   end_index = 40,
-#   risk_dollar_value = 15,
-#   trade_direction = "Long",
-#   stop_value_var = 5,
-#   profit_value_var = 30,
-#   period_var = 24,
-#   bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-#   date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
-#   date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
-#   training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
-#   training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
-#   test_end_date = as.character(today()),
-#   post_bins_cols =
-#     c("period_return_24_Price",
-#       "period_return_30_Price",
-#       "period_return_44_Price"),
-#   post_dependant_threshold = 5,
-#   model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
-#   save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
-# )
+single_asset_algo_generate_models(
+  All_Daily_Data = All_Daily_Data,
+  Indices_Metals_Bonds = Indices_Metals_Bonds,
+  raw_macro_data = raw_macro_data,
+  currency_conversion = currency_conversion,
+  asset_infor = asset_infor,
+  start_index = 1,
+  end_index = 40,
+  risk_dollar_value = 15,
+  trade_direction = "Long",
+  stop_value_var = 5,
+  profit_value_var = 30,
+  period_var = 24,
+  bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
+  date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+  date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
+  training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
+  training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
+  test_end_date = as.character(today()),
+  post_bins_cols =
+    c("period_return_24_Price",
+      "period_return_30_Price",
+      "period_return_44_Price"),
+  post_dependant_threshold = 5,
+  model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
+  save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
+)
 
 post_preds_all_rolling_and_originals <-
   single_asset_algo_generate_preds(
@@ -209,10 +209,10 @@ post_preds_all_rolling_and_originals <-
   profit_value_var = 30,
   period_var = 24,
   bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-  date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
-  date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24)),
-  training_date_start_post = as.character(as_date("2024-07-04") + days(24)),
-  training_date_end_post = as.character(as_date("2025-09-01") + days(40)),
+  date_train_end_pre = as.character(as_date("2023-06-01")  ),
+  date_train_phase_2_end_pre = as.character(as_date("2024-06-01")),
+  training_date_start_post = as.character(as_date("2024-07-04")),
+  training_date_end_post = as.character(as_date("2025-09-01")),
   test_end_date = as.character(today()),
   post_bins_cols =
     c("period_return_24_Price",

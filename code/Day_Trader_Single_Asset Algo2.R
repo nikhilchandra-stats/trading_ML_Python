@@ -478,29 +478,25 @@ while (current_time < end_time) {
             raw_macro_data = raw_macro_data,
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
-            # start_index = 1,
-            # end_index = 40,
             start_index = 19,
             end_index = 38,
             risk_dollar_value = 15,
             trade_direction = "Long",
-            stop_value_var = 5,
-            profit_value_var = 30,
+            stop_value_var = 10,
+            profit_value_var = 60,
             period_var = 24,
-            bin_var_col = c("period_return_20_Price", "period_return_24_Price", "period_return_28_Price"),
-            date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
-            date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24)),
-            training_date_start_post = as.character(as_date("2024-07-04") + days(24)),
-            training_date_end_post = as.character(as_date("2025-09-01") + days(40)),
-            test_end_date = as.character(today() + days(100)),
+            bin_var_col = c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
+            date_train_end_pre = as.character(as_date("2021-01-01")  ),
+            date_train_phase_2_end_pre = as.character(as_date("2022-01-01")  ),
+            training_date_start_post = as.character(as_date("2022-01-01")  ),
+            training_date_end_post = as.character(as_date("2023-01-01")  ),
+            test_end_date = as.character(today()),
+            post_dependant_var = "period_return_50_Price",
             post_bins_cols =
-              c("period_return_24_Price",
-                "period_return_30_Price",
-                "period_return_44_Price"),
-            post_dependant_threshold = 5,
-            post_dependant_var = "period_return_24_Price",
+              c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
+            post_dependant_threshold = 0,
             model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
-            save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2/"
+            save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
           )
         tictoc::toc()
 
@@ -534,10 +530,15 @@ while (current_time < end_time) {
                  pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4 +  pred_macro_4 +
                  pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_macro_6  )/15,
 
+            Averaged_Multi_prob_Momentum_Marco =
+              (pred_index_2 + pred_daily_2 + pred_technical_2  + pred_macro_2 +
+                 pred_index_4 + pred_daily_4 + pred_technical_4  +  pred_macro_4 +
+                 pred_index_6 + pred_daily_6 + pred_technical_6  + pred_macro_6  )/12,
+
             Averaged_FULL_GLM =
               (pred_index_2 + pred_daily_2 + pred_technical_2 + pred_copula_2  + pred_GLM_period_return_24_Price +
-                 pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4  + pred_GLM_period_return_30_Price +
-                 pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_GLM_period_return_44_Price
+                 pred_index_4 + pred_daily_4 + pred_technical_4 + pred_copula_4  + pred_GLM_period_return_40_Price +
+                 pred_index_6 + pred_daily_6 + pred_technical_6 + pred_copula_6 + pred_GLM_period_return_50_Price
               )/15,
 
             Averaged_FULL_LM =
@@ -545,6 +546,7 @@ while (current_time < end_time) {
                  pred_index_3 + pred_daily_3 + pred_technical_3 + pred_copula_3   +
                  pred_index_5 + pred_daily_5 + pred_technical_5 + pred_copula_5
               )/12
+
           ) %>%
           filter(Asset != "BTC_USD", Asset != "FR40_EUR") %>%
           mutate(
@@ -573,9 +575,9 @@ while (current_time < end_time) {
           single_asset_model_trades_filt %>%
           distinct(Asset, Date) %>%
           mutate(trade_col = "Long",
-                 stop_factor = 5,
-                 profit_factor = 30,
-                 periods_ahead = 35,
+                 stop_factor = 10,
+                 profit_factor = 60,
+                 periods_ahead = 50,
                  risk_dollar_value = risk_dollar_value
           ) %>%
           group_by(Asset) %>%
