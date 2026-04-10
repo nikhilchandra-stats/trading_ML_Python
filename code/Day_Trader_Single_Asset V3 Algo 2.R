@@ -237,11 +237,10 @@ assets_to_use <-
     "GBP_NZD", #8 GBP_NZD
     "NZD_CHF", #9 NZD_CHF
     "CH20_CHF", #10 CH20_CHF
-    "XPT_USD", #11 XPT_USD
-    "SOYBN_USD", #12 SOYBN_USD
-    "JP225_USD", #13 JP225_USD
-    "XPD_USD", #14 XPD_USD
-    "NL25_EUR" #15 NL25_EUR
+    "SOYBN_USD", #11 SOYBN_USD
+    "JP225_USD", #12 JP225_USD
+    "XPD_USD", #13 XPD_USD
+    "NL25_EUR" #14 NL25_EUR
   )
 
 trade_statement <-
@@ -589,11 +588,10 @@ while (current_time < end_time) {
               "GBP_NZD", #8 GBP_NZD
               "NZD_CHF", #9 NZD_CHF
               "CH20_CHF", #10 CH20_CHF
-              "XPT_USD", #11 XPT_USD
-              "SOYBN_USD", #12 SOYBN_USD
-              "JP225_USD", #13 JP225_USD
-              "XPD_USD", #14 XPD_USD
-              "NL25_EUR" #15 NL25_EUR
+              "SOYBN_USD", #11 SOYBN_USD
+              "JP225_USD", #12 JP225_USD
+              "XPD_USD", #13 XPD_USD
+              "NL25_EUR" #14 NL25_EUR
             )
         ) %>%
         distinct()
@@ -633,8 +631,8 @@ while (current_time < end_time) {
             state_space_rolling = c(100, 200, 300, 400),
             date_for_true_simualtion = "2019-01-01",
             training_end_date = "2021-01-01",
-            asset_index_start = 9,
-            asset_index_end = 13
+            asset_index_start = 7,
+            asset_index_end = 12
             # asset_index_end = 12
           )
         tictoc::toc()

@@ -66,7 +66,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-start_date = "2020-01-01"
+start_date = "2020-03-01"
 end_date = today() %>% as.character()
 
 bin_factor = NULL
@@ -144,7 +144,7 @@ all_preds <-
     date_for_true_simualtion = "2020-01-01",
     training_end_date = "2021-01-01",
     asset_index_start = 1,
-    asset_index_end = 16
+    asset_index_end = 14
     # asset_index_end = 12
   )
 tictoc::toc()
@@ -584,15 +584,19 @@ trade_statement <-
   state_space_GLM_Pred_period_return_50_Price < 0.7 &
       Asset == 'UK10YB_GBP')|
 
- (state_space_GLM_Pred_period_return_50_Price > 0.92 &
- state_space_GLM_Pred_period_return_50_Price < 0.95 &
-     Asset == 'EUR_CHF')|
+  (
+  AR_LM_Pred_period_return_50_Price > 2.5 &
+  AR_LM_Pred_period_return_50_Price < 100 &
+      Asset == 'EUR_CHF'
+  )|
 
-
+  (state_space_LM_Pred_period_return_50_Price < -7.5  &
+   state_space_LM_Pred_period_return_50_Price > -1000  &
+        Asset == 'GBP_CHF')|
   (state_space_LM_Pred_period_return_50_Price > 0  &
    state_space_LM_Pred_period_return_50_Price < 0.1  &
         Asset == 'GBP_CHF')|
-  (AR_LM_Pred_period_return_50_Price > 0.52  &
+  (AR_LM_Pred_period_return_50_Price > 0.65  &
         Asset == 'GBP_CHF')|
   (AR_GLM_Pred_period_return_50_Price >
       AR_GLM_Pred_period_return_50_Price_mean + 1.4*AR_GLM_Pred_period_return_50_Price_sd &

@@ -237,11 +237,10 @@ assets_to_use <-
     "GBP_NZD", #8 GBP_NZD
     "NZD_CHF", #9 NZD_CHF
     "CH20_CHF", #10 CH20_CHF
-    "XPT_USD", #11 XPT_USD
-    "SOYBN_USD", #12 SOYBN_USD
-    "JP225_USD", #13 JP225_USD
-    "XPD_USD", #14 XPD_USD
-    "NL25_EUR" #15 NL25_EUR
+    "SOYBN_USD", #11 SOYBN_USD
+    "JP225_USD", #12 JP225_USD
+    "XPD_USD", #13 XPD_USD
+    "NL25_EUR" #14 NL25_EUR
   )
 
 trade_statement <-
@@ -468,7 +467,7 @@ trade_statement <-
 
   "
 
-assets_to_use <- assets_to_use[1:8]
+assets_to_use <- assets_to_use[1:7]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -589,11 +588,10 @@ while (current_time < end_time) {
               "GBP_NZD", #8 GBP_NZD
               "NZD_CHF", #9 NZD_CHF
               "CH20_CHF", #10 CH20_CHF
-              "XPT_USD", #11 XPT_USD
-              "SOYBN_USD", #12 SOYBN_USD
-              "JP225_USD", #13 JP225_USD
-              "XPD_USD", #14 XPD_USD
-              "NL25_EUR" #15 NL25_EUR
+              "SOYBN_USD", #11 SOYBN_USD
+              "JP225_USD", #12 JP225_USD
+              "XPD_USD", #13 XPD_USD
+              "NL25_EUR" #14 NL25_EUR
                  )
         ) %>%
         distinct()
@@ -635,7 +633,7 @@ while (current_time < end_time) {
           training_end_date = "2021-01-01",
           asset_index_start = 1,
           # asset_index_end = 6
-          asset_index_end = 8
+          asset_index_end = 6
         )
         tictoc::toc()
 
@@ -682,9 +680,20 @@ while (current_time < end_time) {
                    case_when(
                      Asset %in% c("CH20_CHF") ~ 4,
                      Asset %in% c("XPT_USD") ~ 4,
+                     Asset %in% c("EUR_CHF") ~ 12,
+                     Asset %in% c("GBP_CHF") ~ 10,
+                     Asset %in% c("USD_CZK") ~ 5,
+                     Asset %in% c("USD_NOK") ~ 5,
                      TRUE ~ 10
                     ),
-                 profit_factor = 60,
+                 profit_factor =
+                   case_when(
+                     Asset %in% c("EUR_CHF") ~ 60,
+                     Asset %in% c("GBP_CHF") ~ 8,
+                     Asset %in% c("USD_CZK") ~ 80,
+                     Asset %in% c("USD_NOK") ~ 10,
+                     TRUE ~ 60
+                   ),
                  periods_ahead = 50,
                  risk_dollar_value = risk_dollar_value
           ) %>%
