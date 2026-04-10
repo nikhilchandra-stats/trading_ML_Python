@@ -130,7 +130,7 @@ asset_list_oanda_single_asset <-
 
 #-------------Indicator Inputs
 
-end_time <- glue::glue("{floor_date(now(), 'week')} 04:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
+end_time <- glue::glue("{floor_date(now(), 'week')} 07:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
 current_time <- now()
 
 
