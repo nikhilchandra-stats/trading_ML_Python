@@ -1,7 +1,7 @@
 helpeR::load_custom_functions()
 
 all_aud_symbols <- get_oanda_symbols() %>%
-  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN"))
+  keep(~ str_detect(.x, "AUD")|str_detect(.x, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|USD_CNY|USD_MXN|USD_CZK"))
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
@@ -91,7 +91,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-start_date = "2019-01-01"
+start_date = "2020-03-01"
 end_date = today() %>% as.character()
 
 # All_Daily_Data <-
@@ -246,22 +246,17 @@ assets_to_use <-
 
 trade_statement <-
   "
-  (state_space_GLM_Pred_period_return_50_Price > 0.91 &
-  state_space_GLM_Pred_period_return_50_Price < 0.98 &
+  (state_space_GLM_Pred_period_return_50_Price > 0.97 &
+  state_space_GLM_Pred_period_return_50_Price < 0.99 &
       Asset == 'WHEAT_USD')|
-
+  (state_space_LM_Pred_period_return_50_Price > 2.75 &
+  state_space_LM_Pred_period_return_50_Price < 5.5 &
+      Asset == 'WHEAT_USD')|
   (
-  state_space_LM_Pred_period_return_50_Price > 1 &
-  state_space_LM_Pred_period_return_50_Price < 5 &
-      Asset == 'WHEAT_USD'
-  )|
-
-  (
-  AR_GLM_Pred_period_return_50_Price > 0.47 &
+  AR_GLM_Pred_period_return_50_Price > 0.475 &
   AR_GLM_Pred_period_return_50_Price < 0.9999999999 &
       Asset == 'WHEAT_USD'
   )|
-
   (
   AR_LM_Pred_period_return_50_Price > -0.1 &
   AR_LM_Pred_period_return_50_Price < 5 &
@@ -270,7 +265,7 @@ trade_statement <-
 
   (state_space_GLM_Pred_period_return_50_Price < 0.075 &
   state_space_GLM_Pred_period_return_50_Price > 0 &
-      Asset == 'SUGAR_USD')
+      Asset == 'SUGAR_USD')|
 
   (state_space_LM_Pred_period_return_50_Price < -8 &
   state_space_LM_Pred_period_return_50_Price > -500 &
@@ -416,7 +411,7 @@ trade_statement <-
   Asset == 'USD_MXN'
   )|
   (
-  state_space_LM_Pred_period_return_50_Price > 28 &
+  state_space_LM_Pred_period_return_50_Price > 39 &
   state_space_LM_Pred_period_return_50_Price < 50 &
   Asset == 'CH20_CHF'
   )|
@@ -473,7 +468,7 @@ trade_statement <-
 
   "
 
-assets_to_use <- assets_to_use[7:13]
+assets_to_use <- assets_to_use[9:13]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -638,8 +633,9 @@ while (current_time < end_time) {
             state_space_rolling = c(100, 200, 300, 400),
             date_for_true_simualtion = "2019-01-01",
             training_end_date = "2021-01-01",
-            asset_index_start = 7,
+            asset_index_start = 9,
             asset_index_end = 13
+            # asset_index_end = 12
           )
         tictoc::toc()
 
@@ -684,9 +680,9 @@ while (current_time < end_time) {
           mutate(trade_col = "Long",
                  stop_factor =
                    case_when(
-                      Asset %in% c("CH20_CHF") ~ 6,
+                      Asset %in% c("CH20_CHF") ~ 4,
                       Asset %in% c("XPT_USD") ~ 4,
-                      TRUE ~ 15
+                      TRUE ~ 10
                      ),
                  profit_factor = 60,
                  periods_ahead = 50,
