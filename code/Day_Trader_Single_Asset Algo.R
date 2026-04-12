@@ -91,7 +91,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2016-01-01"
+start_date = "2019-06-01"
 end_date = today() %>% as.character()
 
 All_Daily_Data <-
@@ -175,7 +175,7 @@ asset_list_oanda_single_asset <-
 
 #-------------Indicator Inputs
 
-end_time <- glue::glue("{floor_date(now(), 'week')} 04:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
+end_time <- glue::glue("{floor_date(now(), 'week')} 07:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
 current_time <- now()
 
 
@@ -203,11 +203,14 @@ trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 end_date_day = today() %>% as.character()
 
+# mean_values_by_asset_for_loop_H1_ask <-
+#   wrangle_asset_data(
+#     asset_data_daily_raw = Indices_Metals_Bonds[[1]],
+#     summarise_means = TRUE
+#   )
+
 mean_values_by_asset_for_loop_H1_ask <-
-  wrangle_asset_data(
-    asset_data_daily_raw = Indices_Metals_Bonds[[1]],
-    summarise_means = TRUE
-  )
+  read_csv(file = "C:/Users/nikhi/Documents/Asset Data/standard_mean_values.csv")
 
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
@@ -1016,7 +1019,7 @@ trade_statement <-
 
   "
 
-assets_to_use <- assets_to_use[1:18]
+assets_to_use <- assets_to_use[1:13]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -1171,7 +1174,7 @@ while (current_time < end_time) {
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
             start_index = 1,
-            end_index = 18,
+            end_index = 13,
             risk_dollar_value = 15,
             trade_direction = "Long",
             stop_value_var = 10,
@@ -1182,13 +1185,13 @@ while (current_time < end_time) {
             date_train_phase_2_end_pre = as.character(as_date("2022-01-01")  ),
             training_date_start_post = as.character(as_date("2022-01-01")  ),
             training_date_end_post = as.character(as_date("2023-01-01")  ),
-            test_end_date = as.character(today()),
+            test_end_date = as.character(today() + days(20)),
             post_dependant_var = "period_return_50_Price",
             post_bins_cols =
               c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
             post_dependant_threshold = 0,
             model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
-            save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
+            save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2 - Copy"
           )
         tictoc::toc()
 

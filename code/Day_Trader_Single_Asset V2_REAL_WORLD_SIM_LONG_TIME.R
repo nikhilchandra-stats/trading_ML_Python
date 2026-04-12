@@ -66,7 +66,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2013-01-01"
+start_date = "2019-06-01"
 end_date = today() %>% as.character()
 
 bin_factor = NULL
@@ -164,39 +164,39 @@ Indices_Metals_Bonds[[2]] <-
   ) %>%
   distinct()
 
-single_asset_algo_generate_models(
-  All_Daily_Data = All_Daily_Data,
-  Indices_Metals_Bonds = Indices_Metals_Bonds,
-  raw_macro_data = raw_macro_data,
-  currency_conversion = currency_conversion,
-  asset_infor = asset_infor,
-  # start_index = 1,
-  start_index = 1,
-  end_index = 38,
-  risk_dollar_value = 15,
-  trade_direction = "Long",
-  stop_value_var = 10,
-  profit_value_var = 60,
-  period_var = 24,
-  bin_var_col = c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
-  # date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
-  # date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
-  # training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
-  # training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
-  # test_end_date = as.character(today()),
-
-  date_train_end_pre = as.character(as_date("2021-01-01")  ),
-  date_train_phase_2_end_pre = as.character(as_date("2022-01-01")  ),
-  training_date_start_post = as.character(as_date("2022-01-01")  ),
-  training_date_end_post = as.character(as_date("2023-01-01")  ),
-  test_end_date = as.character(today()),
-
-  post_bins_cols =
-    c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
-  post_dependant_threshold = 0,
-  model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
-  save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
-)
+# single_asset_algo_generate_models(
+#   All_Daily_Data = All_Daily_Data,
+#   Indices_Metals_Bonds = Indices_Metals_Bonds,
+#   raw_macro_data = raw_macro_data,
+#   currency_conversion = currency_conversion,
+#   asset_infor = asset_infor,
+#   # start_index = 1,
+#   start_index = 1,
+#   end_index = 38,
+#   risk_dollar_value = 15,
+#   trade_direction = "Long",
+#   stop_value_var = 10,
+#   profit_value_var = 60,
+#   period_var = 24,
+#   bin_var_col = c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
+#   # date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+#   # date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
+#   # training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
+#   # training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
+#   # test_end_date = as.character(today()),
+#
+#   date_train_end_pre = as.character(as_date("2021-01-01")  ),
+#   date_train_phase_2_end_pre = as.character(as_date("2022-01-01")  ),
+#   training_date_start_post = as.character(as_date("2022-01-01")  ),
+#   training_date_end_post = as.character(as_date("2023-01-01")  ),
+#   test_end_date = as.character(today()),
+#
+#   post_bins_cols =
+#     c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
+#   post_dependant_threshold = 0,
+#   model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
+#   save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
+# )
 
 Cut_Down_Data <-
   Indices_Metals_Bonds %>%
@@ -285,8 +285,8 @@ actual_wins_losses <-
         "ETH_USD" #40
       ),
     asset_data = Indices_Metals_Bonds,
-    stop_factor = 10,
-    profit_factor = 60,
+    stop_factor = 5,
+    profit_factor = 15,
     risk_dollar_value = 10,
     trade_direction = "Long",
     currency_conversion = currency_conversion,
@@ -340,323 +340,7 @@ generated_preds <-
     Date >= as.character(as_date("2023-01-01")  )
   )
 
-#' get_control_trade_cumulative_returns
-#'
-#' @param generated_preds
-#' @param trade_statement
-#' @param trade_direction
-#' @param return_col
-#'
-#' @returns
-#' @export
-#'
-#' @examples
-get_control_trade_cumulative_returns <-
-  function(
-    generated_preds = generated_preds,
-    trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses,
-    trade_direction = "Long",
-    return_col = "period_return_50_Price"
-  ) {
 
-    control_data_asset <-
-      generated_preds %>%
-      left_join(
-        actual_wins_losses %>%
-          dplyr::select(Date, Asset, trade_col,  contains(return_col), volume_required) %>%
-          filter(trade_col == trade_direction) %>%
-          dplyr::select(-trade_col) %>%
-          dplyr::select(Date, Asset,  contains(return_col), volume_required) %>%
-          distinct()
-      ) %>%
-      distinct() %>%
-      dplyr::select(Date, Asset, !!as.name(return_col), volume_required) %>%
-      group_by(Asset) %>%
-      arrange(Date, .by_group = TRUE) %>%
-      group_by(Asset) %>%
-      mutate(
-        cumulative_return := cumsum(!!as.name(return_col))
-      )
-
-    trade_data <-
-      generated_preds %>%
-      mutate(
-        trade_col =
-          eval(parse(text = trade_statement)),
-        trade_col =
-          ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ", trade_direction) )
-      ) %>%
-      left_join(
-        actual_wins_losses %>%
-          dplyr::select(Date, Asset, trade_col,  contains(return_col), volume_required) %>%
-          filter(trade_col == trade_direction) %>%
-          dplyr::select(-trade_col) %>%
-          dplyr::select(Date, Asset,  contains(return_col), volume_required) %>%
-          distinct()
-      ) %>%
-      filter(trade_col == trade_direction) %>%
-      group_by(Asset) %>%
-      arrange(Date, .by_group = TRUE) %>%
-      group_by(Asset) %>%
-      mutate(
-        cumulative_return = cumsum(!!as.name(return_col))
-      ) %>%
-      dplyr::select(Date, Asset, trade_col,
-                    !!as.name(return_col), cumulative_return, volume_required)
-
-    return(
-      list(
-        "control_data_asset" = control_data_asset,
-        "trade_data" = trade_data
-      )
-    )
-
-  }
-
-#' get_margin_details
-#'
-#' @param currency_conversion
-#' @param actual_wins_losses
-#' @param asset_infor
-#'
-#' @returns
-#' @export
-#'
-#' @examples
-get_margin_details <-
-  function(
-    currency_conversion = currency_conversion,
-    actual_wins_losses = actual_wins_losses,
-    asset_infor = asset_infor
-  ) {
-
-    margin_required <-
-      actual_wins_losses %>%
-      dplyr::select(Date, Asset, volume_required, Ask_Price) %>%
-      mutate(ending_value = str_extract(Asset, "_[A-Z][A-Z][A-Z]"),
-             ending_value = str_remove_all(ending_value, "_")
-      ) %>%
-      left_join(currency_conversion, by =c("ending_value" = "not_aud_asset")) %>%
-      left_join(asset_infor %>% rename(Asset = name)) %>%
-      mutate(
-        minimumTradeSize_OG = as.numeric(minimumTradeSize),
-        minimumTradeSize = abs(log10(as.numeric(minimumTradeSize))),
-        marginRate = as.numeric(marginRate),
-        pipLocation = as.numeric(pipLocation),
-        displayPrecision = as.numeric(displayPrecision)
-      ) %>%
-      ungroup() %>%
-      mutate(
-        volume_adjustment = 1,
-        AUD_Price =
-          case_when(
-            !is.na(adjusted_conversion) ~ (Ask_Price*adjusted_conversion)/volume_adjustment,
-            TRUE ~ Ask_Price/volume_adjustment
-          ),
-        trade_value = AUD_Price*volume_required*marginRate,
-        estimated_margin = trade_value
-      ) %>%
-      dplyr::select(Date, Asset, volume_required, estimated_margin)
-
-    return(margin_required)
-
-  }
-
-get_total_portfolio_summary <-
-  function(
-    generated_preds = generated_preds,
-    trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses,
-    trade_direction = "Long",
-    return_col = "period_return_50_Price"
-  ) {
-
-    sim_data_list <-
-      get_control_trade_cumulative_returns(
-        generated_preds = generated_preds,
-        trade_statement = trade_statement,
-        trade_direction = trade_direction,
-        actual_wins_losses = actual_wins_losses,
-        return_col = return_col
-      )
-
-
-    summarised_data <-
-      sim_data_list %>%
-      map(
-        ~ .x %>%
-          group_by(Date) %>%
-          summarise(
-            Total_Return = sum( !!as.name(return_col), na.rm= T)
-          ) %>%
-          arrange(Date) %>%
-          mutate(
-            Cumulative_Return = cumsum(Total_Return)
-          )
-      )
-
-    summarised_data_combined <-
-      summarised_data[[1]] %>%
-      mutate(trade_col = "Control") %>%
-      bind_rows(
-        summarised_data[[2]] %>%
-          mutate(trade_col = trade_direction)
-      )
-
-    return(summarised_data_combined)
-
-  }
-
-#' generate_random_sampling_returns
-#'
-#' @param timeseries_returns
-#' @param simulations
-#' @param samples
-#' @param return_col
-#'
-#' @returns
-#' @export
-#'
-#' @examples
-generate_random_sampling_returns <-
-  function(timeseries_returns = EUR_USD,
-           simulations = 5000,
-           samples = 100,
-           return_col = "period_return_50_Price") {
-
-    timeseries_returns <-
-      timeseries_returns %>%
-      mutate(
-        win = ifelse(!!as.name(return_col) > 0, 1, 0)
-      )
-
-    asset_var <- timeseries_returns$Asset %>% unique() %>% as.character()
-
-    returns_vec <- timeseries_returns %>% pull(!!as.name(return_col))
-    win_loss_vec <- timeseries_returns %>% pull(win)
-
-    wins_random <- numeric(simulations)
-    returns_random <- numeric(simulations)
-    average_win <- numeric(simulations)
-    average_loss <- numeric(simulations)
-
-    set.seed(simulations)
-
-    for (i in 1:simulations) {
-
-      wins_sampled <-
-        win_loss_vec %>% sample(samples, replace = TRUE)
-      returns_sampled <-
-        returns_vec %>% sample(samples, replace = TRUE)
-
-      wins_random[i] <- wins_sampled %>% sum(na.rm = T)
-      returns_random[i] <- sum(returns_sampled, na.rm = T)
-      average_win[i] <- returns_sampled[returns_sampled > 0] %>% mean(na.rm = T)
-      average_loss[i] <- returns_sampled[returns_sampled <= 0] %>% mean(na.rm = T)
-    }
-
-    simulation_data_frame_random <-
-      tibble(
-        Asset = asset_var,
-        samples_used = samples,
-        wins_random = wins_random,
-        returns_random = returns_random,
-        average_win = average_win,
-        average_loss = average_loss
-      ) %>%
-      mutate(
-        win_perc =wins_random/samples
-      ) %>%
-      group_by(Asset, samples_used) %>%
-      summarise(
-        across(.cols =
-                 c(wins_random, win_perc, average_win, average_loss),
-               .fns = ~ mean(., na.rm = T)
-        ),
-
-        returns_random_mean = mean(returns_random, na.rm = T),
-        returns_random_05 = quantile(returns_random, 0.05, na.rm = T),
-        returns_random_25 = quantile(returns_random, 0.25, na.rm = T),
-        returns_random_50 = quantile(returns_random, 0.5, na.rm = T),
-        returns_random_75 = quantile(returns_random, 0.75, na.rm = T)
-      )
-
-    return(simulation_data_frame_random)
-
-  }
-
-#' get_asset_random_sim_returns
-#'
-#' @param generated_preds
-#' @param trade_statement
-#' @param trade_direction
-#' @param return_col
-#' @param simulations
-#' @param samples
-#'
-#' @returns
-#' @export
-#'
-#' @examples
-get_asset_random_sim_returns <-
-  function(
-    generated_preds = generated_preds,
-    trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses,
-    trade_direction = "Long",
-    return_col = "period_return_50_Price",
-    simulations = 5000,
-    samples = 20
-  ) {
-
-    sim_data_list <-
-      get_control_trade_cumulative_returns(
-        generated_preds = generated_preds,
-        trade_statement = trade_statement,
-        actual_wins_losses = actual_wins_losses,
-        trade_direction = trade_direction,
-        return_col = return_col
-      )
-
-    safely_sample <-
-      safely(generate_random_sampling_returns, otherwise = NULL)
-
-    sim_data_asset_all <-
-      sim_data_list[[2]] %>%
-      split(.$Asset, drop = FALSE) %>%
-      map(
-        ~ .x %>%
-          safely_sample(
-            simulations = simulations,
-            samples = samples,
-            return_col = return_col
-          ) %>%
-          pluck('result')
-      )
-
-    complete_summaries <-
-      sim_data_list[[2]] %>%
-      mutate(
-        win = ifelse(!!as.name(return_col) > 0, 1, 0)
-      ) %>%
-      group_by(Asset) %>%
-      summarise(
-        Total_returns = sum(!!as.name(return_col), na.rm = T),
-        Total_wins = sum(win, na.rm = T),
-        Total_Trades = n(),
-        Total_Perc = Total_wins/Total_Trades
-      )
-
-    sim_data_asset_all_dfr <-
-      sim_data_asset_all %>%
-      keep(~ !is.null(.x)) %>%
-      map_dfr(bind_rows) %>%
-      left_join(complete_summaries)
-
-    return(sim_data_asset_all_dfr)
-
-  }
 
 trade_statement <-
   "
@@ -1157,33 +841,45 @@ trade_statement <-
             mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.9 &
   Asset == 'UK100_GBP'
   )|
- (
-  pred_GLM_period_return_50_Price >= 0.999 &
+  (
+  pred_LM_period_return_50_Price >
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*2 &
+  pred_LM_period_return_50_Price <
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*10 &
   Asset == 'UK100_GBP'
   )|
- (
+  (
+  pred_combined_6 >= 0.99 &
+  pred_combined_6 <= 0.999999 &
+  # pred_combined_6 <= 0.99999999999 &
+  Asset == 'UK100_GBP'
+  )|
+  (
  pred_technical_6 >= 0.6 &
- pred_technical_6 < 0.65 &
+ pred_technical_6 < 0.7 &
  Asset == 'UK100_GBP'
  )|
-  (
-  pred_combined_6 >= 0.5 &
-  pred_GLM_period_return_50_Price > 0.5 &
-  pred_daily_6 > 0.5 &
-  pred_index_6 > 0.5 &
+   (
+  pred_combined_6 >= 0.425 &
+  pred_GLM_period_return_50_Price > 0.425 &
+  pred_daily_6 > 0.425 &
+  pred_index_6 > 0.425 &
   Asset == 'UK100_GBP'
   )|
- (
- pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
- mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
- mean_100_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
+   (
+  pred_combined_1 >= 360 &
+  pred_combined_1 <= 390 &
+  # pred_combined_6 <= 0.99999999999 &
+  Asset == 'UK100_GBP'
+  )|
+  (
+ pred_technical_2 >= 0.6 &
+ pred_technical_2 < 0.68 &
+ Asset == 'UK100_GBP'
+ )|
+   (
+ pred_daily_6 >= 0.6 &
+ pred_daily_6 < 0.99 &
  Asset == 'UK100_GBP'
  )|
 
@@ -1414,109 +1110,60 @@ trade_statement <-
   "
 
 trade_statement <-
-"
- #  (
- #  pred_combined_6 >= 0.6 &
- #  pred_combined_6 < 0.65 &
- #  Asset == 'GBP_CAD'
- #  )|
- #  (
- #  pred_LM_period_return_50_Price >
- #            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2.5 &
- #  pred_LM_period_return_50_Price <
- #            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*10 &
- #  Asset == 'GBP_CAD'
- #  )|
-  # (
-  # pred_GLM_period_return_50_Price > 0.65 &
-  # pred_GLM_period_return_50_Price < 1 &
-  # Asset == 'GBP_CAD'
-  # )|
- # (
- # pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- # mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- # Asset == 'GBP_CAD'
- # )|
- # (
- # pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
- # Asset == 'GBP_CAD'
- # )
-
- (
- pred_GLM_period_return_50_Price > 0.50 &
- pred_GLM_period_return_50_Price >= 0.6 &
- Asset == 'XAG_USD'
- )|
- (
- pred_GLM_period_return_40_Price > 0.65 &
- pred_GLM_period_return_40_Price <= 1 &
- Asset == 'XAG_USD'
- )|
- (
- Averaged_Multi_prob_Momentum > 0.5 &
- Averaged_Multi_prob_Momentum <= 1 &
- Asset == 'XAG_USD'
- )|
+  "
   (
   pred_LM_period_return_50_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*1.25 &
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*2 &
   pred_LM_period_return_50_Price <
-            mean_50_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2 &
-  Asset == 'XAG_USD'
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*10 &
+  Asset == 'UK100_GBP'
   )|
   (
-  pred_LM_period_return_50_Price >
-            mean_100_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1 &
-  pred_LM_period_return_50_Price <
-            mean_100_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.85 &
-  Asset == 'XAG_USD'
+  pred_combined_6 >= 0.99 &
+  pred_combined_6 <= 0.999999 &
+  # pred_combined_6 <= 0.99999999999 &
+  Asset == 'UK100_GBP'
   )|
   (
-  pred_combined_6 >= 0.99999999 &
-  pred_combined_4 >= 0.99999999 &
-  pred_combined_2 >= 0.9999 &
-  mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
-  mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
-  mean_50_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
-  mean_50_pred_LM_period_return_50_Price < mean_100_pred_LM_period_return_50_Price &
-  mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
-  mean_100_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
-  mean_50_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
-  mean_50_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
-  mean_50_pred_GLM_period_return_50_Price < mean_100_pred_GLM_period_return_50_Price &
-  Asset == 'XAG_USD'
+ pred_technical_6 >= 0.6 &
+ pred_technical_6 < 0.7 &
+ Asset == 'UK100_GBP'
+ )|
+   (
+  pred_combined_6 >= 0.425 &
+  pred_GLM_period_return_50_Price > 0.425 &
+  pred_daily_6 > 0.425 &
+  pred_index_6 > 0.425 &
+  Asset == 'UK100_GBP'
   )|
- (
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- mean_200_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
- mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
- Asset == 'XAG_USD'
+   (
+  pred_combined_1 >= 360 &
+  pred_combined_1 <= 390 &
+  # pred_combined_6 <= 0.99999999999 &
+  Asset == 'UK100_GBP'
+  )|
+  (
+ pred_technical_2 >= 0.6 &
+ pred_technical_2 < 0.68 &
+ Asset == 'UK100_GBP'
+ )|
+   (
+ pred_daily_6 >= 0.6 &
+ pred_daily_6 < 0.99 &
+ Asset == 'UK100_GBP'
  )
+
 "
 
 cumulative_returns_sim_data <-
   get_total_portfolio_summary(
     generated_preds = generated_preds %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "UK100_GBP")
       filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses =actual_wins_losses %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "UK100_GBP")
       filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
@@ -1533,13 +1180,13 @@ cumulative_returns_sim_data %>%
 asset_summaries_control <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "XAG_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "UK100_GBP")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = "str_detect(Asset, '[A-Z]')",
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "XAG_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "UK100_GBP")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
     return_col = "period_return_50_Price",
@@ -1550,13 +1197,13 @@ asset_summaries_control <-
 asset_summaries <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "XAG_USD")
-    filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "UK100_GBP")
+    # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "XAG_USD")
-    filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "UK100_GBP")
+    # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
     return_col = "period_return_50_Price",
