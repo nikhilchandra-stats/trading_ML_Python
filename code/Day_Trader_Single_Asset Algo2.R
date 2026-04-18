@@ -91,7 +91,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
-start_date = "2019-01-01"
+start_date = "2019-06-01"
 end_date = today() %>% as.character()
 
 All_Daily_Data <-
@@ -204,14 +204,14 @@ trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
 end_date_day = today() %>% as.character()
 
-# mean_values_by_asset_for_loop_H1_ask <-
-#   wrangle_asset_data(
-#     asset_data_daily_raw = Indices_Metals_Bonds[[1]],
-#     summarise_means = TRUE
-#   )
-
 mean_values_by_asset_for_loop_H1_ask <-
-  read_csv(file = "C:/Users/nikhi/Documents/Asset Data/standard_mean_values.csv")
+  wrangle_asset_data(
+    asset_data_daily_raw = Indices_Metals_Bonds[[1]],
+    summarise_means = TRUE
+  )
+
+# mean_values_by_asset_for_loop_H1_ask <-
+#   read_csv(file = "C:/Users/nikhi/Documents/Asset Data/standard_mean_values.csv")
 
 rm(starting_asset_data_ask_H1)
 trades_opened <- 0
@@ -268,18 +268,17 @@ assets_to_use <-
 trade_statement <-
   "
   (
-  pred_LM_period_return_24_Price >
-            mean_50_pred_LM_period_return_24_Price + sd_500_pred_LM_period_return_24_Price*1.85 &
-  Asset == 'EUR_USD'
-  )|
-  (
   pred_LM_period_return_40_Price >
-            mean_50_pred_LM_period_return_40_Price + sd_500_pred_LM_period_return_40_Price*1.85 &
+            mean_50_pred_LM_period_return_40_Price + sd_500_pred_LM_period_return_40_Price*0.2 &
+  pred_LM_period_return_40_Price <
+            mean_50_pred_LM_period_return_40_Price + sd_500_pred_LM_period_return_40_Price*0.5 &
   Asset == 'EUR_USD'
   )|
   (
   pred_LM_period_return_50_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.85 &
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.35 &
+  pred_LM_period_return_50_Price <
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.7 &
   Asset == 'EUR_USD'
   )|
   (
@@ -288,8 +287,8 @@ trade_statement <-
   Asset == 'EUR_USD'
   )|
   (
-  Averaged_Multi_prob_macro_GLM >= 0.625 &
-  Averaged_Multi_prob_macro_GLM <= 0.64 &
+  Averaged_Multi_prob_macro_GLM >= 0.55 &
+  Averaged_Multi_prob_macro_GLM <= 0.99 &
   Asset == 'EUR_USD'
   )|
   (
@@ -299,41 +298,7 @@ trade_statement <-
   )|
   (
   pred_GLM_period_return_50_Price > 0.56 &
-  pred_GLM_period_return_50_Price < 0.57 &
-  Asset == 'EUR_USD'
-  )|
-  (
- pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
- mean_200_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
- mean_100_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- Asset == 'EUR_USD'
- )|
-  (
-  pred_LM_period_return_50_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.7 &
-  pred_LM_period_return_50_Price <
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*10 &
-  Asset == 'EUR_USD'
-  )|
-  (
-  pred_LM_period_return_50_Price >
-            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2 &
-  pred_LM_period_return_50_Price <
-            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*10 &
-  Asset == 'EUR_USD'
-  )|
-  (
-  pred_LM_period_return_50_Price >
-            mean_500_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.85 &
-  pred_LM_period_return_50_Price <
-            mean_500_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*10 &
+  pred_GLM_period_return_50_Price < 0.99 &
   Asset == 'EUR_USD'
   )|
   (
@@ -367,70 +332,41 @@ trade_statement <-
   Asset == 'EU50_EUR'
   )|
   (
-  pred_GLM_period_return_50_Price > 0.5 &
-  pred_GLM_period_return_50_Price < 0.55 &
-  Asset == 'SPX500_USD'
-  )|
-  (
-  pred_GLM_period_return_50_Price > 0.6 &
-  pred_GLM_period_return_50_Price < 0.62 &
+  pred_GLM_period_return_50_Price > 0.9 &
+  pred_GLM_period_return_50_Price < 0.95 &
   Asset == 'SPX500_USD'
   )|
   (
   pred_LM_period_return_50_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.75 &
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.5 &
+  pred_LM_period_return_50_Price <
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*99 &
   Asset == 'SPX500_USD'
   )|
   (
-  pred_LM_period_return_40_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_40_Price*1.25 &
-  pred_LM_period_return_40_Price <
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_40_Price*1.75 &
-  Asset == 'SPX500_USD'
-  )|
-  (
-  pred_GLM_period_return_50_Price >
-            mean_50_pred_GLM_period_return_50_Price + sd_500_pred_GLM_period_return_50_Price*1.65 &
-  Asset == 'SPX500_USD'
-  )|
-  (
-  pred_combined_6 >= 0.99 &
-  Averaged_Multi_prob_Momentum_Marco > 0.5 &
-  Averaged_Multi_prob_Momentum_Marco < 0.8 &
-  Asset == 'SPX500_USD'
-  )|
-  (
-  pred_combined_6 >= 0.99 &
+  pred_combined_6 >= 0.9999 &
   Averaged_FULL_GLM > 0.5 &
   Averaged_FULL_GLM < 0.55 &
   Asset == 'SPX500_USD'
   )|
   (
-  pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
-  pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
-  pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
-  pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
-  mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
-  mean_200_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
-  mean_100_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
-
-  pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
-  pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
-  pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
-  pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
+  pred_daily_6 > 0.9 &
+  pred_daily_6 < 0.99999999 &
   Asset == 'SPX500_USD'
   )|
-
   (
-  pred_GLM_period_return_50_Price > 0.95 &
-  pred_GLM_period_return_50_Price < 0.99 &
-  Asset == 'US2000_USD'
+  pred_technical_6 > 0.5 &
+  pred_technical_6 < 1 &
+  Asset == 'SPX500_USD'
   )|
   (
-  pred_LM_period_return_50_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.15 &
-  pred_LM_period_return_50_Price <
-            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.75 &
+  pred_index_2 > 0.99 &
+  pred_index_2 < 0.9999 &
+  Asset == 'SPX500_USD'
+  )|
+  (
+  pred_GLM_period_return_50_Price > 0.85 &
+  pred_GLM_period_return_50_Price < 0.9 &
   Asset == 'US2000_USD'
   )|
   (
@@ -439,13 +375,25 @@ trade_statement <-
    Asset == 'US2000_USD'
   )|
   (
-  pred_daily_6 > 0.99999 &
-  pred_index_6 > 0.99995 &
-  pred_technical_6 > 0.75 &
+  pred_technical_6 > 0.73 &
+  pred_technical_6 < 0.77 &
   Asset == 'US2000_USD'
   )|
   (
-  pred_combined_6 >= 0.9999999999999995 &
+  pred_index_2 > 0.5 &
+  pred_index_2 < 0.6 &
+  pred_index_4 > 0.5 &
+  pred_index_4 < 0.6 &
+  Asset == 'US2000_USD'
+  )|
+  (
+  pred_combined_6 >= 0.5 &
+  pred_combined_6 < 0.9 &
+  Asset == 'US2000_USD'
+  )|
+  (
+  pred_combined_2 >= 0.65 &
+  pred_combined_2 < 0.98 &
   Asset == 'US2000_USD'
   )|
 
@@ -678,30 +626,21 @@ trade_statement <-
   Asset == 'AU200_AUD'
   )|
 
-  (
-  pred_combined_6 >= 0.5 &
-  pred_GLM_period_return_50_Price > 0.5 &
-  pred_GLM_period_return_50_Price < 0.6 &
-  pred_daily_6 > 0.5 &
-  pred_index_6 > 0.5 &
-  Asset == 'EUR_AUD'
-  )|
+ (
+ pred_daily_4 >= 0.99999 &
+ pred_daily_4 <= 0.999999 &
+ Asset == 'EUR_AUD'
+ )|
+ (
+ pred_daily_4 >= 0.68 &
+ pred_daily_4 <= 0.7 &
+ Asset == 'EUR_AUD'
+ )|
  (
    pred_LM_period_return_50_Price >
-            mean_500_pred_LM_period_return_50_Price + 0*sd_500_pred_LM_period_return_50_Price &
+            mean_500_pred_LM_period_return_50_Price + 2.25*sd_500_pred_LM_period_return_50_Price &
   pred_LM_period_return_50_Price <
-            mean_500_pred_LM_period_return_50_Price + 0.3*sd_500_pred_LM_period_return_50_Price &
-  mean_3_pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
-  mean_3_pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
-  Asset == 'EUR_AUD'
-  )|
- (
-  pred_GLM_period_return_50_Price >
-    mean_100_pred_GLM_period_return_50_Price + 2.1*sd_100_pred_GLM_period_return_50_Price &
-  pred_GLM_period_return_50_Price <
-    mean_100_pred_GLM_period_return_50_Price + 10*sd_100_pred_GLM_period_return_50_Price &
-  mean_3_pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
-  mean_3_pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
+            mean_500_pred_LM_period_return_50_Price + 20*sd_500_pred_LM_period_return_50_Price &
   Asset == 'EUR_AUD'
   )|
  (
@@ -709,6 +648,11 @@ trade_statement <-
  pred_technical_6 < 0.8 &
  pred_technical_4 >= 0.55 &
  pred_technical_4 < 0.65 &
+ Asset == 'EUR_AUD'
+ )|
+ (
+ pred_index_6 >= 0.8 &
+ pred_index_6 <= 0.95 &
  Asset == 'EUR_AUD'
  )|
  (
@@ -764,33 +708,45 @@ trade_statement <-
             mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.9 &
   Asset == 'UK100_GBP'
   )|
- (
-  pred_GLM_period_return_50_Price >= 0.999 &
+  (
+  pred_LM_period_return_50_Price >
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*2 &
+  pred_LM_period_return_50_Price <
+            mean_50_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*10 &
   Asset == 'UK100_GBP'
   )|
- (
+  (
+  pred_combined_6 >= 0.99 &
+  pred_combined_6 <= 0.999999 &
+  # pred_combined_6 <= 0.99999999999 &
+  Asset == 'UK100_GBP'
+  )|
+  (
  pred_technical_6 >= 0.6 &
- pred_technical_6 < 0.65 &
+ pred_technical_6 < 0.7 &
  Asset == 'UK100_GBP'
  )|
-  (
-  pred_combined_6 >= 0.5 &
-  pred_GLM_period_return_50_Price > 0.5 &
-  pred_daily_6 > 0.5 &
-  pred_index_6 > 0.5 &
+   (
+  pred_combined_6 >= 0.425 &
+  pred_GLM_period_return_50_Price > 0.425 &
+  pred_daily_6 > 0.425 &
+  pred_index_6 > 0.425 &
   Asset == 'UK100_GBP'
   )|
- (
- pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
- mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
- mean_100_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
+   (
+  pred_combined_1 >= 360 &
+  pred_combined_1 <= 390 &
+  # pred_combined_6 <= 0.99999999999 &
+  Asset == 'UK100_GBP'
+  )|
+  (
+ pred_technical_2 >= 0.6 &
+ pred_technical_2 < 0.68 &
+ Asset == 'UK100_GBP'
+ )|
+   (
+ pred_daily_6 >= 0.6 &
+ pred_daily_6 < 0.99 &
  Asset == 'UK100_GBP'
  )|
 
@@ -833,53 +789,24 @@ trade_statement <-
   pred_GLM_period_return_50_Price > 0.5 &
   Asset == 'USD_CAD'
   )|
-    (
-  pred_combined_2 >= 0.525 &
-  pred_combined_2 < 0.575 &
+  (
+  pred_combined_2 >= 0.85 &
+  pred_combined_2 < 0.99 &
   Asset == 'GBP_USD'
   )|
   (
-  pred_combined_6 >= 0.6 &
-  pred_combined_6 < 0.65 &
+  pred_combined_6 >= 0.75 &
+  pred_combined_6 < 0.9 &
   Asset == 'GBP_USD'
   )|
   (
-  pred_LM_period_return_50_Price >
-            mean_500_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.55 &
-  pred_LM_period_return_50_Price <
-            mean_500_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*0.8 &
+  pred_GLM_period_return_50_Price > 0.57 &
+  pred_GLM_period_return_50_Price < 0.6 &
   Asset == 'GBP_USD'
   )|
-  (
-  pred_LM_period_return_50_Price >
-            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2.5 &
-  pred_LM_period_return_50_Price <
-            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*10 &
-  Asset == 'GBP_USD'
-  )|
-  (
-  pred_GLM_period_return_50_Price > 0.75 &
-  pred_GLM_period_return_50_Price < 0.775 &
-  Asset == 'GBP_USD'
-  )|
- (
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- Asset == 'GBP_USD'
- )|
- (
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
- pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- Asset == 'GBP_USD'
- )|
+  (pred_daily_6 >= 0.5 &
+  pred_daily_6 < 0.65 &
+  Asset == 'GBP_USD')|
   (
   pred_combined_2 >= 0.99 &
   pred_combined_6 >= 0.99 &
