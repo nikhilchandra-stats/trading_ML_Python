@@ -181,7 +181,7 @@ asset_list_oanda_single_asset <-
 
 #-------------Indicator Inputs
 
-end_time <- glue::glue("{floor_date(now(), 'week')} 04:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
+end_time <- glue::glue("{floor_date(now(), 'week')} 07:59:00 AEST") %>% as_datetime(tz = "Australia/Canberra") + days(6)
 current_time <- now()
 
 
@@ -245,6 +245,22 @@ assets_to_use <-
 
 trade_statement <-
   "
+  (state_space_GLM_Pred_period_return_50_Price > 0.92 &
+  state_space_GLM_Pred_period_return_50_Price < 0.98 &
+      Asset == 'WHEAT_USD')|
+  (state_space_LM_Pred_period_return_50_Price > 2.75 &
+  state_space_LM_Pred_period_return_50_Price < 5.5 &
+      Asset == 'WHEAT_USD')|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.4725 &
+  AR_GLM_Pred_period_return_50_Price < 0.9999999999 &
+      Asset == 'WHEAT_USD'
+  )|
+  (
+  AR_LM_Pred_period_return_50_Price > -0.05 &
+  AR_LM_Pred_period_return_50_Price < 5 &
+      Asset == 'WHEAT_USD'
+  )|
   (state_space_GLM_Pred_period_return_50_Price > 0.97 &
   state_space_GLM_Pred_period_return_50_Price < 0.99 &
       Asset == 'WHEAT_USD')|
@@ -282,40 +298,42 @@ trade_statement <-
       Asset == 'SUGAR_USD'
   )|
 
-  (state_space_GLM_Pred_period_return_50_Price > 0.71 &
-  state_space_GLM_Pred_period_return_50_Price < 0.96 &
+  (state_space_GLM_Pred_period_return_50_Price > 0.68 &
+  state_space_GLM_Pred_period_return_50_Price < 0.965 &
       Asset == 'DE30_EUR')|
-
   (
   state_space_LM_Pred_period_return_50_Price > 1 &
   state_space_LM_Pred_period_return_50_Price < 4.25 &
       Asset == 'DE30_EUR'
   )|
-
-  (
-  AR_GLM_Pred_period_return_50_Price > 0.61 &
-  AR_GLM_Pred_period_return_50_Price < 0.64 &
-      Asset == 'DE30_EUR'
-  )|
-  (
-  AR_LM_Pred_period_return_50_Price > 0 &
-  AR_LM_Pred_period_return_50_Price < 100 &
-      Asset == 'DE30_EUR'
-  )|
+  # (
+  # AR_GLM_Pred_period_return_50_Price > 0.61 &
+  # AR_GLM_Pred_period_return_50_Price < 0.64 &
+  #     Asset == 'DE30_EUR'
+  # )|
+  # (
+  # AR_LM_Pred_period_return_50_Price > -0.5 &
+  # AR_LM_Pred_period_return_50_Price < 1000 &
+  #     Asset == 'DE30_EUR'
+  # )
 
   (state_space_GLM_Pred_period_return_50_Price > 0.65 &
   state_space_GLM_Pred_period_return_50_Price < 0.7 &
       Asset == 'UK10YB_GBP')|
 
- (state_space_GLM_Pred_period_return_50_Price > 0.92 &
- state_space_GLM_Pred_period_return_50_Price < 0.95 &
-     Asset == 'EUR_CHF')|
+  (
+  AR_LM_Pred_period_return_50_Price > 2.5 &
+  AR_LM_Pred_period_return_50_Price < 100 &
+      Asset == 'EUR_CHF'
+  )|
 
-
+  (state_space_LM_Pred_period_return_50_Price < -7.5  &
+   state_space_LM_Pred_period_return_50_Price > -1000  &
+        Asset == 'GBP_CHF')|
   (state_space_LM_Pred_period_return_50_Price > 0  &
    state_space_LM_Pred_period_return_50_Price < 0.1  &
         Asset == 'GBP_CHF')|
-  (AR_LM_Pred_period_return_50_Price > 0.52  &
+  (AR_LM_Pred_period_return_50_Price > 0.65  &
         Asset == 'GBP_CHF')|
   (AR_GLM_Pred_period_return_50_Price >
       AR_GLM_Pred_period_return_50_Price_mean + 1.4*AR_GLM_Pred_period_return_50_Price_sd &
@@ -360,32 +378,32 @@ trade_statement <-
     state_space_GLM_Pred_period_return_50_Price > 0.5 &
         Asset == 'USD_NOK')|
     (
-    state_space_GLM_Pred_period_return_50_Price < 0.05 &
+    state_space_GLM_Pred_period_return_50_Price < 0.055 &
     state_space_GLM_Pred_period_return_50_Price > 0.00 &
     Asset == 'GBP_NZD'
     )|
     (
-    state_space_LM_Pred_period_return_50_Price < -7.5 &
+    state_space_LM_Pred_period_return_50_Price < -9.25 &
     state_space_LM_Pred_period_return_50_Price > -1000 &
     Asset == 'GBP_NZD'
     )|
     (
-    AR_LM_Pred_period_return_50_Price > 0.4 &
-    AR_LM_Pred_period_return_50_Price < 0.95 &
+    AR_LM_Pred_period_return_50_Price > 0.435 &
+    AR_LM_Pred_period_return_50_Price < 1 &
     Asset == 'GBP_NZD'
     )|
     (
-    AR_GLM_Pred_period_return_50_Price > 0.5 &
+    AR_GLM_Pred_period_return_50_Price > 0.52 &
     AR_GLM_Pred_period_return_50_Price < 1 &
     Asset == 'GBP_NZD'
     )|
   (
-  AR_LM_Pred_period_return_50_Price > 1 &
+  AR_LM_Pred_period_return_50_Price > 1.25 &
   AR_LM_Pred_period_return_50_Price < 1000 &
   Asset == 'NZD_CHF'
   )|
   (
-  AR_GLM_Pred_period_return_50_Price > 0.565 &
+  AR_GLM_Pred_period_return_50_Price > 0.57 &
   AR_GLM_Pred_period_return_50_Price < 1 &
   Asset == 'NZD_CHF'
   )|
@@ -445,29 +463,37 @@ trade_statement <-
   Asset == 'SOYBN_USD'
   )|
   (
-  state_space_GLM_Pred_period_return_50_Price > 0.665 &
-  state_space_GLM_Pred_period_return_50_Price < 0.7 &
+  state_space_GLM_Pred_period_return_50_Price > 0.67 &
+  state_space_GLM_Pred_period_return_50_Price < 0.73 &
   Asset == 'JP225_USD'
   )|
   (
-  state_space_LM_Pred_period_return_50_Price > 0.25 &
-  state_space_LM_Pred_period_return_50_Price < 0.86 &
+  state_space_LM_Pred_period_return_50_Price > 0.225 &
+  state_space_LM_Pred_period_return_50_Price < 0.54 &
   Asset == 'JP225_USD'
   )|
+  # (
+  # AR_LM_Pred_period_return_50_Price > 1 &
+  # AR_LM_Pred_period_return_50_Price < 100 &
+  # Asset == 'JP225_USD'
+  # )
   (
-  AR_LM_Pred_period_return_50_Price > 0.5 &
-  AR_LM_Pred_period_return_50_Price < 1.3 &
-  Asset == 'JP225_USD'
-  )|
-  (
-  AR_GLM_Pred_period_return_50_Price > 0.55 &
+  AR_GLM_Pred_period_return_50_Price > 0.54 &
   AR_GLM_Pred_period_return_50_Price < 1 &
   Asset == 'JP225_USD'
   )
 
   "
 
-assets_to_use <- assets_to_use[1:7]
+assets_to_use <-
+  c(
+    "WHEAT_USD", #1 WHEAT_USD
+    "SUGAR_USD", #2 SUGAR_USD
+    "DE30_EUR", #3 DE30_EUR
+    "EUR_CHF", #4 EUR_CHF
+    "GBP_CHF", #5 GBP_CHF
+    "USD_CZK"  #6 USD_CZK
+  )
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -583,16 +609,8 @@ while (current_time < end_time) {
               "DE30_EUR", #3 DE30_EUR
               "EUR_CHF", #4 EUR_CHF
               "GBP_CHF", #5 GBP_CHF
-              "USD_CZK",  #6 USD_CZK
-              "USD_NOK", #7 USD_NOK
-              "GBP_NZD", #8 GBP_NZD
-              "NZD_CHF", #9 NZD_CHF
-              "CH20_CHF", #10 CH20_CHF
-              "SOYBN_USD", #11 SOYBN_USD
-              "JP225_USD", #12 JP225_USD
-              "XPD_USD", #13 XPD_USD
-              "NL25_EUR" #14 NL25_EUR
-                 )
+              "USD_CZK"  #6 USD_CZK
+              )
         ) %>%
         distinct()
 
@@ -659,7 +677,15 @@ while (current_time < end_time) {
 
         current_prices_ask <-
           read_all_asset_data_intra_day(
-            asset_list_oanda = asset_list_oanda,
+            asset_list_oanda =
+              c(
+                "WHEAT_USD", #1 WHEAT_USD
+                "SUGAR_USD", #2 SUGAR_USD
+                "DE30_EUR", #3 DE30_EUR
+                "EUR_CHF", #4 EUR_CHF
+                "GBP_CHF", #5 GBP_CHF
+                "USD_CZK"  #6 USD_CZK
+              ),
             save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
             read_csv_or_API = "API",
             time_frame = "H1",
@@ -684,6 +710,11 @@ while (current_time < end_time) {
                      Asset %in% c("GBP_CHF") ~ 10,
                      Asset %in% c("USD_CZK") ~ 5,
                      Asset %in% c("USD_NOK") ~ 5,
+                     Asset %in% c("GBP_NZD") ~ 5,
+                     Asset %in% c("NZD_CHF") ~ 5,
+                     Asset %in% c("WHEAT_USD") ~ 5,
+                     Asset %in% c("DE30_EUR") ~ 5,
+                     Asset %in% c("JP225_USD") ~ 5,
                      TRUE ~ 10
                     ),
                  profit_factor =
@@ -692,6 +723,11 @@ while (current_time < end_time) {
                      Asset %in% c("GBP_CHF") ~ 8,
                      Asset %in% c("USD_CZK") ~ 80,
                      Asset %in% c("USD_NOK") ~ 10,
+                     Asset %in% c("GBP_NZD") ~ 10,
+                     Asset %in% c("NZD_CHF") ~ 10,
+                     Asset %in% c("WHEAT_USD") ~ 16,
+                     Asset %in% c("DE30_EUR") ~ 10,
+                     Asset %in% c("JP225_USD") ~ 10,
                      TRUE ~ 60
                    ),
                  periods_ahead = 50,

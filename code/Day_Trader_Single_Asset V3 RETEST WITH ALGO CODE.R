@@ -181,8 +181,8 @@ actual_wins_losses <-
     # risk_dollar_value = 10,
 
     # stop_factor = 4, #Original Testing accidently done with 4
-    stop_factor = 10,
-    profit_factor = 60,
+    stop_factor = 5,
+    profit_factor = 10,
     risk_dollar_value = 10,
 
 
@@ -522,6 +522,22 @@ get_asset_random_sim_returns <-
 
 trade_statement <-
   "
+  (state_space_GLM_Pred_period_return_50_Price > 0.92 &
+  state_space_GLM_Pred_period_return_50_Price < 0.98 &
+      Asset == 'WHEAT_USD')|
+  (state_space_LM_Pred_period_return_50_Price > 2.75 &
+  state_space_LM_Pred_period_return_50_Price < 5.5 &
+      Asset == 'WHEAT_USD')|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.4725 &
+  AR_GLM_Pred_period_return_50_Price < 0.9999999999 &
+      Asset == 'WHEAT_USD'
+  )|
+  (
+  AR_LM_Pred_period_return_50_Price > -0.05 &
+  AR_LM_Pred_period_return_50_Price < 5 &
+      Asset == 'WHEAT_USD'
+  )|
   (state_space_GLM_Pred_period_return_50_Price > 0.97 &
   state_space_GLM_Pred_period_return_50_Price < 0.99 &
       Asset == 'WHEAT_USD')|
@@ -559,26 +575,24 @@ trade_statement <-
       Asset == 'SUGAR_USD'
   )|
 
-  (state_space_GLM_Pred_period_return_50_Price > 0.71 &
-  state_space_GLM_Pred_period_return_50_Price < 0.96 &
+  (state_space_GLM_Pred_period_return_50_Price > 0.68 &
+  state_space_GLM_Pred_period_return_50_Price < 0.965 &
       Asset == 'DE30_EUR')|
-
   (
   state_space_LM_Pred_period_return_50_Price > 1 &
   state_space_LM_Pred_period_return_50_Price < 4.25 &
       Asset == 'DE30_EUR'
   )|
-
-  (
-  AR_GLM_Pred_period_return_50_Price > 0.61 &
-  AR_GLM_Pred_period_return_50_Price < 0.64 &
-      Asset == 'DE30_EUR'
-  )|
-  (
-  AR_LM_Pred_period_return_50_Price > 0 &
-  AR_LM_Pred_period_return_50_Price < 100 &
-      Asset == 'DE30_EUR'
-  )|
+  # (
+  # AR_GLM_Pred_period_return_50_Price > 0.61 &
+  # AR_GLM_Pred_period_return_50_Price < 0.64 &
+  #     Asset == 'DE30_EUR'
+  # )|
+  # (
+  # AR_LM_Pred_period_return_50_Price > -0.5 &
+  # AR_LM_Pred_period_return_50_Price < 1000 &
+  #     Asset == 'DE30_EUR'
+  # )
 
   (state_space_GLM_Pred_period_return_50_Price > 0.65 &
   state_space_GLM_Pred_period_return_50_Price < 0.7 &
@@ -641,32 +655,32 @@ trade_statement <-
     state_space_GLM_Pred_period_return_50_Price > 0.5 &
         Asset == 'USD_NOK')|
     (
-    state_space_GLM_Pred_period_return_50_Price < 0.05 &
+    state_space_GLM_Pred_period_return_50_Price < 0.055 &
     state_space_GLM_Pred_period_return_50_Price > 0.00 &
     Asset == 'GBP_NZD'
     )|
     (
-    state_space_LM_Pred_period_return_50_Price < -7.5 &
+    state_space_LM_Pred_period_return_50_Price < -9.25 &
     state_space_LM_Pred_period_return_50_Price > -1000 &
     Asset == 'GBP_NZD'
     )|
     (
-    AR_LM_Pred_period_return_50_Price > 0.4 &
-    AR_LM_Pred_period_return_50_Price < 0.95 &
+    AR_LM_Pred_period_return_50_Price > 0.435 &
+    AR_LM_Pred_period_return_50_Price < 1 &
     Asset == 'GBP_NZD'
     )|
     (
-    AR_GLM_Pred_period_return_50_Price > 0.5 &
+    AR_GLM_Pred_period_return_50_Price > 0.52 &
     AR_GLM_Pred_period_return_50_Price < 1 &
     Asset == 'GBP_NZD'
     )|
   (
-  AR_LM_Pred_period_return_50_Price > 1 &
+  AR_LM_Pred_period_return_50_Price > 1.25 &
   AR_LM_Pred_period_return_50_Price < 1000 &
   Asset == 'NZD_CHF'
   )|
   (
-  AR_GLM_Pred_period_return_50_Price > 0.565 &
+  AR_GLM_Pred_period_return_50_Price > 0.57 &
   AR_GLM_Pred_period_return_50_Price < 1 &
   Asset == 'NZD_CHF'
   )|
@@ -726,22 +740,22 @@ trade_statement <-
   Asset == 'SOYBN_USD'
   )|
   (
-  state_space_GLM_Pred_period_return_50_Price > 0.665 &
-  state_space_GLM_Pred_period_return_50_Price < 0.7 &
+  state_space_GLM_Pred_period_return_50_Price > 0.67 &
+  state_space_GLM_Pred_period_return_50_Price < 0.73 &
   Asset == 'JP225_USD'
   )|
   (
-  state_space_LM_Pred_period_return_50_Price > 0.25 &
-  state_space_LM_Pred_period_return_50_Price < 0.86 &
+  state_space_LM_Pred_period_return_50_Price > 0.225 &
+  state_space_LM_Pred_period_return_50_Price < 0.54 &
   Asset == 'JP225_USD'
   )|
+  # (
+  # AR_LM_Pred_period_return_50_Price > 1 &
+  # AR_LM_Pred_period_return_50_Price < 100 &
+  # Asset == 'JP225_USD'
+  # )
   (
-  AR_LM_Pred_period_return_50_Price > 0.5 &
-  AR_LM_Pred_period_return_50_Price < 1.3 &
-  Asset == 'JP225_USD'
-  )|
-  (
-  AR_GLM_Pred_period_return_50_Price > 0.55 &
+  AR_GLM_Pred_period_return_50_Price > 0.54 &
   AR_GLM_Pred_period_return_50_Price < 1 &
   Asset == 'JP225_USD'
   )

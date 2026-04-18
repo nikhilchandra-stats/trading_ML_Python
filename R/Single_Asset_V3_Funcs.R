@@ -153,6 +153,8 @@ Single_Asset_V3_get_all_preds <-
       asset_of_interest <- assets_to_test[j]
       correlation_assets_current <- correlation_asset_list[[j]]
 
+      message(asset_of_interest)
+
       simulated_probs <-
         safely_get_probs(
           Indices_Metals_Bonds =
