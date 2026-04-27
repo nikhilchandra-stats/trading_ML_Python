@@ -66,7 +66,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2013-01-01"
+start_date = "2019-06-01"
 end_date = today() %>% as.character()
 
 bin_factor = NULL
@@ -164,47 +164,49 @@ Indices_Metals_Bonds[[2]] <-
   ) %>%
   distinct()
 
-single_asset_algo_generate_models(
-  All_Daily_Data = All_Daily_Data,
-  Indices_Metals_Bonds = Indices_Metals_Bonds,
-  raw_macro_data = raw_macro_data,
-  currency_conversion = currency_conversion,
-  asset_infor = asset_infor,
-  # start_index = 1,
-  start_index = 1,
-  end_index = 38,
-  risk_dollar_value = 15,
-  trade_direction = "Long",
-  stop_value_var = 10,
-  profit_value_var = 60,
-  period_var = 24,
-  bin_var_col = c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
-  # date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
-  # date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
-  # training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
-  # training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
-  # test_end_date = as.character(today()),
-
-  date_train_end_pre = as.character(as_date("2021-01-01")  ),
-  date_train_phase_2_end_pre = as.character(as_date("2022-01-01")  ),
-  training_date_start_post = as.character(as_date("2022-01-01")  ),
-  training_date_end_post = as.character(as_date("2023-01-01")  ),
-  test_end_date = as.character(today()),
-
-  post_bins_cols =
-    c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
-  post_dependant_threshold = 0,
-  model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
-  save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
-)
+# single_asset_algo_generate_models(
+#   All_Daily_Data = All_Daily_Data,
+#   Indices_Metals_Bonds = Indices_Metals_Bonds,
+#   raw_macro_data = raw_macro_data,
+#   currency_conversion = currency_conversion,
+#   asset_infor = asset_infor,
+#   # start_index = 1,
+#   start_index = 1,
+#   end_index = 38,
+#   risk_dollar_value = 15,
+#   trade_direction = "Long",
+#   stop_value_var = 10,
+#   profit_value_var = 60,
+#   period_var = 24,
+#   bin_var_col = c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
+#   # date_train_end_pre = as.character(as_date("2023-06-01") + days(24) ),
+#   # date_train_phase_2_end_pre = as.character(as_date("2024-06-01") + days(24) ),
+#   # training_date_start_post = as.character(as_date("2024-07-04") + days(24) ),
+#   # training_date_end_post = as.character(as_date("2025-09-01") + days(24) ),
+#   # test_end_date = as.character(today()),
+#
+#   date_train_end_pre = as.character(as_date("2021-01-01")  ),
+#   date_train_phase_2_end_pre = as.character(as_date("2022-01-01")  ),
+#   training_date_start_post = as.character(as_date("2022-01-01")  ),
+#   training_date_end_post = as.character(as_date("2023-01-01")  ),
+#   test_end_date = as.character(today()),
+#
+#   post_bins_cols =
+#     c("period_return_24_Price", "period_return_40_Price", "period_return_50_Price"),
+#   post_dependant_threshold = 0,
+#   model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
+#   save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
+# )
 
 Cut_Down_Data <-
   Indices_Metals_Bonds %>%
   map(~ .x %>% filter(Date >= "2019-01-01"))
 
+rm(Indices_Metals_Bonds)
+
 post_preds_all_rolling_and_originals <-
   single_asset_algo_generate_preds(
-    All_Daily_Data = All_Daily_Data,
+    All_Daily_Data = All_Daily_Data %>% filter(Date >= "2019-01-01"),
     Indices_Metals_Bonds = Cut_Down_Data,
     raw_macro_data = raw_macro_data,
     currency_conversion = currency_conversion,
@@ -212,7 +214,7 @@ post_preds_all_rolling_and_originals <-
     # start_index = 1,
     # end_index = 40,
     start_index = 1,
-    end_index = 19,
+    end_index = 38,
     risk_dollar_value = 15,
     trade_direction = "Long",
     stop_value_var = 10,
@@ -284,9 +286,9 @@ actual_wins_losses <-
         "JP225Y_JPY", #39
         "ETH_USD" #40
       ),
-    asset_data = Indices_Metals_Bonds,
-    stop_factor = 10,
-    profit_factor = 60,
+    asset_data = Cut_Down_Data,
+    stop_factor = 5,
+    profit_factor = 10,
     risk_dollar_value = 10,
     trade_direction = "Long",
     currency_conversion = currency_conversion,
@@ -1413,110 +1415,48 @@ trade_statement <-
 
   "
 
-trade_statement <-
-"
- #  (
- #  pred_combined_6 >= 0.6 &
- #  pred_combined_6 < 0.65 &
- #  Asset == 'GBP_CAD'
- #  )|
- #  (
- #  pred_LM_period_return_50_Price >
- #            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2.5 &
- #  pred_LM_period_return_50_Price <
- #            mean_200_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*10 &
- #  Asset == 'GBP_CAD'
- #  )|
-  # (
-  # pred_GLM_period_return_50_Price > 0.65 &
-  # pred_GLM_period_return_50_Price < 1 &
-  # Asset == 'GBP_CAD'
-  # )|
- # (
- # pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- # mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- # Asset == 'GBP_CAD'
- # )|
- # (
- # pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- # pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_50_pred_GLM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_500_pred_GLM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_200_pred_GLM_period_return_50_Price &
- # pred_GLM_period_return_50_Price > mean_100_pred_GLM_period_return_50_Price &
- # Asset == 'GBP_CAD'
- # )
-
- (
- pred_GLM_period_return_50_Price > 0.50 &
- pred_GLM_period_return_50_Price >= 0.6 &
- Asset == 'XAG_USD'
- )|
- (
- pred_GLM_period_return_40_Price > 0.65 &
- pred_GLM_period_return_40_Price <= 1 &
- Asset == 'XAG_USD'
- )|
- (
- Averaged_Multi_prob_Momentum > 0.5 &
- Averaged_Multi_prob_Momentum <= 1 &
- Asset == 'XAG_USD'
- )|
-  (
-  pred_LM_period_return_50_Price >
-            mean_50_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*1.25 &
-  pred_LM_period_return_50_Price <
-            mean_50_pred_LM_period_return_50_Price + sd_200_pred_LM_period_return_50_Price*2 &
-  Asset == 'XAG_USD'
-  )|
-  (
-  pred_LM_period_return_50_Price >
-            mean_100_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1 &
-  pred_LM_period_return_50_Price <
-            mean_100_pred_LM_period_return_50_Price + sd_500_pred_LM_period_return_50_Price*1.85 &
-  Asset == 'XAG_USD'
-  )|
-  (
-  pred_combined_6 >= 0.99999999 &
-  pred_combined_4 >= 0.99999999 &
-  pred_combined_2 >= 0.9999 &
-  mean_100_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
-  mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
-  mean_50_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
-  mean_50_pred_LM_period_return_50_Price < mean_100_pred_LM_period_return_50_Price &
-  mean_100_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
-  mean_100_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
-  mean_50_pred_GLM_period_return_50_Price < mean_200_pred_GLM_period_return_50_Price &
-  mean_50_pred_GLM_period_return_50_Price < mean_500_pred_GLM_period_return_50_Price &
-  mean_50_pred_GLM_period_return_50_Price < mean_100_pred_GLM_period_return_50_Price &
-  Asset == 'XAG_USD'
-  )|
- (
- pred_LM_period_return_50_Price > mean_50_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_500_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_200_pred_LM_period_return_50_Price &
- pred_LM_period_return_50_Price > mean_100_pred_LM_period_return_50_Price &
- mean_200_pred_LM_period_return_50_Price < mean_500_pred_LM_period_return_50_Price &
- mean_50_pred_LM_period_return_50_Price < mean_200_pred_LM_period_return_50_Price &
- Asset == 'XAG_USD'
- )
-"
+# trade_statement <-
+# "
+#  # (
+#  # pred_copula_2 >= 0.73 &
+#  # pred_copula_2 <= 1 &
+#  # Asset == 'EUR_USD'
+#  # )|
+#
+#  # (
+#  # pred_copula_5 >= 15 &
+#  # pred_copula_5 <= 27 &
+#  # Asset == 'EUR_GBP'
+#  # )|
+#
+#  # (
+#  # pred_copula_2 > 0 &
+#  # pred_copula_2 < 0.3 &
+#  # Asset == 'USB10Y_USD'
+#  # )|
+#  # (
+#  # pred_copula_1 > -7 &
+#  # pred_copula_1 < -6 &
+#  # Asset == 'USB10Y_USD'
+#  # )
+#
+#  (
+#  pred_copula_1 < -1 &
+#  pred_copula_1 > -200 &
+#  Asset == 'EU50_EUR'
+#  )
+#
+# "
 
 cumulative_returns_sim_data <-
   get_total_portfolio_summary(
     generated_preds = generated_preds %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "EU50_EUR")
       filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses =actual_wins_losses %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "EU50_EUR")
       filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
@@ -1533,12 +1473,12 @@ cumulative_returns_sim_data %>%
 asset_summaries_control <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "EU50_EUR")
       filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = "str_detect(Asset, '[A-Z]')",
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "EU50_EUR")
       filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
@@ -1550,12 +1490,12 @@ asset_summaries_control <-
 asset_summaries <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "EU50_EUR")
     filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "XAG_USD")
+      # filter(Asset == "EU50_EUR")
     filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",

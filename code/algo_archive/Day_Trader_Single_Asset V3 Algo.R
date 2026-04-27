@@ -611,122 +611,6 @@ trade_statement <-
   )
 "
 
-trade_statement_2 <-
-  "
-  #stop_factor = 2, profit_factor = 3, period = 12
-  (state_space_LM_Pred_period_return_50_Price >= 15 &
-  state_space_LM_Pred_period_return_50_Price <= 25 &
-  Asset == 'HK33_HKD')|
-  (state_space_GLM_Pred_period_return_50_Price >= 0.96 &
-  state_space_GLM_Pred_period_return_50_Price <= 0.98 &
-  Asset == 'HK33_HKD')|
-
-   #stop_factor = 5, profit_factor = 10, period = 12
-   (state_space_GLM_Pred_period_return_50_Price >= 0.98 &
-   state_space_GLM_Pred_period_return_50_Price <= 1 &
-   Asset == 'BTC_USD')|
-   (AR_GLM_Pred_period_return_50_Price >= 0.9 &
-   AR_GLM_Pred_period_return_50_Price <= 0.99 &
-   Asset == 'BTC_USD')|
-
-   #stop_factor = 3, profit_factor = 6, period = 24
-   (state_space_GLM_Pred_period_return_50_Price >= 0.99 &
-   state_space_GLM_Pred_period_return_50_Price <= 1 &
-   Asset == 'AUD_USD')|
-   (AR_GLM_Pred_period_return_50_Price >= 0.675 &
-   AR_GLM_Pred_period_return_50_Price <= 1 &
-   Asset == 'AUD_USD')|
-
-   #stop_factor = 3, profit_factor = 6, period = 12
-   (state_space_GLM_Pred_period_return_50_Price >= 0.95 &
-   state_space_GLM_Pred_period_return_50_Price <= 1 &
-   Asset == 'USD_JPY')|
-   (state_space_LM_Pred_period_return_50_Price >= 9.5 &
-   state_space_LM_Pred_period_return_50_Price <= 1000 &
-   Asset == 'USD_JPY')|
-
-   #stop_factor = 2, profit_factor = 4, period = 12
-   (state_space_LM_Pred_period_return_50_Price >= 1.75 &
-   state_space_LM_Pred_period_return_50_Price <= 2 &
-   Asset == 'WTICO_USD')|
-   (state_space_LM_Pred_period_return_50_Price >= 6 &
-   state_space_LM_Pred_period_return_50_Price <= 1000 &
-   Asset == 'WTICO_USD')|
-   (state_space_GLM_Pred_period_return_50_Price >= 0.55 &
-   state_space_GLM_Pred_period_return_50_Price <= 0.625 &
-   Asset == 'WTICO_USD')|
-
-   #stop_factor = 5, profit_factor = 10, period = 24
-   (state_space_LM_Pred_period_return_50_Price >= 0.4 &
-   state_space_LM_Pred_period_return_50_Price <= 1 &
-   Asset == 'SG30_SGD')|
-
-   # #stop_factor = 4, profit_factor = 8, period = 12
-   (AR_GLM_Pred_period_return_50_Price >= 0.75 &
-   state_space_GLM_Pred_period_return_50_Price >= 0.75 &
-   Asset == 'XCU_USD')|
-   (AR_LM_Pred_period_return_50_Price >= 0 &
-    state_space_LM_Pred_period_return_50_Price >= 0 &
-    AR_LM_Pred_period_return_50_Price <= 0.25 &
-    Asset == 'XCU_USD')|
-    (
-    AR_LM_Pred_period_return_50_Price >=
-    AR_LM_Pred_period_return_50_Price_mean + 0.25*AR_LM_Pred_period_return_50_Price_sd &
-    AR_LM_Pred_period_return_50_Price >= 0.5 &
-    Asset == 'XCU_USD'
-    )|
-  # #stop_factor = 3, profit_factor = 6, period = 12
-  (state_space_LM_Pred_period_return_50_Price >= 7 & Asset == 'XAU_USD')|
-  (state_space_LM_Pred_period_return_50_Price >= 2.75 &
-  AR_LM_Pred_period_return_50_Price >= 0 &
-  AR_LM_Pred_period_return_50_Price < 2 &
-  Asset == 'XAU_USD')|
-  # #stop_factor = 3, profit_factor = 6, period = 12
-  (
-  state_space_GLM_Pred_period_return_50_Price >= 0.9 &
-  state_space_GLM_Pred_period_return_50_Price <= 0.99 &
-  Asset == 'XAU_USD'
-  )|
-    (state_space_LM_Pred_period_return_50_Price >= 9 &
-  state_space_LM_Pred_period_return_50_Price < 1000 &
-    Asset == 'AU200_AUD')|
-  (state_space_GLM_Pred_period_return_50_Price >= 0.955 &
-     state_space_GLM_Pred_period_return_50_Price <= 1 &
-     Asset == 'AU200_AUD')|
-  (
-    state_space_LM_Pred_period_return_50_Price >=
-    state_space_LM_Pred_period_return_50_Price_mean + 1.25*state_space_LM_Pred_period_return_50_Price_sd &
-    state_space_LM_Pred_period_return_50_Price <=
-    state_space_LM_Pred_period_return_50_Price_mean + 2*state_space_LM_Pred_period_return_50_Price_sd &
-    state_space_LM_Pred_period_return_50_Price > 6 &
-    Asset == 'AU200_AUD'
-  )|
-  (
-    state_space_GLM_Pred_period_return_50_Price >=
-    state_space_GLM_Pred_period_return_50_Price_mean + 0.25*state_space_GLM_Pred_period_return_50_Price_sd &
-    state_space_GLM_Pred_period_return_50_Price <=
-    state_space_GLM_Pred_period_return_50_Price_mean + 1.25*state_space_GLM_Pred_period_return_50_Price_sd &
-    AR_GLM_Pred_period_return_50_Price > 0.65 &
-    Asset == 'AU200_AUD'
-  )|
-  #  # #stop_factor = 3, profit_factor = 6, period = 12
-  (state_space_GLM_Pred_period_return_50_Price >= 0.5 &
-   state_space_GLM_Pred_period_return_50_Price <= 0.57 &
-   Asset == 'EU50_EUR')|
-    (
-    AR_LM_Pred_period_return_50_Price >=
-    AR_LM_Pred_period_return_50_Price_mean + 0*AR_LM_Pred_period_return_50_Price_sd &
-    AR_LM_Pred_period_return_50_Price <=
-    AR_LM_Pred_period_return_50_Price_mean + 10*AR_LM_Pred_period_return_50_Price_sd &
-    AR_LM_Pred_period_return_50_Price >= 0 &
-    Asset == 'EU50_EUR'
-   )|
-  (state_space_LM_Pred_period_return_50_Price > 0 &
-    AR_LM_Pred_period_return_50_Price > 0 &
-    Asset == 'EU50_EUR')
-
-  "
-
 assets_to_use <- assets_to_use[1:16]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
@@ -870,18 +754,18 @@ while (current_time < end_time) {
         tictoc::tic()
         single_asset_model_trades <-
           Single_Asset_V3_get_all_preds(
-            Indices_Metals_Bonds = Indices_Metals_Bonds,
-            raw_macro_data = raw_macro_data,
-            base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
-            actuals_periods_needed = c("period_return_50_Price"),
-            correlation_rolling_periods = c(100,200, 300,400, 500),
-            state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
-            state_space_rolling = c(100, 200, 300, 400),
-            date_for_true_simualtion = "2019-01-01",
-            training_end_date = "2021-01-01",
-            asset_index_start = 1,
-            asset_index_end = 16
-          )
+          Indices_Metals_Bonds = Indices_Metals_Bonds,
+          raw_macro_data = raw_macro_data,
+          base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+          actuals_periods_needed = c("period_return_50_Price"),
+          correlation_rolling_periods = c(100,200, 300,400, 500),
+          state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
+          state_space_rolling = c(100, 200, 300, 400),
+          date_for_true_simualtion = "2019-01-01",
+          training_end_date = "2021-01-01",
+          asset_index_start = 1,
+          asset_index_end = 16
+        )
         tictoc::toc()
 
         # max_date_in_data <-
@@ -900,15 +784,6 @@ while (current_time < end_time) {
           mutate(
             trade_col =
               eval(parse(text = trade_statement))
-          ) %>%
-          filter(trade_col == TRUE) %>%
-          distinct(Asset, Date)
-
-        single_asset_model_trades_filt_2 <-
-          single_asset_model_trades %>%
-          mutate(
-            trade_col =
-              eval(parse(text = trade_statement_2))
           ) %>%
           filter(trade_col == TRUE) %>%
           distinct(Asset, Date)
@@ -979,80 +854,6 @@ while (current_time < end_time) {
           ungroup() %>%
           filter(time_diff <= 70 & date_check == TRUE) %>%
           filter(max_date_in_data <= Date)
-
-        single_asset_model_trades_filt_2 <-
-          single_asset_model_trades_filt_2 %>%
-          distinct(Asset, Date) %>%
-          mutate(trade_col = "Long",
-                 stop_factor =
-                   case_when(
-                     Asset == 'HK33_HKD' ~ 2,
-                     Asset == "BTC_USD" ~ 5,
-                     Asset == "AUD_USD" ~ 3,
-                     Asset == "USD_JPY" ~ 3,
-                     Asset == "WTICO_USD" ~ 2,
-                     Asset == "SG30_SGD" ~ 5,
-                     Asset == "XCU_USD" ~ 4,
-                     Asset == "XAU_USD" ~ 3,
-                     Asset == "AU200_AUD" ~ 3,
-                     Asset == "EU50_EUR" ~ 3
-                   ),
-                 profit_factor =
-                   case_when(
-                     Asset == 'HK33_HKD' ~ 3,
-                     Asset == "BTC_USD" ~ 10,
-                     Asset == "AUD_USD" ~ 6,
-                     Asset == "USD_JPY" ~ 6,
-                     Asset == "WTICO_USD" ~ 4,
-                     Asset == "SG30_SGD" ~ 10,
-                     Asset == "XCU_USD" ~ 8,
-                     Asset == "XAU_USD" ~ 6,
-                     Asset == "AU200_AUD" ~ 6,
-                     Asset == "EU50_EUR" ~ 6
-                   ),
-                 periods_ahead =
-                   case_when(
-                     Asset == 'HK33_HKD' ~ 12,
-                     Asset == "BTC_USD" ~ 12,
-                     Asset == "AUD_USD" ~ 24,
-                     Asset == "USD_JPY" ~ 12,
-                     Asset == "WTICO_USD" ~ 12,
-                     Asset == "SG30_SGD" ~ 24,
-                     Asset == "XCU_USD" ~ 12,
-                     Asset == "XAU_USD" ~ 12,
-                     Asset == "AU200_AUD" ~ 12,
-                     Asset == "EU50_EUR" ~ 12
-                   ),
-                 risk_dollar_value = risk_dollar_value
-          ) %>%
-          group_by(Asset) %>%
-          slice_max(Date) %>%
-          ungroup() %>%
-          left_join(current_prices_ask %>%
-                      group_by(Asset) %>%
-                      slice_max(Date) %>%
-                      ungroup() %>%
-                      dplyr::select(-Date)) %>%
-          mutate(
-            time_diff =
-              abs(
-                as.numeric(
-                  as_datetime(Date, tz = "Australia/Canberra") -
-                    as_datetime(current_time, tz = "Australia/Canberra"),
-                  units = "mins"
-                )
-              ),
-            date_check = max_date_in_data <= Date
-          ) %>%
-          group_by(Asset) %>%
-          slice_min(time_diff) %>%
-          ungroup() %>%
-          filter(time_diff <= 70 & date_check == TRUE) %>%
-          filter(max_date_in_data <= Date)
-
-        single_asset_model_trades_filt <-
-          single_asset_model_trades_filt %>%
-          bind_rows(single_asset_model_trades_filt_2)
 
       } else {
 

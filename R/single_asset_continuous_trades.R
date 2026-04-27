@@ -1562,7 +1562,7 @@ get_actual_wins_losses <- function(
     temp_actual_wins_losses[[i]] <-
       create_running_profits(
         asset_of_interest = assets_to_analyse[i],
-        asset_data = Indices_Metals_Bonds,
+        asset_data = asset_data,
         stop_factor = stop_factor,
         profit_factor = profit_factor,
         risk_dollar_value = risk_dollar_value,
@@ -2831,8 +2831,24 @@ prepare_macro_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = macro_indicator_model,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-6
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = macro_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = macro_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       rm(macro_indicator_model)
       gc()
@@ -2869,8 +2885,24 @@ prepare_macro_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = macro_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-6
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = macro_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = macro_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       macro_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -3679,7 +3711,23 @@ prepare_index_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = index_indicator_model,
-                      p_value_thresh_for_inputs = 10^-3)
+                      p_value_thresh_for_inputs = 10^-7)
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = index_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = index_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       rm(index_indicator_model)
       gc()
@@ -3715,7 +3763,23 @@ prepare_index_indicator_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = index_indicator_model_lin,
-                      p_value_thresh_for_inputs = 10^-3)
+                      p_value_thresh_for_inputs = 10^-7)
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = index_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = index_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       index_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -3982,8 +4046,24 @@ prepare_daily_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = daily_indicator_model,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-7
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = daily_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = daily_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-2
+          )
+      }
 
       rm(daily_indicator_model)
       gc()
@@ -4020,8 +4100,24 @@ prepare_daily_indicator_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = daily_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-7
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = daily_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = daily_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-2
+          )
+      }
 
       daily_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -4212,8 +4308,24 @@ prepare_copula_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = copula_indicator_model,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-8
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = copula_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = copula_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-2
+          )
+      }
 
       rm(copula_indicator_model)
       gc()
@@ -4250,8 +4362,24 @@ prepare_copula_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = copula_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.25
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-8
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = copula_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-5
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = copula_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-2
+          )
+      }
 
       copula_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -4385,7 +4513,23 @@ prepare_combined_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = combined_indicator_model,
-                      p_value_thresh_for_inputs = 10^-3)
+                      p_value_thresh_for_inputs = 10^-8)
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = combined_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-7
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = combined_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       rm(combined_indicator_model)
       gc()
@@ -4421,7 +4565,23 @@ prepare_combined_model <-
 
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = combined_indicator_model_lin,
-                      p_value_thresh_for_inputs = 10^-3)
+                      p_value_thresh_for_inputs = 10^-8)
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = combined_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-7
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = combined_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       combined_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -4559,8 +4719,24 @@ prepare_technical_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = technical_indicator_model,
                       # p_value_thresh_for_inputs = 0.15
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-7
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = technical_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-6
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = technical_indicator_model,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       rm(technical_indicator_model)
       gc()
@@ -4597,8 +4773,24 @@ prepare_technical_model <-
       sig_coefs <-
         get_sig_coefs(model_object_of_interest = technical_indicator_model_lin,
                       # p_value_thresh_for_inputs = 0.15
-                      p_value_thresh_for_inputs = 10^-3
+                      p_value_thresh_for_inputs = 10^-7
                       )
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = technical_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-6
+          )
+      }
+
+      if(length(sig_coefs) < 1) {
+        sig_coefs <-
+          get_sig_coefs(model_object_of_interest = technical_indicator_model_lin,
+                        # p_value_thresh_for_inputs = 0.25
+                        p_value_thresh_for_inputs = 10^-3
+          )
+      }
 
       technical_indicator_formula_lin <-
         create_lm_formula(dependant = bin_var_col[i],
@@ -5238,7 +5430,23 @@ prepare_post_ss_gen2_model <-
 
     sig_coefs <-
       get_sig_coefs(model_object_of_interest = lm_model,
-                    p_value_thresh_for_inputs = 10^-3)
+                    p_value_thresh_for_inputs = 10^-5)
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = lm_model,
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 10^-4
+        )
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = lm_model,
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 10^-3
+        )
+    }
 
     lm_form <-
       create_lm_formula(dependant = dependant_var, independant = sig_coefs)
@@ -5262,7 +5470,24 @@ prepare_post_ss_gen2_model <-
 
     sig_coefs <-
       get_sig_coefs(model_object_of_interest = glm_model,
-                    p_value_thresh_for_inputs = 10^-3)
+                    p_value_thresh_for_inputs = 10^-5)
+
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = glm_model,
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 10^-4
+        )
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <-
+        get_sig_coefs(model_object_of_interest = glm_model,
+                      # p_value_thresh_for_inputs = 0.25
+                      p_value_thresh_for_inputs = 10^-3
+        )
+    }
 
     glm_form <-
       create_lm_formula(dependant = "high_return_date == 'Detected' ", independant = sig_coefs)

@@ -566,6 +566,121 @@ trade_statement <-
   )
 "
 
+trade_statement_2 <-
+  "
+  #stop_factor = 2, profit_factor = 3, period = 12
+  (state_space_LM_Pred_period_return_50_Price >= 15 &
+  state_space_LM_Pred_period_return_50_Price <= 25 &
+  Asset == 'HK33_HKD')|
+  (state_space_GLM_Pred_period_return_50_Price >= 0.96 &
+  state_space_GLM_Pred_period_return_50_Price <= 0.98 &
+  Asset == 'HK33_HKD')|
+
+   #stop_factor = 5, profit_factor = 10, period = 12
+   (state_space_GLM_Pred_period_return_50_Price >= 0.98 &
+   state_space_GLM_Pred_period_return_50_Price <= 1 &
+   Asset == 'BTC_USD')|
+   (AR_GLM_Pred_period_return_50_Price >= 0.9 &
+   AR_GLM_Pred_period_return_50_Price <= 0.99 &
+   Asset == 'BTC_USD')|
+
+   #stop_factor = 3, profit_factor = 6, period = 24
+   (state_space_GLM_Pred_period_return_50_Price >= 0.99 &
+   state_space_GLM_Pred_period_return_50_Price <= 1 &
+   Asset == 'AUD_USD')|
+   (AR_GLM_Pred_period_return_50_Price >= 0.675 &
+   AR_GLM_Pred_period_return_50_Price <= 1 &
+   Asset == 'AUD_USD')|
+
+   #stop_factor = 3, profit_factor = 6, period = 12
+   (state_space_GLM_Pred_period_return_50_Price >= 0.95 &
+   state_space_GLM_Pred_period_return_50_Price <= 1 &
+   Asset == 'USD_JPY')|
+   (state_space_LM_Pred_period_return_50_Price >= 9.5 &
+   state_space_LM_Pred_period_return_50_Price <= 1000 &
+   Asset == 'USD_JPY')|
+
+   #stop_factor = 2, profit_factor = 4, period = 12
+   (state_space_LM_Pred_period_return_50_Price >= 1.75 &
+   state_space_LM_Pred_period_return_50_Price <= 2 &
+   Asset == 'WTICO_USD')|
+   (state_space_LM_Pred_period_return_50_Price >= 6 &
+   state_space_LM_Pred_period_return_50_Price <= 1000 &
+   Asset == 'WTICO_USD')|
+   (state_space_GLM_Pred_period_return_50_Price >= 0.55 &
+   state_space_GLM_Pred_period_return_50_Price <= 0.625 &
+   Asset == 'WTICO_USD')|
+
+   #stop_factor = 5, profit_factor = 10, period = 24
+   (state_space_LM_Pred_period_return_50_Price >= 0.4 &
+   state_space_LM_Pred_period_return_50_Price <= 1 &
+   Asset == 'SG30_SGD')|
+
+   # #stop_factor = 4, profit_factor = 8, period = 12
+   (AR_GLM_Pred_period_return_50_Price >= 0.75 &
+   state_space_GLM_Pred_period_return_50_Price >= 0.75 &
+   Asset == 'XCU_USD')|
+   (AR_LM_Pred_period_return_50_Price >= 0 &
+    state_space_LM_Pred_period_return_50_Price >= 0 &
+    AR_LM_Pred_period_return_50_Price <= 0.25 &
+    Asset == 'XCU_USD')|
+    (
+    AR_LM_Pred_period_return_50_Price >=
+    AR_LM_Pred_period_return_50_Price_mean + 0.25*AR_LM_Pred_period_return_50_Price_sd &
+    AR_LM_Pred_period_return_50_Price >= 0.5 &
+    Asset == 'XCU_USD'
+    )|
+    # #stop_factor = 3, profit_factor = 6, period = 12
+    (state_space_LM_Pred_period_return_50_Price >= 7 & Asset == 'XAU_USD')|
+    (state_space_LM_Pred_period_return_50_Price >= 2.75 &
+    AR_LM_Pred_period_return_50_Price >= 0 &
+    AR_LM_Pred_period_return_50_Price < 2 &
+    Asset == 'XAU_USD')|
+    (
+    state_space_GLM_Pred_period_return_50_Price >= 0.9 &
+    state_space_GLM_Pred_period_return_50_Price <= 0.99 &
+    Asset == 'XAU_USD'
+    )|
+    (state_space_LM_Pred_period_return_50_Price >= 9 &
+    state_space_LM_Pred_period_return_50_Price < 1000 &
+      Asset == 'AU200_AUD')|
+    (state_space_GLM_Pred_period_return_50_Price >= 0.955 &
+       state_space_GLM_Pred_period_return_50_Price <= 1 &
+       Asset == 'AU200_AUD')|
+    (
+      state_space_LM_Pred_period_return_50_Price >=
+      state_space_LM_Pred_period_return_50_Price_mean + 1.25*state_space_LM_Pred_period_return_50_Price_sd &
+      state_space_LM_Pred_period_return_50_Price <=
+      state_space_LM_Pred_period_return_50_Price_mean + 2*state_space_LM_Pred_period_return_50_Price_sd &
+      state_space_LM_Pred_period_return_50_Price > 6 &
+      Asset == 'AU200_AUD'
+    )|
+    (
+      state_space_GLM_Pred_period_return_50_Price >=
+      state_space_GLM_Pred_period_return_50_Price_mean + 0.25*state_space_GLM_Pred_period_return_50_Price_sd &
+      state_space_GLM_Pred_period_return_50_Price <=
+      state_space_GLM_Pred_period_return_50_Price_mean + 1.25*state_space_GLM_Pred_period_return_50_Price_sd &
+      AR_GLM_Pred_period_return_50_Price > 0.65 &
+      Asset == 'AU200_AUD'
+    )|
+     #  # #stop_factor = 3, profit_factor = 6, period = 12
+    (state_space_GLM_Pred_period_return_50_Price >= 0.5 &
+     state_space_GLM_Pred_period_return_50_Price <= 0.57 &
+     Asset == 'EU50_EUR')|
+      (
+      AR_LM_Pred_period_return_50_Price >=
+      AR_LM_Pred_period_return_50_Price_mean + 0*AR_LM_Pred_period_return_50_Price_sd &
+      AR_LM_Pred_period_return_50_Price <=
+      AR_LM_Pred_period_return_50_Price_mean + 10*AR_LM_Pred_period_return_50_Price_sd &
+      AR_LM_Pred_period_return_50_Price >= 0 &
+      Asset == 'EU50_EUR'
+     )|
+    (state_space_LM_Pred_period_return_50_Price > 0 &
+      AR_LM_Pred_period_return_50_Price > 0 &
+      Asset == 'EU50_EUR')
+
+  "
+
 assets_to_use <- assets_to_use[17:33]
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
@@ -741,9 +856,41 @@ while (current_time < end_time) {
           filter(trade_col == TRUE) %>%
           distinct(Asset, Date)
 
+        single_asset_model_trades_filt_2 <-
+          single_asset_model_trades %>%
+          mutate(
+            trade_col =
+              eval(parse(text = trade_statement_2))
+          ) %>%
+          filter(trade_col == TRUE) %>%
+          distinct(Asset, Date)
+
         current_prices_ask <-
           read_all_asset_data_intra_day(
-            asset_list_oanda = asset_list_oanda,
+            asset_list_oanda =
+              c(
+                "XAG_USD", #18
+                # "XAG_EUR", #19
+                # "XAG_AUD", #20
+                # "XAG_NZD", #21
+                "HK33_HKD", #22
+                "FR40_EUR", #23
+                "BTC_USD", #24
+                # "XAG_GBP", #25
+                "GBP_AUD", #26
+                "USD_SEK", #27
+                "USD_SGD", #28
+                "NZD_USD", #29
+                "GBP_NZD", #30
+                "XCU_USD", #31
+                "NATGAS_USD", #32
+                "GBP_JPY", #33
+                "SG30_SGD", #34
+                "XAU_USD", #35
+                "EUR_SEK", #36
+                # "XAU_AUD", #37
+                "UK10YB_GBP" #38
+              ),
             save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
             read_csv_or_API = "API",
             time_frame = "H1",
@@ -789,6 +936,80 @@ while (current_time < end_time) {
           ungroup() %>%
           filter(time_diff <= 70 & date_check == TRUE) %>%
           filter(max_date_in_data <= Date)
+
+        single_asset_model_trades_filt_2 <-
+          single_asset_model_trades_filt_2 %>%
+          distinct(Asset, Date) %>%
+          mutate(trade_col = "Long",
+                 stop_factor =
+                   case_when(
+                     Asset == 'HK33_HKD' ~ 2,
+                     Asset == "BTC_USD" ~ 5,
+                     Asset == "AUD_USD" ~ 3,
+                     Asset == "USD_JPY" ~ 3,
+                     Asset == "WTICO_USD" ~ 2,
+                     Asset == "SG30_SGD" ~ 5,
+                     Asset == "XCU_USD" ~ 4,
+                     Asset == "XAU_USD" ~ 3,
+                     Asset == "AU200_AUD" ~ 3,
+                     Asset == "EU50_EUR" ~ 3
+                   ),
+                 profit_factor =
+                   case_when(
+                     Asset == 'HK33_HKD' ~ 3,
+                     Asset == "BTC_USD" ~ 10,
+                     Asset == "AUD_USD" ~ 6,
+                     Asset == "USD_JPY" ~ 6,
+                     Asset == "WTICO_USD" ~ 4,
+                     Asset == "SG30_SGD" ~ 10,
+                     Asset == "XCU_USD" ~ 8,
+                     Asset == "XAU_USD" ~ 6,
+                     Asset == "AU200_AUD" ~ 6,
+                     Asset == "EU50_EUR" ~ 6
+                   ),
+                 periods_ahead =
+                   case_when(
+                     Asset == 'HK33_HKD' ~ 12,
+                     Asset == "BTC_USD" ~ 12,
+                     Asset == "AUD_USD" ~ 24,
+                     Asset == "USD_JPY" ~ 12,
+                     Asset == "WTICO_USD" ~ 12,
+                     Asset == "SG30_SGD" ~ 24,
+                     Asset == "XCU_USD" ~ 12,
+                     Asset == "XAU_USD" ~ 12,
+                     Asset == "AU200_AUD" ~ 12,
+                     Asset == "EU50_EUR" ~ 12
+                   ),
+                 risk_dollar_value = risk_dollar_value
+          ) %>%
+          group_by(Asset) %>%
+          slice_max(Date) %>%
+          ungroup() %>%
+          left_join(current_prices_ask %>%
+                      group_by(Asset) %>%
+                      slice_max(Date) %>%
+                      ungroup() %>%
+                      dplyr::select(-Date)) %>%
+          mutate(
+            time_diff =
+              abs(
+                as.numeric(
+                  as_datetime(Date, tz = "Australia/Canberra") -
+                    as_datetime(current_time, tz = "Australia/Canberra"),
+                  units = "mins"
+                )
+              ),
+            date_check = max_date_in_data <= Date
+          ) %>%
+          group_by(Asset) %>%
+          slice_min(time_diff) %>%
+          ungroup() %>%
+          filter(time_diff <= 70 & date_check == TRUE) %>%
+          filter(max_date_in_data <= Date)
+
+        single_asset_model_trades_filt <-
+          single_asset_model_trades_filt %>%
+          bind_rows(single_asset_model_trades_filt_2)
 
       } else {
 
