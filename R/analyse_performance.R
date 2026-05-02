@@ -473,6 +473,7 @@ get_all_realised_generic <-
       connect_db(realised_DB_path)
     asset_accumulator <- list()
 
+    safely_get_pos <- safely(get_closed_positions, otherwise = NULL)
 
     for (i in 1:length(distinct_assets) ) {
 
@@ -480,14 +481,16 @@ get_all_realised_generic <-
       current_account = account_var
 
       realised_trades_asset <-
-        get_closed_positions(account_var = current_account,
-                             asset = current_asset)
+        safely_get_pos(account_var = current_account,
+                             asset = current_asset) %>%
+        pluck('result')
 
       if(!is.null(realised_trades_asset)) {
 
         realised_trades_asset_filt <-
           realised_trades_asset %>%
-          filter((date_open) >= as_datetime(algo_start_date, tz = "Australia/Canberra"))
+          filter((date_open) >=
+                   as_datetime(algo_start_date))
       } else {
         realised_trades_asset_filt <- NULL
       }

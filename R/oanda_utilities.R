@@ -424,8 +424,8 @@ get_closed_positions <- function(save_csv = FALSE,
     complete_frame <- returned_value$trades  %>%
       select(-takeProfitOrder,-stopLossOrder) %>%
       mutate(
-        date_open = as_datetime(openTime),
-        date_closed = as_datetime(closeTime)
+        date_open = as_datetime(openTime, tz = "Australia/Canberra"),
+        date_closed = as_datetime(closeTime, tz = "Australia/Canberra")
       )  %>%
       distinct(id, instrument,price ,realizedPL, date_closed, date_open, initialUnits,
                financing, dividendAdjustment) %>%
