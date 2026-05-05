@@ -137,9 +137,7 @@ all_preds <-
 tictoc::toc()
 
 
-all_preds_dfr <-
-  all_preds %>%
-  map_dfr(bind_rows)
+all_preds_dfr <- all_preds
 
 trade_direction <- "Long"
 
@@ -152,9 +150,6 @@ generated_preds <-
   ) %>%
   filter(Date > training_end_date) %>%
   filter(Date > date_for_true_simualtion)
-
-
-
 
 actual_wins_losses <-
   get_actual_wins_losses(
