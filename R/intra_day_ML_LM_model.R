@@ -259,7 +259,7 @@ updated_data_internal <-
       ungroup() %>%
       pull(Date) %>%
       min(na.rm = T) %>%
-      as_date()
+      as_datetime(tz = "Australia/Canberra")
 
     new_data <-
       get_db_price(

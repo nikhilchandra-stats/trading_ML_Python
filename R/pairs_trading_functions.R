@@ -250,7 +250,8 @@ estimating_dual_copula <- function(
   rm(combined_data2)
   gc()
 
-  returned <- returned %>%
+  returned <-
+    returned %>%
     mutate(across(.cols = !matches("Date", ignore.case = FALSE),
                   .fns = ~ lag(.))) %>%
     mutate(
@@ -2301,7 +2302,7 @@ create_log_cumulative_returns <- function(
       arrange(Date) %>%
       dplyr::select(Date,
                     Return_Index = !!as.name(glue::glue("{asset_to_use[1]}_Return_Index"))
-                    ) %>%
+      ) %>%
       mutate(
         Asset = asset_to_use[1]
       )
@@ -2358,14 +2359,14 @@ create_PCA_Asset_Index <- function(
       Average_PCA = (PC1 + PC2)/2
     )
 
-  pca_calc1 %>%
-    mutate(index = row_number()) %>%
-    ggplot(aes(x = index)) +
-    geom_line(aes(y = PC1)) +
-    geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
-    geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
-    geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
-    theme_minimal()
+  # pca_calc1 %>%
+  #   mutate(index = row_number()) %>%
+  #   ggplot(aes(x = index)) +
+  #   geom_line(aes(y = PC1)) +
+  #   geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
+  #   geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
+  #   geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
+  #   theme_minimal()
 
   if(length(asset_to_use) >= 6) {
     returned_data <-
@@ -2534,7 +2535,7 @@ get_PCA_Index_rolling_cor_sd_mean <-
     raw_asset_data_for_PCA_cor = asset_data_to_use %>% filter(Asset == "SPX500_USD"),
     PCA_data = returned_data,
     rolling_period = 100
-    ) {
+  ) {
 
     returned_data_rolling_PCA_cor <-
       raw_asset_data_for_PCA_cor %>%
@@ -2607,12 +2608,12 @@ get_PCA_Index_rolling_cor_sd_mean <-
                                                .before = rolling_period),
 
         rolling_tan_angle_mean = slider::slide_dbl(.x = tan_angle,
-                                              .f = ~  mean(.x, na.rm = T),
-                                              .before = rolling_period),
+                                                   .f = ~  mean(.x, na.rm = T),
+                                                   .before = rolling_period),
 
         rolling_tan_angle_sd = slider::slide_dbl(.x = tan_angle,
-                                                   .f = ~  sd(.x, na.rm = T),
-                                                   .before = rolling_period)
+                                                 .f = ~  sd(.x, na.rm = T),
+                                                 .before = rolling_period)
       )
 
     return(returned_data_rolling_PCA_cor)
@@ -2785,6 +2786,7 @@ get_all_commod_USD <- function(
 #---Gold Index
 get_equity_index <-
   function(index_data) {
+
     major_indices_log_cumulative <-
       c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR", "SG30_SGD",
         "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD") %>%
@@ -2820,7 +2822,13 @@ get_equity_index <-
                           "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
-      )
+      )  %>%
+      rename(PC1_Equities = PC1,
+             PC2_Equities = PC2,
+             PC3_Equities = PC3,
+             PC4_Equities = PC4,
+             PC5_Equities = PC5,
+             PC6_Equities = PC6)
 
     rm(major_indices_log_cumulative)
     gc()
@@ -2946,17 +2954,16 @@ get_silver_index <-
 #'
 #' @examples
 get_bonds_index <-
-  function(index_data,
-           assets_in_index = c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD") ) {
+  function(index_data) {
 
     major_bonds_log_cumulative <-
-      assets_in_index %>%
+      c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD") %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% assets_in_index ),
+              filter(Asset %in% c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD")),
             asset_to_use = c(.x[1]),
             price_col = "Open",
             return_long_format = TRUE
@@ -2964,7 +2971,7 @@ get_bonds_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% assets_in_index ) %>%
+          filter(Asset %in% c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD")) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
 
@@ -2977,7 +2984,7 @@ get_bonds_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  assets_in_index,
+        asset_to_use =  c("UK10YB_GBP", "USB10Y_USD", "USB02Y_USD"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
       ) %>%

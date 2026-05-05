@@ -9,12 +9,12 @@ create_markov_model <- function(asset_data_combined = asset_data_combined,
     asset_data_combined %>%
     group_by(Asset)
 
-  if(training_perc == 1) {
-    training_data <- training_data
-  } else {
-    training_data <- training_data  %>%
-      slice_head(prop = training_perc)
-  }
+  # if(training_perc == 1) {
+  #   training_data <- training_data
+  # } else {
+  #   training_data <- training_data  %>%
+  #     slice_head(prop = training_perc)
+  # }
 
   training_data <-
     training_data %>%
@@ -185,7 +185,7 @@ create_markov_model <- function(asset_data_combined = asset_data_combined,
   quantilised_training_data2 <-
     quantilised_training_data %>%
     mutate(
-      total = rowSums( across( contains("roll_sum") ) )
+      total = rowSums( across( contains("roll_sum") ),  na.rm = TRUE )
     )
 
   for (i in 1:length(sd_divides) ) {
@@ -205,7 +205,7 @@ create_markov_model <- function(asset_data_combined = asset_data_combined,
     quantilised_training_data2 %>%
     mutate(
       total_perc =
-        rowSums( across( contains("roll_sum") ) )
+        rowSums( across( contains("roll_sum") ), na.rm = TRUE )
     )
 
   return(quantilised_training_data3)
@@ -272,9 +272,9 @@ get_markov_cols_for_trading <- function(
                               .f = ~ mean(.x, na.rm = T),
                               .before = rolling_period),
           Total_Positive_Prob =
-            rowSums( across( contains("Pos_roll_sum") ) ),
+            rowSums( across( contains("Pos_roll_sum") ), na.rm = TRUE ),
           Total_Negative_Prob =
-            rowSums( across( contains( "Neg_roll_sum") ) ),
+            rowSums( across( contains( "Neg_roll_sum") ), na.rm = TRUE ),
           Total_Positive_Prob_avg =
             slider::slide_dbl(
               .x = Total_Positive_Prob,

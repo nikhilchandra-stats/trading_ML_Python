@@ -73,27 +73,6 @@ bin_factor = NULL
 stop_value_var = 2
 profit_value_var = 15
 period_var = 24
-full_ts_trade_db_location = "C:/Users/nikhi/Documents/trade_data/full_ts_trades_mapped_period_version.db"
-full_ts_trade_db_con <- connect_db(path = full_ts_trade_db_location)
-actual_wins_losses <-
-  DBI::dbGetQuery(full_ts_trade_db_con,
-                  glue::glue("SELECT * FROM full_ts_trades_mapped
-                  WHERE stop_factor = {stop_value_var} AND
-                        periods_ahead = {period_var} AND Date >= {start_date}")
-  ) %>%
-  mutate(
-    Date = as_datetime(Date)
-  )
-
-actual_wins_losses <-
-  actual_wins_losses %>%
-  filter(stop_factor == stop_value_var,
-         profit_factor == profit_value_var,
-         periods_ahead == period_var)
-
-DBI::dbDisconnect(full_ts_trade_db_con)
-rm(full_ts_trade_db_con)
-gc()
 
 All_Daily_Data <-
   get_DAILY_ALGO_DATA_API_REQUEST()
@@ -352,6 +331,54 @@ indicator_mapping <- list(
     )
 )
 
+assets_to_analyse <-
+  indicator_mapping$Asset
+
+temp_actual_wins_losses <- list()
+
+for (i in 1:length(assets_to_analyse)) {
+
+  temp_actual_wins_losses[[i]] <-
+    create_running_profits(
+      asset_of_interest = assets_to_analyse[i],
+      asset_data = Indices_Metals_Bonds,
+      stop_factor = stop_value_var,
+      profit_factor = profit_value_var,
+      risk_dollar_value = 9,
+      trade_direction = "Long",
+      currency_conversion = currency_conversion,
+      asset_infor = asset_infor
+    )
+
+}
+
+actual_wins_losses <-
+  temp_actual_wins_losses %>%
+  map_dfr(bind_rows) %>%
+  dplyr::select(-volume_unadj, -minimumTradeSize_OG, -marginRate,
+                -adjusted_conversion, -pipLocation, -minimumTradeSize_OG) %>%
+  dplyr::rename(
+    High = Bid_High,
+    Low =  Bid_Low
+  ) %>%
+  mutate(
+    trade_return_dollar_aud = !!as.name(glue::glue("period_return_{period_var}_Price") ),
+
+    trade_start_prices =
+      case_when(
+        trade_col == "Long" ~ Ask_Price,
+        trade_col == "Short" ~ Bid_Price
+      ),
+    trade_end_prices =
+      case_when(
+        trade_col == "Long" ~ Bid_Price,
+        trade_col == "Short" ~ Ask_Price
+      ),
+    stop_factor = stop_value_var,
+    profit_factor = profit_value_var,
+    periods_ahead = period_var
+  )
+
 pre_train_date_end = today() - months(12)
 post_train_date_start = today() - months(12)
 test_date_start = today() - weeks(1)
@@ -423,4 +450,4 @@ for (j in 1:length(indicator_mapping$Asset) ) {
     ) %>%
     pluck('result')
 
-  }
+}
