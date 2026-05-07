@@ -366,8 +366,8 @@ traded_assets <-
 return_structure <-
   get_portfolio_struc_with_end_points(
     Indices_Metals_Bonds =
-      Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2023-01-01") ),
-    trade_data = generated_preds_from_db %>% filter(Date >= "2023-01-01"),
+      Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2021-01-01") ),
+  trade_data = generated_preds_from_db %>% filter(Date >= "2021-01-01"),
   traded_assets = c("DE30_EUR"),
   trade_statement_for_filter = "str_detect(Asset, '[A-Z]')",
   low_point_end = c(-15,-8, -6,-3, -4,-2),
@@ -380,72 +380,12 @@ return_structure <-
   trade_direction = "Long"
 )
 
-return_structure_summary <-
-  return_structure %>%
-  ungroup() %>%
-  filter(period_since_open == true_end_point) %>%
-  group_by(low_point_end, high_point_end, profit_factor, stop_factor, trade_direction) %>%
-  summarise(Return = sum(Return, na.rm = T))
+analyse_trade_return_structure(
+  return_structure = return_structure,
+  trade_data = generated_preds_from_db %>% filter(Date >= "2023-01-01"),
+  trade_statement_for_filter = trade_statement,
+  trade_direction = "Long",
+  asset_of_interest = c("DE30_EUR")
+)
 
 
-construct_portfolio_sim <-
-  function(
-    portfolio_structure = portfolio_structure,
-    starting_capital = 20000
-  ) {
-
-    distinct_dates <-
-      portfolio_structure %>%
-      distinct(adjusted_Date) %>%
-      pull(adjusted_Date)
-
-    all_end_points <-
-      portfolio_structure %>%
-      filter(period_since_open == close_Date) %>%
-      group_by(adjusted_Date) %>%
-      summarise(Return = sum(Return, na.rm = T)) %>%
-      ungroup() %>%
-      arrange(adjusted_Date) %>%
-      mutate(
-        Cumulative_Return = cumsum(Return) + starting_capital
-      ) %>%
-      mutate(
-        REALISED_THIS_DATE = Return,
-        END_TRADE_DATES = adjusted_Date
-      )
-
-    all_portfolio_NAV <-
-      portfolio_structure %>%
-      group_by(adjusted_Date) %>%
-      summarise(Return = sum(Return, na.rm = T)) %>%
-      ungroup() %>%
-      arrange(adjusted_Date) %>%
-      left_join(all_end_points) %>%
-      fill(Cumulative_Return, .direction = "down") %>%
-      mutate(
-        REALISED_THIS_DATE =
-          ifelse(is.na(REALISED_THIS_DATE), 0, REALISED_THIS_DATE)
-      ) %>%
-      mutate(
-        NAV = Cumulative_Return + (Return - REALISED_THIS_DATE)
-      )
-
-
-    all_portfolio_NAV %>%
-      ggplot(aes(x = adjusted_Date, y = NAV)) +
-      geom_line() +
-      theme_minimal()
-
-    max_portfolio_deviation <-
-      all_portfolio_NAV %>%
-      dplyr::select(adjusted_Date, Return) %>%
-      mutate(
-        Deviation = starting_capital + Return
-      )
-
-    max_portfolio_deviation %>%
-      ggplot(aes(x = adjusted_Date, y = Deviation)) +
-      geom_line() +
-      theme_minimal()
-
-  }

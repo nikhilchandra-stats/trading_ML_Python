@@ -2496,3 +2496,270 @@ get_portfolio_struc_with_end_points <-
 
   }
 
+
+#' construct_portfolio_sim
+#'
+#' @param portfolio_structure
+#' @param starting_capital
+#'
+#' @return
+#' @export
+#'
+#' @examples
+construct_portfolio_sim <-
+  function(
+    portfolio_structure = portfolio_structure,
+    starting_capital = 20000
+  ) {
+
+    distinct_dates <-
+      portfolio_structure %>%
+      distinct(adjusted_Date) %>%
+      pull(adjusted_Date)
+
+    all_end_points <-
+      portfolio_structure %>%
+      filter(period_since_open == close_Date) %>%
+      group_by(adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      ungroup() %>%
+      arrange(adjusted_Date) %>%
+      mutate(
+        Cumulative_Return = cumsum(Return) + starting_capital
+      ) %>%
+      mutate(
+        REALISED_THIS_DATE = Return,
+        END_TRADE_DATES = adjusted_Date
+      )
+
+    all_portfolio_NAV <-
+      portfolio_structure %>%
+      group_by(adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      ungroup() %>%
+      arrange(adjusted_Date) %>%
+      left_join(all_end_points) %>%
+      fill(Cumulative_Return, .direction = "down") %>%
+      mutate(
+        REALISED_THIS_DATE =
+          ifelse(is.na(REALISED_THIS_DATE), 0, REALISED_THIS_DATE)
+      ) %>%
+      mutate(
+        NAV = Cumulative_Return + (Return - REALISED_THIS_DATE)
+      )
+
+
+    all_portfolio_NAV %>%
+      ggplot(aes(x = adjusted_Date, y = NAV)) +
+      geom_line() +
+      theme_minimal()
+
+    max_portfolio_deviation <-
+      all_portfolio_NAV %>%
+      dplyr::select(adjusted_Date, Return) %>%
+      mutate(
+        Deviation = starting_capital + Return
+      )
+
+    max_portfolio_deviation %>%
+      ggplot(aes(x = adjusted_Date, y = Deviation)) +
+      geom_line() +
+      theme_minimal()
+
+  }
+
+
+#' analyse_trade_return_structure
+#'
+#' @param return_structure
+#' @param trade_data
+#' @param trade_statement_for_filter
+#' @param trade_direction
+#' @param asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+analyse_trade_return_structure_asset <-
+  function(
+    return_structure,
+    trade_data = generated_preds_from_db %>% filter(Date >= "2023-01-01"),
+    trade_statement_for_filter = trade_statement,
+    trade_direction = "Long",
+    asset_of_interest = "DE30_EUR"
+  ) {
+
+    return_structure_sum <-
+      return_structure  %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      filter(period_since_open == true_end_point) %>%
+      group_by(Asset, Date, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction, adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T))
+
+    rm(return_structure)
+    gc()
+
+    trade_dates <-
+      trade_data %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      mutate(
+        trade_col =
+          eval(parse(text = trade_statement_for_filter)),
+        trade_col =
+          ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ", trade_direction) )
+      ) %>%
+      distinct(Asset, Date, trade_col) %>%
+      filter(trade_col == "Long")
+
+    Final_Values_control <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      group_by(Asset, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      mutate(trade_col = "Control")
+
+    Final_Values_trades <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      left_join(trade_dates) %>%
+      filter(!is.na(trade_col), trade_col == "Long") %>%
+      group_by(Asset, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction) %>%
+      summarise(Return = sum(Return, na.rm = T))
+
+    control_returns <-
+      return_structure_sum$Return %>% as.numeric()
+    trade_returns <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      left_join(trade_dates) %>%
+      filter(!is.na(trade_col), trade_col == "Long") %>%
+      pull(Return) %>%
+      as.numeric()
+
+    random_samples_mean <- numeric(5000)
+    random_trades_mean <- numeric(5000)
+    random_samples_10 <- numeric(5000)
+    random_trades_10 <- numeric(5000)
+    random_samples_25 <- numeric(5000)
+    random_trades_25 <- numeric(5000)
+    random_samples_75 <- numeric(5000)
+    random_trades_75 <- numeric(5000)
+
+    avg_win_trades <- numeric(5000)
+    avg_loss_trades <- numeric(5000)
+    perc_trades <- numeric(5000)
+
+    perc_control <- numeric(5000)
+    avg_win_control <- numeric(5000)
+    avg_loss_control <- numeric(5000)
+
+    for (i in 1:length(random_samples)) {
+
+      sample_index <- round(runif(n = 500, min = 1, max = 5000))
+      random_samples_mean[i] <- mean(control_returns[sample_index], na.rm = T)
+      random_trades_mean[i] <- mean(trade_returns[sample_index], na.rm = T)
+
+      random_samples_10[i] <- quantile(control_returns[sample_index],0.10 ,na.rm = T)
+      random_trades_10[i] <- quantile(trade_returns[sample_index],0.10 ,na.rm = T)
+
+      random_samples_25[i] <- quantile(control_returns[sample_index],0.25 ,na.rm = T)
+      random_trades_25[i] <- quantile(trade_returns[sample_index],0.25 ,na.rm = T)
+
+      random_samples_75[i] <- quantile(control_returns[sample_index],0.75 ,na.rm = T)
+      random_trades_75[i] <- quantile(trade_returns[sample_index],0.75 ,na.rm = T)
+
+      temp_returns <- trade_returns[sample_index]
+      perc_trades <- length(temp_returns[temp_returns > 0])/length(temp_returns)
+      avg_win_trades <- mean(temp_returns[temp_returns > 0], na.rm = T)
+      avg_loss_trades <- mean(temp_returns[temp_returns <= 0], na.rm = T)
+
+      temp_control <- control_returns[sample_index]
+      perc_control <- length(temp_control[temp_control > 0])/length(temp_control)
+      avg_win_control <- mean(temp_control[temp_control > 0], na.rm = T)
+      avg_loss_control <- mean(temp_control[temp_control <= 0], na.rm = T)
+
+    }
+
+    returned_tibble <-
+      tibble(
+        Asset = asset_of_interest,
+
+        random_samples_mean = mean(random_samples_mean, na.rm = T),
+        random_trades_mean = mean(random_trades_mean, na.rm = T),
+
+        random_samples_10 = mean(random_samples_10, na.rm = T),
+        random_trades_10 = mean(random_trades_10, na.rm = T),
+
+        random_samples_25 = mean(random_samples_25, na.rm = T),
+        random_trades_25 = mean(random_trades_25, na.rm = T),
+
+        random_samples_75 = mean(random_samples_75, na.rm = T),
+        random_trades_75 = mean(random_trades_75, na.rm = T),
+
+        perc_control = mean(perc_control, na.rm = T),
+        perc_trades = mean(perc_trades, na.rm = T),
+
+        avg_win_control = mean(avg_win_control, na.rm = T),
+        avg_win_trades = mean(avg_win_trades, na.rm = T),
+
+        avg_loss_control = mean(avg_loss_control, na.rm = T),
+        avg_loss_trades = mean(avg_loss_trades, na.rm = T)
+
+      )
+
+    return(returned_tibble)
+
+  }
+
+
+#' analyse_trade_return_structure
+#'
+#' @param return_structure
+#' @param trade_data
+#' @param trade_statement_for_filter
+#' @param trade_direction
+#' @param asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+analyse_trade_return_structure <-
+  function(
+    return_structure = return_structure,
+    trade_data = generated_preds_from_db %>% filter(Date >= "2023-01-01"),
+    trade_statement_for_filter = trade_statement,
+    trade_direction = "Long",
+    asset_of_interest = c("DE30_EUR")
+    ) {
+
+    analysis_returns <- list()
+    for (i in 1:length(asset_of_interest)) {
+
+      analysis_returns[[i]] <-
+        analyse_trade_return_structure_asset(
+        return_structure = return_structure,
+        trade_data = trade_data,
+        trade_statement_for_filter = trade_statement_for_filter,
+        trade_direction = trade_direction,
+        asset_of_interest = asset_of_interest[i]
+      )
+
+    }
+
+    analysis_returns_dfr <-
+      analysis_returns %>%
+      map_dfr(bind_rows)
+
+    return(analysis_returns_dfr)
+
+  }
