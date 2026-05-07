@@ -485,6 +485,35 @@ trade_statement <-
 
   "
 
+trade_statement_2 <-
+  "
+  # # stop = 2, profit = 3, time = 10
+  (AR_GLM_Pred_period_return_50_Price >= 0.625 &
+  AR_GLM_Pred_period_return_50_Price <= 1 &
+  Asset == 'DE30_EUR')|
+  (state_space_GLM_Pred_period_return_50_Price >= 0.7 &
+  state_space_GLM_Pred_period_return_50_Price <= 0.83 &
+  Asset == 'DE30_EUR')|
+  # stop = 2, profit = 3, time = 10
+  (AR_GLM_Pred_period_return_50_Price >= 0.55 &
+  AR_GLM_Pred_period_return_50_Price <= 1 &
+  Asset == 'JP225_USD')|
+  (state_space_GLM_Pred_period_return_50_Price >= 0.55 &
+  state_space_GLM_Pred_period_return_50_Price <= 0.58 &
+  Asset == 'JP225_USD')|
+  (
+  state_space_GLM_Pred_period_return_50_Price > 0.69 &
+  state_space_GLM_Pred_period_return_50_Price < 0.725 &
+  Asset == 'CH20_CHF'
+  )|
+  (
+  AR_GLM_Pred_period_return_50_Price > 0.58 &
+  AR_GLM_Pred_period_return_50_Price < 0.6 &
+  Asset == 'CH20_CHF'
+  )
+
+  "
+
 assets_to_use <-
   c(
     # "USD_CZK",  #6 USD_CZK
@@ -677,6 +706,15 @@ while (current_time < end_time) {
           filter(trade_col == TRUE) %>%
           distinct(Asset, Date)
 
+        single_asset_model_trades_filt2 <-
+          single_asset_model_trades %>%
+          mutate(
+            trade_col =
+              eval(parse(text = trade_statement_2))
+          ) %>%
+          filter(trade_col == TRUE) %>%
+          distinct(Asset, Date)
+
         current_prices_ask <-
           read_all_asset_data_intra_day(
             asset_list_oanda =
@@ -761,6 +799,46 @@ while (current_time < end_time) {
           ungroup() %>%
           filter(time_diff <= 70 & date_check == TRUE) %>%
           filter(max_date_in_data <= Date)
+
+        single_asset_model_trades_filt2 <-
+          single_asset_model_trades_filt2 %>%
+          distinct(Asset, Date) %>%
+          mutate(trade_col = "Long",
+                 stop_factor = 2,
+                 profit_factor = 3,
+                 periods_ahead = 10,
+                 risk_dollar_value = risk_dollar_value
+          ) %>%
+          group_by(Asset) %>%
+          slice_max(Date) %>%
+          ungroup() %>%
+          left_join(current_prices_ask %>%
+                      group_by(Asset) %>%
+                      slice_max(Date) %>%
+                      ungroup() %>%
+                      dplyr::select(-Date)) %>%
+          mutate(
+            time_diff =
+              abs(
+                as.numeric(
+                  as_datetime(Date, tz = "Australia/Canberra") -
+                    as_datetime(current_time, tz = "Australia/Canberra"),
+                  units = "mins"
+                )
+              ),
+            date_check = max_date_in_data <= Date
+          ) %>%
+          group_by(Asset) %>%
+          slice_min(time_diff) %>%
+          ungroup() %>%
+          filter(time_diff <= 70 & date_check == TRUE) %>%
+          filter(max_date_in_data <= Date)
+
+        single_asset_model_trades_filt <-
+          single_asset_model_trades_filt %>%
+          bind_rows(single_asset_model_trades_filt2)
+
+        rm(single_asset_model_trades_filt2)
 
       } else {
 
