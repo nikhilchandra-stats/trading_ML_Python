@@ -209,3 +209,12 @@ rolling_LM_AR <-
     return(predicted_data)
 
   }
+
+create_Currency_PortFolio <-
+  function(
+    portfolio_data =
+      Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2023-01-01") ),
+    pred_data = all_preds %>% filter(Date >= "2023-01-01")
+    ) {
+
+  }
