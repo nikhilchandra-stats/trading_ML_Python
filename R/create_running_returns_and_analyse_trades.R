@@ -2024,3 +2024,565 @@ get_asset_random_sim_returns <-
 
   }
 
+#' construct_ending_point_model
+#'
+#' @param portfolio_structure
+#' @param low_point_end
+#' @param high_point_end
+#'
+#' @return
+#' @export
+#'
+#' @examples
+construct_ending_point_model <-
+  function(portfolio_structure = portfolio_structure,
+           low_point_end = -3,
+           high_point_end = 15) {
+
+
+    end_point_analysis <-
+      portfolio_structure %>%
+      mutate(
+        end_point_low =
+          case_when(
+            Return <= low_point_end ~ period_since_open
+          ),
+        end_point_high =
+          case_when(
+            Return >= high_point_end ~ period_since_open
+          )
+      ) %>%
+      group_by(Date) %>%
+      summarise(
+        end_point_low = min(end_point_low, na.rm = T),
+        end_point_high = min(end_point_high, na.rm = T),
+        last_point = mean(close_Date)
+      ) %>%
+      ungroup() %>%
+      mutate(
+        across(c(end_point_low, end_point_high),
+               .fns = ~ ifelse(is.infinite(.),
+                               last_point,
+                               .) )
+      ) %>%
+      mutate(
+        true_end_point =
+          case_when(
+            end_point_low <= end_point_high ~ end_point_low,
+            !is.infinite(end_point_low) & is.infinite(end_point_high) ~ end_point_low,
+            end_point_high > end_point_low ~ end_point_high,
+            is.infinite(end_point_low) & !is.infinite(end_point_high) ~ end_point_high,
+            is.infinite(end_point_low) & is.infinite(end_point_high) ~ last_point
+          )
+      )
+
+    return_analysis <-
+      portfolio_structure %>%
+      left_join(end_point_analysis) %>%
+      filter(period_since_open <= true_end_point)
+
+    return(return_analysis)
+
+  }
+
+
+#' get_portfolio_struc_with_end_points
+#'
+#' @param Indices_Metals_Bonds
+#' @param trade_data
+#' @param traded_assets
+#' @param trade_statement_for_filter
+#' @param low_point_end
+#' @param high_point_end
+#' @param stop_factor_var
+#' @param profit_factor_var
+#' @param risk_dollar_value_var
+#' @param end_period_var
+#' @param time_frame_var
+#' @param trade_direction
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_portfolio_struc_with_end_points <-
+  function(
+    Indices_Metals_Bonds =
+      Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2023-01-01") ),
+    trade_data = generated_preds_from_db %>% filter(Date >= "2023-01-01"),
+    traded_assets = c("DE30_EUR"),
+    trade_statement_for_filter = "str_detect(Asset, '[A-Z]')",
+    low_point_end = -3,
+    high_point_end = 15,
+    stop_factor_var = 10,
+    profit_factor_var = 50,
+    risk_dollar_value_var = 10,
+    end_period_var = 50,
+    time_frame_var = "H1",
+    trade_direction = "Long"
+  ) {
+
+    portfolio_structure <- list()
+
+    for (i in 1:length(traded_assets)) {
+
+      tagged_trades <-
+        trade_data %>%
+        mutate(
+          trade_col =
+            eval(parse(text = trade_statement_for_filter)),
+          trade_col =
+            ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ", trade_direction) )
+        ) %>%
+        distinct(Asset, Date, trade_col) %>%
+        filter(trade_col == "Long") %>%
+        filter(Asset == traded_assets[i])
+
+      portfolio_structure[[i]] <-
+        get_portfolio_model(
+          asset_data = Indices_Metals_Bonds,
+          asset_of_interest = traded_assets[i],
+          tagged_trades = tagged_trades,
+          stop_factor_long = stop_factor_var,
+          profit_factor_long = profit_factor_var,
+          risk_dollar_value_long = risk_dollar_value_var,
+          end_period = end_period_var,
+          time_frame = time_frame_var,
+          trade_direction = trade_direction
+        )
+
+    }
+
+    portfolio_structure <-
+      portfolio_structure %>%
+      map_dfr(bind_rows)
+
+    return_data <- list()
+    c = 0
+
+    for (i in 1:length(low_point_end)) {
+      for (j in 1:length(high_point_end)) {
+
+        c = c + 1
+        return_data[[c]] <-
+          construct_ending_point_model(
+            portfolio_structure = portfolio_structure,
+            low_point_end = low_point_end[i],
+            high_point_end = high_point_end[j]
+          ) %>%
+          mutate(
+            low_point_end = low_point_end[i],
+            high_point_end = high_point_end[j],
+            stop_factor = stop_factor_var,
+            profit_factor = profit_factor_var,
+            risk_dollar_value_long = risk_dollar_value_var,
+            end_period = end_period_var,
+            trade_direction = trade_direction
+          )
+
+      }
+    }
+
+    return_data <-
+      return_data %>%
+      map_dfr(bind_rows)
+
+    return(return_data)
+
+  }
+
+
+#' construct_portfolio_sim
+#'
+#' @param portfolio_structure
+#' @param starting_capital
+#'
+#' @return
+#' @export
+#'
+#' @examples
+construct_portfolio_sim <-
+  function(
+    portfolio_structure = portfolio_structure,
+    starting_capital = 20000
+  ) {
+
+    distinct_dates <-
+      portfolio_structure %>%
+      distinct(adjusted_Date) %>%
+      pull(adjusted_Date)
+
+    all_end_points <-
+      portfolio_structure %>%
+      filter(period_since_open == close_Date) %>%
+      group_by(adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      ungroup() %>%
+      arrange(adjusted_Date) %>%
+      mutate(
+        Cumulative_Return = cumsum(Return) + starting_capital
+      ) %>%
+      mutate(
+        REALISED_THIS_DATE = Return,
+        END_TRADE_DATES = adjusted_Date
+      )
+
+    all_portfolio_NAV <-
+      portfolio_structure %>%
+      group_by(adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      ungroup() %>%
+      arrange(adjusted_Date) %>%
+      left_join(all_end_points) %>%
+      fill(Cumulative_Return, .direction = "down") %>%
+      mutate(
+        REALISED_THIS_DATE =
+          ifelse(is.na(REALISED_THIS_DATE), 0, REALISED_THIS_DATE)
+      ) %>%
+      mutate(
+        NAV = Cumulative_Return + (Return - REALISED_THIS_DATE)
+      )
+
+
+    all_portfolio_NAV %>%
+      ggplot(aes(x = adjusted_Date, y = NAV)) +
+      geom_line() +
+      theme_minimal()
+
+    max_portfolio_deviation <-
+      all_portfolio_NAV %>%
+      dplyr::select(adjusted_Date, Return) %>%
+      mutate(
+        Deviation = starting_capital + Return
+      )
+
+    max_portfolio_deviation %>%
+      ggplot(aes(x = adjusted_Date, y = Deviation)) +
+      geom_line() +
+      theme_minimal()
+
+  }
+
+
+#' analyse_trade_return_structure
+#'
+#' @param return_structure
+#' @param trade_data
+#' @param trade_statement_for_filter
+#' @param trade_direction
+#' @param asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+analyse_trade_return_structure_asset <-
+  function(
+    return_structure,
+    trade_data = generated_preds_from_db %>% filter(Date >= "2021-01-01"),
+    trade_statement_for_filter = trade_statement,
+    trade_direction = "Long",
+    asset_of_interest = "DE30_EUR"
+  ) {
+
+    return_structure_sum <-
+      return_structure  %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      filter(period_since_open == true_end_point) %>%
+      group_by(Asset, Date, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction, adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T))
+
+    rm(return_structure)
+    gc()
+
+    trade_dates <-
+      trade_data %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      mutate(
+        trade_col =
+          eval(parse(text = trade_statement_for_filter)),
+        trade_col =
+          ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ") )
+      ) %>%
+      distinct(Asset, Date, trade_col) %>%
+      filter(trade_col == "Long")
+
+    Final_Values_control <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      group_by(Asset, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      mutate(trade_col = "Control")
+
+    Final_Values_trades <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      left_join(trade_dates) %>%
+      filter(!is.na(trade_col), trade_col == "Long") %>%
+      group_by(Asset, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction) %>%
+      summarise(Return = sum(Return, na.rm = T))
+
+    distinct_structures <-
+      Final_Values_control %>%
+      ungroup() %>%
+      distinct(Asset, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction)
+
+    accumulator <- list()
+
+    for (o in 1:dim(distinct_structures)[1] ) {
+
+      asset_o <- distinct_structures$Asset[o]
+      low_point_end_o <- distinct_structures$low_point_end[o]
+      high_point_end_o <- distinct_structures$high_point_end[o]
+      profit_factor_o <- distinct_structures$profit_factor[o]
+      stop_factor_o <- distinct_structures$stop_factor[o]
+      trade_direction_o <- distinct_structures$trade_direction[o]
+
+      control_returns <-
+        return_structure_sum %>%
+        filter(Asset == asset_o,
+               low_point_end == low_point_end_o,
+               high_point_end == high_point_end_o,
+               profit_factor == profit_factor_o,
+               stop_factor == stop_factor_o,
+               trade_direction == trade_direction_o) %>%
+        pull(Return) %>%
+        as.numeric()
+
+      trade_returns <-
+        return_structure_sum %>%
+        ungroup() %>%
+        filter(
+          Asset == asset_o,
+          low_point_end == low_point_end_o,
+          high_point_end == high_point_end_o,
+          profit_factor == profit_factor_o,
+          stop_factor == stop_factor_o,
+          trade_direction == trade_direction_o
+        ) %>%
+        ungroup() %>%
+        filter(Asset == asset_of_interest) %>%
+        left_join(trade_dates) %>%
+        filter(!is.na(trade_col), trade_col == "Long") %>%
+        pull(Return) %>%
+        as.numeric()
+
+      random_control <- numeric(5000)
+      random_trades <- numeric(5000)
+
+      avg_win_trades <- numeric(5000)
+      avg_loss_trades <- numeric(5000)
+      perc_trades <- numeric(5000)
+
+      perc_control <- numeric(5000)
+      avg_win_control <- numeric(5000)
+      avg_loss_control <- numeric(5000)
+
+      for (i in 1:length(random_control)) {
+
+        sample_index <- round(runif(n = 500, min = 1, max = length(control_returns)))
+        sample_index_trades <- round(runif(n = 500, min = 1, max = length(trade_returns)))
+
+        random_control[i] <- sum(control_returns[sample_index], na.rm = T)
+        random_trades[i] <- sum(trade_returns[sample_index_trades], na.rm = T)
+
+        temp_returns <- trade_returns[sample_index_trades]
+        perc_trades <- length(temp_returns[temp_returns > 0])/length(temp_returns)
+        avg_win_trades <- mean(temp_returns[temp_returns > 0], na.rm = T)
+        avg_loss_trades <- mean(temp_returns[temp_returns <= 0], na.rm = T)
+
+        temp_control <- control_returns[sample_index]
+        perc_control <- length(temp_control[temp_control > 0])/length(temp_control)
+        avg_win_control <- mean(temp_control[temp_control > 0], na.rm = T)
+        avg_loss_control <- mean(temp_control[temp_control <= 0], na.rm = T)
+
+      }
+
+      accumulator[[o]] <-
+        tibble(
+          Asset = asset_of_interest,
+          low_point_end = low_point_end_o,
+          high_point_end = high_point_end_o,
+          profit_factor = profit_factor_o,
+          stop_factor = stop_factor_o,
+          trade_direction = trade_direction_o,
+
+          random_control_mean = mean(random_control, na.rm = T),
+          random_trades_mean = mean(random_trades, na.rm = T),
+
+          random_control_10 = quantile(random_control,0.1 ,na.rm = T),
+          random_trades_10 = quantile(random_trades,0.1, na.rm = T),
+
+          random_control_25 = quantile(random_control, 0.25, na.rm = T),
+          random_trades_25 = quantile(random_trades,0.25, na.rm = T),
+
+          random_control_75 = quantile(random_control, 0.75, na.rm = T),
+          random_trades_75 = quantile(random_trades, 0.75, na.rm = T),
+
+          perc_control = mean(perc_control, na.rm = T),
+          perc_trades = mean(perc_trades, na.rm = T),
+
+          avg_win_control = mean(avg_win_control, na.rm = T),
+          avg_win_trades = mean(avg_win_trades, na.rm = T),
+
+          avg_loss_control = mean(avg_loss_control, na.rm = T),
+          avg_loss_trades = mean(avg_loss_trades, na.rm = T),
+
+          total_returns_control = sum(control_returns, na.rm = T),
+          total_returns_trade = sum(trade_returns, na.rm = T)
+
+        )
+    }
+
+
+    returned_tibble <-
+      accumulator %>%
+      map_dfr(bind_rows)
+
+    return(returned_tibble)
+
+  }
+
+
+#' analyse_trade_return_structure
+#'
+#' @param return_structure
+#' @param trade_data
+#' @param trade_statement_for_filter
+#' @param trade_direction
+#' @param asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+analyse_trade_return_structure <-
+  function(
+    return_structure = return_structure,
+    trade_data = generated_preds_from_db %>% filter(Date >= "2023-01-01"),
+    trade_statement_for_filter = trade_statement,
+    trade_direction = "Long",
+    asset_of_interest = c("DE30_EUR")
+  ) {
+
+    analysis_returns <- list()
+    for (i in 1:length(asset_of_interest)) {
+
+      analysis_returns[[i]] <-
+        analyse_trade_return_structure_asset(
+          return_structure = return_structure,
+          trade_data = trade_data,
+          trade_statement_for_filter = trade_statement_for_filter,
+          trade_direction = trade_direction,
+          asset_of_interest = asset_of_interest[i]
+        )
+
+    }
+
+    analysis_returns_dfr <-
+      analysis_returns %>%
+      map_dfr(bind_rows)
+
+    return(analysis_returns_dfr)
+
+  }
+
+
+#' analyse_trade_return_structure
+#'
+#' @param return_structure
+#' @param trade_data
+#' @param trade_statement_for_filter
+#' @param trade_direction
+#' @param asset_of_interest
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_analysis_trade_return_structure_asset <-
+  function(
+    return_structure,
+    trade_data = generated_preds_from_db %>% filter(Date >= "2021-01-01"),
+    trade_statement_for_filter = trade_statement,
+    trade_direction = "Long",
+    asset_of_interest = "DE30_EUR",
+    min_end_point = -3,
+    max_end_point = 20
+  ) {
+
+    return_structure_sum <-
+      return_structure  %>%
+      ungroup() %>%
+      filter(Asset %in% c(asset_of_interest)) %>%
+      filter(period_since_open == true_end_point) %>%
+      group_by(Asset, Date, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction, adjusted_Date) %>%
+      summarise(Return = sum(Return, na.rm = T))
+
+    rm(return_structure)
+    gc()
+
+    trade_dates <-
+      trade_data %>%
+      ungroup() %>%
+      filter(Asset == asset_of_interest) %>%
+      mutate(
+        trade_col =
+          eval(parse(text = trade_statement_for_filter)),
+        trade_col =
+          ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ") )
+      ) %>%
+      distinct(Asset, Date, trade_col) %>%
+      filter(trade_col == "Long")
+
+    control_data <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(high_point_end == max_end_point,
+             low_point_end == min_end_point) %>%
+      filter(Asset %in% c(asset_of_interest)) %>%
+      group_by(Asset, Date, low_point_end, high_point_end, profit_factor, stop_factor, trade_direction) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      mutate(trade_col = "Control") %>%
+      ungroup() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      mutate(cumulative_return = cumsum(Return)) %>%
+      ungroup()
+
+    trade_data <-
+      return_structure_sum %>%
+      ungroup() %>%
+      ungroup() %>%
+      filter(high_point_end == max_end_point,
+             low_point_end == min_end_point) %>%
+      filter(Asset == asset_of_interest) %>%
+      left_join(trade_dates) %>%
+      filter(!is.na(trade_col), trade_col == "Long") %>%
+      group_by(Asset, Date,
+               low_point_end,
+               high_point_end, profit_factor, stop_factor, trade_direction) %>%
+      summarise(Return = sum(Return, na.rm = T)) %>%
+      ungroup() %>%
+      ungroup() %>%
+      mutate(trade_col = "Long") %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      mutate(cumulative_return = cumsum(Return)) %>%
+      ungroup()
+
+
+    returned_tibble <-
+      trade_data %>%
+      bind_rows(control_data)
+
+    return(returned_tibble)
+
+  }
