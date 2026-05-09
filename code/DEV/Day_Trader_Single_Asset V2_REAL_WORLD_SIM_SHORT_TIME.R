@@ -240,62 +240,6 @@ post_preds_all_rolling_and_originals <-
     save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
   )
 
-actual_wins_losses <-
-  get_actual_wins_losses(
-    assets_to_analyse =
-      c("EUR_USD", #1
-        "EU50_EUR", #2
-        "SPX500_USD", #3
-        "US2000_USD", #4
-        "USB10Y_USD", #5
-        "USD_JPY", #6
-        "AUD_USD", #7
-        "EUR_GBP", #8
-        "AU200_AUD" ,#9
-        "EUR_AUD", #10
-        "WTICO_USD", #11
-        "UK100_GBP", #12
-        "USD_CAD", #13
-        "GBP_USD", #14
-        "GBP_CAD", #15
-        "EUR_JPY", #16
-        "EUR_NZD", #17
-        "XAG_USD", #18
-        "XAG_EUR", #19
-        "XAG_AUD", #20
-        "XAG_NZD", #21
-        "HK33_HKD", #22
-        "FR40_EUR", #23
-        "BTC_USD", #24
-        "XAG_GBP", #25
-        "GBP_AUD", #26
-        "USD_SEK", #27
-        "USD_SGD", #28
-        "NZD_USD", #29
-        "GBP_NZD", #30
-        "XCU_USD", #31
-        "NATGAS_USD", #32
-        "GBP_JPY", #33
-        "SG30_SGD", #34
-        "XAU_USD", #35
-        "EUR_SEK", #36
-        "XAU_AUD", #37
-        "UK10YB_GBP", #38
-        "JP225Y_JPY", #39
-        "ETH_USD" #40
-      ),
-    asset_data = Indices_Metals_Bonds,
-    # stop_factor = 5,
-    # profit_factor = 15,
-    stop_factor = 10,
-    profit_factor = 60,
-    risk_dollar_value = 10,
-    trade_direction = "Long",
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor,
-    periods_ahead = period_var
-  )
-
 post_preds_all_rolling_and_originals_2 <-
   post_preds_all_rolling_and_originals %>%
   mutate(
@@ -342,39 +286,34 @@ generated_preds <-
     Date >= as.character(as_date("2023-01-01")  )
   )
 
+
+actual_wins_losses <-
+  get_actual_wins_losses(
+    assets_to_analyse =
+      c("EUR_USD" #1
+      ),
+    asset_data = Indices_Metals_Bonds,
+    stop_factor = 6,
+    profit_factor = 12,
+    risk_dollar_value = 10,
+    trade_direction = "Long",
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    periods_ahead = period_var
+  )
+
 trade_statement <-
   "
+  #Stop Factor = 6, Profit Factor = 12, End Point = 24
   (
-  pred_GLM_period_return_50_Price > 0.85 &
-  pred_GLM_period_return_50_Price < 0.9 &
-  Asset == 'US2000_USD'
+  pred_copula_3 >= -200 &
+  pred_copula_3 <= -100 &
+  Asset == 'EUR_USD'
   )|
   (
-   Averaged_FULL_LM >= 95 &
-   Averaged_FULL_LM <= 1000 &
-   Asset == 'US2000_USD'
-  )|
-  (
-  pred_technical_6 > 0.73 &
-  pred_technical_6 < 0.77 &
-  Asset == 'US2000_USD'
-  )|
-  (
-  pred_index_2 > 0.5 &
-  pred_index_2 < 0.6 &
-  pred_index_4 > 0.5 &
-  pred_index_4 < 0.6 &
-  Asset == 'US2000_USD'
-  )|
-  (
-  pred_combined_6 >= 0.5 &
-  pred_combined_6 < 0.9 &
-  Asset == 'US2000_USD'
-  )|
-  (
-  pred_combined_2 >= 0.65 &
-  pred_combined_2 < 0.98 &
-  Asset == 'US2000_USD'
+  pred_copula_1 >= 40 &
+  pred_copula_1 <= 1000 &
+  Asset == 'EUR_USD'
   )
 
 "
@@ -382,16 +321,16 @@ trade_statement <-
 cumulative_returns_sim_data <-
   get_total_portfolio_summary(
     generated_preds = generated_preds %>%
-      # filter(Asset == "US2000_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_USD")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses =actual_wins_losses %>%
-      # filter(Asset == "US2000_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_USD")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
-    return_col = "period_return_50_Price"
+    return_col = "period_return_24_Price"
   )
 
 cumulative_returns_sim_data %>%
@@ -404,16 +343,16 @@ cumulative_returns_sim_data %>%
 asset_summaries_control <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "US2000_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_USD")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = "str_detect(Asset, '[A-Z]')",
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "US2000_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_USD")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
-    return_col = "period_return_50_Price",
+    return_col = "period_return_24_Price",
     simulations = 5000,
     samples = 50
   )
@@ -421,16 +360,16 @@ asset_summaries_control <-
 asset_summaries <-
   get_asset_random_sim_returns(
     generated_preds = generated_preds %>%
-      # filter(Asset == "US2000_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_USD")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_statement = trade_statement,
     actual_wins_losses = actual_wins_losses %>%
-      # filter(Asset == "US2000_USD")
-      filter( str_detect(Asset, "[A-Z]"))
+      filter(Asset == "EUR_USD")
+      # filter( str_detect(Asset, "[A-Z]"))
     ,
     trade_direction = "Long",
-    return_col = "period_return_50_Price",
+    return_col = "period_return_24_Price",
     simulations = 7000,
     samples = 50
   )
