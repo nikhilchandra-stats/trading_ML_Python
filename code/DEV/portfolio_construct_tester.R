@@ -271,22 +271,21 @@ asset_summaries_control <-
     samples = 50
   )
 
-source("code/achive/TEMP_REDO_ACTUALS_FINDER.R")
-porftolio_data <-
-  get_portfolio_struc_with_end_points(
-    Indices_Metals_Bonds =
-      Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2023-01-01") ),
-    trade_data = Indices_Metals_Bonds[[1]] %>% filter(Date >= "2023-01-01"),
-    traded_assets = c("SPX500_USD"),
-    trade_statement_for_filter = "str_detect(Asset, '[A-Z]')",
-    low_point_end = c(-1,-3,-5,-8,-10),
-    high_point_end = c(3,5,10,20,40, 50),
-    stop_factor_var = 5,
+return_structure <-
+  get_portfolio_model_fast_summed(
+    asset_data = Indices_Metals_Bonds,
+    asset_of_interest = c("EUR_USD", "EUR_JPY", "EUR_GBP", "USD_JPY"),
+    stop_factor_var = 10,
     profit_factor_var = 100,
     risk_dollar_value_var = 10,
-    end_period_var = 50,
-    time_frame_var = "H1",
-    trade_direction = "Long"
+    end_period = 24,
+    time_frame = "H1",
+    trade_direction = "Long",
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    end_point_loss = -3,
+    end_point_profit = 10,
+    sum_as_portfolio = TRUE
   )
 
 trade_statement <-
