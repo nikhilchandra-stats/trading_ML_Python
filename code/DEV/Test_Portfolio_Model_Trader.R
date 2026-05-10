@@ -150,22 +150,82 @@ generated_preds <-
   filter(Date > training_end_date) %>%
   filter(Date > date_for_true_simualtion)
 
-portfolio_data <-
-  create_Currency_PortFolio_data(
-  portfolio_data = Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2023-01-01") ),
-  pred_data = all_preds %>% filter(Date >= "2023-01-01"),
-  assets_to_use = c("USD_JPY", "EUR_USD", "EUR_JPY"),
-  stop_factor_var = 4,
-  profit_factor_var = 8,
-  risk_dollar_value_var = 5,
-  end_period = 24,
-  time_frame = "H1",
-  trade_direction = "Long",
-  currency_conversion = currency_conversion,
-  asset_infor = asset_infor,
-  end_point_loss = -3,
-  end_point_profit = 10
+Model_Data <-
+  create_Portfolio_Model_Data(
+    portfolio_data = Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2020-01-01") ),
+    pred_data = all_preds %>% filter(Date >= "2020-01-01"),
+    assets_to_use = c("USD_JPY", "EUR_USD", "EUR_JPY", "AUD_USD",
+                      "GBP_AUD", "GBP_JPY",
+                      "EUR_GBP", "GBP_USD", "AUD_USD", "EUR_AUD"),
+    stop_factor_var = 10,
+    profit_factor_var = 200,
+    risk_dollar_value_var = 10,
+    end_period = 24,
+    time_frame = "H1",
+    trade_direction = "Long",
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    cor_periods = c(25,50,100,200,300),
+    end_point_profit = c(1,2,5,10,15,20,25,30),
+    end_point_stop = c(-10,-8,-6,-5,-3,-2),
+    training_date_end = "2022-01-01"
+  )
+
+create_Portfolio_Model_GLM_LM(
+  Model_Data = Model_Data,
+  bin_threshold = 0,
+  model_save_location = "C:/Users/nikhi/Documents/trade_data/portfolio_trader_V1/",
+  training_date_end = "2022-01-01",
+  portfolio_prefix = "Currency"
 )
+
+portfolio_preds <-
+  get_Preds_Portfolio_Model_GLM_LM(
+  Model_Data = Model_Data,
+  bin_threshold = 0,
+  model_save_location = "C:/Users/nikhi/Documents/trade_data/portfolio_trader_V1/",
+  training_date_end = "2022-01-01",
+  portfolio_prefix = "Currency"
+)
+
+
+testing_set <-
+  Model_Data %>%
+  pluck("testing_set")
+
+Portfolio_LM_Pred =
+  predict.lm(object = pred_model, newdata = testing_set)
+Portfolio_GLM_Pred =
+  predict.glm(object = pred_model_GLM, newdata = testing_set, type = "response")
+
+predicted_values <-
+  testing_set %>%
+  mutate(
+    Portfolio_LM_Pred = Portfolio_LM_Pred,
+    Portfolio_GLM_Pred = Portfolio_GLM_Pred
+  ) %>%
+  mutate(
+    error_rate =
+      ifelse(Final_Return < 0 & Portfolio_LM_Pred > 0,
+             -1*(Portfolio_LM_Pred - Final_Return),
+             NA)
+  )
+
+predicted_values_analysis <-
+  predicted_values %>%
+  dplyr::select(Date, error_rate, Final_Return,
+                end_point_loss,end_point_profit,
+                Portfolio_LM_Pred, Portfolio_GLM_Pred)
+
+test_thresh <-
+  predicted_values_analysis %>%
+  filter(
+    (Portfolio_GLM_Pred < 1 & Portfolio_GLM_Pred > 0.6)|
+      (Portfolio_LM_Pred < 500 & Portfolio_LM_Pred > 2.5)
+    ) %>%
+  group_by(end_point_loss,end_point_profit) %>%
+  summarise(Final_Return = sum(Final_Return, na.rm = T),
+            trades = n_distinct(Date))
 
 Portfolio_Trader_Analysis_Plots <-
   function() {
