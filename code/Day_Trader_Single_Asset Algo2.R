@@ -947,6 +947,249 @@ trade_statement <-
 
   "
 
+trade_statement_2 <-
+  "
+  #Stop Factor = 6, Profit Factor = 12, End Point = 24
+  (
+  pred_copula_3 >= -200 &
+  pred_copula_3 <= -100 &
+  Asset == 'EUR_USD'
+  )|
+  (
+  pred_copula_1 >= 40 &
+  pred_copula_1 <= 1000 &
+  Asset == 'EUR_USD'
+  )|
+  (
+  pred_copula_5 >= -250 &
+  pred_copula_5 <= 0 &
+  Asset == 'EUR_USD'
+  )|
+
+    #Stop Factor = 6, Profit Factor = 12, End Point = 24
+  (
+  pred_copula_3 >= 200 &
+  pred_copula_3 <= 10000 &
+  Asset == 'USD_JPY'
+  )|
+  (
+  pred_copula_1 >= 120 &
+  pred_copula_1 <= 1000 &
+  Asset == 'USD_JPY'
+  )|
+
+  #Stop Factor = 6, Profit Factor = 12, End Point = 30
+  (
+  pred_copula_1 >= 5400 &
+  pred_copula_1 <= 6000 &
+  Asset == 'AUD_USD'
+  )|
+  (
+  pred_copula_3 >= 15000 &
+  pred_copula_3 <= 16000 &
+  Asset == 'AUD_USD'
+  )|
+  (
+  pred_copula_5 >= 5500 &
+  pred_copula_5 <= 7000 &
+  Asset == 'AUD_USD'
+  )|
+
+  #Stop Factor = 6, Profit Factor = 12, End Point = 24
+  (
+  pred_copula_3 >= 500 &
+  pred_copula_3 <= 1500 &
+  Asset == 'USD_CAD'
+  )|
+  (
+  pred_copula_1 >= 1500 &
+  pred_copula_1 <= 2000 &
+  Asset == 'USD_CAD'
+  )|
+  (
+  pred_copula_5 >= 1200 &
+  pred_copula_5 <= 3000 &
+  Asset == 'USD_CAD'
+  )|
+
+  #Stop Factor = 6, Profit Factor = 12, End Point = 24
+  (
+  pred_copula_1 >= 3.75 &
+  pred_copula_1 <= 2000 &
+  Asset == 'XAG_EUR'
+  )|
+  (
+  pred_copula_5 >= -37 &
+  pred_copula_5 <= -30.5 &
+  Asset == 'XAG_EUR'
+  )|
+
+  #Stop Factor = 6, Profit Factor = 12, End Point = 24
+  (
+  pred_copula_1 >= 50 &
+  pred_copula_1 <= 500 &
+  Asset == 'GBP_USD'
+  )|
+  (
+  pred_copula_3 >= 1840 &
+  pred_copula_3 <= 2500 &
+  Asset == 'GBP_USD'
+  )|
+  (
+  pred_copula_3 >= 300 &
+  pred_copula_3 <= 1000 &
+  Asset == 'GBP_USD'
+  )|
+  (
+  pred_copula_5 >= 2200 &
+  pred_copula_5 <= 2500 &
+  Asset == 'GBP_USD'
+  )|
+
+  #Stop Factor = 6, Profit Factor = 12, End Point = 24
+  (
+  pred_copula_1 >= -550 &
+  pred_copula_1 <= -100 &
+  Asset == 'WTICO_USD'
+  )|
+  (
+  pred_copula_1 >= -700 &
+  pred_copula_1 <= -650 &
+  Asset == 'WTICO_USD'
+  )|
+  (
+  pred_copula_3 >= -850 &
+  pred_copula_3 <= -800 &
+  Asset == 'WTICO_USD'
+  )|
+  (
+  pred_copula_5 >= -600 &
+  pred_copula_5 <= 2500 &
+  Asset == 'WTICO_USD'
+  )|
+  (
+  pred_technical_2 >= 0.6 &
+  pred_technical_2 <= 0.65 &
+  Asset == 'WTICO_USD'
+  )|
+
+  #Stop Factor = 5, Profit Factor = 7, End Point = 24
+  (
+  pred_copula_1 >= 750 &
+  pred_copula_1 <= 800 &
+  Asset == 'SPX500_USD'
+  )|
+  (
+  pred_copula_3 >= 1760 &
+  pred_copula_3 <= 1800 &
+  Asset == 'SPX500_USD'
+  )|
+  #Stop Factor = 3, Profit Factor = 6, End Point = 24
+  (
+  pred_copula_1 >= 155 &
+  pred_copula_1 <= 200 &
+  Asset == 'XAU_USD'
+  )|
+  (
+  pred_copula_3 >= 570 &
+  # pred_copula_3 <= 650 &
+  pred_copula_3 <= 610 &
+  Asset == 'XAU_USD'
+  )|
+  (
+  pred_copula_5 >= 650 &
+  pred_copula_5 <= 750 &
+  Asset == 'XAU_USD'
+  )|
+  (
+  pred_combined_1 >= 730 &
+  pred_combined_1 <= 1000 &
+  Asset == 'XAU_USD'
+  )|
+  (
+  pred_GLM_period_return_24_Price >= 0.54 &
+  pred_GLM_period_return_24_Price <= 0.56 &
+  Asset == 'XAU_USD'
+  )|
+
+  #Stop Factor = 3, Profit Factor = 6, End Point = 24
+  (
+  pred_copula_1 >= 190 &
+  pred_copula_1 <= 230 &
+  Asset == 'HK33_HKD'
+  )|
+  (
+  pred_combined_1 >= 140 &
+  pred_combined_1 <= 200 &
+  Asset == 'HK33_HKD'
+  )|
+  (
+  pred_combined_3 >= 15 &
+  pred_combined_3 <= 45 &
+  Asset == 'HK33_HKD'
+  )|
+  (
+  pred_combined_5 >= 3100 &
+  pred_combined_5 <= 10000 &
+  Asset == 'HK33_HKD'
+  )|
+
+  #Stop Factor = 5, Profit Factor = 10, End Point = 24
+  (
+  pred_technical_2 >= 0.6 &
+  pred_technical_2 <= 1 &
+  Asset == 'NATGAS_USD'
+  )|
+  (
+  pred_technical_4 >= 0.51 &
+  pred_technical_4 <= 0.57 &
+  Asset == 'NATGAS_USD'
+  )|
+  (
+  pred_technical_6 >= 0.61 &
+  pred_technical_6 <= 0.7 &
+  Asset == 'NATGAS_USD'
+  )|
+  (
+  Averaged_FULL_LM >= -100 &
+  Averaged_FULL_LM <= -31 &
+  Asset == 'NATGAS_USD'
+  )|
+  (
+  pred_daily_4 >= 0.53 &
+  pred_daily_4 <= 0.65 &
+  Asset == 'NATGAS_USD'
+  )|
+  (
+  pred_daily_6 >= 0.52 &
+  pred_daily_6 <= 0.59 &
+  Asset == 'NATGAS_USD'
+  )|
+
+  #Stop Factor = 4, Profit Factor = 8, End Point = 24
+  (
+  pred_copula_2 >= 0.51 &
+  pred_copula_2 <= 0.675 &
+  Asset == 'EU50_EUR'
+  )|
+  (
+  pred_copula_4 >= 0.4 &
+  pred_copula_4 <= 0.5 &
+  Asset == 'EU50_EUR'
+  )|
+  (
+  pred_copula_6 >= 0.525 &
+  pred_copula_6 <= 0.6 &
+  Asset == 'EU50_EUR'
+  )|
+  (
+  pred_GLM_period_return_40_Price >= 0.65 &
+  pred_GLM_period_return_40_Price <= 0.7 &
+  Asset == 'EU50_EUR'
+  )
+
+"
+
 assets_to_use <- assets_to_use[14:18]
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -1097,14 +1340,14 @@ while (current_time < end_time) {
 
         tictoc::tic()
         single_asset_model_trades <-
-          single_asset_algo_generate_preds(
+          single_asset_algo_generate_preds_STRPED_SPEED(
             All_Daily_Data = All_Daily_Data,
             Indices_Metals_Bonds = Indices_Metals_Bonds,
             raw_macro_data = raw_macro_data,
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
             start_index = 14,
-            end_index = 18,
+            end_index = 21,
             risk_dollar_value = 15,
             trade_direction = "Long",
             stop_value_var = 10,
@@ -1181,9 +1424,27 @@ while (current_time < end_time) {
           filter(trade_col == TRUE) %>%
           distinct(Asset, Date)
 
+        single_asset_model_trades_filt_2 <-
+          single_asset_model_trades %>%
+          mutate(
+            trade_col =
+              eval(parse(text = trade_statement_2))
+          ) %>%
+          filter(trade_col == TRUE) %>%
+          distinct(Asset, Date)
+
         current_prices_ask <-
           read_all_asset_data_intra_day(
-            asset_list_oanda = asset_list_oanda,
+            asset_list_oanda = c(
+              "GBP_USD", #14
+              "GBP_CAD", #15
+              "EUR_JPY", #16
+              "EUR_NZD", #17
+              "XAG_USD", #18
+              "XAU_USD", #19
+              "HK33_HKD", #20
+              "NATGAS_USD" #21
+            ),
             save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
             read_csv_or_API = "API",
             time_frame = "H1",
@@ -1229,6 +1490,84 @@ while (current_time < end_time) {
           ungroup() %>%
           filter(time_diff <= 70 & date_check == TRUE) %>%
           filter(max_date_in_data <= Date)
+
+        single_asset_model_trades_filt_2 <-
+          single_asset_model_trades_filt_2 %>%
+          distinct(Asset, Date) %>%
+          mutate(trade_col = "Long",
+                 stop_factor =
+                   case_when(
+                     Asset == "EUR_USD" ~ 6,
+                     Asset == "USD_JPY" ~ 6,
+                     Asset == "AUD_USD" ~ 6,
+                     Asset == "USD_CAD" ~ 6,
+                     Asset == "XAG_EUR" ~ 6,
+                     Asset == "GBP_USD" ~ 6,
+                     Asset == "WTICO_USD" ~ 6,
+                     Asset == "SPX500_USD" ~ 5,
+                     Asset == "XAU_USD" ~ 3,
+                     Asset == "HK33_HKD" ~ 3,
+                     Asset == "NATGAS_USD" ~ 5
+                   ),
+                 profit_factor =
+                   case_when(
+                     Asset == "EUR_USD" ~ 12,
+                     Asset == "USD_JPY" ~ 12,
+                     Asset == "AUD_USD" ~ 12,
+                     Asset == "USD_CAD" ~ 12,
+                     Asset == "XAG_EUR" ~ 12,
+                     Asset == "GBP_USD" ~ 12,
+                     Asset == "WTICO_USD" ~ 12,
+                     Asset == "SPX500_USD" ~ 7,
+                     Asset == "XAU_USD" ~ 6,
+                     Asset == "HK33_HKD" ~ 6,
+                     Asset == "NATGAS_USD" ~ 10
+                   ),
+                 periods_ahead =
+                   case_when(
+                     Asset == "EUR_USD" ~ 24,
+                     Asset == "USD_JPY" ~ 24,
+                     Asset == "AUD_USD" ~ 30,
+                     Asset == "USD_CAD" ~ 24,
+                     Asset == "XAG_EUR" ~ 24,
+                     Asset == "GBP_USD" ~ 24,
+                     Asset == "WTICO_USD" ~ 24,
+                     Asset == "SPX500_USD" ~ 24,
+                     Asset == "XAU_USD" ~ 24,
+                     Asset == "HK33_HKD" ~ 24,
+                     Asset == "NATGAS_USD" ~ 24
+                   ),
+                 risk_dollar_value = risk_dollar_value
+          ) %>%
+          filter(!is.na(stop_factor)) %>%
+          group_by(Asset) %>%
+          slice_max(Date) %>%
+          ungroup() %>%
+          left_join(current_prices_ask %>%
+                      group_by(Asset) %>%
+                      slice_max(Date) %>%
+                      ungroup() %>%
+                      dplyr::select(-Date)) %>%
+          mutate(
+            time_diff =
+              abs(
+                as.numeric(
+                  as_datetime(Date, tz = "Australia/Canberra") -
+                    as_datetime(current_time, tz = "Australia/Canberra"),
+                  units = "mins"
+                )
+              ),
+            date_check = max_date_in_data <= Date
+          ) %>%
+          group_by(Asset) %>%
+          slice_min(time_diff) %>%
+          ungroup() %>%
+          filter(time_diff <= 70 & date_check == TRUE) %>%
+          filter(max_date_in_data <= Date)
+
+        single_asset_model_trades_filt <-
+          single_asset_model_trades_filt %>%
+          bind_rows(single_asset_model_trades_filt_2)
 
 
 
