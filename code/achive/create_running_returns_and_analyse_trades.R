@@ -2262,6 +2262,173 @@ get_asset_random_sim_returns <-
 
   }
 
+#' construct_ending_point_model
+#'
+#' @param portfolio_structure
+#' @param low_point_end
+#' @param high_point_end
+#'
+#' @return
+#' @export
+#'
+#' @examples
+construct_ending_point_model <-
+  function(portfolio_structure = portfolio_structure,
+           low_point_end = -3,
+           high_point_end = 15) {
+
+
+    end_point_analysis <-
+      portfolio_structure %>%
+      mutate(
+        end_point_low =
+          case_when(
+            Return <= low_point_end ~ period_since_open
+          ),
+        end_point_high =
+          case_when(
+            Return >= high_point_end ~ period_since_open
+          )
+      ) %>%
+      group_by(Date) %>%
+      summarise(
+        end_point_low = min(end_point_low, na.rm = T),
+        end_point_high = min(end_point_high, na.rm = T),
+        last_point = mean(close_Date)
+      ) %>%
+      ungroup() %>%
+      mutate(
+        across(c(end_point_low, end_point_high),
+               .fns = ~ ifelse(is.infinite(.),
+                               last_point,
+                               .) )
+      ) %>%
+      mutate(
+        true_end_point =
+          case_when(
+            end_point_low <= end_point_high ~ end_point_low,
+            !is.infinite(end_point_low) & is.infinite(end_point_high) ~ end_point_low,
+            end_point_high > end_point_low ~ end_point_high,
+            is.infinite(end_point_low) & !is.infinite(end_point_high) ~ end_point_high,
+            is.infinite(end_point_low) & is.infinite(end_point_high) ~ last_point
+          )
+      )
+
+    return_analysis <-
+      portfolio_structure %>%
+      left_join(end_point_analysis) %>%
+      filter(period_since_open <= true_end_point)
+
+    return(return_analysis)
+
+  }
+
+
+#' get_portfolio_struc_with_end_points
+#'
+#' @param Indices_Metals_Bonds
+#' @param trade_data
+#' @param traded_assets
+#' @param trade_statement_for_filter
+#' @param low_point_end
+#' @param high_point_end
+#' @param stop_factor_var
+#' @param profit_factor_var
+#' @param risk_dollar_value_var
+#' @param end_period_var
+#' @param time_frame_var
+#' @param trade_direction
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_portfolio_struc_with_end_points <-
+  function(
+    Indices_Metals_Bonds =
+      Indices_Metals_Bonds %>% map(~ .x %>% filter(Date >= "2024-01-01") ),
+    trade_data = pred_data %>% filter(Date >= "2024-01-01"),
+    traded_assets = c("EUR_USD"),
+    trade_statement_for_filter = "str_detect(Asset, '[A-Z]')",
+    low_point_end = -3,
+    high_point_end = 15,
+    stop_factor_var = 10,
+    profit_factor_var = 50,
+    risk_dollar_value_var = 10,
+    end_period_var = 50,
+    time_frame_var = "H1",
+    trade_direction = "Long"
+  ) {
+
+    portfolio_structure <- list()
+
+    for (i in 1:length(traded_assets)) {
+
+      tagged_trades <-
+        trade_data %>%
+        mutate(
+          trade_col =
+            eval(parse(text = trade_statement_for_filter)),
+          trade_col =
+            ifelse(trade_col == TRUE, trade_direction, paste0("No Trade ", trade_direction) )
+        ) %>%
+        distinct(Asset, Date, trade_col) %>%
+        filter(trade_col == "Long") %>%
+        filter(Asset == traded_assets[i])
+
+      portfolio_structure[[i]] <-
+        get_portfolio_model(
+          asset_data = Indices_Metals_Bonds,
+          asset_of_interest = traded_assets[i],
+          tagged_trades = tagged_trades,
+          stop_factor_long = stop_factor_var,
+          profit_factor_long = profit_factor_var,
+          risk_dollar_value_long = risk_dollar_value_var,
+          end_period = end_period_var,
+          time_frame = time_frame_var,
+          trade_direction = trade_direction
+        )
+
+    }
+
+    portfolio_structure <-
+      portfolio_structure %>%
+      map_dfr(bind_rows)
+
+    return_data <- list()
+    c = 0
+
+    for (i in 1:length(low_point_end)) {
+      for (j in 1:length(high_point_end)) {
+
+        c = c + 1
+        return_data[[c]] <-
+          construct_ending_point_model(
+            portfolio_structure = portfolio_structure,
+            low_point_end = low_point_end[i],
+            high_point_end = high_point_end[j]
+          ) %>%
+          mutate(
+            low_point_end = low_point_end[i],
+            high_point_end = high_point_end[j],
+            stop_factor = stop_factor_var,
+            profit_factor = profit_factor_var,
+            risk_dollar_value_long = risk_dollar_value_var,
+            end_period = end_period_var,
+            trade_direction = trade_direction
+          )
+
+      }
+    }
+
+    return_data <-
+      return_data %>%
+      map_dfr(bind_rows)
+
+    return(return_data)
+
+  }
+
 
 #' construct_portfolio_sim
 #'

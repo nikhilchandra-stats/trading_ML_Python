@@ -5,7 +5,7 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "D:/trade_data//oanda_data/",
+  save_path_oanda_assets = "C:/Users/nikhi/Documents/trade_data//oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
@@ -65,7 +65,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "D:/Asset Data//Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
@@ -124,7 +124,7 @@ all_preds <-
   Single_Asset_V3_get_all_preds(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     raw_macro_data = raw_macro_data,
-    base_path = "D:/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+    base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
     actuals_periods_needed = c("period_return_50_Price"),
     correlation_rolling_periods = c(100,200, 300,400, 500),
     state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),

@@ -708,7 +708,7 @@ while (current_time < end_time) {
     #-------------------------------------Update Data
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
-    how_far_back_date <- seq(today() - days(12), today(), by =  "days" ) %>%
+    how_far_back_date <- seq(today() - days(15), today(), by =  "days" ) %>%
       keep(
         ~ wday(.x) == 3
       ) %>%
