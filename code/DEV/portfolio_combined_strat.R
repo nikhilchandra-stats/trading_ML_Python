@@ -151,7 +151,7 @@ all_dates_sim <-
 
 sim_list <- list()
 db_sim_results_con <- connect_db("D:/trade_data/db_sim_results.db")
-redo_db <- TRUE
+redo_db <- FALSE
 
 for (i in 2938:(length(all_dates_sim) - 1) ) {
    results_temp <-
