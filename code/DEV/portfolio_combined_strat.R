@@ -5,7 +5,7 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "C:/Users/nikhi/Documents/trade_data//oanda_data/",
+  save_path_oanda_assets = "D:/trade_data//oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
@@ -65,7 +65,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "D:/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
@@ -83,18 +83,9 @@ Indices_Metals_Bonds[[1]] <-
     end_date = as.character(today() + days(30)),
     time_frame = "H1",
     bid_or_ask = "ask",
-    assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
-                 "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
-                 "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
-                 "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
-                 "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
-                 "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
-                 "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
-                 "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
-                 "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
-                 "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
-                 "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
-                 "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+    assets =   c("SPX500_USD", "XAU_USD", "EU50_EUR", "USD_JPY", "HK33_HKD", "WTICO_USD",
+                 "XCU_USD", "UK100_GBP", "CHINAH_HKD", "FR40_EUR", "USB30Y_USD", "AUD_USD", "USB30Y_USD",
+                 "CH20_CHF", "XAG_USD", "EUR_USD", "DE30_EUR", "DE10YB_EUR", "UK10YB_GBP")
   ) %>%
   distinct()
 Indices_Metals_Bonds[[2]] <-
@@ -104,430 +95,118 @@ Indices_Metals_Bonds[[2]] <-
     end_date = as.character(today() + days(30)),
     time_frame = "H1",
     bid_or_ask = "bid",
-    assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
-                 "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
-                 "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
-                 "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
-                 "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
-                 "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
-                 "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
-                 "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
-                 "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
-                 "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
-                 "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
-                 "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+    assets =   c("SPX500_USD", "XAU_USD", "EU50_EUR", "USD_JPY", "HK33_HKD", "WTICO_USD",
+                 "XCU_USD", "UK100_GBP", "CHINAH_HKD", "FR40_EUR", "USB30Y_USD", "AUD_USD", "USB30Y_USD",
+                 "CH20_CHF", "XAG_USD", "EUR_USD", "DE30_EUR", "DE10YB_EUR", "UK10YB_GBP")
   ) %>%
   distinct()
 
-Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2022-01-01")
-Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2022-01-01")
-
-tictoc::tic()
-all_preds <-
-  Single_Asset_V3_get_all_preds(
-    Indices_Metals_Bonds = Indices_Metals_Bonds,
-    raw_macro_data = raw_macro_data,
-    base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
-    actuals_periods_needed = c("period_return_50_Price"),
-    correlation_rolling_periods = c(100,200, 300,400, 500),
-    state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
-    state_space_rolling = c(100, 200, 300, 400),
-    date_for_true_simualtion = "2019-01-01",
-    training_end_date = "2021-01-01",
-    asset_index_start = 1,
-    asset_index_end = 35
-  )
-tictoc::toc()
-
-
-all_preds_dfr <- all_preds
-
-trade_direction <- "Long"
-
-generated_preds <-
-  all_preds_dfr %>%
-  mutate(
-    across(.cols = c(Date, training_end_date, date_for_true_simualtion),
-           .fns = ~ as_datetime(., tz = "Australia/Canberra"))
-  ) %>%
-  filter(Date > training_end_date) %>%
-  filter(Date > date_for_true_simualtion)
-
-
-create_combined_port_dat_for_reg <-
-  function(
-    pred_data = generated_preds,
-    asssets_to_combine = c("SPX500_USD", "XAU_USD", "EU50_EUR", "USD_JPY", "AUD_USD", "EUR_USD",
-                           "XAG_USD"),
-    actual_wins_losses,
-    return_col = "period_return_8_Price",
-    stop_factor_var = 3,
-    profit_factor_var = 6,
-    cumulative_lag = 24,
-    state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
-    state_space_rolling = c(100, 200, 300, 400),
-    cor_period = 100
-    ) {
-
-    returned_list <- list()
-    for (i in 1:length(asssets_to_combine)) {
-      temp <-
-        generated_preds %>%
-        filter(Asset == asssets_to_combine[i])
-      temp2 <- temp %>%
-        dplyr::select(-Date, -training_end_date, -date_for_true_simualtion,
-                      -Asset, -contains("_sd"), -contains("_mean"))
-      names_temp2 <-
-        names(temp2) %>%
-        map(~ paste0(asssets_to_combine[i], "_", .x) ) %>%
-        unlist()
-
-      names(temp2) <- names_temp2
-
-      returned_list[[i]] <-
-        temp %>%
-        dplyr::select(Date,
-                      training_end_date,
-                      date_for_true_simualtion) %>%
-        bind_cols(temp2)
-    }
-
-    returned_list_dfr <-
-      returned_list %>%
-      reduce(left_join)
-
-    returnd_data_combined <-
-      actual_wins_losses %>%
-      filter(Asset %in% asssets_to_combine) %>%
-      ungroup() %>%
-      filter(stop_factor == stop_factor_var, profit_factor == profit_factor_var) %>%
-      dplyr::select(Date, !!as.name(return_col)) %>%
-      group_by(Date) %>%
-      summarise(
-        !!as.name(return_col) := sum(!!as.name(return_col), na.rm = T)
-      )
-
-    final_data <-
-      returned_list_dfr %>%
-      left_join(returnd_data_combined) %>%
-      filter(if_all(everything(), ~!is.na(.)))  %>%
-      ungroup() %>%
-      mutate(
-        Asset = "Portfolio",
-        return_values = period_return_24_Price
-      ) %>%
-      arrange(Date) %>%
-      mutate(
-        cumulative_return = cumsum(period_return_24_Price),
-        cumulative_return = lag(cumulative_return, cumulative_lag)
-      )
-
-    state_space_LM_version_list <- list()
-    c = 0
-
-    for (i in 1:length(state_space_periods)) {
-      for (j in 1:length(state_space_rolling)) {
-
-        c = c + 1
-        state_space_LM_version_list[[c]] <-
-          Single_Asset_V3_state_space(asset_data = final_data,
-                                      asset_of_interest = "Portfolio",
-                                      Price_diff_lag = state_space_periods[i],
-                                      roll_period_state_space = state_space_rolling[j],
-                                      price_col = "cumulative_return")
-
-      }
-    }
-
-    state_space_LM_version <-
-      state_space_LM_version_list %>%
-      reduce(left_join)
-
-    final_data_2 <-
-      final_data %>%
-      left_join(state_space_LM_version) %>%
-      filter(if_all(everything(), ~ !is.na(.)))
-
-    correlation_variables <-
-      names(final_data_2) %>%
-      keep(~ str_detect(.x, "_LM"))
-
-    for (i in 1:length(correlation_variables)) {
-      for (j in 1:length(correlation_variables)) {
-       var_1 <- correlation_variables[i]
-       var_2 <- correlation_variables[j]
-       new_var_name <-
-         paste0("Cor_Var_", i, "_", j, "_", cor_period)
-
-        if(var_1 != var_2) {
-          final_data_2 <-
-            final_data_2 %>%
-            mutate(
-              !!as.name(new_var_name) :=
-                slider::slide2_dbl(.x = !!as.name(var_1),
-                                   .y = !!as.name(var_2),
-                                   .f = ~cor(.x, .y),
-                                   .before = cor_period)
-            )
-        }
-      }
-    }
-
-    return(final_data_2)
-
-  }
-
-create_combined_port_LM <-
-  function(
-    lm_dat = lm_dat,
-    return_col = "period_return_8_Price",
-    sig_thresh = 0.01,
-    bin_value = 10,
-    training_date_start = "2019-01-01",
-    training_date_end = "2023-01-01"
-    ) {
-
-    training_data <-
-      lm_dat %>%
-      filter(Date >= training_date_start,
-             Date <= training_date_end) %>%
-      mutate(
-        bin_var =
-          ifelse( !!as.name(return_col) >= bin_value,
-                  1, 0)
-      )
-
-    testing_data <-
-      lm_dat %>%
-      filter(Date > training_date_end)
-
-    lm_vars <-
-      names(lm_dat) %>%
-      keep(~ !(.x %in% c("Date", return_col,
-                         "training_end_date",
-                         "date_for_true_simualtion",
-                         "return_values", "Asset", "cumulative_return")))
-    lm_form <-
-      create_lm_formula(dependant = return_col, independant = lm_vars)
-
-    lm_model <-
-      lm(data = training_data, formula = lm_form)
-
-    glm_form <-
-      create_lm_formula(dependant = "bin_var", independant = lm_vars)
-
-    glm_model <-
-      glm(data = training_data, formula = glm_form, family = binomial("logit"))
-
-    pred_out_of_sample_raw <-
-      testing_data %>%
-      mutate(
-        LM_Pred = predict(object = lm_model, testing_data),
-        GLM_Pred = predict(object = glm_model, testing_data, type = "response")
-      )
-
-    sig_coefs <- get_sig_coefs(lm_model,
-                               p_value_thresh_for_inputs = sig_thresh)
-
-    lm_vars <- sig_coefs
-
-    lm_form <-
-      create_lm_formula(dependant = return_col, independant = lm_vars)
-
-    lm_model <-
-      lm(data = training_data, formula = lm_form)
-
-    glm_form <-
-      create_lm_formula(dependant = "bin_var", independant = lm_vars)
-
-    glm_model <-
-      glm(data = training_data, formula = glm_form, family = binomial("logit"))
-
-    pred_out_of_sample_sig <-
-      testing_data %>%
-      mutate(
-        LM_Pred_sig = predict(object = lm_model, testing_data),
-        GLM_Pred_sig = predict.glm(object = glm_model, testing_data, type = "response")
-      )
-
-    pred_out_of_sample <-
-      pred_out_of_sample_sig %>%
-      left_join(pred_out_of_sample_raw) %>%
-      filter(Date > training_date_end)
-
-    return(pred_out_of_sample)
-
-  }
+Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
+Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
 assets_to_port <-
-  c("SPX500_USD", "XAU_USD", "EU50_EUR", "USD_JPY", "AUD_USD", "EUR_USD",
-            "XAG_USD", "HK33_HKD", "USD_CAD", "USB10Y_USD", "NATGAS_USD", "AU200_AUD",
-            "WTICO_USD", "XCU_USD")
+  c("SPX500_USD", "XAU_USD", "EU50_EUR", "USD_JPY", "HK33_HKD", "WTICO_USD",
+    "XCU_USD", "UK100_GBP", "CHINAH_HKD", "FR40_EUR", "AUD_USD", "USB30Y_USD",
+    "CH20_CHF", "XAG_USD", "EUR_USD", "DE30_EUR", "DE10YB_EUR", "UK10YB_GBP") %>% unique()
+stop_factor_var =4
+profit_factor_var =8
+risk_dollar_value_var = 5
+end_period = 24
+trade_direction = "Long"
+end_point_loss = -2.5
+end_point_profit = 5
 
-actual_wins_losses <-
-  get_actual_wins_losses(
-    assets_to_analyse =
-      c(
-        # "EUR_USD", #1
-        # "EU50_EUR", #2
-        # "SPX500_USD", #3
-        # "US2000_USD", #4
-        # "USB10Y_USD", #5
-        # "USD_JPY", #6
-        # "AUD_USD", #7
-        # "EUR_GBP", #8
-        # "AU200_AUD" ,#9
-        # "EUR_AUD", #10
-        # "WTICO_USD", #11
-        # "UK100_GBP", #12
-        # "USD_CAD", #13
-        # "GBP_USD", #14
-        # "GBP_CAD", #15
-        # "EUR_JPY", #16
-        # "EUR_NZD", #17
-        # "XAG_USD", #18
-        # "XAG_EUR", #19
-        # "XAG_AUD", #20
-        # "XAG_NZD", #21
-        # "HK33_HKD", #22
-        # "FR40_EUR", #23
-        # "BTC_USD", #24
-        # "XAG_GBP", #25
-        # "GBP_AUD", #26
-        # "USD_SEK", #27
-        # "USD_SGD", #28
-        # "NZD_USD", #29
-        # "GBP_NZD", #30
-        # "XCU_USD", #31
-        # "NATGAS_USD", #32
-        # "GBP_JPY", #33
-        # "SG30_SGD", #34
-        # "XAU_USD", #35
-        # "EUR_SEK", #36
-        # "XAU_AUD", #37
-        # "UK10YB_GBP", #38
-        # "JP225Y_JPY", #39
-        # "ETH_USD" #40
-        assets_to_port
-      ),
+portfolio_data <-
+  get_portfolio_model_fast_summed(
     asset_data = Indices_Metals_Bonds,
-    # stop_factor = stop_value_var,
-    # profit_factor = profit_value_var,
-    stop_factor = 5,
-    profit_factor = 10,
-    risk_dollar_value = 10,
-    trade_direction = "Long",
+    asset_of_interest = assets_to_port,
+    stop_factor_var = stop_factor_var,
+    profit_factor_var = profit_factor_var,
+    risk_dollar_value_var = risk_dollar_value_var,
+    end_period = end_period,
+    time_frame = "H1",
+    trade_direction = trade_direction,
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    periods_ahead = period_var
+    end_point_loss = end_point_loss,
+    end_point_profit = end_point_profit,
+    sum_as_portfolio = TRUE
   )
 
-lm_dat <-
-  create_combined_port_dat_for_reg(
-    pred_data = generated_preds,
-    asssets_to_combine = assets_to_port,
-    actual_wins_losses = actual_wins_losses,
-    return_col = "period_return_24_Price",
-    stop_factor_var = 5,
-    profit_factor_var = 10
+correlation_data <-
+  get_portfolio_rolling_data(
+    asset_data = Indices_Metals_Bonds[[1]],
+    asset_of_interest = assets_to_port,
+    # low_to_price_lengths = c(100,200),
+    # cor_periods = c(50,200)
+    low_to_price_lengths = c(200),
+    cor_periods = c(200)
   )
 
-actual_wins_losses_port <-
-  actual_wins_losses %>%
-  filter(Asset %in% asssets_to_combine) %>%
-  ungroup() %>%
-  filter(stop_factor == stop_factor_var, profit_factor == profit_factor_var) %>%
-  dplyr::select(Date, !!as.name(return_col),
-                stop_factor, profit_factor, volume_required) %>%
-  group_by(Date, stop_factor, profit_factor) %>%
-  summarise(
-    !!as.name(return_col) := sum(!!as.name(return_col), na.rm = T),
-    volume_required = sum(volume_required, na.rm = T)
+all_dates_sim <-
+  correlation_data %>%
+  filter(Date >= as_datetime("2020-01-01") + dhours(15000) ) %>%
+  pull(Date) %>%
+  unique()
+
+sim_list <- list()
+db_sim_results_con <- connect_db("D:/trade_data/db_sim_results.db")
+redo_db <- TRUE
+
+for (i in 2938:(length(all_dates_sim) - 1) ) {
+   results_temp <-
+    generate_portfolio_LM(
+      cor_high_diff_data = correlation_data,
+      regression_length = 10000,
+      portfolio_actuals_data = portfolio_data,
+      dependant_var = "Final_Return",
+      date_filter_train = all_dates_sim[i],
+      sig_thresh_LM = 0.1
+    ) %>%
+    dplyr::select(Date, Asset,Final_Return, predicted, trained_mean, trained_sd) %>%
+    filter(Date >= all_dates_sim[i], Date <= all_dates_sim[i + 1])
+
+  sim_list[[i]] <- results_temp
+
+  if(i == 1 & redo_db == TRUE) {
+    write_table_sql_lite(.data = results_temp,
+                         table_name = "db_sim_results",
+                         conn = db_sim_results_con,
+                         overwrite_true = TRUE)
+  } else {
+    append_table_sql_lite(.data = results_temp,
+                         table_name = "db_sim_results",
+                         conn = db_sim_results_con)
+  }
+}
+
+model_prediction_data <-
+  sim_list %>%
+  map_dfr(bind_rows)
+
+trade_statment <-
+  "predicted > 0"
+
+analyse_performance <-
+  model_prediction_data %>%
+  mutate(
+    trade_col = eval(parse(text = trade_statment))
   ) %>%
   mutate(
-    Asset = "Portfolio"
+    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
   )
 
-out_of_sample_dat <-
-  create_combined_port_LM(
-  lm_dat = lm_dat,
-  return_col = "period_return_24_Price",
-  sig_thresh = 0.0001,
-  training_date_start = "2018-01-01",
-  training_date_end = "2023-01-01"
-) %>%
-  dplyr::select(-period_return_24_Price,) %>%
-  mutate(Asset = "Portfolio")
-
-trade_statement <- "LM_Pred < 300 & LM_Pred > 0"
-
-actual_wins_losses_port <-
-  actual_wins_losses %>%
-  filter(Asset %in% assets_to_port) %>%
+analyse_performance <-
+  analyse_performance %>%
+  filter(trade_col == "Long") %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
-  group_by(Date, trade_col) %>%
-  summarise(
-    across(contains("period_return_"),
-           .fns = ~ sum(., na.rm = T)),
-    volume_required = sum(volume_required, na.rm = T)
-  ) %>%
-  ungroup() %>%
-  mutate(
-    Asset = "Portfolio"
-  )
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return))
 
-cumulative_returns_sim_data <-
-  get_total_portfolio_summary(
-    generated_preds = out_of_sample_dat %>%
-      filter(Asset == "Portfolio")
-    # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_statement = trade_statement,
-    actual_wins_losses =actual_wins_losses_port %>%
-      filter(Asset == "Portfolio")
-    # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_direction = "Long",
-    return_col = "period_return_24_Price"
-  )
-
-cumulative_returns_sim_data %>%
-  ggplot(aes(x = Date, y = Cumulative_Return)) +
+analyse_performance %>%
+  ggplot(aes(x = Date, y = Final_Return_Cumulative)) +
   geom_line() +
-  facet_wrap(.~trade_col, scales = "free") +
-  scale_y_continuous(n.breaks = 20) +
   theme_minimal()
 
-asset_summaries_control <-
-  get_asset_random_sim_returns(
-    generated_preds = out_of_sample_dat %>%
-      filter(Asset == "Portfolio")
-    # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_statement = "str_detect(Asset, '[A-Z]')",
-    actual_wins_losses = actual_wins_losses_port %>%
-      filter(Asset == "Portfolio")
-    # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_direction = "Long",
-    return_col = "period_return_24_Price",
-    simulations = 5000,
-    samples = 50
-  )
-
-asset_summaries <-
-  get_asset_random_sim_returns(
-    generated_preds = out_of_sample_dat %>%
-      filter(Asset == "Portfolio")
-    # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses_port %>%
-      filter(Asset == "Portfolio")
-    # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_direction = "Long",
-    return_col = "period_return_24_Price",
-    simulations = 7000,
-    samples = 50
-  )
