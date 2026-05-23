@@ -411,3 +411,45 @@ newest_results_sum_actuals$Returns %>% sum()
 newest_results_sum_actuals$gross_result %>% sum()
 newest_results_sum_actuals$financing %>% sum()
 
+
+newest_results_sum_actuals_all_algos <-
+  newest_results %>%
+  filter(date_open >= "2026-03-24") %>%
+  filter(date_open >= "2026-03-24") %>%
+  group_by(id, Asset, account_var, initialUnits) %>%
+  mutate(kk = row_number()) %>%
+  slice_min(kk) %>%
+  ungroup() %>%
+  dplyr::select(-kk) %>%
+  dplyr::select(Asset, Date = date_open, initialUnits, date_closed , realizedPL, financing, dividendAdjustment) %>%
+  mutate(
+    across(.cols = c(realizedPL, financing, dividendAdjustment), .fns = ~ as.numeric(.)),
+    net_result = realizedPL + financing + dividendAdjustment,
+    gross_result = realizedPL
+  ) %>%
+  mutate(
+    Date = floor_date(Date, unit = "hour"),
+    date_closed = floor_date(date_closed, unit = "hour"),
+    trade_col =
+      case_when(
+        initialUnits > 0 ~ "Long",
+        initialUnits < 0 ~ "Short"
+      )
+  ) %>%
+  ungroup() %>%
+  filter(trade_col == "Long") %>%
+  arrange(date_closed) %>%
+  mutate(
+    cumulative_return_gross = cumsum(gross_result),
+    cumulative_return = cumsum(net_result),
+    gross_result = cumsum(gross_result)
+  )
+
+newest_results_sum_actuals_all_algos$financing %>% sum() + (newest_results_sum_actuals$dividendAdjustment %>% sum())
+
+
+newest_results_sum_actuals_all_algos %>%
+  ggplot(aes(x = date_closed)) +
+  geom_line(aes(y = cumulative_return_gross), color = "red") +
+  geom_line(aes(y = cumulative_return), color = "black") +
+  theme_minimal()

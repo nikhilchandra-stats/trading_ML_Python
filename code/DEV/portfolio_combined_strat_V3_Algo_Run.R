@@ -80,24 +80,13 @@ assets_to_port <-
   c("EUR_USD", #1
     "EU50_EUR", #2
     "SPX500_USD", #3
-    "US2000_USD", #4
     "USB10Y_USD", #5
     "USD_JPY", #6
     "AUD_USD", #7
-    "EUR_GBP", #8
     "AU200_AUD" ,#9
     "WTICO_USD", #11
-    "UK100_GBP",
-    "XAG_USD", #18
-    "HK33_HKD", #22
-    "FR40_EUR", #23
-    "BTC_USD", #24
-    "XAU_USD",
-    "NATGAS_USD",
-    "EUR_JPY",
-    "GBP_USD",
-    "GBP_AUD"
-    ) %>% unique()
+    "UK100_GBP"#12
+  ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -146,6 +135,7 @@ all_preds <-
   )
 tictoc::toc()
 
+tictoc::tic()
 portfolio_data <-
   get_portfolio_model_fast_summed(
     asset_data = Indices_Metals_Bonds,
@@ -163,38 +153,83 @@ portfolio_data <-
     sum_as_portfolio = TRUE
   )
 
-correlation_data <-
-  get_portfolio_rolling_data(
-    asset_data = Indices_Metals_Bonds[[1]],
-    asset_of_interest = assets_to_port,
-    # low_to_price_lengths = c(100,200),
-    # cor_periods = c(50,200)
+# all_cor_V3_Data <-
+#   portfolio_get_V3_cor_data(
+#     Indices_Metals_Bonds = Indices_Metals_Bonds,
+#     all_preds = all_preds,
+#     portfolio_data = portfolio_data,
+#     assets_to_port = assets_to_port,
+#     low_to_price_lengths = c(200),
+#     cor_periods = c(200)
+#   )
+
+all_cor_V3_Data <-
+  portfolio_get_V3_cor_data_TOTAL_SUMMED(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    all_preds = all_preds,
+    portfolio_data = portfolio_data,
+    assets_to_port = assets_to_port,
     low_to_price_lengths = c(200),
-    cor_periods = c(200)
+    cor_periods = c(200),
+    max_regs = 1000
   )
+tictoc::toc()
 
 all_dates_sim <-
-  correlation_data %>%
+  all_cor_V3_Data[[1]] %>%
   filter(Date >= as_datetime("2020-01-01") + dhours(15000) ) %>%
   pull(Date) %>%
   unique()
 
 sim_list <- list()
 db_sim_results_con <- connect_db("C:/Users/nikhi/Documents//trade_data/db_sim_results.db")
-redo_db <- FALSE
+redo_db <- TRUE
+reg_vars_stripped <-
+  all_cor_V3_Data[[2]] %>%
+  keep(~ str_detect(.x, "cor_")|!str_detect(.x, "diff") ) %>%
+  unlist()
 
 for (i in 1:(length(all_dates_sim) - 1) ) {
-   results_temp <-
-    generate_portfolio_LM(
-      cor_high_diff_data = correlation_data,
+
+  tictoc::tic()
+  results_temp <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      all_cor_V3_Data = all_cor_V3_Data[[1]],
+      reg_vars = all_cor_V3_Data[[2]],
+      training_end_date = all_dates_sim[i],
       regression_length = 10000,
-      portfolio_actuals_data = portfolio_data,
       dependant_var = "Final_Return",
-      date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1
     ) %>%
-    dplyr::select(Date, Asset,Final_Return, predicted, trained_mean, trained_sd) %>%
-    filter(Date >= all_dates_sim[i], Date <= all_dates_sim[i + 1])
+    dplyr::select(Date,
+                  # Asset,
+                  Final_Return,
+                  predicted_10000 = predicted,
+                  trained_mean_10000 = trained_mean,
+                  trained_sd_10000 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+
+  results_temp2 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      all_cor_V3_Data = all_cor_V3_Data[[1]],
+      reg_vars = all_cor_V3_Data[[2]],
+      training_end_date = all_dates_sim[i],
+      regression_length = 5000,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 0.1
+    ) %>%
+    dplyr::select(Date,
+                  # Asset,
+                  Final_Return,
+                  predicted_5000 = predicted,
+                  trained_mean_5000 = trained_mean,
+                  trained_sd_5000 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+
+  results_temp <-
+    results_temp %>%
+    left_join(results_temp2)
+  tictoc::toc()
 
   sim_list[[i]] <- results_temp
 
@@ -205,8 +240,8 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
                          overwrite_true = TRUE)
   } else {
     append_table_sql_lite(.data = results_temp,
-                         table_name = "db_sim_results",
-                         conn = db_sim_results_con)
+                          table_name = "db_sim_results",
+                          conn = db_sim_results_con)
   }
 }
 
@@ -215,7 +250,7 @@ model_prediction_data <-
   map_dfr(bind_rows)
 
 trade_statment <-
-  "predicted > 0"
+  "predicted_10000 > 0 & predicted_5000 > 0"
 
 analyse_performance <-
   model_prediction_data %>%
