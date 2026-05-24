@@ -77,13 +77,10 @@ period_var = 50
 Indices_Metals_Bonds <- list()
 
 assets_to_port <-
-  c("EUR_USD", #1
-    "EU50_EUR", #2
+  c("EU50_EUR", #2
     "SPX500_USD", #3
-    "USB10Y_USD", #5
     "USD_JPY", #6
     "AUD_USD", #7
-    "AU200_AUD" ,#9
     "WTICO_USD", #11
     "UK100_GBP"#12
   ) %>% unique()
@@ -183,19 +180,19 @@ all_dates_sim <-
 
 sim_list <- list()
 db_sim_results_con <- connect_db("C:/Users/nikhi/Documents//trade_data/db_sim_results.db")
-redo_db <- TRUE
+redo_db <- FALSE
 reg_vars_stripped <-
   all_cor_V3_Data[[2]] %>%
   keep(~ str_detect(.x, "cor_")|!str_detect(.x, "diff") ) %>%
   unlist()
 
-for (i in 1:(length(all_dates_sim) - 1) ) {
+for (i in 7896:(length(all_dates_sim) - 1) ) {
 
-  tictoc::tic()
+  # tictoc::tic()
   results_temp <-
     Porfolio_get_V3_LM_Model_TOTAL_SUM(
       all_cor_V3_Data = all_cor_V3_Data[[1]],
-      reg_vars = all_cor_V3_Data[[2]],
+      reg_vars = reg_vars_stripped,
       training_end_date = all_dates_sim[i],
       regression_length = 10000,
       dependant_var = "Final_Return",
@@ -229,7 +226,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
   results_temp <-
     results_temp %>%
     left_join(results_temp2)
-  tictoc::toc()
+  # tictoc::toc()
 
   sim_list[[i]] <- results_temp
 
@@ -246,8 +243,9 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
 }
 
 model_prediction_data <-
-  sim_list %>%
-  map_dfr(bind_rows)
+  DBI::dbGetQuery(conn = db_sim_results_con,
+                  statement = "SELECT * FROM db_sim_results") %>%
+  mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
 
 trade_statment <-
   "predicted_10000 > 0 & predicted_5000 > 0"

@@ -77,15 +77,13 @@ period_var = 50
 Indices_Metals_Bonds <- list()
 
 assets_to_port <-
-  c("EUR_USD", #1
-    "EU50_EUR", #2
-    "SPX500_USD", #3
-    "USB10Y_USD", #5
-    "USD_JPY", #6
-    "AUD_USD", #7
-    "AU200_AUD" ,#9
-    "WTICO_USD", #11
-    "UK100_GBP"#12
+  c(    "XAG_USD", #18
+        "HK33_HKD", #22
+        "FR40_EUR", #23
+        "BTC_USD", #24
+        "NATGAS_USD", #32
+        "JP225Y_JPY",
+        "XAU_USD"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -182,14 +180,10 @@ all_dates_sim <-
   unique()
 
 sim_list <- list()
-db_sim_results_con <- connect_db("C:/Users/nikhi/Documents//trade_data/db_sim_results.db")
+db_sim_results_con <- connect_db("C:/Users/nikhi/Documents//trade_data/db_sim_results_Algo_2.db")
 redo_db <- TRUE
-reg_vars_stripped <-
-  all_cor_V3_Data[[2]] %>%
-  keep(~ str_detect(.x, "cor_")|!str_detect(.x, "diff") ) %>%
-  unlist()
 
-for (i in 1:(length(all_dates_sim) - 1) ) {
+for (i in 3711:(length(all_dates_sim) - 1) ) {
 
   tictoc::tic()
   results_temp <-
@@ -233,21 +227,23 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
 
   sim_list[[i]] <- results_temp
 
+
   if(i == 1 & redo_db == TRUE) {
     write_table_sql_lite(.data = results_temp,
-                         table_name = "db_sim_results",
+                         table_name = "db_sim_results_Algo2",
                          conn = db_sim_results_con,
                          overwrite_true = TRUE)
   } else {
     append_table_sql_lite(.data = results_temp,
-                          table_name = "db_sim_results",
+                          table_name = "db_sim_results_Algo2",
                           conn = db_sim_results_con)
   }
 }
 
 model_prediction_data <-
-  sim_list %>%
-  map_dfr(bind_rows)
+  DBI::dbGetQuery(conn = db_sim_results_con,
+                  statement = "SELECT * FROM db_sim_results_Algo2") %>%
+  mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
 
 trade_statment <-
   "predicted_10000 > 0 & predicted_5000 > 0"
