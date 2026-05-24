@@ -77,12 +77,17 @@ period_var = 50
 Indices_Metals_Bonds <- list()
 
 assets_to_port <-
-  c("EU50_EUR", #2
-    "SPX500_USD", #3
-    "USD_JPY", #6
-    "AUD_USD", #7
-    "WTICO_USD", #11
-    "UK100_GBP"#12
+  c(
+    "EU50_EUR", #1
+    "SPX500_USD", #2
+    "USD_JPY", #3
+    "WTICO_USD", #4
+    "UK100_GBP", #5
+    "XAG_USD", #6
+    "HK33_HKD", #7
+    "XCU_USD", #8
+    "XAU_USD", #9
+    "JP225Y_JPY" #10
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -182,13 +187,13 @@ sim_list <- list()
 db_sim_results_con <- connect_db("C:/Users/nikhi/Documents//trade_data/db_sim_results.db")
 redo_db <- FALSE
 reg_vars_stripped <-
-  all_cor_V3_Data[[2]] %>%
-  keep(~ str_detect(.x, "cor_")|!str_detect(.x, "diff") ) %>%
-  unlist()
+  all_cor_V3_Data[[2]]
+  # keep(~ str_detect(.x, "cor_")|!str_detect(.x, "diff") ) %>%
+  # unlist()
 
-for (i in 7896:(length(all_dates_sim) - 1) ) {
+for (i in 852:(length(all_dates_sim) - 1) ) {
 
-  # tictoc::tic()
+  tictoc::tic()
   results_temp <-
     Porfolio_get_V3_LM_Model_TOTAL_SUM(
       all_cor_V3_Data = all_cor_V3_Data[[1]],
@@ -217,16 +222,32 @@ for (i in 7896:(length(all_dates_sim) - 1) ) {
     ) %>%
     dplyr::select(Date,
                   # Asset,
-                  Final_Return,
                   predicted_5000 = predicted,
                   trained_mean_5000 = trained_mean,
                   trained_sd_5000 = trained_sd) %>%
     filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
+  results_temp3 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      all_cor_V3_Data = all_cor_V3_Data[[1]],
+      reg_vars = all_cor_V3_Data[[2]],
+      training_end_date = all_dates_sim[i],
+      regression_length = 2500,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 0.1
+    ) %>%
+    dplyr::select(Date,
+                  # Asset,
+                  predicted_2500 = predicted,
+                  trained_mean_2500 = trained_mean,
+                  trained_sd_2500 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+
   results_temp <-
     results_temp %>%
-    left_join(results_temp2)
-  # tictoc::toc()
+    left_join(results_temp2) %>%
+    left_join(results_temp3)
+  tictoc::toc()
 
   sim_list[[i]] <- results_temp
 
@@ -245,10 +266,16 @@ for (i in 7896:(length(all_dates_sim) - 1) ) {
 model_prediction_data <-
   DBI::dbGetQuery(conn = db_sim_results_con,
                   statement = "SELECT * FROM db_sim_results") %>%
-  mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
+  mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+  mutate(
+    Averaged_Value = (predicted_10000 + predicted_5000 + predicted_2500)/3
+  )
 
 trade_statment <-
   "predicted_10000 > 0 & predicted_5000 > 0"
+
+trade_statment <-
+  "Averaged_Value > 0"
 
 analyse_performance <-
   model_prediction_data %>%
