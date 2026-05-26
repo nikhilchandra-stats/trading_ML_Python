@@ -350,6 +350,9 @@ generate_portfolio_LM <-
       ) %>%
       left_join(means_by_asset)
 
+    rm(testing_data, means_by_asset, predicted, LM_model, lm_form,
+       training_data, reg_dat, cor_high_diff_data, portfolio_actuals_data)
+
     return(returned_data)
 
   }

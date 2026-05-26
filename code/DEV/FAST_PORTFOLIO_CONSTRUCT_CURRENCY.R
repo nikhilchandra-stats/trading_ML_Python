@@ -76,8 +76,12 @@ period_var = 50
 
 Indices_Metals_Bonds <- list()
 
-assets_to_port =
-  c("SPX500_USD", "XAU_USD", "EU50_EUR", "JP225_USD", "USD_JPY") %>% unique()
+# assets_to_port <-
+#   c("EUR_USD", "EUR_JPY", "USD_JPY", "XAG_USD",
+#   "EUR_GBP", "GBP_USD", "BTC_USD", "US2000_USD", "XCU_USD") %>% unique()
+
+assets_to_port <-
+  c("EUR_USD", "EUR_GBP", "GBP_USD", "USD_JPY", "AUD_USD") %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -96,19 +100,19 @@ Indices_Metals_Bonds[[2]] <-
     end_date = as.character(today() + days(30)),
     time_frame = "H1",
     bid_or_ask = "bid",
-    assets =   assets_to_port
+    assets = assets_to_port
   ) %>%
   distinct()
 
 Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
-stop_factor_var =4
-profit_factor_var =8
+stop_factor_var =10
+profit_factor_var = 20
 risk_dollar_value_var = 5
-end_period = 24
+end_period = 50
 trade_direction = "Long"
-end_point_loss = -2.5
+end_point_loss = -4
 end_point_profit = 5
 
 portfolio_data <-
@@ -145,13 +149,12 @@ all_dates_sim <-
   unique()
 
 sim_list <- list()
-db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_FULL_Port.db")
+db_sim_results_con <- connect_db("D:/trade_data/db_sim_results.db")
 redo_db <- TRUE
 
 for (i in 1:(length(all_dates_sim) - 1) ) {
-
   tictoc::tic()
-   results_temp <-
+  results_temp <-
     generate_portfolio_LM(
       cor_high_diff_data = correlation_data,
       regression_length = 10000,
@@ -169,25 +172,20 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
 
   if(i == 1 & redo_db == TRUE) {
     write_table_sql_lite(.data = results_temp,
-                         table_name = "db_sim_results",
+                         table_name = "db_sim_results_CURRENCY_ONLY",
                          conn = db_sim_results_con,
                          overwrite_true = TRUE)
   } else {
     append_table_sql_lite(.data = results_temp,
-                         table_name = "db_sim_results",
-                         conn = db_sim_results_con)
+                          table_name = "db_sim_results_CURRENCY_ONLY",
+                          conn = db_sim_results_con)
   }
 }
 
 model_prediction_data <-
   DBI::dbGetQuery(conn = db_sim_results_con,
-                  statement = "SELECT * FROM db_sim_results") %>%
+                  statement = "SELECT * FROM db_sim_results_CURRENCY_ONLY") %>%
   mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
-
-model_prediction_data %>%
-  pull(Date) %>% max()
-
-which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
   "predicted > 0"
