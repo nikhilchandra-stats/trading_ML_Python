@@ -262,7 +262,8 @@ generate_portfolio_LM <-
     portfolio_actuals_data = portfolio_data,
     dependant_var = "Final_Return",
     date_filter_train = "2025-01-01",
-    sig_thresh_LM = 10^-7
+    sig_thresh_LM = 10^-7,
+    padding_value = 24
   ) {
 
     reg_dat <-
@@ -295,7 +296,7 @@ generate_portfolio_LM <-
 
     testing_data <-
       reg_dat %>%
-      filter(Date > date_filter_train)
+      filter(Date > (date_filter_train + hours(padding_value)) )
 
     lm_form <-
       create_lm_formula(dependant = dependant_var, independant = reg_vars)
@@ -751,5 +752,721 @@ get_Preds_Portfolio_Model_GLM_LM <-
       )
 
     return(returned_data)
+
+  }
+
+#' Portfolio_get_all_preds_frm_V3
+#'
+#' @param Indices_Metals_Bonds
+#' @param base_path
+#' @param actuals_periods_needed
+#' @param state_space_periods
+#' @param state_space_rolling
+#' @param date_for_true_simualtion
+#' @param raw_macro_data
+#' @param assets_to_test
+#' @param training_end_date
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+Portfolio_get_all_preds_frm_V3 <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    raw_macro_data = raw_macro_data,
+    base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+    actuals_periods_needed = c("period_return_50_Price"),
+    state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
+    state_space_rolling = c(100, 200, 300, 400),
+    date_for_true_simualtion = "2019-01-01",
+    training_end_date = "2021-01-01",
+    assets_to_test
+  ) {
+
+    safely_get_probs <-
+      safely(Single_Asset_V3_Read_in_Probs_Exclude_Copula, otherwise = NULL)
+
+    all_probs <- list()
+    c = 0
+
+    for (j in 1:length(assets_to_test) ) {
+
+      tictoc::tic()
+      asset_of_interest <- assets_to_test[j]
+      correlation_assets_current <- c("")
+
+      simulated_probs <-
+        safely_get_probs(
+          Indices_Metals_Bonds =
+            Indices_Metals_Bonds %>%
+            map(~ .x %>% filter(Date >= date_for_true_simualtion)),
+          asset_of_interest = asset_of_interest,
+          actuals_periods_needed = actuals_periods_needed,
+          training_end_date = training_end_date,
+          rolling_mean_pred_period = 500,
+          correlation_rolling_periods = c(1,2),
+          state_space_periods = state_space_periods,
+          state_space_rolling = state_space_rolling,
+          copula_assets = correlation_assets_current,
+          raw_macro_data = raw_macro_data,
+          base_path = base_path
+        ) %>%
+        pluck('result')
+
+      tictoc::toc()
+
+      if(!is.null(simulated_probs)) {
+        c = c + 1
+        simulated_probs <-
+          simulated_probs %>%
+          reduce(bind_rows) %>%
+          mutate(
+            training_end_date = training_end_date,
+            date_for_true_simualtion = date_for_true_simualtion
+          )
+
+        all_probs[[c]]  <- simulated_probs
+
+        rm(simulated_probs)
+
+      }
+    }
+
+    all_preds_dfr <-
+      all_probs %>%
+      map_dfr(bind_rows)
+
+    return(all_preds_dfr)
+
+  }
+
+#' portfolio_get_V3_cor_data
+#'
+#' @param Indices_Metals_Bonds
+#' @param all_preds
+#' @param portfolio_data
+#' @param assets_to_port
+#' @param low_to_price_lengths
+#' @param cor_periods
+#' @param max_regs
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+portfolio_get_V3_cor_data <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    all_preds = all_preds,
+    portfolio_data = portfolio_data,
+    assets_to_port = assets_to_port,
+    low_to_price_lengths = c(200),
+    cor_periods = c(200),
+    max_regs = 200
+  ) {
+
+    AR_LM_pivoted <-
+      wide_pivot_asset_data(all_asset_data = all_preds,
+                            assets_to_use = assets_to_port,
+                            cor_col_to_use =  "AR_LM_Pred_period_return_50_Price") %>%
+      ungroup()
+
+    ar_reg_cols <-
+      names(AR_LM_pivoted) %>%
+      keep(~ .x != "Date")
+
+    state_space_pivoted <-
+      wide_pivot_asset_data(all_asset_data = all_preds,
+                            assets_to_use = assets_to_port,
+                            cor_col_to_use =  "state_space_LM_Pred_period_return_50_Price") %>%
+      ungroup()
+
+    ss_reg_cols <-
+      names(state_space_pivoted) %>%
+      keep(~ .x != "Date")
+
+    all_dat_pivoted <-
+      AR_LM_pivoted %>%
+      ungroup() %>%
+      left_join(state_space_pivoted %>%
+                  ungroup() ) %>%
+      ungroup()
+
+    correlation_data <-
+      get_portfolio_rolling_data(
+        asset_data = Indices_Metals_Bonds[[1]],
+        asset_of_interest = assets_to_port,
+        low_to_price_lengths = low_to_price_lengths,
+        cor_periods = cor_periods
+      ) %>%
+      ungroup()
+
+    cor_reg_cols <-
+      names(correlation_data) %>%
+      keep(~ .x != "Date" & str_detect(.x, "cor"))
+
+    cor_reg_cols <- cor_reg_cols[1:round((length(cor_reg_cols))/2)]
+
+    diff_reg_cols <-
+      names(correlation_data) %>%
+      keep(~ .x != "Date" & !str_detect(.x, "cor"))
+
+    total_reg_data <-
+      portfolio_data %>%
+      ungroup() %>%
+      left_join(all_dat_pivoted %>%
+                  ungroup() %>%
+                  left_join(correlation_data %>%
+                              ungroup() )
+      ) %>%
+      ungroup()
+
+    reg_vars <-
+      c("Asset", ss_reg_cols, ar_reg_cols, diff_reg_cols,  cor_reg_cols) %>%
+      unlist() %>%
+      head(max_regs)
+
+    rm(portfolio_data, all_dat_pivoted,
+       correlation_data, AR_LM_pivoted, state_space_pivoted)
+
+    return(list( "total_reg_data" = total_reg_data, "reg_vars" = reg_vars))
+
+  }
+
+#' portfolio_get_V3_cor_data
+#'
+#' @param Indices_Metals_Bonds
+#' @param all_preds
+#' @param portfolio_data
+#' @param assets_to_port
+#' @param low_to_price_lengths
+#' @param cor_periods
+#' @param max_regs
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+portfolio_get_V3_cor_data_TOTAL_SUMMED <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    all_preds = all_preds,
+    assets_to_port = assets_to_port,
+    low_to_price_lengths = c(200),
+    cor_periods = c(200),
+    max_regs = 200
+  ) {
+
+    AR_LM_pivoted <-
+      wide_pivot_asset_data(all_asset_data = all_preds,
+                            assets_to_use = assets_to_port,
+                            cor_col_to_use =  "AR_LM_Pred_period_return_50_Price") %>%
+      ungroup()
+
+    ar_reg_cols <-
+      names(AR_LM_pivoted) %>%
+      keep(~ .x != "Date")
+
+    state_space_pivoted <-
+      wide_pivot_asset_data(all_asset_data = all_preds,
+                            assets_to_use = assets_to_port,
+                            cor_col_to_use =  "state_space_LM_Pred_period_return_50_Price") %>%
+      ungroup()
+
+    ss_reg_cols <-
+      names(state_space_pivoted) %>%
+      keep(~ .x != "Date")
+
+    all_dat_pivoted <-
+      AR_LM_pivoted %>%
+      ungroup() %>%
+      left_join(state_space_pivoted %>%
+                  ungroup() ) %>%
+      ungroup()
+
+    correlation_data <-
+      get_portfolio_rolling_data(
+        asset_data = Indices_Metals_Bonds[[1]],
+        asset_of_interest = assets_to_port,
+        low_to_price_lengths = low_to_price_lengths,
+        cor_periods = cor_periods
+      ) %>%
+      ungroup()
+
+    cor_reg_cols <-
+      names(correlation_data) %>%
+      keep(~ .x != "Date" & str_detect(.x, "cor"))
+
+    cor_reg_cols <- cor_reg_cols[1:round((length(cor_reg_cols))/2)]
+
+    diff_reg_cols <-
+      names(correlation_data) %>%
+      keep(~ .x != "Date" & !str_detect(.x, "cor"))
+
+    reg_vars <-
+      c(ss_reg_cols, ar_reg_cols, diff_reg_cols,  cor_reg_cols) %>%
+      unlist() %>%
+      head(max_regs)
+
+    rm(AR_LM_pivoted, state_space_pivoted)
+
+    return(list( "all_dat_pivoted" = all_dat_pivoted,
+                 "correlation_data" = correlation_data,
+                 "reg_vars" = reg_vars))
+
+  }
+
+#' portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat
+#'
+#' @param all_dat_pivoted
+#' @param correlation_data
+#' @param portfolio_data
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat <-
+  function(all_dat_pivoted  = all_cor_V3_Data[[1]],
+           correlation_data = all_cor_V3_Data[[2]],
+           portfolio_data = portfolio_data,
+           additional_cor_vars,
+           lag_dependant = 24) {
+
+    additional_cor_eval <-
+      additional_cor_vars %>%
+      map(
+        ~ glue::glue("{.x[3]} = slider::slide2_dbl(.x = {.x[1]}, .y = {.x[2]}, .f = ~ cor(.x, .y), .before = 200 )")
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    total_reg_data <-
+      portfolio_data %>%
+      ungroup() %>%
+      group_by(Date, end_point_loss, end_point_profit, stop_factor, profit_factor) %>%
+      summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
+      ungroup() %>%
+      left_join(all_dat_pivoted %>%
+                  ungroup() %>%
+                  left_join(correlation_data %>%
+                              ungroup() )
+      ) %>%
+      ungroup() %>%
+      arrange(Date) %>%
+      mutate(
+        Final_Return_lag = lag(Final_Return, 24),
+        Final_Return_lag_2 = lag(Final_Return, 25),
+        Final_Return_lag_3 = lag(Final_Return, 26),
+        Final_Return_lag_4 = lag(Final_Return, 27),
+
+        Final_Return_lag_error =
+          Final_Return_lag -
+          (XAG_USD_AR_LM_Pred_period_return_50_Price + HK33_HKD_AR_LM_Pred_period_return_50_Price +
+             FR40_EUR_AR_LM_Pred_period_return_50_Price + BTC_USD_AR_LM_Pred_period_return_50_Price +
+             NATGAS_USD_AR_LM_Pred_period_return_50_Price + JP225Y_JPY_AR_LM_Pred_period_return_50_Price +
+             XAU_USD_AR_LM_Pred_period_return_50_Price ),
+
+        Final_Return_lag_error =
+          (Final_Return_lag_error +
+              lag(Final_Return_lag_error,1) + lag(Final_Return_lag_error,2) + lag(Final_Return_lag_error,3) +
+              lag(Final_Return_lag_error,4))/5
+        # Final_Return_lag_error_ma_100 =
+        #   slider::slide_dbl(.x = Final_Return_lag_error, .f = ~ mean(.x, na.rn = T), .before = 100, .complete = FALSE)
+      )
+
+    additional_cor_eval <-
+      glue::glue("total_reg_data %>% mutate({additional_cor_eval})")
+
+    total_reg_data <- eval(parse(text = additional_cor_eval))
+
+    return(total_reg_data)
+
+  }
+
+#' Porfolio_get_V3_LM_Model
+#'
+#' @param all_cor_V3_Data
+#' @param reg_vars
+#' @param training_end_date
+#' @param regression_length
+#' @param dependant_var
+#' @param sig_thresh_LM
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+Porfolio_get_V3_LM_Model <-
+  function(
+    all_cor_V3_Data = all_cor_V3_Data[[1]],
+    reg_vars = all_cor_V3_Data[[2]],
+    training_end_date = "2025-01-01",
+    regression_length = 5000,
+    dependant_var = "Final_Return",
+    sig_thresh_LM = 0.1
+  ) {
+
+    Dates <-
+      all_cor_V3_Data %>%
+      ungroup() %>%
+      filter(Date <= training_end_date) %>%
+      pull(Date) %>%
+      unique() %>%
+      tail(regression_length) %>%
+      min(na.rm = T)
+
+    gc()
+
+    training_data <-
+      all_cor_V3_Data %>%
+      ungroup() %>%
+      filter(Date <= training_end_date) %>%
+      filter(Date >= Dates )
+
+    testing_data <-
+      all_cor_V3_Data %>%
+      ungroup() %>%
+      filter(Date > training_end_date)
+
+    rm(Dates)
+    # gc()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = reg_vars)
+
+    LM_model <- lm(data = training_data, formula = lm_form)
+
+    sig_coefs <-
+      get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-7)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-6)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-5)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-4)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-3)
+    }
+
+    sig_coefs <-
+      sig_coefs %>%
+      keep(~ !str_detect(.x, "Asset[A-Z][A-Z]") ) %>%
+      unlist()
+
+    sig_coefs <-
+      c("Asset", sig_coefs) %>%
+      unlist()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var,
+                        independant = sig_coefs)
+
+    LM_model <- lm(formula = lm_form, data = training_data)
+
+    predicted <- predict.lm(newdata = testing_data, object =  LM_model)
+    predicted_train <- predict.lm(newdata = training_data, object =  LM_model)
+
+    means_by_asset <-
+      training_data %>%
+      mutate(preds = predicted_train) %>%
+      group_by(Asset) %>%
+      summarise(
+        trained_mean = mean(preds, na.rm = T),
+        trained_sd = sd(preds, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      dplyr::select(
+        Asset,
+        trained_mean, trained_sd)
+
+    returned_data <-
+      testing_data %>%
+      mutate(
+        predicted = predicted
+      ) %>%
+      left_join(means_by_asset) %>%
+      # mutate(
+      #   trained_mean = means_by_asset$trained_mean[1],
+      #   trained_sd = means_by_asset$trained_sd[1]
+      # ) %>%
+      dplyr::select(Date,
+                    Asset,
+                    Final_Return, predicted, trained_mean, trained_sd)
+
+    rm(testing_data, training_data, all_cor_V3_Data, LM_model, predicted_train,predicted )
+    gc()
+
+    return(returned_data)
+  }
+
+#' Porfolio_get_V3_LM_Model
+#'
+#' @param all_cor_V3_Data
+#' @param reg_vars
+#' @param training_end_date
+#' @param regression_length
+#' @param dependant_var
+#' @param sig_thresh_LM
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+Porfolio_get_V3_LM_Model_TOTAL_SUM <-
+  function(
+    reg_dat = all_cor_V3_Data[[1]],
+    reg_vars = all_cor_V3_Data[[2]],
+    training_end_date = "2025-01-01",
+    regression_length = 5000,
+    dependant_var = "Final_Return",
+    sig_thresh_LM = 0.1,
+    taking_trade = FALSE
+  ) {
+
+    Dates <-
+      reg_dat %>%
+      ungroup() %>%
+      filter(Date <= training_end_date) %>%
+      pull(Date) %>%
+      unique() %>%
+      tail(regression_length) %>%
+      min(na.rm = T)
+
+    gc()
+
+    training_data <-
+      reg_dat %>%
+      ungroup() %>%
+      filter(Date <= training_end_date) %>%
+      filter(Date >= Dates )
+
+    if(taking_trade == TRUE) {
+
+      testing_data <-
+        reg_dat %>%
+        ungroup() %>%
+        filter(Date >= training_end_date)
+
+    } else {
+      testing_data <-
+        reg_dat %>%
+        ungroup() %>%
+        filter(Date > training_end_date)
+    }
+
+    rm(Dates)
+    # gc()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = reg_vars)
+
+    LM_model <- lm(data = training_data, formula = lm_form)
+
+    sig_coefs <-
+      get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-7)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-6)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-5)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-4)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-3)
+    }
+
+    sig_coefs <-
+      sig_coefs %>%
+      keep(~ !str_detect(.x, "Asset[A-Z][A-Z]") ) %>%
+      unlist()
+
+    # sig_coefs <-
+    #   c("Asset", sig_coefs) %>%
+    #   unlist()
+
+    sig_coefs <-
+      c(sig_coefs) %>%
+      unlist()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var,
+                        independant = sig_coefs)
+
+    LM_model <- lm(formula = lm_form, data = training_data)
+
+    predicted <- predict.lm(newdata = testing_data, object =  LM_model)
+    predicted_train <- predict.lm(newdata = training_data, object =  LM_model)
+
+    means_by_asset <-
+      training_data %>%
+      mutate(preds = predicted_train) %>%
+      # group_by(Asset) %>%
+      summarise(
+        trained_mean = mean(preds, na.rm = T),
+        trained_sd = sd(preds, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      dplyr::select(
+        # Asset,
+        trained_mean, trained_sd)
+
+    returned_data <-
+      testing_data %>%
+      mutate(
+        predicted = predicted
+      ) %>%
+      # left_join(means_by_asset) %>%
+      mutate(
+        trained_mean = means_by_asset$trained_mean[1],
+        trained_sd = means_by_asset$trained_sd[1]
+      ) %>%
+      dplyr::select(Date,
+                    # Asset,
+                    Final_Return, predicted, trained_mean, trained_sd)
+
+    rm(testing_data, training_data, all_cor_V3_Data, LM_model, predicted_train,predicted )
+    gc()
+
+    return(returned_data)
+  }
+
+#' Portfolio_get_V3_Cor_DIFF_Preds
+#'
+#' @param asset_data
+#' @param asset_of_interest
+#' @param stop_factor_var
+#' @param profit_factor_var
+#' @param risk_dollar_value_var
+#' @param end_period
+#' @param time_frame
+#' @param trade_direction
+#' @param currency_conversion
+#' @param asset_infor
+#' @param end_point_loss
+#' @param end_point_profit
+#' @param sum_as_portfolio
+#' @param low_to_price_lengths
+#' @param cor_periods
+#' @param max_regs
+#' @param training_end_date
+#' @param dependant_var
+#' @param sig_thresh_LM
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+Portfolio_get_V3_Cor_DIFF_Preds <-
+  function(
+    all_preds = all_preds,
+    asset_data = Indices_Metals_Bonds,
+    asset_of_interest = assets_to_port,
+    stop_factor_var = stop_factor_var,
+    profit_factor_var = profit_factor_var,
+    risk_dollar_value_var = risk_dollar_value_var,
+    end_period = end_period,
+    time_frame = "H1",
+    trade_direction = trade_direction,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    end_point_loss = end_point_loss,
+    end_point_profit = end_point_profit,
+    sum_as_portfolio = TRUE,
+    low_to_price_lengths = c(200),
+    cor_periods = c(200),
+    max_regs = 1000,
+    training_end_date = as.character(now()),
+    dependant_var = "Final_Return",
+    sig_thresh_LM = 0.1
+  ) {
+
+    portfolio_data <-
+      get_portfolio_model_fast_summed(
+        asset_data = Indices_Metals_Bonds,
+        asset_of_interest = assets_to_port,
+        stop_factor_var = stop_factor_var,
+        profit_factor_var = profit_factor_var,
+        risk_dollar_value_var = risk_dollar_value_var,
+        end_period = end_period,
+        time_frame = "H1",
+        trade_direction = trade_direction,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        end_point_loss = end_point_loss,
+        end_point_profit = end_point_profit,
+        sum_as_portfolio = TRUE
+      )
+
+    all_cor_V3_Data <-
+      portfolio_get_V3_cor_data_TOTAL_SUMMED(
+        Indices_Metals_Bonds = Indices_Metals_Bonds,
+        all_preds = all_preds,
+        portfolio_data = portfolio_data,
+        assets_to_port = assets_to_port,
+        low_to_price_lengths = low_to_price_lengths,
+        cor_periods = cor_periods,
+        max_regs = max_regs
+      )
+
+    results_temp <-
+      Porfolio_get_V3_LM_Model_TOTAL_SUM(
+        all_cor_V3_Data = all_cor_V3_Data[[1]],
+        reg_vars = all_cor_V3_Data[[2]],
+        training_end_date = training_end_date ,
+        regression_length = 10000,
+        dependant_var = dependant_var,
+        sig_thresh_LM = sig_thresh_LM,
+        taking_trade = TRUE
+      ) %>%
+      dplyr::select(Date,
+                    Final_Return,
+                    predicted_10000 = predicted,
+                    trained_mean_10000 = trained_mean,
+                    trained_sd_10000 = trained_sd)
+
+    results_temp2 <-
+      Porfolio_get_V3_LM_Model_TOTAL_SUM(
+        all_cor_V3_Data = all_cor_V3_Data[[1]],
+        reg_vars = all_cor_V3_Data[[2]],
+        training_end_date = training_end_date,
+        regression_length = 5000,
+        dependant_var = dependant_var,
+        sig_thresh_LM = sig_thresh_LM,
+        taking_trade = TRUE
+      ) %>%
+      dplyr::select(Date,
+                    Final_Return,
+                    predicted_5000 = predicted,
+                    trained_mean_5000 = trained_mean,
+                    trained_sd_5000 = trained_sd)
+
+    results_temp <-
+      results_temp %>%
+      left_join(results_temp2)
+
+    return(results_temp)
 
   }
