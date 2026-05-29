@@ -153,7 +153,7 @@ sim_list <- list()
 db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_Algo_V3.db")
 redo_db <- TRUE
 
-for (i in 1:(length(all_dates_sim) - 1) ) {
+for (i in 3805:(length(all_dates_sim) - 1) ) {
 
   tictoc::tic()
   portfolio_data <-
@@ -346,7 +346,7 @@ model_prediction_data <-
   mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
   mutate(
     Averaged_Pred =
-      (predicted_10000 + predicted_5000 + predicted_2500)/3
+      (predicted_10000 + predicted_5000 + predicted_2500 + predicted_1500)/4
   ) %>%
   dplyr::select(-Final_Return) %>%
   left_join(actual_final_returns %>%  dplyr::select(Date, Final_Return)) %>%
@@ -359,13 +359,17 @@ model_prediction_data <-
       slider::slide_dbl(.x  = predicted_5000, .f = ~ mean(.x, na.rm = T), .before = 250),
     portfolio_pred_2500_mean_roll_250 =
       slider::slide_dbl(.x  = predicted_2500, .f = ~ mean(.x, na.rm = T), .before = 250),
+    portfolio_pred_1500_mean_roll_250 =
+      slider::slide_dbl(.x  = predicted_1500, .f = ~ mean(.x, na.rm = T), .before = 250),
 
     pred_10000_sd_roll_250 =
       slider::slide_dbl(.x  = predicted_10000, .f = ~ sd(.x, na.rm = T), .before = 250),
     pred_5000_sd_roll_250 =
       slider::slide_dbl(.x  = predicted_5000, .f = ~ sd(.x, na.rm = T), .before = 250),
     portfolio_pred_2500_sd_roll_250 =
-      slider::slide_dbl(.x  = predicted_2500, .f = ~ sd(.x, na.rm = T), .before = 250)
+      slider::slide_dbl(.x  = predicted_2500, .f = ~ sd(.x, na.rm = T), .before = 250),
+    portfolio_pred_1500_sd_roll_250 =
+      slider::slide_dbl(.x  = predicted_1500, .f = ~ sd(.x, na.rm = T), .before = 250)
 
   ) %>%
   ungroup()

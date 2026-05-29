@@ -331,7 +331,9 @@ trade_statment <- "(Averaged_Pred > predicted_10000)|
                     (portfolio_pred_5000 > 9)|
                     (portfolio_pred_10000_mean_roll_250 > 2.25)"
 
-trade_statment <- "portfolio_pred_10000_mean_roll_250 > 2.25"
+trade_statment <- "portfolio_pred_2500_sd_roll_250 > lag(portfolio_pred_2500_sd_roll_250) &
+                   portfolio_pred_2500_mean_roll_250 > lag(portfolio_pred_2500_mean_roll_250)
+                   "
 
 analyse_performance <-
   model_prediction_data %>%
