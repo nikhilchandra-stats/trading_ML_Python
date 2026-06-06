@@ -96,15 +96,8 @@ end_date = today() %>% as.character()
 
 Indices_Metals_Bonds <- list()
 
-assets_to_port <-
-  c(    "XAG_USD", #18
-        "HK33_HKD", #22
-        "FR40_EUR", #23
-        "BTC_USD", #24
-        "NATGAS_USD", #32
-        "JP225Y_JPY",
-        "XAU_USD"
-  ) %>% unique()
+assets_to_port =
+  c("SPX500_USD", "XAU_USD", "EU50_EUR", "JP225_USD", "USD_JPY") %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -184,7 +177,22 @@ gc()
 assets_to_use <- assets_to_port
 
 trade_statement <-
-  "predicted_10000 > 0 & predicted_5000 > 0"
+  "
+   (Averaged_Pred > 0 & predicted_10000 < 0)|
+   (Averaged_Pred < 0 & portfolio_pred_2500 > 0)|
+   (predicted_10000 < 0 & portfolio_pred_2500 > 0)|
+   (portfolio_pred_10000_mean_roll_250 > 0 &
+   portfolio_pred_5000_mean_roll_250 > 0 &
+   portfolio_pred_2500_mean_roll_250 > 0 )|
+   (
+    portfolio_pred_2500_sd_roll_250 > lag(portfolio_pred_2500_sd_roll_250) &
+    portfolio_pred_2500_mean_roll_250 > lag(portfolio_pred_2500_mean_roll_250)
+   )|
+   (Averaged_Pred > 1.5)|
+   (portfolio_pred_2500 > trained_mean_2500 + 7.5*trained_sd_2500)|
+   (portfolio_pred_2500 > portfolio_pred_2500_mean_roll_250 + 1.25*portfolio_pred_2500_sd_roll_250)|
+   (portfolio_pred_5000 > portfolio_pred_5000_mean_roll_250 + 1.5*portfolio_pred_5000_sd_roll_250)
+"
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -211,7 +219,7 @@ while (current_time < end_time) {
     #-------------------------------------Update Data
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
-    how_far_back_date <- seq(today() - days(15), today(), by =  "days" ) %>%
+    how_far_back_date <- seq(today() - days(20), today(), by =  "days" ) %>%
       keep(
         ~ wday(.x) == 3
       ) %>%
@@ -304,52 +312,31 @@ while (current_time < end_time) {
       ) {
 
         tictoc::tic()
-        all_preds <-
-          Portfolio_get_all_preds_frm_V3(
+        all_preds_diff_cor <-
+          portfolio_reg_only_preds(
             Indices_Metals_Bonds = Indices_Metals_Bonds,
-            raw_macro_data = raw_macro_data,
-            base_path = "D:/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
-            actuals_periods_needed = c("period_return_50_Price"),
-            state_space_periods = c(20, 40, 60, 100, 200,300, 400, 500),
-            state_space_rolling = c(100, 200, 300, 400),
-            date_for_true_simualtion = "2019-01-01",
-            training_end_date = "2021-01-01",
-            assets_to_test = assets_to_port
+            assets_to_port = assets_to_port,
+            low_to_price_lengths = c(100,200),
+            cor_periods = c(200),
+            stop_factor_var =4,
+            profit_factor_var =8,
+            risk_dollar_value_var = 5,
+            end_period = 24,
+            trade_direction = "Long",
+            end_point_loss = -2.5,
+            end_point_profit = 5,
+            sig_thresh_LM = 1,
+            date_filter_train = now(tzone = "Australia/Canberra") - hours(1)
           )
 
-        stop_factor_var =5
-        profit_factor_var =10
-        risk_dollar_value_var = 10
-        risk_dollar_value = risk_dollar_value_var
+        stop_factor_var =4
+        profit_factor_var =8
+        risk_dollar_value_var = 5
         end_period = 24
         trade_direction = "Long"
-        end_point_loss = -7.5
-        end_point_profit = 15
+        end_point_loss = -2.5
+        end_point_profit = 5
 
-        all_preds_diff_cor <-
-          Portfolio_get_V3_Cor_DIFF_Preds(
-            all_preds = all_preds,
-            asset_data = Indices_Metals_Bonds,
-            asset_of_interest = assets_to_port,
-            stop_factor_var = stop_factor_var,
-            profit_factor_var = profit_factor_var,
-            risk_dollar_value_var = risk_dollar_value_var,
-            end_period = end_period,
-            time_frame = "H1",
-            trade_direction = trade_direction,
-            currency_conversion = currency_conversion,
-            asset_infor = asset_infor,
-            end_point_loss = end_point_loss,
-            end_point_profit = end_point_profit,
-            sum_as_portfolio = TRUE,
-            low_to_price_lengths = c(200),
-            cor_periods = c(200),
-            max_regs = 1000,
-            # training_end_date = as.character(floor_date(current_time, "hour")),
-            training_end_date = as.character("2026-04-08 17:00:00 AEST"),
-            dependant_var = "Final_Return",
-            sig_thresh_LM = 0.1
-          )
         tictoc::toc()
 
         max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
@@ -358,16 +345,15 @@ while (current_time < end_time) {
 
         trade_dates <-
           all_preds_diff_cor %>%
+          ungroup() %>%
+          slice_max(Date) %>%
           mutate(
             trade_col =
               eval(parse(text = trade_statement))
           ) %>%
-          filter(trade_col == TRUE) %>%
-          distinct(Date) %>%
-          slice_max(Date) %>%
-          pull(Date) %>%
-          unique() %>%
-          as_datetime()
+          ungroup() %>%
+          # filter(trade_col == TRUE) %>%
+          distinct(Asset, Date)
 
         current_prices_ask <-
           read_all_asset_data_intra_day(
@@ -377,7 +363,7 @@ while (current_time < end_time) {
             time_frame = "H1",
             bid_or_ask = "ask",
             how_far_back = 2,
-            start_date = as_date(today() - days(2))
+            start_date = as_date(today() - days(3))
           )%>%
           map_dfr(bind_rows) %>%
           group_by(Asset) %>%
@@ -385,13 +371,7 @@ while (current_time < end_time) {
           ungroup()
 
         single_asset_model_trades_filt <-
-          assets_to_port %>%
-          map_dfr(
-            ~ tibble(
-              Asset = .x,
-              Date = trade_dates
-            )
-          ) %>%
+          trade_dates %>%
           mutate(trade_col = "Long",
                  stop_factor = stop_factor_var,
                  profit_factor = profit_factor_var,
@@ -469,8 +449,7 @@ while (current_time < end_time) {
 
       #-------------------------All Trades
       total_trades <-
-        list(total_trades_macro_only_port_stops,
-             single_asset_model_trades_filt) %>%
+        list(single_asset_model_trades_filt) %>%
         map_dfr(bind_rows)
 
       rm(
@@ -540,7 +519,7 @@ while (current_time < end_time) {
               )
 
             append_table_sql_lite(.data = cleaned_trade_details,
-                                  table_name = "trade_tracker",
+                                  table_name = "trade_tracker_endpoints",
                                   conn = trade_tracker_DB)
 
           }
@@ -574,7 +553,7 @@ while (current_time < end_time) {
                      end_point_profit = total_trades$end_point_profit[i] %>% as.numeric() )
 
             append_table_sql_lite(.data = cleaned_trade_details,
-                                  table_name = "trade_tracker",
+                                  table_name = "trade_tracker_endpoints",
                                   conn = trade_tracker_DB)
 
           }
@@ -606,7 +585,7 @@ while (current_time < end_time) {
 
     trades_from_DB <-
       DBI::dbGetQuery(conn = trade_tracker_DB,
-                      statement = "SELECT * FROM trade_tracker_dollar") %>%
+                      statement = "SELECT * FROM trade_tracker_endpoints") %>%
       filter(
         Asset %in% assets_to_use
       )
@@ -702,11 +681,15 @@ while (current_time < end_time) {
         ) %>%
         mutate(time_in_process = as.numeric(time_in_process),
                unrealizedPL = as.numeric(unrealizedPL),
-               trueUnrealizedPL = as.numeric(trueUnrealizedPL)) %>%
+               trueUnrealizedPL = as.numeric(trueUnrealizedPL),
+               end_point_profit = as.numeric(end_point_profit),
+               end_point_loss = as.numeric(end_point_loss) ) %>%
         mutate(
           flagged_for_close =
             (time_in_process >= periods_ahead) | (trueUnrealizedPL >= end_point_profit) |
-            (trueUnrealizedPL <= end_point_loss)
+            (trueUnrealizedPL <= end_point_loss),
+          how_far_from_profit = ( abs(trueUnrealizedPL) - abs(end_point_profit) ),
+          how_far_from_loss = ( abs(trueUnrealizedPL) - abs(end_point_loss) )
         )
 
       positions_tagged_as_part_of_algo <-

@@ -148,7 +148,7 @@ sim_list <- list()
 db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_FULL_Port.db")
 redo_db <- FALSE
 
-for (i in 19526:(length(all_dates_sim) - 1) ) {
+for (i in 26031:(length(all_dates_sim) - 1) ) {
 
   tictoc::tic()
   portfolio_data <-
@@ -318,22 +318,22 @@ model_prediction_data %>%
 which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
-  "(Averaged_Pred > 0 & predicted_10000 < 0)|
+  "
+   (Averaged_Pred > 0 & predicted_10000 < 0)|
    (Averaged_Pred < 0 & portfolio_pred_2500 > 0)|
    (predicted_10000 < 0 & portfolio_pred_2500 > 0)|
    (portfolio_pred_10000_mean_roll_250 > 0 &
    portfolio_pred_5000_mean_roll_250 > 0 &
-   portfolio_pred_2500_mean_roll_250 > 0 )"
-
-trade_statment <- "(Averaged_Pred > predicted_10000)|
-                    (portfolio_pred_2500 > portfolio_pred_2500_mean_roll_250)|
-                    (Averaged_Pred > 2)|
-                    (portfolio_pred_5000 > 9)|
-                    (portfolio_pred_10000_mean_roll_250 > 2.25)"
-
-trade_statment <- "portfolio_pred_2500_sd_roll_250 > lag(portfolio_pred_2500_sd_roll_250) &
-                   portfolio_pred_2500_mean_roll_250 > lag(portfolio_pred_2500_mean_roll_250)
-                   "
+   portfolio_pred_2500_mean_roll_250 > 0 )|
+   (
+    portfolio_pred_2500_sd_roll_250 > lag(portfolio_pred_2500_sd_roll_250) &
+    portfolio_pred_2500_mean_roll_250 > lag(portfolio_pred_2500_mean_roll_250)
+   )|
+   (Averaged_Pred > 1.5)|
+   (portfolio_pred_2500 > trained_mean_2500 + 7.5*trained_sd_2500)|
+   (portfolio_pred_2500 > portfolio_pred_2500_mean_roll_250 + 1.25*portfolio_pred_2500_sd_roll_250)|
+   (portfolio_pred_5000 > portfolio_pred_5000_mean_roll_250 + 1.5*portfolio_pred_5000_sd_roll_250)
+"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -344,6 +344,15 @@ analyse_performance <-
     trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
   )
 
+control_data <-
+  analyse_performance %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Control")
+
 analyse_performance <-
   analyse_performance %>%
   filter(trade_col == "Long") %>%
@@ -351,11 +360,14 @@ analyse_performance <-
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
   arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return))
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Long")
 
 analyse_performance %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative)) +
+  bind_rows(control_data) %>%
+  ggplot(aes(x = Date, y = Final_Return_Cumulative, color = trade_col)) +
   geom_line() +
+  # facet_wrap(.~trade_col, scales = "free") +
   theme_minimal()
 
 analyse_performance_sum <-
@@ -384,3 +396,44 @@ analyse_performance_sum <-
     TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/( sum(neg_detect_TRUE, na.rm = T) + sum(neg_detect_Ned, na.rm = T))
   )
 
+
+
+check_list <- list()
+sd_check <- c(0, 1,1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4)
+for (j in 1:length(sd_check) ) {
+
+  trade_statment <-
+    glue::glue("portfolio_pred_2500 > trained_mean_2500 + {sd_check[j]}*trained_sd_2500")
+
+  check_list[[j]] <-
+    model_prediction_data %>%
+    mutate(
+      trade_col = eval(parse(text = trade_statment))
+    ) %>%
+    mutate(
+      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+    ) %>%
+    mutate(
+      pos_detect_TRUE =
+        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
+      pos_detect_Ned =
+        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
+
+      neg_detect_TRUE =
+        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
+      neg_detect_Ned =
+        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
+
+    ) %>%
+    group_by(Asset) %>%
+    summarise(
+      TRUE_pos_rate = sum(pos_detect_TRUE, na.rm=T)/( sum(pos_detect_TRUE, na.rm = T) + sum(pos_detect_Ned, na.rm = T) ),
+      TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/( sum(neg_detect_TRUE, na.rm = T) + sum(neg_detect_Ned, na.rm = T))
+    ) %>%
+    mutate(sd_check = sd_check[j])
+
+}
+
+check_list_dfr <-
+  check_list %>%
+  map_dfr(bind_rows)

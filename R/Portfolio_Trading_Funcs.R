@@ -1470,3 +1470,495 @@ Portfolio_get_V3_Cor_DIFF_Preds <-
     return(results_temp)
 
   }
+
+
+#' portfolio_reg_only_preds
+#'
+#' @param Indices_Metals_Bonds
+#' @param assets_to_port
+#' @param low_to_price_lengths
+#' @param cor_periods
+#' @param stop_factor_var
+#' @param profit_factor_var
+#' @param risk_dollar_value_var
+#' @param end_period
+#' @param trade_direction
+#' @param end_point_loss
+#' @param end_point_profit
+#' @param sig_thresh_LM
+#' @param date_filter_train
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+portfolio_reg_only_preds <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    assets_to_port = assets_to_port,
+    low_to_price_lengths = c(100,200),
+    cor_periods = c(200),
+    stop_factor_var =4,
+    profit_factor_var =8,
+    risk_dollar_value_var = 5,
+    end_period = 24,
+    trade_direction = "Long",
+    end_point_loss = -2.5,
+    end_point_profit = 5,
+    sig_thresh_LM = 1,
+    date_filter_train = now(tzone = "Australia/Canberra") + hours(10)
+  ) {
+
+    portfolio_data <-
+      get_portfolio_model_fast_summed(
+        asset_data = Indices_Metals_Bonds,
+        asset_of_interest = assets_to_port,
+        stop_factor_var = stop_factor_var,
+        profit_factor_var = profit_factor_var,
+        risk_dollar_value_var = risk_dollar_value_var,
+        end_period = end_period,
+        time_frame = "H1",
+        trade_direction = trade_direction,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        end_point_loss = end_point_loss,
+        end_point_profit = end_point_profit,
+        sum_as_portfolio = TRUE
+      )
+
+    correlation_data <-
+      get_portfolio_rolling_data(
+        asset_data = Indices_Metals_Bonds[[1]],
+        asset_of_interest = assets_to_port,
+        low_to_price_lengths = low_to_price_lengths,
+        cor_periods = cor_periods
+      )
+
+    results_temp <-
+      generate_portfolio_LM(
+        cor_high_diff_data = correlation_data,
+        regression_length = 10000,
+        portfolio_actuals_data = portfolio_data,
+        dependant_var = "Final_Return",
+        date_filter_train = date_filter_train,
+        sig_thresh_LM = sig_thresh_LM,
+        padding_value = 0
+      ) %>%
+      dplyr::select(Date, Asset,
+                    Final_Return,
+                    predicted_10000 = predicted,
+                    trained_mean_10000 = trained_mean,
+                    trained_sd_10000 = trained_sd)
+
+    results_temp2 <-
+      generate_portfolio_LM(
+        cor_high_diff_data = correlation_data,
+        regression_length = 5000,
+        portfolio_actuals_data = portfolio_data,
+        dependant_var = "Final_Return",
+        date_filter_train = date_filter_train,
+        sig_thresh_LM = sig_thresh_LM,
+        padding_value = 0
+      ) %>%
+      dplyr::select(Date, Asset,
+                    predicted_5000 = predicted,
+                    trained_mean_5000 = trained_mean,
+                    trained_sd_5000 = trained_sd)
+
+    results_temp3 <-
+      generate_portfolio_LM(
+        cor_high_diff_data = correlation_data,
+        regression_length = 2500,
+        portfolio_actuals_data = portfolio_data,
+        dependant_var = "Final_Return",
+        date_filter_train = date_filter_train,
+        sig_thresh_LM = sig_thresh_LM,
+        padding_value = 0
+      ) %>%
+      dplyr::select(Date, Asset,
+                    predicted_2500 = predicted,
+                    trained_mean_2500 = trained_mean,
+                    trained_sd_2500 = trained_sd)
+
+    results_temp <-
+      results_temp %>%
+      left_join(results_temp2) %>%
+      left_join(results_temp3) %>%
+      mutate(
+        Averaged_Pred =
+          (predicted_10000 + predicted_5000 + predicted_2500)/3
+      ) %>%
+      ungroup() %>%
+      group_by(Date) %>%
+      mutate(
+        portfolio_pred_10000 = sum(predicted_10000, na.rm = T),
+        portfolio_pred_5000 = sum(predicted_5000, na.rm = T),
+        portfolio_pred_2500 = sum(predicted_2500, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        portfolio_pred_10000_mean_roll_250 =
+          slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ mean(.x, na.rm = T), .before = 250),
+        portfolio_pred_5000_mean_roll_250 =
+          slider::slide_dbl(.x  = portfolio_pred_5000, .f = ~ mean(.x, na.rm = T), .before = 250),
+        portfolio_pred_2500_mean_roll_250 =
+          slider::slide_dbl(.x  = portfolio_pred_2500, .f = ~ mean(.x, na.rm = T), .before = 250),
+
+        portfolio_pred_10000_sd_roll_250 =
+          slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ sd(.x, na.rm = T), .before = 250),
+        portfolio_pred_5000_sd_roll_250 =
+          slider::slide_dbl(.x  = portfolio_pred_5000, .f = ~ sd(.x, na.rm = T), .before = 250),
+        portfolio_pred_2500_sd_roll_250 =
+          slider::slide_dbl(.x  = portfolio_pred_2500, .f = ~ sd(.x, na.rm = T), .before = 250)
+
+      ) %>%
+      ungroup()
+
+    return(results_temp)
+
+  }
+
+#' generate_portfolio_LM
+#'
+#' @param cor_high_diff_data
+#' @param regression_length
+#' @param portfolio_actuals_data
+#' @param dependant_var
+#' @param date_filter_train
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+generate_portfolio_LM_with_Errors <-
+  function(
+    cor_high_diff_data = cor_dat_X,
+    regression_length = 10000,
+    portfolio_actuals_data = portfolio_data,
+    dependant_var = "Final_Return",
+    date_filter_train = "2025-01-01",
+    sig_thresh_LM = 10^-7,
+    padding_value = 24,
+    lag_value_error = 24
+  ) {
+
+    reg_dat <-
+      cor_high_diff_data %>%
+      ungroup() %>%
+      arrange(Date) %>%
+      # mutate(
+      #   across(.cols = -c(Date) & where(is.numeric), ~ lag(.) )
+      # ) %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+
+    reg_vars <-
+      names(reg_dat) %>%
+      keep(~ !str_detect(.x, "Date") & !str_detect(.x, "Final_Return")) %>%
+      unlist()
+
+    lagged_returns_x <-
+      seq(lag_value_error, lag_value_error + 20,1) %>%
+      map(
+        ~ glue::glue("Lagged_Final_Return_{.x} = lag(Final_Return, {.x}), Lagged_Final_Return_{.x} = lag(Final_Return, {.x})^2")
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    lagged_returns_statement <-
+      glue::glue("reg_dat %>% group_by(Asset) %>% arrange(Date, .by_group = TRUE) %>% group_by(Asset) %>% mutate({lagged_returns_x}) %>% ungroup()")
+    reg_dat <-
+      portfolio_actuals_data %>%
+      ungroup() %>%
+      left_join(reg_dat) %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+    reg_dat <- eval(parse(text = lagged_returns_statement))
+
+    lagged_return_cols <-
+      names(reg_dat) %>%
+      keep(~ str_detect(.x, "Lagged_Final_Return_")) %>%
+      unlist()
+
+    reg_vars_additional <-
+      c("Asset", reg_vars, lagged_return_cols) %>% unique()
+
+    training_data <-
+      reg_dat %>%
+      filter(Date <= date_filter_train) %>%
+      group_by(Asset) %>%
+      slice_tail(n = regression_length) %>%
+      ungroup()
+
+    testing_data <-
+      reg_dat %>%
+      filter(Date > (date_filter_train + hours(padding_value)) )
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = reg_vars_additional)
+
+    LM_model <- lm(data = training_data, formula = lm_form)
+
+    sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-7)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-6)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-5)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-4)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-3)
+    }
+
+    sig_coefs <-
+      sig_coefs %>%
+      keep(~ !str_detect(.x, "Asset[A-Z][A-Z]")) %>%
+      unlist()
+
+    sig_coefs <-
+      c("Asset", sig_coefs)
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var,
+                        independant = sig_coefs)
+
+    LM_model <- lm(formula = lm_form, data = training_data)
+
+    predicted <- predict.lm(newdata = testing_data, object =  LM_model)
+
+    means_by_asset <-
+      training_data %>%
+      mutate(preds = LM_model$fitted.values) %>%
+      group_by(Asset) %>%
+      summarise(
+        trained_mean = mean(preds, na.rm = T),
+        trained_sd = sd(preds, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      dplyr::select(Asset, trained_mean, trained_sd)
+
+    returned_data <-
+      testing_data %>%
+      mutate(
+        predicted = predicted
+      ) %>%
+      left_join(means_by_asset)
+
+    rm(testing_data, means_by_asset, predicted, LM_model, lm_form,
+       training_data, reg_dat, cor_high_diff_data, portfolio_actuals_data)
+
+    return(returned_data)
+
+  }
+
+
+gen_port_LM_with_Errors_Bayes_data <-
+  function(
+    cor_high_diff_data = cor_dat_X,
+    regression_length = 10000,
+    portfolio_actuals_data = portfolio_data,
+    dependant_var = "Final_Return",
+    date_filter_train = "2025-01-01",
+    sig_thresh_LM = 10^-7,
+    padding_value = 24,
+    lag_value_error = 24
+    ) {
+
+    reg_dat <-
+      cor_high_diff_data %>%
+      ungroup() %>%
+      arrange(Date) %>%
+      # mutate(
+      #   across(.cols = -c(Date) & where(is.numeric), ~ lag(.) )
+      # ) %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+
+    reg_vars <-
+      names(reg_dat) %>%
+      keep(~ !str_detect(.x, "Date") & !str_detect(.x, "Final_Return")) %>%
+      unlist()
+
+    lagged_returns_x <-
+      seq(lag_value_error, lag_value_error + 20,1) %>%
+      map(
+        ~ glue::glue("Lagged_Final_Return_{.x} = lag(Final_Return, {.x}), Lagged_Final_Return_{.x} = lag(Final_Return, {.x})^2")
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    lagged_returns_statement <-
+      glue::glue("reg_dat %>% group_by(Asset) %>% arrange(Date, .by_group = TRUE) %>% group_by(Asset) %>% mutate({lagged_returns_x}) %>% ungroup()")
+    reg_dat <-
+      portfolio_actuals_data %>%
+      ungroup() %>%
+      left_join(reg_dat) %>%
+      filter(if_all(everything(), ~ !is.na(.)))
+
+    reg_dat <- eval(parse(text = lagged_returns_statement))
+
+    lagged_return_cols <-
+      names(reg_dat) %>%
+      keep(~ str_detect(.x, "Lagged_Final_Return_")) %>%
+      unlist()
+
+    reg_vars_additional <-
+      c("Asset", reg_vars, lagged_return_cols) %>% unique()
+
+    return(
+      list(
+        "reg_data" = reg_data,
+        "reg_variables" = reg_vars_additional
+      )
+    )
+
+  }
+
+#' generate_portfolio_LM_with_Errors_Bayes
+#'
+#' @param cor_high_diff_data
+#' @param regression_length
+#' @param portfolio_actuals_data
+#' @param dependant_var
+#' @param date_filter_train
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+gen_port_LM_with_Errors_Bayes_Gen_Model <-
+  function(
+    reg_data = reg_data,
+    reg_variables = reg_variables,
+    save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/",
+    model_prefix = "Equities",
+    date_filter_train = "2025-01-01",
+    padding_value = 0
+  ) {
+
+    training_data <-
+      reg_data %>%
+      filter(Date <= date_filter_train) %>%
+      group_by(Asset) %>%
+      ungroup()
+
+    testing_data <-
+      reg_data %>%
+      filter(Date > (date_filter_train + hours(padding_value)) )
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = reg_vars_additional)
+
+    LM_model <- bayesreg::bayesreg(formula = lm_form,
+                         model = "normal",
+                         data = testing_data)
+
+    LM_model <- bayes_model
+
+    predicted <- predict(newdata = testing_data, object =  LM_model, type = "response") %>%
+      as_tibble() %>%
+      pull(1) %>%
+      as.numeric()
+    predicted_train <- predict(newdata = training_data, object =  LM_model, type = "response") %>%
+      as_tibble() %>%
+      pull(1) %>%
+      as.numeric()
+
+    means_by_asset <-
+      training_data %>%
+      mutate(preds = predicted_train) %>%
+      group_by(Asset) %>%
+      summarise(
+        trained_mean = mean(preds, na.rm = T),
+        trained_sd = sd(preds, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      dplyr::select(Asset, trained_mean, trained_sd)
+
+    returned_data <-
+      testing_data %>%
+      mutate(
+        predicted = predicted
+      ) %>%
+      left_join(means_by_asset)
+
+    saveRDS(object = LM_model,
+            file = glue::glue("{save_location}/Bayes_{model_prefix}.RDS"))
+
+    rm(testing_data, means_by_asset, predicted, LM_model, lm_form,
+       training_data, reg_dat, cor_high_diff_data, portfolio_actuals_data)
+
+    return(returned_data)
+
+  }
+
+gen_port_LM_with_Errors_Bayes_Preds <-
+  function(
+    reg_data = reg_data,
+    reg_variables = reg_variables,
+    save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/",
+    model_prefix = "Equities",
+    date_filter_train = "2025-01-01",
+    padding_value = 0
+    ) {
+
+    LM_model <- readRDS(glue::glue("{save_location}/{model_prefix}.RDS"))
+
+    testing_data <-
+      reg_data %>%
+      filter(Date > (date_filter_train + hours(padding_value)) )
+
+    training_data <-
+      reg_data %>%
+      filter(Date <= date_filter_train) %>%
+      group_by(Asset) %>%
+      ungroup()
+
+    predicted <- predict(newdata = testing_data, object =  LM_model, type = "response") %>%
+      as_tibble() %>%
+      pull(1) %>%
+      as.numeric()
+    predicted_train <- predict(newdata = training_data, object =  LM_model, type = "response") %>%
+      as_tibble() %>%
+      pull(1) %>%
+      as.numeric()
+
+    means_by_asset <-
+      training_data %>%
+      mutate(preds = predicted_train) %>%
+      group_by(Asset) %>%
+      summarise(
+        trained_mean = mean(preds, na.rm = T),
+        trained_sd = sd(preds, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      dplyr::select(Asset, trained_mean, trained_sd)
+
+    returned_data <-
+      testing_data %>%
+      mutate(
+        predicted = predicted
+      ) %>%
+      left_join(means_by_asset)
+
+    rm(testing_data, means_by_asset, predicted, LM_model, lm_form,
+       training_data, reg_dat, cor_high_diff_data, portfolio_actuals_data)
+
+    return(returned_data)
+
+
+  }

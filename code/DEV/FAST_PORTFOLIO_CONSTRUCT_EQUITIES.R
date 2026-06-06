@@ -71,7 +71,7 @@ end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
 assets_to_port =
-  c("EUR_USD","EUR_JPY", "EUR_GBP", "GBP_USD", "USD_JPY", "GBP_JPY") %>% unique()
+  c("SPX500_USD", "XAU_USD", "EU50_EUR", "JP225_USD", "USD_JPY", "UK100_GBP") %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -97,8 +97,8 @@ Indices_Metals_Bonds[[2]] <-
 Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
-stop_factor_var =10
-profit_factor_var =20
+stop_factor_var =4
+profit_factor_var =8
 risk_dollar_value_var = 5
 end_period = 24
 trade_direction = "Long"
@@ -126,8 +126,6 @@ correlation_data <-
   get_portfolio_rolling_data(
     asset_data = Indices_Metals_Bonds[[1]],
     asset_of_interest = assets_to_port,
-    # low_to_price_lengths = c(100,200),
-    # cor_periods = c(50,200)
     low_to_price_lengths = c(100,200),
     cor_periods = c(200,100)
   )
@@ -138,10 +136,11 @@ all_dates_sim <-
   pull(Date) %>%
   unique()
 
-db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_FULL_Port_Currency.db")
+sim_list <- list()
+db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_FULL_Port_Equity_ERROR_CRRCT.db")
 redo_db <- TRUE
 
-for (i in 1:(length(all_dates_sim) - 1) ) {
+for (i in 1944:(length(all_dates_sim) - 1) ) {
 
   if(i %% 50 == 0) {gc()}
 
@@ -175,7 +174,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1,
       padding_value = 0,
-      lag_value_error = end_period + 1
+      lag_value_error = end_period
     ) %>%
     dplyr::select(Date, Asset,
                   Final_Return,
@@ -195,7 +194,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1,
       padding_value = 0,
-      lag_value_error = end_period + 1
+      lag_value_error = end_period
     ) %>%
     dplyr::select(Date, Asset,
                   predicted_5000 = predicted,
@@ -214,7 +213,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1,
       padding_value = 0,
-      lag_value_error = end_period + 1
+      lag_value_error = end_period
     ) %>%
     dplyr::select(Date, Asset,
                   predicted_2500 = predicted,
@@ -227,6 +226,9 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
     results_temp %>%
     left_join(results_temp2) %>%
     left_join(results_temp3)
+
+  sim_list[[i]] <-
+    results_temp
 
   tictoc::toc()
 
@@ -335,8 +337,8 @@ which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
   "
- predicted_10000 > 1
- "
+predicted_10000 > 1
+"
 
 # trade_statment <-
 #   "

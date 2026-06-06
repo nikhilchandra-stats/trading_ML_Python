@@ -151,9 +151,9 @@ all_dates_sim <-
 
 sim_list <- list()
 db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_Algo_V3.db")
-redo_db <- TRUE
+redo_db <- FALSE
 
-for (i in 3805:(length(all_dates_sim) - 1) ) {
+for (i in 8328:(length(all_dates_sim) - 1) ) {
 
   tictoc::tic()
   portfolio_data <-
@@ -381,29 +381,15 @@ which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
   "
-   (predicted_5000 < trained_mean_5000 - 0.5*trained_sd_5000)|
-   (predicted_10000 < trained_mean_10000 - 0.5*trained_sd_10000)
+  predicted_10000 > trained_mean_10000 + 1.5*trained_sd_10000|
+  predicted_2500 > trained_mean_2500 + 1*trained_sd_2500|
+  predicted_5000 > trained_mean_5000 + 1*trained_sd_5000|
+  portfolio_pred_2500_sd_roll_250 > pred_5000_sd_roll_250 & predicted_5000 > 1.5
 "
 
 trade_statment <-
-  "pred_5000_mean_roll_250 < 6.75"
-
-trade_statment <-
-  "pred_10000_mean_roll_250 < -5"
-
-trade_statment <-
-  "
-  (predicted_2500 > 0 & predicted_10000 < 0)|
-   (predicted_2500 > trained_mean_2500 + 1*trained_sd_2500)|
-   (pred_5000_mean_roll_250 > 0 & predicted_10000 < 0)
-"
-
-trade_statment <-
-  "pred_10000_sd_roll_250 > 17"
-
-trade_statment <-
-  "pred_5000_sd_roll_250 > 10"
-
+  "(trained_sd_1500 > lag(trained_sd_1500) &
+trained_sd_1500 > lag(trained_sd_1500))"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -414,6 +400,16 @@ analyse_performance <-
     trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
   )
 
+
+control_returns <-
+  analyse_performance %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Control")
+
 analyse_performance <-
   analyse_performance %>%
   filter(trade_col == "Long") %>%
@@ -421,11 +417,14 @@ analyse_performance <-
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
   arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return))
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Long")
 
 analyse_performance %>%
+  bind_rows(control_returns) %>%
   ggplot(aes(x = Date, y = Final_Return_Cumulative)) +
   geom_line() +
+  facet_wrap(.~trade_col, scales = "free") +
   theme_minimal()
 
 analyse_performance_sum <-
