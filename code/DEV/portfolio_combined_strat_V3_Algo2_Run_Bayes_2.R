@@ -72,19 +72,14 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port <-
   c(
-    "SPX500_USD",
-    "AU200_AUD",
-    "EU50_EUR",
-    "US2000_USD",
-    "XAU_USD",
-    "XCU_USD",
-    "AUD_USD",
-    "UK100_GBP",
-    "USD_JPY",
-    "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
-
+  "EUR_USD",
+  "GBP_USD",
+  "USD_SEK",
+  "USD_SGD",
+  "USD_CAD",
+  "USD_JPY",
+  "EUR_GBP",
+  "EUR_JPY"
   ) %>% unique()
 
 assets_to_trade <-
@@ -128,14 +123,14 @@ Indices_Metals_Bonds[[2]] <-
 Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
-stop_factor_var = 4
-profit_factor_var = 8
+stop_factor_var = 10
+profit_factor_var = 50
 risk_dollar_value_var = 10
-end_period = 24
+end_period = 50
 trade_direction = "Long"
-end_point_loss = -10
+end_point_loss = -5
 end_point_profit = 20
-training_date <-  "2022-01-17 10:00:00 AEST"
+training_date <-  "2021-09-17 10:00:00 AEST"
 
 tictoc::tic()
 all_preds <-
@@ -156,7 +151,7 @@ all_cor_V3_Data <-
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     all_preds = all_preds,
     assets_to_port = assets_to_port,
-    low_to_price_lengths = c(200, 50, 400),
+    low_to_price_lengths = c(200, 50),
     cor_periods = c(100),
     max_regs = 1000
   )
@@ -306,7 +301,7 @@ results_temp <-
       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
       unique(),
     training_end_date = training_date,
-    regression_length = 18000,
+    regression_length = 15000,
     dependant_var = "Final_Return",
     save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
   ) %>%
@@ -484,13 +479,10 @@ model_prediction_data <-
   )
 
 trade_statment <-
-  "(predicted < 50 & predicted > 30)|(pred_10000_mean_roll_250 > 100)"
+  "predicted < 30 & predicted > 10"
 
 trade_statment <-
-  "(predicted > 100)"
-
-trade_statment <-
-  "(pred_10000_mean_roll_250 > 50)"
+  "pred_10000_mean_roll_250 > 55"
 
 
 analyse_performance <-
@@ -530,7 +522,6 @@ analyse_performance %>%
   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
   facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
-  scale_y_continuous(n.breaks = 10) +
   theme(legend.position = "bottom")
 
 analyse_performance_sum <-

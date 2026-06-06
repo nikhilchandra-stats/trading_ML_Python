@@ -69,11 +69,6 @@ db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
-bin_factor = NULL
-stop_value_var = 10
-profit_value_var = 50
-period_var = 50
-
 Indices_Metals_Bonds <- list()
 
 assets_to_port <-
@@ -118,11 +113,11 @@ Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
 stop_factor_var =10
-profit_factor_var =60
+profit_factor_var =20
 risk_dollar_value_var = 10
 end_period = 50
 trade_direction = "Long"
-end_point_loss = -5
+end_point_loss = -10
 end_point_profit = 20
 
 tictoc::tic()
@@ -152,7 +147,7 @@ tictoc::toc()
 
 all_dates_sim <-
   all_cor_V3_Data[[1]] %>%
-  filter(Date >= as_datetime("2020-01-01") + dhours(15000) ) %>%
+  filter(Date >= as_datetime("2020-01-01") + dhours(20000) ) %>%
   pull(Date) %>%
   unique()
 
@@ -180,9 +175,8 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       end_point_profit = end_point_profit,
       sum_as_portfolio = TRUE
     ) %>%
-    group_by(Date
-             ,Asset
-             ,end_point_loss , end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
+    group_by(Date,end_point_loss ,
+             end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
     summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
     ungroup()
 
@@ -289,7 +283,9 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
           "XCU_USD_AR_LM_Pred_period_return_50_Price", "AUD_USD_AR_LM_Pred_period_return_50_Price",
           "UK100_GBP_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price",
           "WTICO_USD_AR_LM_Pred_period_return_50_Price", "HK33_HKD_AR_LM_Pred_period_return_50_Price",
-          "USD_SEK_AR_LM_Pred_period_return_50_Price")
+          "USD_SEK_AR_LM_Pred_period_return_50_Price") %>% unique(),
+      lag_dependant = end_period + 1,
+      total_lag_cols = 25
     )
 
   all_cor_vars <-
@@ -303,60 +299,59 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
     Porfolio_get_V3_LM_Model_TOTAL_SUM(
       reg_dat = temp_reg_data,
       reg_vars =
-        c(all_cor_V3_Data[[3]],all_cor_vars, "Asset") %>%
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
         unique(),
       training_end_date = all_dates_sim[i],
-      regression_length = 10000,
+      regression_length = 15000,
       dependant_var = "Final_Return",
-      sig_thresh_LM = 1,
+      sig_thresh_LM = 0.1,
       taking_trade = FALSE
     ) %>%
     dplyr::select(Date
-                  ,Asset
                   ,Final_Return,
                   predicted_10000 = predicted,
                   trained_mean_10000 = trained_mean,
                   trained_sd_10000 = trained_sd) %>%
     filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
-  # results_temp2 <-
-  #   Porfolio_get_V3_LM_Model_TOTAL_SUM(
-  #     reg_dat = temp_reg_data,
-  #     reg_vars =
-  #       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
-  #       unique(),
-  #     training_end_date = all_dates_sim[i],
-  #     regression_length = 5000,
-  #     dependant_var = "Final_Return",
-  #     sig_thresh_LM = 0.15
-  #   ) %>%
-  #   dplyr::select(Date,
-  #                 predicted_5000 = predicted,
-  #                 trained_mean_5000 = trained_mean,
-  #                 trained_sd_5000 = trained_sd) %>%
-  #   filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
-  #
-  # results_temp3 <-
-  #   Porfolio_get_V3_LM_Model_TOTAL_SUM(
-  #     reg_dat = temp_reg_data,
-  #     reg_vars =
-  #       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
-  #       unique(),
-  #     training_end_date = all_dates_sim[i],
-  #     regression_length = 2500,
-  #     dependant_var = "Final_Return",
-  #     sig_thresh_LM = 0.1
-  #   ) %>%
-  #   dplyr::select(Date,
-  #                 predicted_2500 = predicted,
-  #                 trained_mean_2500 = trained_mean,
-  #                 trained_sd_2500 = trained_sd) %>%
-  #   filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+  results_temp2 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      reg_dat = temp_reg_data,
+      reg_vars =
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
+        unique(),
+      training_end_date = all_dates_sim[i],
+      regression_length = 10000,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 0.1
+    ) %>%
+    dplyr::select(Date,
+                  predicted_5000 = predicted,
+                  trained_mean_5000 = trained_mean,
+                  trained_sd_5000 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+
+  results_temp3 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      reg_dat = temp_reg_data,
+      reg_vars =
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
+        unique(),
+      training_end_date = all_dates_sim[i],
+      regression_length = 5000,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 0.05
+    ) %>%
+    dplyr::select(Date,
+                  predicted_2500 = predicted,
+                  trained_mean_2500 = trained_mean,
+                  trained_sd_2500 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
   results_temp <-
-    results_temp
-    # left_join(results_temp2) %>%
-    # left_join(results_temp3)
+    results_temp %>%
+    left_join(results_temp2) %>%
+    left_join(results_temp3)
 
   tictoc::toc()
 
