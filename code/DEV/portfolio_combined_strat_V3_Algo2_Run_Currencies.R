@@ -78,19 +78,11 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port <-
   c(
-    "SPX500_USD",
-    "AU200_AUD",
-    "EU50_EUR",
-    "US2000_USD",
-    "XAU_USD",
-    "XCU_USD",
-    "AUD_USD",
-    "UK100_GBP",
-    "USD_JPY",
-    "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
-
+    "EUR_JPY",
+    "EUR_USD",
+    "EUR_GBP",
+    "GBP_USD",
+    "GBP_JPY"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -122,8 +114,8 @@ profit_factor_var =60
 risk_dollar_value_var = 10
 end_period = 50
 trade_direction = "Long"
-end_point_loss = -5
-end_point_profit = 20
+end_point_loss = -10
+end_point_profit = 12
 
 tictoc::tic()
 all_preds <-
@@ -157,7 +149,7 @@ all_dates_sim <-
   unique()
 
 sim_list <- list()
-db_sim_results_con <- connect_db("C:/Users/nikhi/Documents/trade_data/db_sim_results_PORT_V3_Asset.db")
+db_sim_results_con <- connect_db("C:/Users/nikhi/Documents/trade_data/db_sim_results_PORT_V3_Currencies.db")
 redo_db <- TRUE
 
 for (i in 1:(length(all_dates_sim) - 1) ) {
@@ -180,9 +172,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       end_point_profit = end_point_profit,
       sum_as_portfolio = TRUE
     ) %>%
-    group_by(Date
-             ,Asset
-             ,end_point_loss , end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
+    group_by(Date, end_point_loss , end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
     summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
     ungroup()
 
@@ -281,7 +271,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c("USD_SEK_AR_LM_Pred_period_return_50_Price", "USD_SEK_state_space_LM_Pred_period_return_50_Price", "cor_LM9_AR_SS"),
         c("WTICO_USD_AR_LM_Pred_period_return_50_Price", "WTICO_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM10_AR_SS"),
         c("USD_JPY_AR_LM_Pred_period_return_50_Price", "USD_JPY_state_space_LM_Pred_period_return_50_Price", "cor_LM10_AR_SS")
-        ),
+      ),
       error_calc_cols =
         c("SPX500_USD_AR_LM_Pred_period_return_50_Price", "AU200_AUD_AR_LM_Pred_period_return_50_Price",
           "EU50_EUR_AR_LM_Pred_period_return_50_Price", "US2000_USD_AR_LM_Pred_period_return_50_Price",
@@ -303,7 +293,7 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
     Porfolio_get_V3_LM_Model_TOTAL_SUM(
       reg_dat = temp_reg_data,
       reg_vars =
-        c(all_cor_V3_Data[[3]],all_cor_vars, "Asset") %>%
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
         unique(),
       training_end_date = all_dates_sim[i],
       regression_length = 10000,
@@ -311,52 +301,51 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       sig_thresh_LM = 1,
       taking_trade = FALSE
     ) %>%
-    dplyr::select(Date
-                  ,Asset
-                  ,Final_Return,
+    dplyr::select(Date,
+                  Final_Return,
                   predicted_10000 = predicted,
                   trained_mean_10000 = trained_mean,
                   trained_sd_10000 = trained_sd) %>%
     filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
-  # results_temp2 <-
-  #   Porfolio_get_V3_LM_Model_TOTAL_SUM(
-  #     reg_dat = temp_reg_data,
-  #     reg_vars =
-  #       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
-  #       unique(),
-  #     training_end_date = all_dates_sim[i],
-  #     regression_length = 5000,
-  #     dependant_var = "Final_Return",
-  #     sig_thresh_LM = 0.15
-  #   ) %>%
-  #   dplyr::select(Date,
-  #                 predicted_5000 = predicted,
-  #                 trained_mean_5000 = trained_mean,
-  #                 trained_sd_5000 = trained_sd) %>%
-  #   filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
-  #
-  # results_temp3 <-
-  #   Porfolio_get_V3_LM_Model_TOTAL_SUM(
-  #     reg_dat = temp_reg_data,
-  #     reg_vars =
-  #       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
-  #       unique(),
-  #     training_end_date = all_dates_sim[i],
-  #     regression_length = 2500,
-  #     dependant_var = "Final_Return",
-  #     sig_thresh_LM = 0.1
-  #   ) %>%
-  #   dplyr::select(Date,
-  #                 predicted_2500 = predicted,
-  #                 trained_mean_2500 = trained_mean,
-  #                 trained_sd_2500 = trained_sd) %>%
-  #   filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+  results_temp2 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      reg_dat = temp_reg_data,
+      reg_vars =
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
+        unique(),
+      training_end_date = all_dates_sim[i],
+      regression_length = 5000,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 1
+    ) %>%
+    dplyr::select(Date,
+                  predicted_5000 = predicted,
+                  trained_mean_5000 = trained_mean,
+                  trained_sd_5000 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+
+  results_temp3 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      reg_dat = temp_reg_data,
+      reg_vars =
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
+        unique(),
+      training_end_date = all_dates_sim[i],
+      regression_length = 2500,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 1
+    ) %>%
+    dplyr::select(Date,
+                  predicted_2500 = predicted,
+                  trained_mean_2500 = trained_mean,
+                  trained_sd_2500 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
   results_temp <-
-    results_temp
-    # left_join(results_temp2) %>%
-    # left_join(results_temp3)
+    results_temp %>%
+    left_join(results_temp2) %>%
+    left_join(results_temp3)
 
   tictoc::toc()
 
@@ -393,7 +382,7 @@ actual_final_returns <-
     end_point_profit = end_point_profit,
     sum_as_portfolio = TRUE
   ) %>%
-  group_by(Date, Asset) %>%
+  group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return, na.rm = T))
 
 model_prediction_data <-
@@ -402,14 +391,12 @@ model_prediction_data <-
   mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
   mutate(
     Averaged_Pred =
-      (predicted_10000 + predicted_5000 + predicted_2500)/3
+      (predicted_10000 + predicted_5000 + predicted_2500 + predicted_1500)/4
   ) %>%
   dplyr::select(-Final_Return) %>%
   left_join(actual_final_returns %>%  dplyr::select(Date, Final_Return)) %>%
   ungroup() %>%
-  group_by(Asset) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  group_by(Asset) %>%
+  arrange(Date) %>%
   mutate(
     pred_10000_mean_roll_250 =
       slider::slide_dbl(.x  = predicted_10000, .f = ~ mean(.x, na.rm = T), .before = 250),
@@ -417,13 +404,17 @@ model_prediction_data <-
       slider::slide_dbl(.x  = predicted_5000, .f = ~ mean(.x, na.rm = T), .before = 250),
     portfolio_pred_2500_mean_roll_250 =
       slider::slide_dbl(.x  = predicted_2500, .f = ~ mean(.x, na.rm = T), .before = 250),
+    portfolio_pred_1500_mean_roll_250 =
+      slider::slide_dbl(.x  = predicted_1500, .f = ~ mean(.x, na.rm = T), .before = 250),
 
     pred_10000_sd_roll_250 =
       slider::slide_dbl(.x  = predicted_10000, .f = ~ sd(.x, na.rm = T), .before = 250),
     pred_5000_sd_roll_250 =
       slider::slide_dbl(.x  = predicted_5000, .f = ~ sd(.x, na.rm = T), .before = 250),
     portfolio_pred_2500_sd_roll_250 =
-      slider::slide_dbl(.x  = predicted_2500, .f = ~ sd(.x, na.rm = T), .before = 250)
+      slider::slide_dbl(.x  = predicted_2500, .f = ~ sd(.x, na.rm = T), .before = 250),
+    portfolio_pred_1500_sd_roll_250 =
+      slider::slide_dbl(.x  = predicted_1500, .f = ~ sd(.x, na.rm = T), .before = 250)
 
   ) %>%
   ungroup()
@@ -434,11 +425,30 @@ model_prediction_data %>%
 which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
-  "predicted_10000 > trained_mean_10000 + 0.75*trained_sd_10000 &
-  predicted_10000 < trained_mean_10000 + 1.75*trained_sd_10000"
+  "
+   (predicted_5000 < trained_mean_5000 - 0.5*trained_sd_5000)|
+   (predicted_10000 < trained_mean_10000 - 0.5*trained_sd_10000)
+"
 
 trade_statment <-
-  "predicted_10000 - 60 > 0"
+  "pred_5000_mean_roll_250 < 6.75"
+
+trade_statment <-
+  "pred_10000_mean_roll_250 < -5"
+
+trade_statment <-
+  "
+  (predicted_2500 > 0 & predicted_10000 < 0)|
+   (predicted_2500 > trained_mean_2500 + 1*trained_sd_2500)|
+   (pred_5000_mean_roll_250 > 0 & predicted_10000 < 0)
+"
+
+trade_statment <-
+  "pred_10000_sd_roll_250 > 17"
+
+trade_statment <-
+  "pred_5000_sd_roll_250 > 10"
+
 
 analyse_performance <-
   model_prediction_data %>%
@@ -449,15 +459,6 @@ analyse_performance <-
     trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
   )
 
-control <-
-  analyse_performance %>%
-  group_by(Date) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  mutate(trade_col = "Control")
-
 analyse_performance <-
   analyse_performance %>%
   filter(trade_col == "Long") %>%
@@ -465,16 +466,11 @@ analyse_performance <-
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
   arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  mutate(trade_col = "Long")
+  mutate(Final_Return_Cumulative = cumsum(Final_Return))
 
 analyse_performance %>%
-  bind_rows(control) %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             # ,color = trade_col
-             )) +
+  ggplot(aes(x = Date, y = Final_Return_Cumulative)) +
   geom_line() +
-  facet_wrap(.~trade_col, scales = "free") +
   theme_minimal()
 
 analyse_performance_sum <-

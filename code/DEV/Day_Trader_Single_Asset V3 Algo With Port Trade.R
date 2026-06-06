@@ -5,7 +5,7 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
+  save_path_oanda_assets = "D://Asset Data/oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
@@ -90,56 +90,21 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "D://Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
-All_Daily_Data <-
-  get_DAILY_ALGO_DATA_API_REQUEST(
-    c("EUR_USD", #1
-      "EU50_EUR", #2
-      "SPX500_USD", #3
-      "US2000_USD", #4
-      "USB10Y_USD", #5
-      "USD_JPY", #6
-      "AUD_USD", #7
-      "EUR_GBP", #8
-      "AU200_AUD" ,#9
-      "EUR_AUD", #10
-      "WTICO_USD", #11
-      "UK100_GBP", #12
-      "USD_CAD", #13
-      "GBP_USD", #14
-      "GBP_CAD", #15
-      "EUR_JPY", #16
-      "EUR_NZD", #17
-      "XAG_USD", #18
-      "XAG_EUR", #19
-      "XAG_AUD", #20
-      "XAG_NZD", #21
-      "HK33_HKD", #22
-      "FR40_EUR", #23
-      "BTC_USD", #24
-      "XAG_GBP", #25
-      "GBP_AUD", #26
-      "USD_SEK", #27
-      "USD_SGD", #28
-      "NZD_USD", #29
-      "GBP_NZD", #30
-      "XCU_USD", #31
-      "NATGAS_USD", #32
-      "GBP_JPY", #33
-      "SG30_SGD", #34
-      "XAU_USD", #35
-      "EUR_SEK", #36
-      "XAU_AUD", #37
-      "UK10YB_GBP", #38
-      "JP225Y_JPY", #39
-      "ETH_USD" #40
-    ) %>% unique()
-  )
-
 Indices_Metals_Bonds <- list()
+
+assets_to_port <-
+  c(    "XAG_USD", #18
+        "HK33_HKD", #22
+        "FR40_EUR", #23
+        "BTC_USD", #24
+        "NATGAS_USD", #32
+        "JP225Y_JPY",
+        "XAU_USD"
+  ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -148,21 +113,19 @@ Indices_Metals_Bonds[[1]] <-
     end_date = as.character(today() + days(30)),
     time_frame = "H1",
     bid_or_ask = "ask",
-    assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
-                 "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
-                 "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
-                 "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
-                 "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
-                 "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
-                 "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
-                 "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
-                 "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
-                 "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
-                 "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
-                 "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD")
+    assets = assets_to_port
   ) %>%
   distinct()
-Indices_Metals_Bonds[[2]] <- NULL
+Indices_Metals_Bonds[[2]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    time_frame = "H1",
+    bid_or_ask = "bid",
+    assets = assets_to_port
+  ) %>%
+  distinct()
 
 gc()
 rm(missing_assets)
@@ -197,10 +160,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close.db"
+  "D://trade_data/trade_tracker_daily_buy_close.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "D://Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -218,53 +181,10 @@ gc()
 load_custom_functions()
 gc()
 
-assets_to_use <-
-  c("EUR_USD", #1
-    "EU50_EUR", #2
-    "SPX500_USD", #3
-    "US2000_USD", #4
-    "USB10Y_USD", #5
-    "USD_JPY", #6
-    "AUD_USD", #7
-    "EUR_GBP", #8
-    "AU200_AUD" ,#9
-    "EUR_AUD", #10
-    "WTICO_USD", #11
-    "UK100_GBP", #12
-    "USD_CAD", #13
-    "GBP_USD", #14
-    "GBP_CAD", #15
-    "EUR_JPY", #16
-    "EUR_NZD", #17
-    "XAG_USD", #18
-    # "XAG_EUR", #19
-    # "XAG_AUD", #20
-    # "XAG_NZD", #21
-    "HK33_HKD", #22
-    "FR40_EUR", #23
-    "BTC_USD", #24
-    # "XAG_GBP", #25
-    "GBP_AUD", #26
-    "USD_SEK", #27
-    "USD_SGD", #28
-    "NZD_USD", #29
-    "GBP_NZD", #30
-    "XCU_USD", #31
-    "NATGAS_USD", #32
-    "GBP_JPY", #33
-    "SG30_SGD", #34
-    "XAU_USD", #35
-    "EUR_SEK", #36
-    # "XAU_AUD", #37
-    "UK10YB_GBP", #38
-    "JP225Y_JPY", #39
-    "ETH_USD" #40
-  )
+assets_to_use <- assets_to_port
 
-source("code/trade_statement/trade_statement_v3.R")
-trade_statement_2
-
-assets_to_use <- assets_to_use[1:16]
+trade_statement <-
+  "predicted_10000 > 0 & predicted_5000 > 0"
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -361,41 +281,20 @@ while (current_time < end_time) {
           end_date = as.character(today() + days(30)),
           time_frame = "H1",
           bid_or_ask = "ask",
-          # assets =   c("SPX500_USD","US2000_USD","EU50_EUR","SG30_SGD" ,
-          #              "AU200_AUD" ,"XAG_USD","XAU_USD","USD_JPY" ,
-          #              "AUD_USD" ,"UK100_GBP" ,"JP225Y_JPY","FR40_EUR" ,
-          #              "CH20_CHF","USB10Y_USD","USB02Y_USD" ,"UK10YB_GBP" ,
-          #              "HK33_HKD" ,"EUR_USD" ,"GBP_USD" ,"XAG_EUR" ,
-          #              "XAU_EUR" ,"XAU_GBP" ,"XAG_GBP" ,"EUR_GBP" ,
-          #              "WTICO_USD" ,"BCO_USD" ,"XCU_USD" ,"XAU_JPY",
-          #              "XAG_JPY" ,"XAU_AUD" ,"XAG_AUD" ,"USD_CAD" ,
-          #              "EUR_AUD" ,"NZD_USD" ,"EUR_NZD" ,"AUD_NZD" ,
-          #              "GBP_AUD" ,"GBP_NZD" ,"GBP_CAD" ,"GBP_JPY" ,
-          #              "USD_SGD" ,"EUR_JPY" , "BTC_USD" ,"ETH_USD" ,"NATGAS_USD" ,
-          #              "EUR_SEK" ,"USD_SEK" ,"LTC_USD" , "XAG_NZD"),
-          assets =
-            c("EUR_USD","EU50_EUR","SPX500_USD","US2000_USD","USB10Y_USD",
-              "USD_JPY","AUD_USD", "EUR_GBP","AU200_AUD","EUR_AUD","WTICO_USD",
-              "UK100_GBP","USD_CAD","GBP_USD","GBP_CAD","EUR_JPY","EUR_NZD",
-              "XAG_USD","HK33_HKD")
+          assets = assets_to_port
         ) %>%
         distinct()
 
-      Indices_Metals_Bonds[[2]] <- NULL
-
-      if(current_hour == 0 | current_hour == 6 | current_hour == 12 |current_hour == 18  ) {
-        # All_Daily_Data <-
-        #   get_DAILY_ALGO_DATA_API_REQUEST() %>%
-        #   distinct() %>%
-        #   filter(Asset %in% asset_list_oanda_single_asset)
-      }
-
-      #--------------------------------------------------Macro Only Trades
-      if(current_hour %% 2 == 0) {
-        total_trades_macro_only_port_stops <- NULL
-      } else {
-        total_trades_macro_only_port_stops <- NULL
-      }
+      Indices_Metals_Bonds[[2]] <-
+        get_db_data_quickly_algo(
+          db_location = db_location,
+          start_date = start_date,
+          end_date = as.character(today() + days(30)),
+          time_frame = "H1",
+          bid_or_ask = "bid",
+          assets = assets_to_port
+        ) %>%
+        distinct()
 
       #-----------Single Asset Model
 
@@ -405,78 +304,80 @@ while (current_time < end_time) {
       ) {
 
         tictoc::tic()
-        single_asset_model_trades <-
-          Single_Asset_V3_get_all_preds(
+        all_preds <-
+          Portfolio_get_all_preds_frm_V3(
             Indices_Metals_Bonds = Indices_Metals_Bonds,
             raw_macro_data = raw_macro_data,
-            base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+            base_path = "D:/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
             actuals_periods_needed = c("period_return_50_Price"),
-            correlation_rolling_periods = c(100,200, 300,400, 500),
-            state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
+            state_space_periods = c(20, 40, 60, 100, 200,300, 400, 500),
             state_space_rolling = c(100, 200, 300, 400),
             date_for_true_simualtion = "2019-01-01",
             training_end_date = "2021-01-01",
-            asset_index_start = 1,
-            asset_index_end = 16
+            assets_to_test = assets_to_port
+          )
+
+        stop_factor_var =5
+        profit_factor_var =10
+        risk_dollar_value_var = 10
+        risk_dollar_value = risk_dollar_value_var
+        end_period = 24
+        trade_direction = "Long"
+        end_point_loss = -7.5
+        end_point_profit = 15
+
+        all_preds_diff_cor <-
+          Portfolio_get_V3_Cor_DIFF_Preds(
+            all_preds = all_preds,
+            asset_data = Indices_Metals_Bonds,
+            asset_of_interest = assets_to_port,
+            stop_factor_var = stop_factor_var,
+            profit_factor_var = profit_factor_var,
+            risk_dollar_value_var = risk_dollar_value_var,
+            end_period = end_period,
+            time_frame = "H1",
+            trade_direction = trade_direction,
+            currency_conversion = currency_conversion,
+            asset_infor = asset_infor,
+            end_point_loss = end_point_loss,
+            end_point_profit = end_point_profit,
+            sum_as_portfolio = TRUE,
+            low_to_price_lengths = c(200),
+            cor_periods = c(200),
+            max_regs = 1000,
+            # training_end_date = as.character(floor_date(current_time, "hour")),
+            training_end_date = as.character("2026-04-08 17:00:00 AEST"),
+            dependant_var = "Final_Return",
+            sig_thresh_LM = 0.1
           )
         tictoc::toc()
-
-        # max_date_in_data <-
-        #   Indices_Metals_Bonds[[1]] %>%
-        #   slice_max(Date) %>%
-        #   pull(Date) %>%
-        #   unique() %>%
-        #   as_datetime(tz = "Australia/Canberra")
 
         max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
         rm(Indices_Metals_Bonds)
         gc()
 
-        single_asset_model_trades_filt <-
-          single_asset_model_trades %>%
+        trade_dates <-
+          all_preds_diff_cor %>%
           mutate(
             trade_col =
               eval(parse(text = trade_statement))
           ) %>%
           filter(trade_col == TRUE) %>%
-          distinct(Asset, Date)
-
-        single_asset_model_trades_filt_2 <-
-          single_asset_model_trades %>%
-          mutate(
-            trade_col =
-              eval(parse(text = trade_statement_2))
-          ) %>%
-          filter(trade_col == TRUE) %>%
-          distinct(Asset, Date)
+          distinct(Date) %>%
+          slice_max(Date) %>%
+          pull(Date) %>%
+          unique() %>%
+          as_datetime()
 
         current_prices_ask <-
           read_all_asset_data_intra_day(
-            asset_list_oanda =
-              c(
-                "EUR_USD", #1
-                "EU50_EUR", #2
-                "SPX500_USD", #3
-                "US2000_USD", #4
-                "USB10Y_USD", #5
-                "USD_JPY", #6
-                "AUD_USD", #7
-                "EUR_GBP", #8
-                "AU200_AUD" ,#9
-                "EUR_AUD", #10
-                "WTICO_USD", #11
-                "UK100_GBP", #12
-                "USD_CAD", #13
-                "GBP_USD", #14
-                "GBP_CAD", #15
-                "EUR_JPY" #16
-              ),
-            save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
+            asset_list_oanda = assets_to_port,
+            save_path_oanda_assets = "D://Asset Data/oanda_data/",
             read_csv_or_API = "API",
             time_frame = "H1",
             bid_or_ask = "ask",
             how_far_back = 2,
-            start_date = as.character(how_far_back_date)
+            start_date = as_date(today() - days(2))
           )%>%
           map_dfr(bind_rows) %>%
           group_by(Asset) %>%
@@ -484,13 +385,20 @@ while (current_time < end_time) {
           ungroup()
 
         single_asset_model_trades_filt <-
-          single_asset_model_trades_filt %>%
-          distinct(Asset, Date) %>%
+          assets_to_port %>%
+          map_dfr(
+            ~ tibble(
+              Asset = .x,
+              Date = trade_dates
+            )
+          ) %>%
           mutate(trade_col = "Long",
-                 stop_factor = 10,
-                 profit_factor = 50,
-                 periods_ahead = 50,
-                 risk_dollar_value = risk_dollar_value
+                 stop_factor = stop_factor_var,
+                 profit_factor = profit_factor_var,
+                 periods_ahead = end_period,
+                 risk_dollar_value = risk_dollar_value_var,
+                 end_point_loss = end_point_loss,
+                 end_point_profit = end_point_profit
           ) %>%
           group_by(Asset) %>%
           slice_max(Date) %>%
@@ -516,89 +424,6 @@ while (current_time < end_time) {
           ungroup() %>%
           filter(time_diff <= 70 & date_check == TRUE) %>%
           filter(max_date_in_data <= Date)
-
-        single_asset_model_trades_filt_2 <-
-          single_asset_model_trades_filt_2 %>%
-          distinct(Asset, Date) %>%
-          mutate(trade_col = "Long",
-                 stop_factor =
-                   case_when(
-                     Asset == 'HK33_HKD' ~ 2,
-                     Asset == "BTC_USD" ~ 5,
-                     Asset == "AUD_USD" ~ 3,
-                     Asset == "USD_JPY" ~ 3,
-                     Asset == "WTICO_USD" ~ 2,
-                     Asset == "SG30_SGD" ~ 5,
-                     Asset == "XCU_USD" ~ 4,
-                     Asset == "XAU_USD" ~ 3,
-                     Asset == "AU200_AUD" ~ 3,
-                     Asset == "EU50_EUR" ~ 3,
-                     Asset == "USD_JPY" ~ 4,
-                     Asset == "NZD_USD" ~ 5,
-                     Asset == "SPX500_USD" ~ 4
-                   ),
-                 profit_factor =
-                   case_when(
-                     Asset == 'HK33_HKD' ~ 3,
-                     Asset == "BTC_USD" ~ 10,
-                     Asset == "AUD_USD" ~ 6,
-                     Asset == "USD_JPY" ~ 6,
-                     Asset == "WTICO_USD" ~ 4,
-                     Asset == "SG30_SGD" ~ 10,
-                     Asset == "XCU_USD" ~ 8,
-                     Asset == "XAU_USD" ~ 6,
-                     Asset == "AU200_AUD" ~ 6,
-                     Asset == "EU50_EUR" ~ 6,
-                     Asset == "USD_JPY" ~ 8,
-                     Asset == "NZD_USD" ~ 10,
-                     Asset == "SPX500_USD" ~ 8
-                   ),
-                 periods_ahead =
-                   case_when(
-                     Asset == 'HK33_HKD' ~ 12,
-                     Asset == "BTC_USD" ~ 12,
-                     Asset == "AUD_USD" ~ 24,
-                     Asset == "USD_JPY" ~ 12,
-                     Asset == "WTICO_USD" ~ 12,
-                     Asset == "SG30_SGD" ~ 24,
-                     Asset == "XCU_USD" ~ 12,
-                     Asset == "XAU_USD" ~ 12,
-                     Asset == "AU200_AUD" ~ 12,
-                     Asset == "EU50_EUR" ~ 12,
-                     Asset == "USD_JPY" ~ 24,
-                     Asset == "NZD_USD" ~ 24,
-                     Asset == "SPX500_USD" ~ 24
-                   ),
-                 risk_dollar_value = risk_dollar_value
-          ) %>%
-          group_by(Asset) %>%
-          slice_max(Date) %>%
-          ungroup() %>%
-          left_join(current_prices_ask %>%
-                      group_by(Asset) %>%
-                      slice_max(Date) %>%
-                      ungroup() %>%
-                      dplyr::select(-Date)) %>%
-          mutate(
-            time_diff =
-              abs(
-                as.numeric(
-                  as_datetime(Date, tz = "Australia/Canberra") -
-                    as_datetime(current_time, tz = "Australia/Canberra"),
-                  units = "mins"
-                )
-              ),
-            date_check = max_date_in_data <= Date
-          ) %>%
-          group_by(Asset) %>%
-          slice_min(time_diff) %>%
-          ungroup() %>%
-          filter(time_diff <= 70 & date_check == TRUE) %>%
-          filter(max_date_in_data <= Date)
-
-        single_asset_model_trades_filt <-
-          single_asset_model_trades_filt %>%
-          bind_rows(single_asset_model_trades_filt_2)
 
       } else {
 
@@ -631,7 +456,9 @@ while (current_time < end_time) {
               )
           ) %>%
           mutate(
-            periods_ahead = as.character(periods_ahead)
+            periods_ahead = as.character(periods_ahead),
+            end_point_loss = as.character(end_point_loss),
+            end_point_profit = as.character(end_point_profit)
           ) %>%
           ungroup() %>%
           distinct()
@@ -707,7 +534,10 @@ while (current_time < end_time) {
                      account_var = long_account_num,
                      account_name = account_name_long,
                      status = "OPEN",
-                     periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+                     periods_ahead = total_trades$periods_ahead[i] %>% as.numeric(),
+                     end_point_loss = total_trades$end_point_loss[i] %>% as.numeric(),
+                     end_point_profit = total_trades$end_point_profit[i] %>% as.numeric()
+                     )
 
             append_table_sql_lite(.data = cleaned_trade_details,
                                   table_name = "trade_tracker",
@@ -739,7 +569,9 @@ while (current_time < end_time) {
                      account_var = short_account_num,
                      account_name = account_name_short,
                      status = "OPEN",
-                     periods_ahead = total_trades$periods_ahead[i] %>% as.numeric())
+                     periods_ahead = total_trades$periods_ahead[i] %>% as.numeric(),
+                     end_point_loss = total_trades$end_point_loss[i] %>% as.numeric(),
+                     end_point_profit = total_trades$end_point_profit[i] %>% as.numeric() )
 
             append_table_sql_lite(.data = cleaned_trade_details,
                                   table_name = "trade_tracker",
@@ -774,7 +606,7 @@ while (current_time < end_time) {
 
     trades_from_DB <-
       DBI::dbGetQuery(conn = trade_tracker_DB,
-                      statement = "SELECT * FROM trade_tracker") %>%
+                      statement = "SELECT * FROM trade_tracker_dollar") %>%
       filter(
         Asset %in% assets_to_use
       )
@@ -785,25 +617,25 @@ while (current_time < end_time) {
         trades_from_DB %>%
         filter(status == "OPEN") %>%
         filter(account_var == long_account_num) %>%
-        dplyr::select(tradeID, Asset, periods_ahead, account_name)
+        dplyr::select(tradeID, Asset, periods_ahead, account_name, end_point_loss, end_point_profit)
 
       account_Long_2_Ids <-
         trades_from_DB %>%
         filter(status == "OPEN") %>%
         filter(account_var == long_account_num_equity) %>%
-        dplyr::select(tradeID, Asset, periods_ahead, account_name)
+        dplyr::select(tradeID, Asset, periods_ahead, account_name, end_point_loss, end_point_profit)
 
       account_Short_1_Ids <-
         trades_from_DB %>%
         filter(status == "OPEN") %>%
         filter(account_var == short_account_num) %>%
-        dplyr::select(tradeID, Asset, periods_ahead, account_name)
+        dplyr::select(tradeID, Asset, periods_ahead, account_name, end_point_loss, end_point_profit)
 
       account_Short_2_Ids <-
         trades_from_DB %>%
         filter(status == "OPEN") %>%
         filter(account_var == short_account_num_equity) %>%
-        dplyr::select(tradeID, Asset, periods_ahead, account_name)
+        dplyr::select(tradeID, Asset, periods_ahead, account_name, end_point_loss, end_point_profit)
 
       open_positions_account_long1 <-
         get_Open_positions(account_var = long_account_num) %>%
@@ -868,33 +700,22 @@ while (current_time < end_time) {
                    time_in_process =  abs(as.numeric(current_time - openTime, units = "hours")),
                    flagged_for_close = time_in_process >= periods_ahead)
         ) %>%
-        mutate(time_in_process = as.numeric(time_in_process)) %>%
+        mutate(time_in_process = as.numeric(time_in_process),
+               unrealizedPL = as.numeric(unrealizedPL),
+               trueUnrealizedPL = as.numeric(trueUnrealizedPL)) %>%
         mutate(
-          flagged_for_close = time_in_process >= periods_ahead
+          flagged_for_close =
+            (time_in_process >= periods_ahead) | (trueUnrealizedPL >= end_point_profit) |
+            (trueUnrealizedPL <= end_point_loss)
         )
 
-      estimated_running_profit <-
+      positions_tagged_as_part_of_algo <-
         positions_tagged_as_part_of_algo_raw %>%
-        mutate(unrealizedPL = as.numeric(unrealizedPL)) %>%
-        summarise(unrealizedPL = sum(unrealizedPL, na.rm = T),
-                  EstimatedTotal_risk = risk_dollar_value*n())
+        filter(
+          (time_in_process >= periods_ahead) | (trueUnrealizedPL >= end_point_profit) |
+            (trueUnrealizedPL <= end_point_loss) | flagged_for_close == TRUE
+        )
 
-      if(estimated_running_profit$unrealizedPL[1] < 10000 ) {
-        positions_tagged_as_part_of_algo <-
-          positions_tagged_as_part_of_algo_raw %>%
-          filter(
-            (flagged_for_close  == TRUE| time_in_process >= periods_ahead | time_in_process >= 48) &
-              id != "18487"
-          )
-      }
-
-      if(estimated_running_profit$unrealizedPL[1] >= 10000 ) {
-        positions_tagged_as_part_of_algo <-
-          positions_tagged_as_part_of_algo_raw %>%
-          filter(
-            id != "18487"
-          )
-      }
 
       if(dim(positions_tagged_as_part_of_algo)[1] > 0) {
 

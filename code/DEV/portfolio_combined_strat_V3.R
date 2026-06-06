@@ -191,7 +191,7 @@ reg_vars_stripped <-
   # keep(~ str_detect(.x, "cor_")|!str_detect(.x, "diff") ) %>%
   # unlist()
 
-for (i in 852:(length(all_dates_sim) - 1) ) {
+for (i in 11865:(length(all_dates_sim) - 1) ) {
 
   tictoc::tic()
   results_temp <-

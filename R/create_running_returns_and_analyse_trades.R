@@ -2692,7 +2692,7 @@ get_portfolio_model_fast_summed <-
     actuals_data <-
       get_actual_wins_losses(
         assets_to_analyse =asset_of_interest,
-        asset_data = Indices_Metals_Bonds,
+        asset_data = asset_data,
         stop_factor = stop_factor_var,
         profit_factor = profit_factor_var,
         risk_dollar_value = risk_dollar_value_var,

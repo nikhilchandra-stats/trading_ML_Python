@@ -69,27 +69,19 @@ db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
-bin_factor = NULL
-stop_value_var = 10
-profit_value_var = 50
-period_var = 50
-
 Indices_Metals_Bonds <- list()
 
 assets_to_port <-
   c(
     "SPX500_USD",
-    "AU200_AUD",
     "EU50_EUR",
     "US2000_USD",
     "XAU_USD",
     "XCU_USD",
-    "AUD_USD",
     "UK100_GBP",
     "USD_JPY",
     "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
+    "HK33_HKD"
 
   ) %>% unique()
 
@@ -117,13 +109,13 @@ Indices_Metals_Bonds[[2]] <-
 Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
-stop_factor_var =10
-profit_factor_var =60
+stop_factor_var =5
+profit_factor_var =10
 risk_dollar_value_var = 10
-end_period = 50
+end_period = 24
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 20
+end_point_profit = 10
 
 tictoc::tic()
 all_preds <-
@@ -191,21 +183,18 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
       all_dat_pivoted  = all_cor_V3_Data[[1]],
       correlation_data = all_cor_V3_Data[[2]],
       portfolio_data = portfolio_data,
+      lag_dependant = end_period,
+      total_lag_cols = 25,
       additional_cor_vars = list(
         c("XCU_USD_state_space_LM_Pred_period_return_50_Price", "XAU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM1"),
         c("HK33_HKD_state_space_LM_Pred_period_return_50_Price", "XAU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM2"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "XAU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM3"),
         c("UK100_GBP_state_space_LM_Pred_period_return_50_Price", "XAU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM4"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "HK33_HKD_state_space_LM_Pred_period_return_50_Price", "cor_LM5"),
-        c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "AUD_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM6"),
-        c("US2000_USD_state_space_LM_Pred_period_return_50_Price", "AUD_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM7"),
-        c("HK33_HKD_state_space_LM_Pred_period_return_50_Price", "AUD_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM8"),
-        c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "AUD_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM9"),
         c("UK100_GBP_state_space_LM_Pred_period_return_50_Price", "XAU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM10"),
         c("EU50_EUR_state_space_LM_Pred_period_return_50_Price", "XAU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM11"),
         c("EU50_EUR_state_space_LM_Pred_period_return_50_Price", "SPX500_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM12"),
         c("EU50_EUR_state_space_LM_Pred_period_return_50_Price", "XCU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM13"),
-        c("EU50_EUR_state_space_LM_Pred_period_return_50_Price", "USD_SEK_state_space_LM_Pred_period_return_50_Price", "cor_LM14"),
         c("HK33_HKD_state_space_LM_Pred_period_return_50_Price", "XCU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM15"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "XCU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM16"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "WTICO_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM17"),
@@ -217,28 +206,13 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c("USD_JPY_state_space_LM_Pred_period_return_50_Price", "EU50_EUR_state_space_LM_Pred_period_return_50_Price", "cor_LM22"),
         c("USD_JPY_state_space_LM_Pred_period_return_50_Price", "UK100_GBP_state_space_LM_Pred_period_return_50_Price", "cor_LM23"),
         c("USD_JPY_state_space_LM_Pred_period_return_50_Price", "HK33_HKD_state_space_LM_Pred_period_return_50_Price", "cor_LM24"),
-        c("USD_JPY_state_space_LM_Pred_period_return_50_Price", "USD_SEK_state_space_LM_Pred_period_return_50_Price", "cor_LM25"),
-        c("USD_JPY_state_space_LM_Pred_period_return_50_Price", "AUD_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM26"),
-
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "XCU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM27"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "SPX500_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM28"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "EU50_EUR_state_space_LM_Pred_period_return_50_Price", "cor_LM29"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "UK100_GBP_state_space_LM_Pred_period_return_50_Price", "cor_LM30"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "HK33_HKD_state_space_LM_Pred_period_return_50_Price", "cor_LM31"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "USD_SEK_state_space_LM_Pred_period_return_50_Price", "cor_LM32"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "WTICO_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM33"),
-        c("AUD_USD_state_space_LM_Pred_period_return_50_Price", "AU200_AUD_state_space_LM_Pred_period_return_50_Price", "cor_LM34"),
-        c("USD_JPY_state_space_LM_Pred_period_return_50_Price", "AU200_AUD_state_space_LM_Pred_period_return_50_Price", "cor_LM35"),
 
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "XCU_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM36"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "USD_JPY_state_space_LM_Pred_period_return_50_Price", "cor_LM37"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "EU50_EUR_state_space_LM_Pred_period_return_50_Price", "cor_LM38"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "UK100_GBP_state_space_LM_Pred_period_return_50_Price", "cor_LM39"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "HK33_HKD_state_space_LM_Pred_period_return_50_Price", "cor_LM40"),
-        c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "USD_SEK_state_space_LM_Pred_period_return_50_Price", "cor_LM41"),
         c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "WTICO_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM42"),
-        c("SPX500_USD_state_space_LM_Pred_period_return_50_Price", "AU200_AUD_state_space_LM_Pred_period_return_50_Price", "cor_LM43"),
-
 
         c("XCU_USD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM1_AR"),
         c("HK33_HKD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM2_AR"),
@@ -250,7 +224,6 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c("SPX500_USD_AR_LM_Pred_period_return_50_Price", "WTICO_USD_AR_LM_Pred_period_return_50_Price", "cor_LM8_AR"),
         c("UK100_GBP_AR_LM_Pred_period_return_50_Price", "WTICO_USD_AR_LM_Pred_period_return_50_Price", "cor_LM9_AR"),
         c("USD_JPY_AR_LM_Pred_period_return_50_Price", "WTICO_USD_AR_LM_Pred_period_return_50_Price", "cor_LM10_AR"),
-        c("AUD_USD_AR_LM_Pred_period_return_50_Price", "WTICO_USD_AR_LM_Pred_period_return_50_Price", "cor_LM11_AR"),
         c("XAU_USD_AR_LM_Pred_period_return_50_Price", "WTICO_USD_AR_LM_Pred_period_return_50_Price", "cor_LM12_AR"),
         c("US2000_USD_AR_LM_Pred_period_return_50_Price", "WTICO_USD_AR_LM_Pred_period_return_50_Price", "cor_LM13_AR"),
         c("XCU_USD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM14_AR"),
@@ -258,7 +231,6 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c("SPX500_USD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM16_AR"),
         c("UK100_GBP_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM17_AR"),
         c("USD_JPY_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM18_AR"),
-        c("AUD_USD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM19_AR"),
         c("WTICO_USD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM20_AR"),
         c("US2000_USD_AR_LM_Pred_period_return_50_Price", "XAU_USD_AR_LM_Pred_period_return_50_Price", "cor_LM21_AR"),
         c("XCU_USD_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM22_AR"),
@@ -266,7 +238,6 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c("SPX500_USD_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM24_AR"),
         c("UK100_GBP_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM25_AR"),
         c("XAU_USD_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM26_AR"),
-        c("AUD_USD_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM27_AR"),
         c("WTICO_USD_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM28_AR"),
         c("US2000_USD_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price", "cor_LM29_AR"),
 
@@ -277,19 +248,16 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c("SPX500_USD_AR_LM_Pred_period_return_50_Price", "SPX500_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM5_AR_SS"),
         c("US2000_USD_AR_LM_Pred_period_return_50_Price", "US2000_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM6_AR_SS"),
         c("UK100_GBP_AR_LM_Pred_period_return_50_Price", "UK100_GBP_state_space_LM_Pred_period_return_50_Price", "cor_LM7_AR_SS"),
-        c("AUD_USD_AR_LM_Pred_period_return_50_Price", "AUD_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM8_AR_SS"),
-        c("USD_SEK_AR_LM_Pred_period_return_50_Price", "USD_SEK_state_space_LM_Pred_period_return_50_Price", "cor_LM9_AR_SS"),
         c("WTICO_USD_AR_LM_Pred_period_return_50_Price", "WTICO_USD_state_space_LM_Pred_period_return_50_Price", "cor_LM10_AR_SS"),
         c("USD_JPY_AR_LM_Pred_period_return_50_Price", "USD_JPY_state_space_LM_Pred_period_return_50_Price", "cor_LM10_AR_SS")
-        ),
+      ),
       error_calc_cols =
-        c("SPX500_USD_AR_LM_Pred_period_return_50_Price", "AU200_AUD_AR_LM_Pred_period_return_50_Price",
+        c("SPX500_USD_AR_LM_Pred_period_return_50_Price",
           "EU50_EUR_AR_LM_Pred_period_return_50_Price", "US2000_USD_AR_LM_Pred_period_return_50_Price",
           "XAU_USD_AR_LM_Pred_period_return_50_Price", "XCU_USD_AR_LM_Pred_period_return_50_Price",
-          "XCU_USD_AR_LM_Pred_period_return_50_Price", "AUD_USD_AR_LM_Pred_period_return_50_Price",
+          "XCU_USD_AR_LM_Pred_period_return_50_Price",
           "UK100_GBP_AR_LM_Pred_period_return_50_Price", "USD_JPY_AR_LM_Pred_period_return_50_Price",
-          "WTICO_USD_AR_LM_Pred_period_return_50_Price", "HK33_HKD_AR_LM_Pred_period_return_50_Price",
-          "USD_SEK_AR_LM_Pred_period_return_50_Price")
+          "WTICO_USD_AR_LM_Pred_period_return_50_Price", "HK33_HKD_AR_LM_Pred_period_return_50_Price") %>% unique()
     )
 
   all_cor_vars <-
@@ -306,9 +274,9 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
         c(all_cor_V3_Data[[3]],all_cor_vars, "Asset") %>%
         unique(),
       training_end_date = all_dates_sim[i],
-      regression_length = 10000,
+      regression_length = 7500,
       dependant_var = "Final_Return",
-      sig_thresh_LM = 1,
+      sig_thresh_LM = 0.1,
       taking_trade = FALSE
     ) %>%
     dplyr::select(Date
@@ -319,22 +287,23 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
                   trained_sd_10000 = trained_sd) %>%
     filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
-  # results_temp2 <-
-  #   Porfolio_get_V3_LM_Model_TOTAL_SUM(
-  #     reg_dat = temp_reg_data,
-  #     reg_vars =
-  #       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
-  #       unique(),
-  #     training_end_date = all_dates_sim[i],
-  #     regression_length = 5000,
-  #     dependant_var = "Final_Return",
-  #     sig_thresh_LM = 0.15
-  #   ) %>%
-  #   dplyr::select(Date,
-  #                 predicted_5000 = predicted,
-  #                 trained_mean_5000 = trained_mean,
-  #                 trained_sd_5000 = trained_sd) %>%
-  #   filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
+  results_temp2 <-
+    Porfolio_get_V3_LM_Model_TOTAL_SUM(
+      reg_dat = temp_reg_data,
+      reg_vars =
+        c(all_cor_V3_Data[[3]],all_cor_vars) %>%
+        unique(),
+      training_end_date = all_dates_sim[i],
+      regression_length = 4000,
+      dependant_var = "Final_Return",
+      sig_thresh_LM = 0.1
+    ) %>%
+    dplyr::select(Date,
+                  Asset
+                  ,predicted_5000 = predicted,
+                  trained_mean_5000 = trained_mean,
+                  trained_sd_5000 = trained_sd) %>%
+    filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
   #
   # results_temp3 <-
   #   Porfolio_get_V3_LM_Model_TOTAL_SUM(
@@ -354,9 +323,9 @@ for (i in 1:(length(all_dates_sim) - 1) ) {
   #   filter(Date > all_dates_sim[i], Date <= all_dates_sim[i + 1])
 
   results_temp <-
-    results_temp
-    # left_join(results_temp2) %>%
-    # left_join(results_temp3)
+    results_temp %>%
+    left_join(results_temp2)
+  # left_join(results_temp3)
 
   tictoc::toc()
 
@@ -402,10 +371,10 @@ model_prediction_data <-
   mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
   mutate(
     Averaged_Pred =
-      (predicted_10000 + predicted_5000 + predicted_2500)/3
+      (predicted_10000 + predicted_5000)/2
   ) %>%
   dplyr::select(-Final_Return) %>%
-  left_join(actual_final_returns %>%  dplyr::select(Date, Final_Return)) %>%
+  left_join(actual_final_returns %>%  dplyr::select(Date, Asset ,Final_Return)) %>%
   ungroup() %>%
   group_by(Asset) %>%
   arrange(Date, .by_group = TRUE) %>%
@@ -415,15 +384,15 @@ model_prediction_data <-
       slider::slide_dbl(.x  = predicted_10000, .f = ~ mean(.x, na.rm = T), .before = 250),
     pred_5000_mean_roll_250 =
       slider::slide_dbl(.x  = predicted_5000, .f = ~ mean(.x, na.rm = T), .before = 250),
-    portfolio_pred_2500_mean_roll_250 =
-      slider::slide_dbl(.x  = predicted_2500, .f = ~ mean(.x, na.rm = T), .before = 250),
+    # portfolio_pred_2500_mean_roll_250 =
+    #   slider::slide_dbl(.x  = predicted_2500, .f = ~ mean(.x, na.rm = T), .before = 250),
 
     pred_10000_sd_roll_250 =
       slider::slide_dbl(.x  = predicted_10000, .f = ~ sd(.x, na.rm = T), .before = 250),
     pred_5000_sd_roll_250 =
-      slider::slide_dbl(.x  = predicted_5000, .f = ~ sd(.x, na.rm = T), .before = 250),
-    portfolio_pred_2500_sd_roll_250 =
-      slider::slide_dbl(.x  = predicted_2500, .f = ~ sd(.x, na.rm = T), .before = 250)
+      slider::slide_dbl(.x  = predicted_5000, .f = ~ sd(.x, na.rm = T), .before = 250)
+    # portfolio_pred_2500_sd_roll_250 =
+    #   slider::slide_dbl(.x  = predicted_2500, .f = ~ sd(.x, na.rm = T), .before = 250)
 
   ) %>%
   ungroup()
@@ -434,11 +403,11 @@ model_prediction_data %>%
 which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
-  "predicted_10000 > trained_mean_10000 + 0.75*trained_sd_10000 &
-  predicted_10000 < trained_mean_10000 + 1.75*trained_sd_10000"
+  "predicted_10000 > trained_mean_10000 + 0*trained_sd_10000 &
+  predicted_10000 < trained_mean_10000 + 10*trained_sd_10000"
 
 trade_statment <-
-  "predicted_10000 - 60 > 0"
+  "predicted_5000 > 1|predicted_10000 > 1"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -471,10 +440,10 @@ analyse_performance <-
 analyse_performance %>%
   bind_rows(control) %>%
   ggplot(aes(x = Date, y = Final_Return_Cumulative
-             # ,color = trade_col
-             )) +
+             ,color = trade_col
+  )) +
   geom_line() +
-  facet_wrap(.~trade_col, scales = "free") +
+  # facet_wrap(.~trade_col, scales = "free") +
   theme_minimal()
 
 analyse_performance_sum <-
