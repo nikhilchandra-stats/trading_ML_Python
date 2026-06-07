@@ -72,30 +72,36 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port <-
   c(
-  "EUR_USD",
-  "GBP_USD",
-  "FR40_EUR",
-  "USB10Y_USD",
-  "NATGAS_USD",
-  "USD_SGD",
-  "USD_CAD",
-  "EUR_JPY",
-  "BTC_USD",
-  "XAG_USD"
+    "SPX500_USD",
+    "AU200_AUD",
+    "EU50_EUR",
+    "US2000_USD",
+    "XAU_USD",
+    "XCU_USD",
+    "AUD_USD",
+    "UK100_GBP",
+    "USD_JPY",
+    "WTICO_USD",
+    "HK33_HKD",
+    "USD_SEK"
+
   ) %>% unique()
 
 assets_to_trade <-
   c(
-    "EUR_USD",
-    "GBP_USD",
-    "FR40_EUR",
-    "USB10Y_USD",
-    "NATGAS_USD",
-    "USD_SGD",
-    "USD_CAD",
-    "EUR_JPY",
-    "BTC_USD",
-    "XAG_USD"
+    "SPX500_USD",
+    "AU200_AUD",
+    "EU50_EUR",
+    "US2000_USD",
+    "XAU_USD",
+    "XCU_USD",
+    "AUD_USD",
+    "UK100_GBP",
+    "USD_JPY",
+    "WTICO_USD",
+    "HK33_HKD",
+    "USD_SEK"
+
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -142,9 +148,9 @@ end_period = 8
 trade_direction = "Long"
 end_point_loss = -10
 end_point_profit = 30
-training_date <-  "2021-09-17 10:00:00 AEST"
+training_date <-  "2022-01-17 10:00:00 AEST"
 save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
-file_name = "Equity_Port_V3_Bayes_Currency"
+file_name = "Equity_Port_V3_Bayes_More_vars"
 regression_length = 18000
 
 tictoc::tic()
@@ -154,9 +160,31 @@ all_cor_V3_Data <-
     all_preds = all_preds,
     assets_to_port = assets_to_port,
     low_to_price_lengths = c(200, 50),
+    # low_to_price_lengths = c(200, 400),
     cor_periods = c(100),
     max_regs = 1000
   )
+
+all_cor_var_combos <-
+  names(all_cor_V3_Data[[1]]) %>%
+  keep(~ !str_detect(.x, "Date")) %>%
+  unlist()
+error_correcting_vars <- all_cor_var_combos %>%
+  keep(~ str_detect(.x, "AR_")) %>%
+  unlist()
+
+additional_cor_vars <- list()
+c = 0
+for (i in 1:length(all_cor_var_combos)) {
+  for (j in 1:length(all_cor_var_combos)) {
+
+    if(all_cor_var_combos[i] != all_cor_var_combos[j] ) {
+      c = c + 1
+      additional_cor_vars[[c]] <- c(all_cor_var_combos[i], all_cor_var_combos[j], paste0("Cor_V3_LM_", c) )
+    }
+
+  }
+}
 
 portfolio_data_training_data <-
   get_portfolio_model_fast_summed(
@@ -180,27 +208,6 @@ portfolio_data_training_data <-
            end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
   summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
   ungroup()
-
-all_cor_var_combos <-
-  names(all_cor_V3_Data[[1]]) %>%
-  keep(~ !str_detect(.x, "Date")) %>%
-  unlist()
-error_correcting_vars <- all_cor_var_combos %>%
-  keep(~ str_detect(.x, "AR_")) %>%
-  unlist()
-
-additional_cor_vars <- list()
-c = 0
-for (i in 1:length(all_cor_var_combos)) {
-  for (j in 1:length(all_cor_var_combos)) {
-
-    if(all_cor_var_combos[i] != all_cor_var_combos[j] ) {
-      c = c + 1
-      additional_cor_vars[[c]] <- c(all_cor_var_combos[i], all_cor_var_combos[j], paste0("Cor_V3_LM_", c) )
-    }
-
-  }
-}
 
 temp_reg_data_train <-
   portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat(
@@ -237,31 +244,98 @@ tictoc::toc()
 
 #--------------------------------------Testing
 
-model_prediction_data <-
-  portfolio_V3_TOTAL_SUM_get_preds_algo(
-    Indices_Metals_Bonds = Indices_Metals_Bonds,
-    all_preds = all_preds,
-    assets_to_port = assets_to_port,
-    assets_to_trade = assets_to_port,
+portfolio_data_testing_data <-
+  get_portfolio_model_fast_summed(
+    asset_data = Indices_Metals_Bonds %>%
+      map( ~ .x %>% filter( Date > ( as_date(training_date) - months(6)) ) ),
+    # asset_of_interest = assets_to_port,
+    asset_of_interest = assets_to_trade,
     stop_factor_var = stop_factor_var,
     profit_factor_var = profit_factor_var,
     risk_dollar_value_var = risk_dollar_value_var,
     end_period = end_period,
-    trade_direction = "Long",
+    time_frame = "H1",
+    trade_direction = trade_direction,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
     end_point_loss = end_point_loss,
     end_point_profit = end_point_profit,
-    training_date =  training_date,
-    low_to_price_lengths = c(200, 50),
-    cor_periods = c(100),
-    max_regs = 1000,
-    save_path = save_path,
-    file_name = file_name,
-    regression_length = regression_length,
+    sum_as_portfolio = TRUE
+  ) %>%
+  group_by(Date,end_point_loss ,
+           end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
+  summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
+  ungroup()
+
+temp_reg_data_testing <-
+  portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat(
+    all_dat_pivoted  = all_cor_V3_Data[[1]],
+    correlation_data = all_cor_V3_Data[[2]],
+    portfolio_data = portfolio_data_testing_data,
+    additional_cor_vars = additional_cor_vars,
+    error_calc_cols = error_correcting_vars %>% unique() ,
+    lag_dependant = end_period + 1,
     total_lag_cols = 40
   )
 
+all_cor_vars <-
+  names(temp_reg_data_testing) %>%
+  keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")) %>%
+  unlist() %>%
+  as.character() %>%
+  unique()
+
+testing_prediction_data <-
+  Porfolio_get_preds_V3_TOTAL_SUM_Bayes(
+    reg_dat = temp_reg_data_testing %>% filter(Date >= training_date),
+    training_end_date = training_date,
+    save_path = save_path,
+    file_name = file_name,
+    regression_length = regression_length
+  )
+
+model_prediction_data <-
+  testing_prediction_data %>%
+  filter(Date > training_date) %>%
+  arrange(Date) %>%
+  mutate(
+    pred_10000_mean_roll_250 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 250),
+    pred_10000_sd_roll_250 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 250),
+
+    pred_10000_mean_roll_500 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 500),
+    pred_10000_sd_roll_500 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500),
+
+    pred_10000_mean_roll_100 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
+    pred_10000_sd_roll_100 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100)
+  )
+
+# db_con <- connect_db(path = "C:/Users/nikhi/Documents/trade_data/Equities_Bayes_Model_Results_1.db")
+# append_table_sql_lite(.data = model_prediction_data,
+#                      table_name = "Equities_Bayes_Model_V3",
+#                      conn = db_con)
+
+# db_con <- connect_db(path = "C:/Users/nikhi/Documents/trade_data/Equities_Bayes_Model_Results_1.db")
+# model_prediction_data <-
+#   DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM Equities_Bayes_Model_V3") %>%
+#   mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
+
+#10 Dollars
+trade_statment <-
+  "(predicted > 25)|(predicted > pred_10000_mean_roll_100 + 2.5*pred_10000_sd_roll_100)
+"
+
 trade_statment <-
   "predicted > 0"
+
+# #Set to 400
+# trade_statment <-
+#   "(predicted < 80 & predicted > 50)"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -300,7 +374,22 @@ analyse_performance %>%
   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
   facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
+  scale_y_continuous(n.breaks = 10) +
   theme(legend.position = "bottom")
+
+analyse_performance %>%
+  bind_rows(control) %>%
+  filter(Date <= "2022-04-01") %>%
+  ggplot(aes(x = Date, y = Final_Return_Cumulative
+             ,color = trade_col
+  )) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
+  facet_wrap(.~trade_col, scales = "free") +
+  theme_minimal() +
+  scale_y_continuous(n.breaks = 10) +
+  theme(legend.position = "bottom")
+
 
 analyse_performance_sum <-
   model_prediction_data %>%

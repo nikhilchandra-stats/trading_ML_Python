@@ -1545,7 +1545,8 @@ Porfolio_generate_V3_TOTAL_SUM_Bayes <-
     training_end_date = "2025-01-01",
     regression_length = 5000,
     dependant_var = "Final_Return",
-    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/",
+    file_name = "Equity_Port_V3_Bayes_Mean_SD"
   ) {
 
     Dates <-
@@ -1565,26 +1566,21 @@ Porfolio_generate_V3_TOTAL_SUM_Bayes <-
       filter(Date <= training_end_date) %>%
       filter(Date >= Dates )
 
-    testing_data <-
-      reg_dat %>%
-      ungroup() %>%
-      filter(Date >= training_end_date)
-
     rm(Dates)
 
     lm_form <-
       create_lm_formula(dependant = dependant_var, independant = reg_vars)
 
-    LM_model <- lm(data = training_data %>% filter(Final_Return != 0),
-                   formula = lm_form)
-
     LM_model <- bayesreg::bayesreg(formula = lm_form,
                                    data = training_data %>% filter(Final_Return != 0),
                                    model = "normal")
 
+    training_data <-
+      training_data %>%
+      filter(if_all(everything() ,~ !is.na(.)))
 
-    predicted <- predict(newdata = testing_data, object =  LM_model)
-    predicted_train <- predict(newdata = training_data, object =  LM_model)
+    predicted_train <- predict(newdata = training_data,
+                               object =  LM_model, type = "response")
 
     means_by_asset <-
       training_data %>%
@@ -1596,30 +1592,19 @@ Porfolio_generate_V3_TOTAL_SUM_Bayes <-
       ungroup() %>%
       dplyr::select(trained_mean, trained_sd)
 
-    returned_data <-
-      testing_data %>%
-      mutate(
-        predicted = predicted
-      ) %>%
-      mutate(
-        trained_mean = means_by_asset$trained_mean[1],
-        trained_sd = means_by_asset$trained_sd[1]
-      ) %>%
-      dplyr::select(Date, Final_Return, predicted, trained_mean, trained_sd)
-
     saveRDS(LM_model,
-            file = glue::glue("{save_path}/Equity_Port_V3_Bayes.RDS") )
+            file = glue::glue("{save_path}/{file_name}.RDS") )
 
     write.csv(
       means_by_asset,
-      file = glue::glue("{save_path}/Equity_Port_V3_Bayes_Mean_SD.csv"),
+      file = glue::glue("{save_path}/{file_name}_Mean_SD.csv"),
       row.names = FALSE
     )
 
     rm(testing_data, training_data, all_cor_V3_Data, LM_model, predicted_train,predicted )
     gc()
 
-    return(returned_data)
+    return(NULL)
   }
 
 #' Porfolio_get_preds_V3_TOTAL_SUM_Bayes
@@ -1636,7 +1621,9 @@ Porfolio_get_preds_V3_TOTAL_SUM_Bayes <-
   function(
     reg_dat = all_cor_V3_Data[[1]],
     training_end_date = "2025-01-01",
-    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/",
+    file_name = "Equity_Port_V3_Bayes_",
+    regression_length = 100000
     ) {
 
     Dates <-
@@ -1663,7 +1650,7 @@ Porfolio_get_preds_V3_TOTAL_SUM_Bayes <-
 
     rm(Dates)
 
-    LM_model <- readRDS(glue::glue("{save_path}/Equity_Port_V3_Bayes.RDS"))
+    LM_model <- readRDS(glue::glue("{save_path}/{file_name}.RDS"))
 
     predicted <-
       predict(newdata = testing_data, object =  LM_model, type = "response") %>%
@@ -1674,7 +1661,7 @@ Porfolio_get_preds_V3_TOTAL_SUM_Bayes <-
     predicted_train <- predict(newdata = training_data, object =  LM_model)
 
     means_by_asset <-
-      read_csv(file = glue::glue("{save_path}/Equity_Port_V3_Bayes_Mean_SD.csv"))
+      read_csv(file = glue::glue("{save_path}/{file_name}_Mean_SD.csv"))
 
     returned_data <-
       testing_data %>%
@@ -1691,6 +1678,159 @@ Porfolio_get_preds_V3_TOTAL_SUM_Bayes <-
     gc()
 
     return(returned_data)
+
+  }
+
+#' Title
+#'
+#' @param Indices_Metals_Bonds
+#' @param all_preds
+#' @param assets_to_port
+#' @param assets_to_trade
+#' @param stop_factor_var
+#' @param profit_factor_var
+#' @param risk_dollar_value_var
+#' @param end_period
+#' @param trade_direction
+#' @param end_point_loss
+#' @param end_point_profit
+#' @param training_date
+#' @param low_to_price_lengths
+#' @param cor_periods
+#' @param max_regs
+#' @param save_path
+#' @param regression_length
+#' @param total_lag_cols
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+portfolio_V3_TOTAL_SUM_get_preds_algo <-
+  function(
+    Indices_Metals_Bonds = Indices_Metals_Bonds,
+    all_preds = all_preds,
+    assets_to_port = assets_to_port,
+    assets_to_trade = assets_to_port,
+    stop_factor_var = 4,
+    profit_factor_var = 8,
+    risk_dollar_value_var = 5,
+    end_period = 24,
+    trade_direction = "Long",
+    end_point_loss = -5,
+    end_point_profit = 10,
+    training_date =  "2022-01-17 10:00:00 AEST",
+    low_to_price_lengths = c(200, 50),
+    cor_periods = c(100),
+    max_regs = 1000,
+    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/",
+    file_name = "Equity_Port_V3_Bayes",
+    regression_length = 18000,
+    total_lag_cols = 40
+  ) {
+
+    all_cor_V3_Data <-
+      portfolio_get_V3_cor_data_TOTAL_SUMMED(
+        Indices_Metals_Bonds = Indices_Metals_Bonds,
+        all_preds = all_preds,
+        assets_to_port = assets_to_port,
+        low_to_price_lengths = low_to_price_lengths,
+        cor_periods = cor_periods,
+        max_regs = max_regs
+      )
+
+    portfolio_data_testing_data <-
+      get_portfolio_model_fast_summed(
+        asset_data = Indices_Metals_Bonds %>%
+          map( ~ .x %>% filter( Date > ( as_date(training_date) - months(6)) ) ),
+        asset_of_interest = assets_to_trade,
+        stop_factor_var = stop_factor_var,
+        profit_factor_var = profit_factor_var,
+        risk_dollar_value_var = risk_dollar_value_var,
+        end_period = end_period,
+        time_frame = "H1",
+        trade_direction = trade_direction,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        end_point_loss = end_point_loss,
+        end_point_profit = end_point_profit,
+        sum_as_portfolio = TRUE
+      ) %>%
+      group_by(Date,end_point_loss ,
+               end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
+      summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
+      ungroup()
+
+    all_cor_var_combos <-
+      names(all_cor_V3_Data[[1]]) %>%
+      keep(~ !str_detect(.x, "Date")) %>%
+      unlist()
+    error_correcting_vars <- all_cor_var_combos %>%
+      keep(~ str_detect(.x, "AR_")) %>%
+      unlist()
+
+    additional_cor_vars <- list()
+    c = 0
+    for (i in 1:length(all_cor_var_combos)) {
+      for (j in 1:length(all_cor_var_combos)) {
+
+        if(all_cor_var_combos[i] != all_cor_var_combos[j] ) {
+          c = c + 1
+          additional_cor_vars[[c]] <- c(all_cor_var_combos[i], all_cor_var_combos[j], paste0("Cor_V3_LM_", c) )
+        }
+
+      }
+    }
+
+    temp_reg_data_testing <-
+      portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat(
+        all_dat_pivoted  = all_cor_V3_Data[[1]],
+        correlation_data = all_cor_V3_Data[[2]],
+        portfolio_data = portfolio_data_testing_data,
+        additional_cor_vars = additional_cor_vars,
+        error_calc_cols = error_correcting_vars %>% unique() ,
+        lag_dependant = end_period + 1,
+        total_lag_cols = 40
+      )
+
+    all_cor_vars <-
+      names(temp_reg_data_testing) %>%
+      keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")) %>%
+      unlist() %>%
+      as.character() %>%
+      unique()
+
+    testing_prediction_data <-
+      Porfolio_get_preds_V3_TOTAL_SUM_Bayes(
+        reg_dat = temp_reg_data_testing %>% filter(Date >= training_date),
+        training_end_date = training_date,
+        save_path = save_path,
+        file_name = file_name,
+        regression_length = regression_length
+      )
+
+    model_prediction_data <-
+      testing_prediction_data %>%
+      filter(Date > training_date) %>%
+      arrange(Date) %>%
+      mutate(
+        pred_10000_mean_roll_250 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 250),
+        pred_10000_sd_roll_250 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 250),
+
+        pred_10000_mean_roll_500 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 500),
+        pred_10000_sd_roll_500 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500),
+
+        pred_10000_mean_roll_100 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
+        pred_10000_sd_roll_100 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100)
+      )
+
+    return(model_prediction_data)
 
   }
 

@@ -128,16 +128,6 @@ Indices_Metals_Bonds[[2]] <-
 Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
-stop_factor_var = 4
-profit_factor_var = 8
-risk_dollar_value_var = 10
-end_period = 24
-trade_direction = "Long"
-end_point_loss = -10
-end_point_profit = 20
-training_date <-  "2022-01-17 10:00:00 AEST"
-
-tictoc::tic()
 all_preds <-
   Portfolio_get_all_preds_frm_V3(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
@@ -151,12 +141,27 @@ all_preds <-
     assets_to_test = assets_to_port
   )
 
+stop_factor_var = 4
+profit_factor_var = 8
+risk_dollar_value_var = 5
+end_period = 24
+trade_direction = "Long"
+end_point_loss = -5
+end_point_profit = 10
+training_date <-  "2022-01-17 10:00:00 AEST"
+save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
+file_name = "Equity_Port_V3_Bayes"
+regression_length = 18000
+
+tictoc::tic()
+
 all_cor_V3_Data <-
   portfolio_get_V3_cor_data_TOTAL_SUMMED(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     all_preds = all_preds,
     assets_to_port = assets_to_port,
-    low_to_price_lengths = c(200, 50, 400),
+    low_to_price_lengths = c(200, 50),
+    # low_to_price_lengths = c(200, 400),
     cor_periods = c(100),
     max_regs = 1000
   )
@@ -293,7 +298,7 @@ temp_reg_data_train <-
   )
 
 all_cor_vars <-
-  names(temp_reg_data) %>%
+  names(temp_reg_data_train) %>%
   keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")) %>%
   unlist() %>%
   as.character() %>%
@@ -306,9 +311,10 @@ results_temp <-
       c(all_cor_V3_Data[[3]],all_cor_vars) %>%
       unique(),
     training_end_date = training_date,
-    regression_length = 18000,
+    regression_length = regression_length,
     dependant_var = "Final_Return",
-    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
+    save_path = save_path,
+    file_name = file_name
   ) %>%
   dplyr::select(Date
                 ,Final_Return,
@@ -336,9 +342,7 @@ portfolio_data_testing_data <-
     asset_infor = asset_infor,
     end_point_loss = end_point_loss,
     end_point_profit = end_point_profit,
-    sum_as_portfolio = TRUE,
-    lag_dependant = end_period,
-    total_lag_cols = 40
+    sum_as_portfolio = TRUE
   ) %>%
   group_by(Date,end_point_loss ,
            end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
@@ -464,7 +468,9 @@ testing_prediction_data <-
   Porfolio_get_preds_V3_TOTAL_SUM_Bayes(
     reg_dat = temp_reg_data_testing %>% filter(Date >= training_date),
     training_end_date = training_date,
-    save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
+    save_path = save_path,
+    file_name = file_name,
+    regression_length = regression_length
   )
 
 model_prediction_data <-
@@ -480,18 +486,37 @@ model_prediction_data <-
     pred_10000_mean_roll_500 =
       slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 500),
     pred_10000_sd_roll_500 =
-      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500)
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500),
+
+    pred_10000_mean_roll_100 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
+    pred_10000_sd_roll_100 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100)
   )
 
+# db_con <- connect_db(path = "C:/Users/nikhi/Documents/trade_data/Equities_Bayes_Model_Results_1.db")
+# write_table_sql_lite(.data = model_prediction_data,
+#                      table_name = "Equities_Bayes_Model_V3", conn = db_con, overwrite_true = TRUE)
+#10 Dollars
 trade_statment <-
-  "(predicted < 50 & predicted > 30)|(pred_10000_mean_roll_250 > 100)"
+  "(predicted > 105)|
+   (pred_10000_mean_roll_250 > 70)|
+   (pred_10000_mean_roll_500 > 65)
+   # (pred_10000_mean_roll_100 > 75)
+"
 
 trade_statment <-
-  "(predicted > 100)"
+  "(predicted > 60)|
+   (pred_10000_mean_roll_250 > 35)|
+   (pred_10000_mean_roll_500 > 30)|
+   (pred_10000_mean_roll_100 > 40)"
 
 trade_statment <-
-  "(pred_10000_mean_roll_250 > 50)"
+  "pred_10000_sd_roll_500 > pred_10000_sd_roll_100"
 
+# #Set to 400
+# trade_statment <-
+#   "(predicted < 80 & predicted > 50)"
 
 analyse_performance <-
   model_prediction_data %>%

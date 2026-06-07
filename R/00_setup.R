@@ -1,5 +1,6 @@
 library(tidyverse)
 library(niksmacrohelpers)
+library(bayesreg)
 
 library("tidyverse")
 library("lubridate")

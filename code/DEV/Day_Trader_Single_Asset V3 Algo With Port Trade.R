@@ -5,7 +5,7 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "D://Asset Data/oanda_data/",
+  save_path_oanda_assets = "C:/Users/nikhi/Documents//Asset Data/oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
@@ -90,20 +90,44 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "D://Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
 Indices_Metals_Bonds <- list()
 
 assets_to_port <-
-  c(    "XAG_USD", #18
-        "HK33_HKD", #22
-        "FR40_EUR", #23
-        "BTC_USD", #24
-        "NATGAS_USD", #32
-        "JP225Y_JPY",
-        "XAU_USD"
+  c(
+    "SPX500_USD",
+    "AU200_AUD",
+    "EU50_EUR",
+    "US2000_USD",
+    "XAU_USD",
+    "XCU_USD",
+    "AUD_USD",
+    "UK100_GBP",
+    "USD_JPY",
+    "WTICO_USD",
+    "HK33_HKD",
+    "USD_SEK"
+
+  ) %>% unique()
+
+assets_to_trade <-
+  c(
+    "SPX500_USD",
+    "AU200_AUD",
+    "EU50_EUR",
+    "US2000_USD",
+    "XAU_USD",
+    "XCU_USD",
+    "AUD_USD",
+    "UK100_GBP",
+    "USD_JPY",
+    "WTICO_USD",
+    "HK33_HKD",
+    "USD_SEK"
+
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -160,10 +184,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "D://trade_data/trade_tracker_daily_buy_close.db"
+  "C:/Users/nikhi/Documents//trade_data/trade_tracker_daily_buy_close.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "D://Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -183,8 +207,7 @@ gc()
 
 assets_to_use <- assets_to_port
 
-trade_statement <-
-  "predicted_10000 > 0 & predicted_5000 > 0"
+trade_statement <- "predicted > 0"
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -211,7 +234,7 @@ while (current_time < end_time) {
     #-------------------------------------Update Data
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
-    how_far_back_date <- seq(today() - days(15), today(), by =  "days" ) %>%
+    how_far_back_date <- seq(today() - days(20), today(), by =  "days" ) %>%
       keep(
         ~ wday(.x) == 3
       ) %>%
@@ -308,48 +331,51 @@ while (current_time < end_time) {
           Portfolio_get_all_preds_frm_V3(
             Indices_Metals_Bonds = Indices_Metals_Bonds,
             raw_macro_data = raw_macro_data,
-            base_path = "D:/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
+            base_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V3_Expanded_Models/",
             actuals_periods_needed = c("period_return_50_Price"),
-            state_space_periods = c(20, 40, 60, 100, 200,300, 400, 500),
+            state_space_periods = c(20, 40, 60, 100, 200,300, 400,  500),
             state_space_rolling = c(100, 200, 300, 400),
             date_for_true_simualtion = "2019-01-01",
             training_end_date = "2021-01-01",
             assets_to_test = assets_to_port
           )
 
-        stop_factor_var =5
-        profit_factor_var =10
+        stop_factor_var = 10
+        profit_factor_var = 20
         risk_dollar_value_var = 10
-        risk_dollar_value = risk_dollar_value_var
-        end_period = 24
+        end_period = 8
         trade_direction = "Long"
-        end_point_loss = -7.5
-        end_point_profit = 15
+        end_point_loss = -10
+        end_point_profit = 30
+        training_date <-  "2022-01-17 10:00:00 AEST"
+        save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
+        file_name = "Equity_Port_V3_Bayes_More_vars"
+        regression_length = 18000
 
         all_preds_diff_cor <-
-          Portfolio_get_V3_Cor_DIFF_Preds(
+          portfolio_V3_TOTAL_SUM_get_preds_algo(
+            Indices_Metals_Bonds = Indices_Metals_Bonds,
             all_preds = all_preds,
-            asset_data = Indices_Metals_Bonds,
-            asset_of_interest = assets_to_port,
+            assets_to_port = assets_to_port,
+            assets_to_trade = assets_to_port,
             stop_factor_var = stop_factor_var,
             profit_factor_var = profit_factor_var,
             risk_dollar_value_var = risk_dollar_value_var,
             end_period = end_period,
-            time_frame = "H1",
-            trade_direction = trade_direction,
-            currency_conversion = currency_conversion,
-            asset_infor = asset_infor,
+            trade_direction = "Long",
             end_point_loss = end_point_loss,
             end_point_profit = end_point_profit,
-            sum_as_portfolio = TRUE,
-            low_to_price_lengths = c(200),
-            cor_periods = c(200),
+            training_date =  training_date,
+            low_to_price_lengths = c(200, 50),
+            cor_periods = c(100),
             max_regs = 1000,
-            # training_end_date = as.character(floor_date(current_time, "hour")),
-            training_end_date = as.character("2026-04-08 17:00:00 AEST"),
-            dependant_var = "Final_Return",
-            sig_thresh_LM = 0.1
+            save_path = save_path,
+            file_name = file_name,
+            regression_length = regression_length,
+            total_lag_cols = 40
           )
+
+
         tictoc::toc()
 
         max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
@@ -358,26 +384,29 @@ while (current_time < end_time) {
 
         trade_dates <-
           all_preds_diff_cor %>%
+          ungroup() %>%
+          slice_max(Date) %>%
           mutate(
             trade_col =
               eval(parse(text = trade_statement))
           ) %>%
+          ungroup() %>%
           filter(trade_col == TRUE) %>%
-          distinct(Date) %>%
-          slice_max(Date) %>%
-          pull(Date) %>%
-          unique() %>%
-          as_datetime()
+          distinct(Date)
+
+          trade_dates <-
+            assets_to_trade %>%
+            map_dfr(~ trade_dates %>% mutate(Asset = .x) )
 
         current_prices_ask <-
           read_all_asset_data_intra_day(
             asset_list_oanda = assets_to_port,
-            save_path_oanda_assets = "D://Asset Data/oanda_data/",
+            save_path_oanda_assets = "C:/Users/nikhi/Documents//Asset Data/oanda_data/",
             read_csv_or_API = "API",
             time_frame = "H1",
             bid_or_ask = "ask",
             how_far_back = 2,
-            start_date = as_date(today() - days(2))
+            start_date = as_date(today() - days(3))
           )%>%
           map_dfr(bind_rows) %>%
           group_by(Asset) %>%
@@ -385,13 +414,7 @@ while (current_time < end_time) {
           ungroup()
 
         single_asset_model_trades_filt <-
-          assets_to_port %>%
-          map_dfr(
-            ~ tibble(
-              Asset = .x,
-              Date = trade_dates
-            )
-          ) %>%
+          trade_dates %>%
           mutate(trade_col = "Long",
                  stop_factor = stop_factor_var,
                  profit_factor = profit_factor_var,
@@ -469,8 +492,7 @@ while (current_time < end_time) {
 
       #-------------------------All Trades
       total_trades <-
-        list(total_trades_macro_only_port_stops,
-             single_asset_model_trades_filt) %>%
+        list(single_asset_model_trades_filt) %>%
         map_dfr(bind_rows)
 
       rm(
@@ -537,10 +559,10 @@ while (current_time < end_time) {
                      periods_ahead = total_trades$periods_ahead[i] %>% as.numeric(),
                      end_point_loss = total_trades$end_point_loss[i] %>% as.numeric(),
                      end_point_profit = total_trades$end_point_profit[i] %>% as.numeric()
-                     )
+              )
 
             append_table_sql_lite(.data = cleaned_trade_details,
-                                  table_name = "trade_tracker",
+                                  table_name = "trade_tracker_endpoints",
                                   conn = trade_tracker_DB)
 
           }
@@ -574,7 +596,7 @@ while (current_time < end_time) {
                      end_point_profit = total_trades$end_point_profit[i] %>% as.numeric() )
 
             append_table_sql_lite(.data = cleaned_trade_details,
-                                  table_name = "trade_tracker",
+                                  table_name = "trade_tracker_endpoints",
                                   conn = trade_tracker_DB)
 
           }
@@ -606,7 +628,7 @@ while (current_time < end_time) {
 
     trades_from_DB <-
       DBI::dbGetQuery(conn = trade_tracker_DB,
-                      statement = "SELECT * FROM trade_tracker_dollar") %>%
+                      statement = "SELECT * FROM trade_tracker_endpoints") %>%
       filter(
         Asset %in% assets_to_use
       )
@@ -702,11 +724,15 @@ while (current_time < end_time) {
         ) %>%
         mutate(time_in_process = as.numeric(time_in_process),
                unrealizedPL = as.numeric(unrealizedPL),
-               trueUnrealizedPL = as.numeric(trueUnrealizedPL)) %>%
+               trueUnrealizedPL = as.numeric(trueUnrealizedPL),
+               end_point_profit = as.numeric(end_point_profit),
+               end_point_loss = as.numeric(end_point_loss) ) %>%
         mutate(
           flagged_for_close =
             (time_in_process >= periods_ahead) | (trueUnrealizedPL >= end_point_profit) |
-            (trueUnrealizedPL <= end_point_loss)
+            (trueUnrealizedPL <= end_point_loss),
+          how_far_from_profit = ( abs(trueUnrealizedPL) - abs(end_point_profit) ),
+          how_far_from_loss = ( abs(trueUnrealizedPL) - abs(end_point_loss) )
         )
 
       positions_tagged_as_part_of_algo <-
