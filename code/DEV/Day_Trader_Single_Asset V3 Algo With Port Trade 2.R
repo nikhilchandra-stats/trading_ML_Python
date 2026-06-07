@@ -90,7 +90,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
 start_date = "2019-01-01"
 end_date = today() %>% as.character()
 
@@ -98,36 +98,30 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port <-
   c(
-    "SPX500_USD",
-    "AU200_AUD",
-    "EU50_EUR",
-    "US2000_USD",
-    "XAU_USD",
-    "XCU_USD",
-    "AUD_USD",
-    "UK100_GBP",
-    "USD_JPY",
-    "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
-
+    "EUR_USD",
+    "GBP_USD",
+    "FR40_EUR",
+    "USB10Y_USD",
+    "NATGAS_USD",
+    "USD_SGD",
+    "USD_CAD",
+    "EUR_JPY",
+    "BTC_USD",
+    "XAG_USD"
   ) %>% unique()
 
 assets_to_trade <-
   c(
-    "SPX500_USD",
-    "AU200_AUD",
-    "EU50_EUR",
-    "US2000_USD",
-    "XAU_USD",
-    "XCU_USD",
-    "AUD_USD",
-    "UK100_GBP",
-    "USD_JPY",
-    "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
-
+    "EUR_USD",
+    "GBP_USD",
+    "FR40_EUR",
+    "USB10Y_USD",
+    "NATGAS_USD",
+    "USD_SGD",
+    "USD_CAD",
+    "EUR_JPY",
+    "BTC_USD",
+    "XAG_USD"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -184,10 +178,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/nikhi/Documents//trade_data/trade_tracker_daily_buy_close endpoints.db"
+  "C:/Users/nikhi/Documents//trade_data/trade_tracker_daily_buy_close endpoints 2.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 Second Algo.db"
 end_date_day = today() %>% as.character()
 
 mean_values_by_asset_for_loop_H1_ask <-
@@ -394,9 +388,9 @@ while (current_time < end_time) {
           filter(trade_col == TRUE) %>%
           distinct(Date)
 
-          trade_dates <-
-            assets_to_trade %>%
-            map_dfr(~ trade_dates %>% mutate(Asset = .x) )
+        trade_dates <-
+          assets_to_trade %>%
+          map_dfr(~ trade_dates %>% mutate(Asset = .x) )
 
         current_prices_ask <-
           read_all_asset_data_intra_day(
