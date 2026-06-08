@@ -364,10 +364,12 @@ trade_statment <-
    (predicted > trained_mean + 3.25*trained_sd)|(pred_10000_mean_roll_600 > 15)"
 
 trade_statment <-
-  "(predicted > 40)|(pred_10000_mean_roll_250 > 26.5)|(pred_10000_mean_roll_500 > 15)"
+  "(predicted > 40)|(pred_10000_mean_roll_250 > 26.5)|
+   (pred_10000_mean_roll_500 > 15)|(pred_10000_mean_roll_600 > 12.5)|
+   (pred_10000_mean_roll_100 > 32.5)"
 
 trade_statment <-
-  "pred_10000_mean_roll_500 > 15"
+  "pred_10000_mean_roll_100 > 32.5"
 
 # #Set to 400
 # trade_statment <-

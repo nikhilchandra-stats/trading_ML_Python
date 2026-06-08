@@ -244,7 +244,7 @@ results_temp <-
     save_path = save_path,
     file_name = file_name,
     Bayes_or_LM = "Bayes",
-    sig_thresh_LM = 0.00001
+    sig_thresh_LM = 0.05
   )
 
 tictoc::toc()
@@ -345,10 +345,7 @@ model_prediction_data <-
 
 #10 Dollars
 trade_statment <-
-  "(pred_10000_mean_roll_250 > 22.5)|(predicted > 32.5)"
-
-trade_statment <-
-  "predicted > 20"
+  "predicted > 10"
 
 # #Set to 400
 # trade_statment <-
