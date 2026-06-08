@@ -2703,7 +2703,7 @@ get_portfolio_model_fast_summed <-
       )
 
     construct_string_loss <-
-      seq(1,50,1) %>%
+      seq(1,end_period,1) %>%
       map(~ glue::glue("period_return_{.x}_Price <= {end_point_loss} ~ {.x}") ) %>%
       unlist() %>%
       paste(collapse = ",")
@@ -2712,7 +2712,7 @@ get_portfolio_model_fast_summed <-
       glue::glue("case_when({construct_string_loss})") %>% as.character()
 
     construct_string_win <-
-      seq(1,50,1) %>%
+      seq(1,end_period,1) %>%
       map(~ glue::glue("period_return_{.x}_Price >= {end_point_profit} ~ {.x}") ) %>%
       unlist() %>%
       paste(collapse = ",")
@@ -2721,7 +2721,7 @@ get_portfolio_model_fast_summed <-
       glue::glue("case_when({construct_string_win})") %>% as.character()
 
     extract_loss_return_string <-
-      seq(1,50,1) %>%
+      seq(1,end_period,1) %>%
       map(~ glue::glue("period_return_{.x}_Price <= {end_point_loss} ~ period_return_{.x}_Price") ) %>%
       unlist() %>%
       paste(collapse = ",")
@@ -2730,7 +2730,7 @@ get_portfolio_model_fast_summed <-
       glue::glue("case_when({extract_loss_return_string})") %>% as.character()
 
     extract_win_return_string <-
-      seq(1,50,1) %>%
+      seq(1,end_period,1) %>%
       map(~ glue::glue("period_return_{.x}_Price >= {end_point_profit} ~ period_return_{.x}_Price") ) %>%
       unlist() %>%
       paste(collapse = ",")
@@ -2743,19 +2743,21 @@ get_portfolio_model_fast_summed <-
         end_point_point_loss = eval(parse(text = construct_string_2_loss))
       ) %>%
       mutate(
-        end_point_point_loss = ifelse(is.na(end_point_point_loss), 50, end_point_point_loss)
+        end_point_point_loss = ifelse(is.na(end_point_point_loss), end_period, end_point_point_loss)
       ) %>%
       mutate(
         end_point_point_win = eval(parse(text = construct_string_2_win))
       ) %>%
       mutate(
-        end_point_point_win = ifelse(is.na(end_point_point_win), 50, end_point_point_win)
+        end_point_point_win = ifelse(is.na(end_point_point_win), end_period, end_point_point_win)
       ) %>%
       mutate(
         return_loss = eval(parse(text = construct_extract_loss_return_string)),
         return_win = eval(parse(text = construct_extract_win_return_string)),
         across(.cols = c(return_loss, return_win),
-               .fns = ~ ifelse(is.na(.), period_return_50_Price, .))
+               .fns = ~ ifelse(is.na(.),
+                               !!as.name(glue::glue("period_return_{end_period}_Price")),
+                               .))
       ) %>%
       mutate(
         Final_Return =
@@ -2773,7 +2775,10 @@ get_portfolio_model_fast_summed <-
       test <- test %>%
         group_by(Asset, Date, end_point_loss, end_point_profit, risk_dollar_value,
                  stop_factor, profit_factor, end_point_point_win, end_point_point_loss) %>%
-        summarise(Final_Return = sum(Final_Return, na.rm = T))
+        summarise(
+                  Final_Return = sum(Final_Return, na.rm = T),
+                  across(contains( "period_return_"), ~ sum(., na.rm = T))
+                  )
 
     }
 

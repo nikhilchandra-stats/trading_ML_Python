@@ -228,7 +228,7 @@ while (current_time < end_time) {
     #-------------------------------------Update Data
     raw_macro_data <- niksmacrohelpers::get_macro_event_data()
     trades_opened <- 1
-    how_far_back_date <- seq(today() - days(20), today(), by =  "days" ) %>%
+    how_far_back_date <- seq(today() - days(30), today(), by =  "days" ) %>%
       keep(
         ~ wday(.x) == 3
       ) %>%
@@ -341,9 +341,9 @@ while (current_time < end_time) {
         trade_direction = "Long"
         end_point_loss = -10
         end_point_profit = 30
-        training_date <-  "2022-01-17 10:00:00 AEST"
+        training_date <-  "2021-09-17 10:00:00 AEST"
         save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
-        file_name = "Equity_Port_V3_Bayes_More_vars"
+        file_name = "Equity_Port_V3_Bayes_Currency"
         regression_length = 18000
 
         all_preds_diff_cor <-

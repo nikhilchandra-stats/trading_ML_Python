@@ -1151,6 +1151,7 @@ portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat <-
            additional_cor_vars,
            lag_dependant = 24,
            total_lag_cols = 25,
+           direct_return_cols = 10,
            error_calc_cols =
              c("XAG_USD_AR_LM_Pred_period_return_50_Price",  "HK33_HKD_AR_LM_Pred_period_return_50_Price",
                "FR40_EUR_AR_LM_Pred_period_return_50_Price", "BTC_USD_AR_LM_Pred_period_return_50_Price",
@@ -1212,6 +1213,31 @@ portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat <-
                 arrange(Date, .by_group = TRUE) %>%
                 mutate({final_lag_cols})")
 
+    needed_direct_period_cols <-
+      seq(1,direct_return_cols,1) %>%
+      map(~ glue::glue("period_return_{.x}_Price")) %>%
+      unlist()
+
+    needed_direct_lag_cols <-
+      seq(1,direct_return_cols,1) %>%
+      map(~ glue::glue("Period_Return_Lag_{.x} = lag(period_return_{.x}_Price, {.x + 1})")) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    needed_direct_lag_cols <-
+      glue::glue("period_lag_cols %>%
+                 arrange(Date) %>%
+                 mutate({needed_direct_lag_cols})")
+
+    period_lag_cols <-
+      portfolio_data %>%
+      arrange(Date) %>%
+      ungroup() %>%
+      dplyr::select(Date, matches(needed_direct_period_cols))
+
+    period_lag_cols <- eval(parse(text = needed_direct_lag_cols)) %>%
+      dplyr::select(Date, contains("Period_Return_Lag_"))
+
     total_reg_data <-
       portfolio_data %>%
       ungroup() %>%
@@ -1222,7 +1248,8 @@ portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat <-
                   ungroup() %>%
                   left_join(correlation_data %>%
                               ungroup() )
-      )
+      ) %>%
+      left_join(period_lag_cols)
 
     total_reg_data <- eval(parse(text = final_lag_cols))
 
@@ -1546,7 +1573,9 @@ Porfolio_generate_V3_TOTAL_SUM_Bayes <-
     regression_length = 5000,
     dependant_var = "Final_Return",
     save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/",
-    file_name = "Equity_Port_V3_Bayes_Mean_SD"
+    file_name = "Equity_Port_V3_Bayes_Mean_SD",
+    Bayes_or_LM = "Bayes",
+    sig_thresh_LM = 0.1
   ) {
 
     Dates <-
@@ -1571,9 +1600,56 @@ Porfolio_generate_V3_TOTAL_SUM_Bayes <-
     lm_form <-
       create_lm_formula(dependant = dependant_var, independant = reg_vars)
 
-    LM_model <- bayesreg::bayesreg(formula = lm_form,
-                                   data = training_data %>% filter(Final_Return != 0),
-                                   model = "normal")
+    LM_model <- lm(data = training_data %>% filter(Final_Return != 0),
+                   formula = lm_form)
+
+    sig_coefs <-
+      get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-7)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-6)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-5)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-4)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-3)
+    }
+
+    sig_coefs <-
+      sig_coefs %>%
+      keep(~ !str_detect(.x, "Asset[A-Z][A-Z]") ) %>%
+      unlist()
+
+    sig_coefs <-
+      c(sig_coefs) %>%
+      unlist()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var,
+                        independant = sig_coefs)
+
+    if(Bayes_or_LM == "Bayes") {
+      LM_model <- bayesreg::bayesreg(formula = lm_form,
+                                     data = training_data %>% filter(Final_Return != 0),
+                                     model = "normal")
+    }
+
+    if(Bayes_or_LM == "LM") {
+
+      LM_model <- lm(formula = lm_form,
+                     data = training_data %>% filter(Final_Return != 0))
+    }
 
     training_data <-
       training_data %>%

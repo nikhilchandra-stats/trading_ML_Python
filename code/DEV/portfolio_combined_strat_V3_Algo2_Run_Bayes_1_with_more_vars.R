@@ -142,16 +142,17 @@ all_preds <-
   )
 
 stop_factor_var = 10
-profit_factor_var = 20
+profit_factor_var = 15
 risk_dollar_value_var = 10
-end_period = 8
+end_period = 24
 trade_direction = "Long"
 end_point_loss = -10
-end_point_profit = 30
+end_point_profit = 20
 training_date <-  "2022-01-17 10:00:00 AEST"
 save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
 file_name = "Equity_Port_V3_Bayes_More_vars"
 regression_length = 18000
+direct_return_cols = 23
 
 tictoc::tic()
 all_cor_V3_Data <-
@@ -159,8 +160,8 @@ all_cor_V3_Data <-
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     all_preds = all_preds,
     assets_to_port = assets_to_port,
-    low_to_price_lengths = c(200, 50),
-    # low_to_price_lengths = c(200, 400),
+    # low_to_price_lengths = c(200, 50),
+    low_to_price_lengths = c(200, 50, 400),
     cor_periods = c(100),
     max_regs = 1000
   )
@@ -186,6 +187,11 @@ for (i in 1:length(all_cor_var_combos)) {
   }
 }
 
+wanted_period_cols <-
+  seq(1,direct_return_cols,1) %>%
+  map(~ glue::glue("period_return_{.x}_Price")) %>%
+  unlist()
+
 portfolio_data_training_data <-
   get_portfolio_model_fast_summed(
     asset_data = Indices_Metals_Bonds %>%
@@ -206,8 +212,13 @@ portfolio_data_training_data <-
   ) %>%
   group_by(Date,end_point_loss ,
            end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
-  summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
-  ungroup()
+  summarise(Final_Return = sum(Final_Return, na.rm = T),
+            across(contains( "period_return_"), ~ sum(., na.rm = T)) ) %>%
+  ungroup() %>%
+  dplyr::select(Date,
+                end_point_loss ,
+                end_point_profit, risk_dollar_value, stop_factor, profit_factor,
+                Final_Return, matches(wanted_period_cols))
 
 temp_reg_data_train <-
   portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat(
@@ -217,12 +228,13 @@ temp_reg_data_train <-
     additional_cor_vars = additional_cor_vars,
     error_calc_cols = error_correcting_vars %>% unique(),
     lag_dependant = end_period + 1,
-    total_lag_cols = 40
+    total_lag_cols = 40,
+    direct_return_cols = direct_return_cols
   )
 
 all_cor_vars <-
   names(temp_reg_data_train) %>%
-  keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")) %>%
+  keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")|str_detect(.x, "Period_Return_Lag_")) %>%
   unlist() %>%
   as.character() %>%
   unique()
@@ -237,12 +249,19 @@ results_temp <-
     regression_length = regression_length,
     dependant_var = "Final_Return",
     save_path = save_path,
-    file_name = file_name
+    file_name = file_name,
+    Bayes_or_LM = "Bayes",
+    sig_thresh_LM = 0.00001
   )
 
 tictoc::toc()
 
 #--------------------------------------Testing
+
+wanted_period_cols <-
+  seq(1,direct_return_cols,1) %>%
+  map(~ glue::glue("period_return_{.x}_Price")) %>%
+  unlist()
 
 portfolio_data_testing_data <-
   get_portfolio_model_fast_summed(
@@ -264,8 +283,13 @@ portfolio_data_testing_data <-
   ) %>%
   group_by(Date,end_point_loss ,
            end_point_profit, risk_dollar_value, stop_factor, profit_factor) %>%
-  summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
-  ungroup()
+  summarise(Final_Return = sum(Final_Return, na.rm = T),
+            across(contains( "period_return_"), ~ sum(., na.rm = T)) ) %>%
+  ungroup() %>%
+  dplyr::select(Date,
+                end_point_loss ,
+                end_point_profit, risk_dollar_value, stop_factor, profit_factor,
+                Final_Return, matches(wanted_period_cols))
 
 temp_reg_data_testing <-
   portfolio_get_V3_cor_data_TOTAL_SUMMED_reg_dat(
@@ -275,12 +299,13 @@ temp_reg_data_testing <-
     additional_cor_vars = additional_cor_vars,
     error_calc_cols = error_correcting_vars %>% unique() ,
     lag_dependant = end_period + 1,
-    total_lag_cols = 40
+    total_lag_cols = 40,
+    direct_return_cols = direct_return_cols
   )
 
 all_cor_vars <-
   names(temp_reg_data_testing) %>%
-  keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")) %>%
+  keep(~ str_detect(.x, "cor_LM[0-9]+")|str_detect(.x, "Final_Return_lag")|str_detect(.x, "Period_Return_Lag_")) %>%
   unlist() %>%
   as.character() %>%
   unique()
@@ -312,7 +337,12 @@ model_prediction_data <-
     pred_10000_mean_roll_100 =
       slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
     pred_10000_sd_roll_100 =
-      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100)
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100),
+
+    pred_10000_mean_roll_600 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 600),
+    pred_10000_sd_roll_600 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 600)
   )
 
 # db_con <- connect_db(path = "C:/Users/nikhi/Documents/trade_data/Equities_Bayes_Model_Results_1.db")
@@ -327,11 +357,17 @@ model_prediction_data <-
 
 #10 Dollars
 trade_statment <-
-  "(predicted > 25)|(predicted > pred_10000_mean_roll_100 + 2.5*pred_10000_sd_roll_100)
-"
+  "(pred_10000_mean_roll_250 > 31)|(predicted > 32.5)|(pred_10000_mean_roll_500 > 17.5)"
 
 trade_statment <-
-  "predicted > 0"
+  "(pred_10000_mean_roll_250 > 28)|(pred_10000_mean_roll_500 > 22)|(pred_10000_mean_roll_100 > 56)|
+   (predicted > trained_mean + 3.25*trained_sd)|(pred_10000_mean_roll_600 > 15)"
+
+trade_statment <-
+  "(predicted > 40)|(pred_10000_mean_roll_250 > 26.5)|(pred_10000_mean_roll_500 > 15)"
+
+trade_statment <-
+  "pred_10000_mean_roll_500 > 15"
 
 # #Set to 400
 # trade_statment <-
@@ -377,18 +413,18 @@ analyse_performance %>%
   scale_y_continuous(n.breaks = 10) +
   theme(legend.position = "bottom")
 
-analyse_performance %>%
-  bind_rows(control) %>%
-  filter(Date <= "2022-04-01") %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 10) +
-  theme(legend.position = "bottom")
+# analyse_performance %>%
+#   bind_rows(control) %>%
+#   filter(Date <= "2022-04-01") %>%
+#   ggplot(aes(x = Date, y = Final_Return_Cumulative
+#              ,color = trade_col
+#   )) +
+#   geom_line() +
+#   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
+#   facet_wrap(.~trade_col, scales = "free") +
+#   theme_minimal() +
+#   scale_y_continuous(n.breaks = 10) +
+#   theme(legend.position = "bottom")
 
 
 analyse_performance_sum <-
