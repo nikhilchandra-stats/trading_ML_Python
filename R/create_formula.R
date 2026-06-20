@@ -42,4 +42,31 @@ create_lm_formula_no_space <- function(
 }
 
 
+create_lm_formula_interact <- function(
+    dependant = "Final_Return",
+    independant = reg_vars,
+    interacts = list(c("cor_GBP_AUD_High_diff_Price_400_EUR_SEK_High_diff_Price_400_50", "Asset"))
+) {
 
+  independant_quoted <- independant %>%
+    map( ~ paste0("`",.x,"`")) %>% unlist() %>% as.character()
+
+  if(!is.null(interacts)) {
+    interact_combine <-
+      interacts %>%
+      map(~ glue::glue("{.x[1]}*{.x[2]}") ) %>%
+      unlist()
+  }
+
+  if(!is.null(interacts)) {
+    pluses <- c(independant_quoted, interact_combine) %>% paste(collapse = " + ")
+  }
+
+  if(is.null(interacts)) {
+    pluses <- independant_quoted %>% paste(collapse = " + ")
+  }
+
+  final_formula <-glue::glue("{dependant} ~ {pluses}") %>% as.formula()
+
+  return(final_formula)
+}

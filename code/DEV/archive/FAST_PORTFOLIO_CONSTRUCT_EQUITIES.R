@@ -132,7 +132,7 @@ correlation_data <-
 
 all_dates_sim <-
   correlation_data %>%
-  filter(Date >= as_datetime("2020-01-01") + dhours(15000) ) %>%
+  filter(Date >= as_datetime("2020-01-01") + dhours(16000) ) %>%
   pull(Date) %>%
   unique()
 
@@ -140,7 +140,7 @@ sim_list <- list()
 db_sim_results_con <- connect_db("D:/trade_data/db_sim_results_FULL_Port_Equity_ERROR_CRRCT.db")
 redo_db <- TRUE
 
-for (i in 1944:(length(all_dates_sim) - 1) ) {
+for (i in 2316:(length(all_dates_sim) - 1) ) {
 
   if(i %% 50 == 0) {gc()}
 
@@ -168,13 +168,13 @@ for (i in 1944:(length(all_dates_sim) - 1) ) {
       cor_high_diff_data =
         correlation_data %>%
         filter( Date <= all_dates_sim[i + 1] ),
-      regression_length = 10000,
+      regression_length = 12000,
       portfolio_actuals_data = portfolio_data,
       dependant_var = "Final_Return",
       date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1,
       padding_value = 0,
-      lag_value_error = end_period
+      lag_value_error = end_period + 1
     ) %>%
     dplyr::select(Date, Asset,
                   Final_Return,
@@ -188,13 +188,13 @@ for (i in 1944:(length(all_dates_sim) - 1) ) {
     generate_portfolio_LM_with_Errors(
       cor_high_diff_data = correlation_data %>%
         filter( Date <= all_dates_sim[i + 1] ),
-      regression_length = 5000,
+      regression_length = 7500,
       portfolio_actuals_data = portfolio_data,
       dependant_var = "Final_Return",
       date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1,
       padding_value = 0,
-      lag_value_error = end_period
+      lag_value_error = end_period + 1
     ) %>%
     dplyr::select(Date, Asset,
                   predicted_5000 = predicted,
@@ -207,13 +207,13 @@ for (i in 1944:(length(all_dates_sim) - 1) ) {
     generate_portfolio_LM_with_Errors(
       cor_high_diff_data = correlation_data %>%
         filter( Date <= all_dates_sim[i + 1] ),
-      regression_length = 2500,
+      regression_length = 3000,
       portfolio_actuals_data = portfolio_data,
       dependant_var = "Final_Return",
       date_filter_train = all_dates_sim[i],
       sig_thresh_LM = 0.1,
       padding_value = 0,
-      lag_value_error = end_period
+      lag_value_error = end_period + 1
     ) %>%
     dplyr::select(Date, Asset,
                   predicted_2500 = predicted,
@@ -337,7 +337,12 @@ which(all_dates_sim == max(model_prediction_data$Date, na.rm = T))
 
 trade_statment <-
   "
-predicted_10000 > 1
+Averaged_Pred > 1
+"
+
+trade_statment <-
+  "
+(predicted_2500 > 3)|(portfolio_pred_5000 > 4)|(portfolio_pred_10000 > 4)|(portfolio_pred_5000_mean_roll_250 > 4)
 "
 
 # trade_statment <-
