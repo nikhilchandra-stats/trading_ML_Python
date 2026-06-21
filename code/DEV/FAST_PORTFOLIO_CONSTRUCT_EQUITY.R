@@ -72,11 +72,11 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "USD_CAD",
-    "USD_MXN",
-    "USD_CHF",
-    "USD_SEK",
-    "USD_JPY"
+    "SPX500_USD",
+    "DE30_EUR",
+    "XAU_USD",
+    "USD_JPY",
+    "JP225_USD"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -104,12 +104,12 @@ Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
 stop_factor_var = 10
-profit_factor_var = 20
+profit_factor_var = 40
 risk_dollar_value_var = 5
 end_period = 130
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 10
+end_point_profit = 70
 
 regression_length = 25000
 direct_return_cols = 24
@@ -118,7 +118,7 @@ low_to_price_lengths = c(400)
 cor_periods = c(50)
 dependant_var = "Final_Return"
 save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/"
-model_prefix = "Currency"
+model_prefix = "Equity"
 
 correlation_data <-
   get_portfolio_rolling_data(
@@ -187,25 +187,25 @@ reg_data_bayes_train <-
 reg_vars <-
   names(reg_data_bayes_train[[1]]) %>%
   keep(~ (.x == "Asset"|
-         (str_detect(.x, "state_space")&str_detect(.x, "rolling"))|
-         (str_detect(.x, "Price_diff_Low"))|
-         (str_detect(.x, "Period_Return_Lag_"))|
-         (str_detect(.x, "Lagged_Final_Return_"))|
-         (str_detect(.x, "rolling_sum_|rolling_mean_|rolling_sd_|brownian_"))|
-         (str_detect(.x, "cor"))
-         # .x %in%
-         # c(
-         #   "Cor_Model_1_pred",
-         #   "Cor_Model_1_Low_Sig_pred",
-         #   "Cor_Model_2_pred",
-         #   "diff_dat_model_1_pred",
-         #   "diff_dat_model_1_Low_Sig_pred",
-         #   "diff_dat_model_2_pred",
-         #   "return_based_model_1_pred",
-         #   "return_based_model_2_pred")
-         #
-         )
-       )  %>%
+            (str_detect(.x, "state_space")&str_detect(.x, "rolling"))|
+            (str_detect(.x, "Price_diff_Low"))|
+            (str_detect(.x, "Period_Return_Lag_"))|
+            (str_detect(.x, "Lagged_Final_Return_"))|
+            (str_detect(.x, "rolling_sum_|rolling_mean_|rolling_sd_|brownian_"))|
+            (str_detect(.x, "cor"))
+          # .x %in%
+          # c(
+          #   "Cor_Model_1_pred",
+          #   "Cor_Model_1_Low_Sig_pred",
+          #   "Cor_Model_2_pred",
+          #   "diff_dat_model_1_pred",
+          #   "diff_dat_model_1_Low_Sig_pred",
+          #   "diff_dat_model_2_pred",
+          #   "return_based_model_1_pred",
+          #   "return_based_model_2_pred")
+          #
+  )
+  )  %>%
   unlist()
 
 reg_vars <- reg_data_bayes_train[[2]]
@@ -264,26 +264,26 @@ model_prediction_data <-
       slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
     rolling_predicted_10000_2000 =
       slider::slide_dbl(predicted, .f = ~ mean(.x, na.rm = T), .before = 2000)
-  )
+  ) %>%
+  dplyr::select(Date, Asset, contains("pred"), Final_Return)
 
 trade_statment <-
-  "(predicted > rolling_predicted_10000_2000 + 2.75*rolling_predicted_10000_2000_sd &
-    predicted < rolling_predicted_10000_2000 + 10*rolling_predicted_10000_2000_sd)|
-    (rolling_predicted_10000_50 > rolling_predicted_10000_2000 + 2.5*rolling_predicted_10000_2000_sd &
-    rolling_predicted_10000_50 < rolling_predicted_10000_2000 + 10*rolling_predicted_10000_2000_sd)
-"
+  "(portfolio_pred_10000 > 0)|
+   (predicted > rolling_predicted_10000_400 + 1*rolling_predicted_10000_400_sd &
+    predicted < rolling_predicted_10000_400 + 2.5*rolling_predicted_10000_400_sd)|
+    (predicted > rolling_predicted_10000_2000 + 1.25*rolling_predicted_10000_2000_sd &
+    predicted < rolling_predicted_10000_2000 + 2.6*rolling_predicted_10000_2000_sd)"
 
 trade_statment <-
-  "(predicted > rolling_predicted_10000_400 + 0*rolling_predicted_10000_400_sd &
-    predicted < rolling_predicted_10000_400 + 1*rolling_predicted_10000_400_sd)"
+  "(portfolio_pred_10000 > 0)|
+  (predicted > rolling_predicted_10000_2000 + 0.75*rolling_predicted_10000_2000_sd &
+    predicted < rolling_predicted_10000_2000 + 1.25*rolling_predicted_10000_2000_sd)|
+   (predicted > rolling_predicted_10000_400 + 0.75*rolling_predicted_10000_400_sd &
+    predicted < rolling_predicted_10000_400 + 1.5*rolling_predicted_10000_400_sd)|
+   (rolling_predicted_10000_200 > 1 & rolling_predicted_10000_200 < 3.001)"
 
 trade_statment <-
-  "(predicted > rolling_predicted_10000_2000 + 2.75*rolling_predicted_10000_2000_sd &
-    predicted < rolling_predicted_10000_2000 + 10*rolling_predicted_10000_2000_sd)|
-   (predicted > 8)"
-
-trade_statment <-
-  "(predicted > 1 & predicted < 3.5)"
+  "rolling_predicted_10000_200 > 1 & rolling_predicted_10000_200 < 3.001"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -295,7 +295,7 @@ analyse_performance <-
   )
 
 control_data <-
-  analyse_performance %>%
+  model_prediction_data %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
@@ -320,8 +320,54 @@ analyse_performance %>%
   geom_line(size = 0.8) +
   facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
-  scale_y_continuous(n.breaks = 10, labels = scales::label_dollar()) +
+  scale_y_continuous(n.breaks = 30, labels = scales::label_dollar()) +
   theme(legend.position = "bottom")
+
+total_worst_case <- run_all_sims_temp(samples_x = 200000,
+                                      sim_length = 15000,
+                                      control_data = control_data,
+                                      analyse_performance = analyse_performance)
+
+
+sim_result_list <- list()
+control_data_asset <-
+  model_prediction_data %>%
+  group_by(Date, Asset) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  group_by(Asset) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  group_by(Asset) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  ungroup() %>%
+  mutate(trade_col = "Control")
+
+analyse_performance_asset <-
+  analyse_performance %>%
+  filter(trade_col == "Long") %>%
+  group_by(Date, Asset) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  group_by(Asset) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  group_by(Asset) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  ungroup() %>%
+  mutate(trade_col = "Long")
+
+for (i in 1:length(assets_to_port) ) {
+
+  sim_result_list[[i]] <-
+    run_all_sims_temp(samples_x = 100000,
+                    sim_length = 1000,
+                    control_data = control_data_asset %>% filter(Asset == assets_to_port[i]),
+                    analyse_performance = analyse_performance_asset %>% filter(Asset == assets_to_port[i])) %>%
+    mutate(Asset = assets_to_port[i])
+
+}
+
+worst_cases <-
+  sim_result_list %>% map_dfr(bind_rows)
 
 analyse_performance_sum <-
   model_prediction_data %>%
@@ -350,43 +396,42 @@ analyse_performance_sum <-
   )
 
 
+run_all_sims_temp <-
+  function(
+    samples_x = 100000,
+    sim_length = 1000,
+    control_data,
+    analyse_performance
+    ) {
 
-check_list <- list()
-sd_check <- c(0, 1,1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4)
-for (j in 1:length(sd_check) ) {
+    sampled_control <- numeric(samples_x)
+    sampled_trades <- numeric(samples_x)
+    dim_control <- dim(control_data)[1]
+    dim_trades <- dim(analyse_performance)[1]
+    returns_control <- control_data %>% pull(Final_Return) %>% as.numeric()
+    returns_trades <- analyse_performance %>% pull(Final_Return) %>% as.numeric()
 
-  trade_statment <-
-    glue::glue("portfolio_pred_2500 > trained_mean_2500 + {sd_check[j]}*trained_sd_2500")
+    for (i in 1:samples_x) {
 
-  check_list[[j]] <-
-    model_prediction_data %>%
-    mutate(
-      trade_col = eval(parse(text = trade_statment))
-    ) %>%
-    mutate(
-      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-    ) %>%
-    mutate(
-      pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
-      pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
+      control_samples <- round(runif(n= 1, min = 1, max = dim_control - 1000))
+      trade_samples <- round(runif(n= 1, min = 1, max = dim_trades - 1000))
 
-      neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
-      neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
+      sampled_control[i] <- sum(returns_control[control_samples:(control_samples + 1000)])
+      sampled_trades[i] <- sum(returns_trades[trade_samples:(trade_samples + 1000)])
 
-    ) %>%
-    group_by(Asset) %>%
-    summarise(
-      TRUE_pos_rate = sum(pos_detect_TRUE, na.rm=T)/( sum(pos_detect_TRUE, na.rm = T) + sum(pos_detect_Ned, na.rm = T) ),
-      TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/( sum(neg_detect_TRUE, na.rm = T) + sum(neg_detect_Ned, na.rm = T))
-    ) %>%
-    mutate(sd_check = sd_check[j])
+    }
 
-}
+    summary_results <-
+      tibble(
+        mean_results_control = mean(sampled_control, na.rm = T),
+        mean_results_trades = mean(sampled_trades, na.rm = T),
+        quan_25_control = quantile(sampled_control,0.25 ,na.rm = T),
+        quan_25_trades = quantile(sampled_trades,0.25 ,na.rm = T),
+        quan_05_control = quantile(sampled_control,0.0001 ,na.rm = T),
+        quan_05_trades = quantile(sampled_trades,0.0001 ,na.rm = T)
+      )
 
-check_list_dfr <-
-  check_list %>%
-  map_dfr(bind_rows)
+    return(summary_results)
+  }
+
+

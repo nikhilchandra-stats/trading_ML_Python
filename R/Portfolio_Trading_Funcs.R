@@ -284,7 +284,13 @@ portfolio_LM_brownian_checks <-
             glue::glue("brownian_col_mean_{.x}_{brownian_period} = slider::slide_dbl(.x = lag({.x}, {lag_period_to_use + 1}), .f = ~ mean(.x, na.rm = T) , .before = {brownian_period})"),
             glue::glue("brownian_col_sd_{.x}_{brownian_period} = slider::slide_dbl(.x = lag({.x}, {lag_period_to_use + 1}), .f = ~ sd(.x, na.rm = T) , .before = {brownian_period})"),
             glue::glue("brownian_percentile_95_{.x}_{brownian_period} = lag(brownian_col_mean_{.x}_{brownian_period}, {brownian_period} ) + 1.96*lag(brownian_col_sd_{.x}_{brownian_period}, {brownian_period})*{brownian_period}"),
-            glue::glue("brownian_percentile_95_position_{.x}_{brownian_period} = brownian_col_check_{.x}_{brownian_period}/brownian_percentile_95_{.x}_{brownian_period}")
+            glue::glue("brownian_percentile_95_position_{.x}_{brownian_period} = brownian_col_check_{.x}_{brownian_period}/brownian_percentile_95_{.x}_{brownian_period}"),
+
+            #Delete if too heavy
+            glue::glue("brownian_col_cumul_mean_{.x}_{brownian_period} = slider::slide_dbl(.x = brownian_col_check_{.x}_{brownian_period}, .f = ~ mean(.x, na.rm = T) , .before = {brownian_period})"),
+            glue::glue("brownian_col_cumul_sd_{.x}_{brownian_period} = slider::slide_dbl(.x = brownian_col_check_{.x}_{brownian_period}, .f = ~ sd(.x, na.rm = T) , .before = {brownian_period})"),
+            glue::glue("brownian_cumul_percentile_95_{.x}_{brownian_period} = lag(brownian_col_cumul_mean_{.x}_{brownian_period}, {brownian_period} ) + 1.96*lag(brownian_col_cumul_sd_{.x}_{brownian_period}, {brownian_period})*{brownian_period}"),
+            glue::glue("brownian_percentile_cumul_95_position_{.x}_{brownian_period} = brownian_col_check_{.x}_{brownian_period}/brownian_cumul_percentile_95_{.x}_{brownian_period}")
           )
       ) %>%
       unlist() %>%
@@ -2226,6 +2232,22 @@ gen_port_LM_with_Errors_Bayes_data <-
         roll_period_state_space = 500
       )
 
+    state_space_data_100 <-
+      portfolio_LM_state_space(
+        portfolio_data = portfolio_actuals_data,
+        state_space_col = "period_return_100_Price",
+        required_lag = 100, #Does not need a plus 1 its built in
+        roll_period_state_space = 500
+      )
+
+    state_space_data_90 <-
+      portfolio_LM_state_space(
+        portfolio_data = portfolio_actuals_data,
+        state_space_col = "period_return_90_Price",
+        required_lag = 90, #Does not need a plus 1 its built in
+        roll_period_state_space = 500
+      )
+
 
     technical_data_final_return <-
       portfolio_LM_roll_sum_and_mean(
@@ -2366,6 +2388,18 @@ gen_port_LM_with_Errors_Bayes_data <-
                                    col_to_use = "period_return_50_Price",
                                    lag_period_to_use = 50)
 
+    brownian_tech_data_100_200 <-
+      portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                   brownian_period = 200,
+                                   col_to_use = "period_return_100_Price",
+                                   lag_period_to_use = 100)
+
+    brownian_tech_data_80_200 <-
+      portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                   brownian_period = 200,
+                                   col_to_use = "period_return_80_Price",
+                                   lag_period_to_use = 80)
+
    reg_dat <-
       portfolio_actuals_data %>%
       ungroup() %>%
@@ -2381,6 +2415,8 @@ gen_port_LM_with_Errors_Bayes_data <-
       left_join(state_space_data_50) %>%
       left_join(state_space_data_6) %>%
       left_join(state_space_data_10) %>%
+      left_join(state_space_data_100) %>%
+      left_join(state_space_data_90) %>%
       left_join(technical_data_final_return)%>%
       left_join(technical_data_period_24) %>%
       left_join(technical_data_period_12) %>%
@@ -2399,7 +2435,9 @@ gen_port_LM_with_Errors_Bayes_data <-
       left_join(brownian_tech_data_50_200) %>%
       left_join(brownian_tech_data_50_100) %>%
       left_join(brownian_tech_data_50_50) %>%
-      left_join(brownian_tech_data_50_24)
+      left_join(brownian_tech_data_50_24) %>%
+     left_join(brownian_tech_data_100_200) %>%
+     left_join(brownian_tech_data_80_200)
 
    rm(state_space_data, technical_data_final_return, technical_data_period_24, period_lag_cols,
       technical_data_period_4, technical_data_period_8,
@@ -2409,8 +2447,58 @@ gen_port_LM_with_Errors_Bayes_data <-
       brownian_tech_data_1_60, brownian_tech_data_1_40, brownian_tech_data_10, brownian_tech_data_50_200,
       state_space_data_50, state_space_data_12, state_space_data_4, brownian_tech_data_50_100,
       state_space_data_6, brownian_tech_data_50_50,
-      brownian_tech_data_50_24, state_space_data_10)
+      brownian_tech_data_50_24, state_space_data_10,
+      state_space_data_100, brownian_tech_data_80_200, brownian_tech_data_100_200,
+      state_space_data_90)
    gc()
+
+   brownian_tech_data_110_200 <-
+     portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                  brownian_period = 200,
+                                  col_to_use = "period_return_110_Price",
+                                  lag_period_to_use = 110)
+
+   brownian_tech_data_90_200 <-
+     portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                  brownian_period = 200,
+                                  col_to_use = "period_return_90_Price",
+                                  lag_period_to_use = 90)
+
+   brownian_tech_data_110_500 <-
+     portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                  brownian_period = 500,
+                                  col_to_use = "period_return_110_Price",
+                                  lag_period_to_use = 110)
+
+   brownian_tech_data_90_500 <-
+     portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                  brownian_period = 500,
+                                  col_to_use = "period_return_90_Price",
+                                  lag_period_to_use = 90)
+
+   brownian_tech_data_110_750 <-
+     portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                  brownian_period = 750,
+                                  col_to_use = "period_return_110_Price",
+                                  lag_period_to_use = 110)
+
+   brownian_tech_data_90_750 <-
+     portfolio_LM_brownian_checks(portfolio_data = portfolio_actuals_data,
+                                  brownian_period = 750,
+                                  col_to_use = "period_return_90_Price",
+                                  lag_period_to_use = 90)
+
+   reg_dat <-
+     reg_dat %>%
+     left_join(brownian_tech_data_110_200) %>%
+     left_join(brownian_tech_data_90_200) %>%
+     left_join(brownian_tech_data_90_500) %>%
+     left_join(brownian_tech_data_110_500) %>%
+     left_join(brownian_tech_data_90_750) %>%
+     left_join(brownian_tech_data_110_750)
+
+   rm(brownian_tech_data_110_200, brownian_tech_data_90_200, brownian_tech_data_110_750,
+      brownian_tech_data_90_750, brownian_tech_data_90_500, brownian_tech_data_110_500)
 
     reg_dat <- eval(parse(text = lagged_returns_statement))
 
@@ -2767,6 +2855,9 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
           padding_value = 100
         )
     }
+
+    rm(reg_data_bayes_test)
+    gc()
 
     model_prediction_data <-
       model_prediction_data %>%
