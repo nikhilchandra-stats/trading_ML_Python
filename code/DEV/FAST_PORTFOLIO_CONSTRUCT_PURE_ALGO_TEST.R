@@ -5,12 +5,12 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "D:/trade_data//oanda_data/",
+  save_path_oanda_assets = "D://Asset Data/oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
-  how_far_back = 10,
-  start_date = (today() - days(7)) %>% as.character()
+  how_far_back = 12,
+  start_date = (today() - days(4)) %>% as.character()
 )
 aud_assets <- aud_assets %>% map_dfr(bind_rows)
 aud_usd_today <- get_aud_conversion(asset_data_daily_raw = aud_assets)
@@ -26,17 +26,40 @@ currency_conversion <-
   )
 
 asset_list_oanda =
-  c("HK33_HKD", "USD_JPY",
+  c("XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
+    "XAG_NZD",
+    "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
+    "XAU_NZD",
+    "BTC_USD", "LTC_USD", "BCH_USD",
+    "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
+    "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
+    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
+    "AUD_USD", "EUR_USD", "GBP_USD", "USD_CHF", "USD_JPY", "USD_MXN", "USD_SEK", "USD_NOK",
+    "NZD_USD", "USD_CAD", "USD_SGD", "ETH_USD", "XPT_USD", "XPD_USD",
+    "USD_JPY", "GBP_JPY", "USD_SGD", "EUR_SEK",
+    "DE30_EUR",
+    "USD_CHF", "USD_SEK", "XCU_USD", "SUGAR_USD",
+    "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
+    "XAU_USD",
+    "USD_CZK",  "WHEAT_USD",
+    "EUR_USD", "SG30_SGD", "AU200_AUD", "XAG_USD",
+    "EUR_GBP", "USD_CNH", "USD_CAD", "NAS100_USD",
+    "EU50_EUR", "NATGAS_USD", "SOYBN_USD",
+    "US2000_USD",
+    "BCO_USD", "AUD_USD", "NZD_USD", "NZD_CHF", "WHEAT_USD",
+    "JP225_USD", "SPX500_USD",
+    "UK10YB_GBP",
+    "HK33_HKD", "USD_JPY",
     "BTC_USD",
     "AUD_NZD", "GBP_CHF",
     "EUR_HUF", "EUR_ZAR", "NZD_JPY", "EUR_NZD",
     "USB02Y_USD",
     "XAU_CAD", "GBP_JPY", "EUR_NOK", "USD_SGD", "EUR_SEK",
     "DE30_EUR",
-    "AUD_CAD",
+    "AUD_CAD", "NZD_USD", "ETH_USD","BCO_USD", "AUD_USD",
     "UK10YB_GBP",
     "XPD_USD",
-    "UK100_GBP", "NZD_USD",
+    "UK100_GBP",
     "USD_CHF", "GBP_NZD",
     "GBP_SGD", "USD_SEK", "EUR_SGD", "XCU_USD", "SUGAR_USD", "CHF_ZAR",
     "AUD_CHF", "EUR_CHF", "USD_MXN", "GBP_USD", "WTICO_USD", "EUR_JPY", "USD_NOK",
@@ -58,198 +81,76 @@ asset_list_oanda =
     "BTC_USD", "LTC_USD", "BCH_USD",
     "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
     "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
-    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP") %>%
+    "USB02Y_USD", "USB05Y_USD", "USB30Y_USD", "USB10Y_USD", "UK100_GBP",
+    "GBP_CAD"
+  ) %>%
   unique()
 
 asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "D:/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2019-01-01"
+db_location = "D://Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+start_date = "2022-01-01"
 end_date = today() %>% as.character()
-Indices_Metals_Bonds <- list()
 
-assets_to_port =
-  c(
-    "SPX500_USD",
-    "DE30_EUR",
-    "XAU_USD",
-    "USD_JPY",
-    "JP225_USD"
-  ) %>% unique()
+current_time <- now() %>% as_datetime()
+current_minute <- lubridate::minute(current_time)
+current_hour <- lubridate::hour(current_time)
+current_date <- now() %>% as_date(tz = "Australia/Canberra")
 
-Indices_Metals_Bonds[[1]] <-
-  get_db_data_quickly_algo(
+trade_statement_equity <-
+  "
+  (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_50 + 1.5*portfolio_pred_10000_sd_roll_50 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_50 + 10*portfolio_pred_10000_sd_roll_50)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_250 + 1.5*portfolio_pred_10000_sd_roll_250 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_250 + 10*portfolio_pred_10000_sd_roll_250)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_400 + 1.25*portfolio_pred_10000_sd_roll_400 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_400 + 10*portfolio_pred_10000_sd_roll_400 )|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_1000 + 1.2*portfolio_pred_10000_sd_roll_1000 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_1000 + 10*portfolio_pred_10000_sd_roll_1000 )|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_600 + 1.25*portfolio_pred_10000_sd_roll_600 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_600 + 10*portfolio_pred_10000_sd_roll_600 )|
+   (portfolio_pred_10000 > 17)
+"
+
+single_asset_model_trades_equity <-
+  get_port_LM_trades_algo(
     db_location = db_location,
-    start_date = start_date,
-    end_date = as.character(today() + days(30)),
-    time_frame = "H1",
-    bid_or_ask = "ask",
-    assets =   assets_to_port
-  ) %>%
-  distinct()
-Indices_Metals_Bonds[[2]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = as.character(today() + days(30)),
-    time_frame = "H1",
-    bid_or_ask = "bid",
-    assets =   assets_to_port
-  ) %>%
-  distinct()
-
-Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
-Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
-
-stop_factor_var = 10
-profit_factor_var = 40
-risk_dollar_value_var = 5
-end_period = 130
-trade_direction = "Long"
-end_point_loss = -5
-end_point_profit = 70
-
-regression_length = 25000
-direct_return_cols = 24
-lag_value_error = end_period + 1
-low_to_price_lengths = c(400)
-cor_periods = c(50)
-dependant_var = "Final_Return"
-save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/"
-model_prefix = "Equity"
-
-correlation_data <-
-  get_portfolio_rolling_data(
-    asset_data = Indices_Metals_Bonds[[1]],
-    asset_of_interest = assets_to_port,
-    low_to_price_lengths = low_to_price_lengths,
-    cor_periods = cor_periods
-  )
-
-all_dates_sim <-
-  correlation_data %>%
-  filter(Date >= as_datetime("2020-01-01") + dhours(regression_length + 500) ) %>%
-  pull(Date) %>%
-  unique()
-
-training_date <- all_dates_sim %>% min(na.rm = T)
-
-portfolio_data_train <-
-  get_portfolio_model_fast_summed(
-    asset_data = Indices_Metals_Bonds %>% map(~ .x %>% filter(Date <= training_date)),
-    asset_of_interest = assets_to_port,
-    stop_factor_var = stop_factor_var,
-    profit_factor_var = profit_factor_var,
-    risk_dollar_value_var = risk_dollar_value_var,
-    end_period = end_period,
-    time_frame = "H1",
-    trade_direction = trade_direction,
+    start_date = "2022-01-01",
+    assets_to_port = c(
+      "SPX500_USD",
+      "DE30_EUR",
+      "XAU_USD",
+      "USD_JPY",
+      "JP225_USD"
+    ),
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    end_point_loss = end_point_loss,
-    end_point_profit = end_point_profit,
-    sum_as_portfolio = TRUE,
-
-    overwrite_volume = NULL,
-    min_volume_only = FALSE,
-    return_only_interested_col = FALSE
-  )
-
-# portfolio_LM_gen_static_models(
-#   cor_high_diff_data = correlation_data %>% filter(Date <= training_date),
-#   regression_length = regression_length,
-#   portfolio_actuals_data = portfolio_data_train,
-#   dependant_var = "Final_Return",
-#   date_filter_train = training_date,
-#   periods_back_from_train_date = 12000,
-#   padding_value = 0,
-#   lag_value_error = lag_value_error,
-#   direct_return_cols = direct_return_cols,
-#   save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/",
-#   model_prefix = "Static"
-# )
-
-reg_data_bayes_train <-
-  gen_port_LM_with_Errors_Bayes_data(
-    cor_high_diff_data = correlation_data %>% filter(Date <= training_date),
-    regression_length = regression_length,
-    portfolio_actuals_data = portfolio_data_train,
-    dependant_var = dependant_var,
-    date_filter_train = training_date,
-    padding_value = 0,
-    lag_value_error = lag_value_error,
-    direct_return_cols = direct_return_cols
-  )
-
-# reg_vars <- reg_data_bayes_train[[2]]
-reg_vars <-
-  names(reg_data_bayes_train[[1]]) %>%
-  keep(~ (.x == "Asset"|
-            (str_detect(.x, "state_space")&str_detect(.x, "rolling"))|
-            (str_detect(.x, "Price_diff_Low"))|
-            (str_detect(.x, "Period_Return_Lag_"))|
-            (str_detect(.x, "Lagged_Final_Return_"))|
-            (str_detect(.x, "rolling_sum_|rolling_mean_|rolling_sd_|brownian_"))|
-            (str_detect(.x, "cor"))
-          # .x %in%
-          # c(
-          #   "Cor_Model_1_pred",
-          #   "Cor_Model_1_Low_Sig_pred",
-          #   "Cor_Model_2_pred",
-          #   "diff_dat_model_1_pred",
-          #   "diff_dat_model_1_Low_Sig_pred",
-          #   "diff_dat_model_2_pred",
-          #   "return_based_model_1_pred",
-          #   "return_based_model_2_pred")
-          #
-  )
-  )  %>%
-  unlist()
-
-reg_vars <- reg_data_bayes_train[[2]]
-
-gen_port_LM_with_Errors_Bayes_Gen_Model(
-  reg_data = reg_data_bayes_train[[1]],
-  reg_variables = reg_vars,
-  save_location = save_location,
-  model_prefix = model_prefix,
-  dependant_var = dependant_var,
-  date_filter_train = training_date,
-  padding_value = 0,
-  sig_thresh_LM = 1,
-  interact_list_prefix = NULL
-)
-
-training_date <- "2022-08-16 18:00:00 AEST"
-model_prediction_data <-
-  gen_port_LM_with_Errors_Bayes_Preds_algo(
-    Indices_Metals_Bonds = Indices_Metals_Bonds,
-    assets_to_port = assets_to_port,
-    stop_factor_var = stop_factor_var,
-    profit_factor_var = profit_factor_var,
-    risk_dollar_value_var = risk_dollar_value_var,
-    end_period = end_period,
-    trade_direction = trade_direction,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor,
-    end_point_loss = end_point_loss,
-    end_point_profit = end_point_profit,
-    low_to_price_lengths = low_to_price_lengths,
-    cor_periods = cor_periods,
-    regression_length = regression_length,
-    training_date =  training_date,
-    save_location = save_location,
-    model_prefix = model_prefix,
-    correlation_data = correlation_data,
-    direct_return_cols = direct_return_cols,
-    lag_value_error = lag_value_error,
-    filter_na_for_values = TRUE
+    stop_factor_var = 10,
+    profit_factor_var = 40,
+    risk_dollar_value_var = 5,
+    end_period = 130,
+    trade_direction = "Long",
+    end_point_loss = -5,
+    end_point_profit = 70,
+    regression_length = 25000,
+    direct_return_cols = 24,
+    low_to_price_lengths = c(400),
+    cor_periods = c(50),
+    dependant_var = "Final_Return",
+    save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/",
+    model_prefix = "Equity",
+    training_date = "2022-08-16 18:00:00 AEDT",
+    trade_statement = trade_statement_equity,
+    current_time = current_time,
+    bug_db = "D:/trade_data/Day_Trader_Cor_Continuous_Models/bug_test.db",
+    start_bug_test = FALSE,
+    return_model_data = TRUE
   )
 
 model_prediction_data <-
-  model_prediction_data %>%
+  single_asset_model_trades_equity[[1]] %>%
   mutate(
     rolling_predicted_10000_50_sd =
       slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 50),
@@ -263,21 +164,39 @@ model_prediction_data <-
     rolling_predicted_10000_2000_sd =
       slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
     rolling_predicted_10000_2000 =
-      slider::slide_dbl(predicted, .f = ~ mean(.x, na.rm = T), .before = 2000)
+      slider::slide_dbl(predicted, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+    portfolio_pred_10000_mean_roll_600 =
+      slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ mean(.x, na.rm = T), .before = 600),
+    portfolio_pred_10000_sd_roll_600 =
+      slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ sd(.x, na.rm = T), .before = 600),
+
+    portfolio_pred_10000_mean_roll_1000 =
+      slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ mean(.x, na.rm = T), .before = 1000),
+    portfolio_pred_10000_sd_roll_1000 =
+      slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ sd(.x, na.rm = T), .before = 1000)
   ) %>%
   dplyr::select(Date, Asset, contains("pred"), Final_Return)
 
-trade_statment <-
-  "(portfolio_pred_10000_mean_roll_50 > 12)|
-   (portfolio_pred_10000 >= portfolio_pred_10000_mean_roll_250 + 0.5*portfolio_pred_10000_sd_roll_250)|
-   (portfolio_pred_10000 >= portfolio_pred_10000_mean_roll_50 + 1*portfolio_pred_10000_sd_roll_50)"
 
 trade_statment <-
-  "predicted > 0 & predicted < 100"
+  "
+   (portfolio_pred_10000_mean_roll_50 > 15)|
+   (rolling_predicted_10000_200 > 5)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_1000 + 1.2*portfolio_pred_10000_sd_roll_1000 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_1000 + 10*portfolio_pred_10000_sd_roll_1000 )|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_600 + 1.25*portfolio_pred_10000_sd_roll_600 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_600 + 10*portfolio_pred_10000_sd_roll_600 )|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_400 + 1.25*portfolio_pred_10000_sd_roll_400 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_400 + 10*portfolio_pred_10000_sd_roll_400 )|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_250 + 1.5*portfolio_pred_10000_sd_roll_250 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_250 + 10*portfolio_pred_10000_sd_roll_250)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_50 + 1.5*portfolio_pred_10000_sd_roll_50 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_50 + 10*portfolio_pred_10000_sd_roll_50)
 
-trade_statment <-
-  "(portfolio_pred_10000 > 8 & portfolio_pred_10000 < 1000)|
-   (predicted > 8 & predicted < 1000)"
+"
+
+
 
 analyse_performance <-
   model_prediction_data %>%
@@ -321,7 +240,7 @@ analyse_performance %>%
   theme(legend.position = "bottom")
 
 total_worst_case <- run_all_sims_temp(samples_x = 200000,
-                                      sim_length = 200,
+                                      sim_length = 2000,
                                       control_data = control_data,
                                       analyse_performance = analyse_performance)
 
@@ -356,9 +275,9 @@ for (i in 1:length(assets_to_port) ) {
 
   sim_result_list[[i]] <-
     run_all_sims_temp(samples_x = 100000,
-                    sim_length = 1000,
-                    control_data = control_data_asset %>% filter(Asset == assets_to_port[i]),
-                    analyse_performance = analyse_performance_asset %>% filter(Asset == assets_to_port[i])) %>%
+                      sim_length = 1000,
+                      control_data = control_data_asset %>% filter(Asset == assets_to_port[i]),
+                      analyse_performance = analyse_performance_asset %>% filter(Asset == assets_to_port[i])) %>%
     mutate(Asset = assets_to_port[i])
 
 }
@@ -399,7 +318,7 @@ run_all_sims_temp <-
     sim_length = 1000,
     control_data,
     analyse_performance
-    ) {
+  ) {
 
     sampled_control <- numeric(samples_x)
     sampled_trades <- numeric(samples_x)
@@ -422,6 +341,8 @@ run_all_sims_temp <-
       tibble(
         mean_results_control = mean(sampled_control, na.rm = T),
         mean_results_trades = mean(sampled_trades, na.rm = T),
+        quan_95_control = quantile(sampled_control,0.95 ,na.rm = T),
+        quan_95_trades = quantile(sampled_trades,0.95 ,na.rm = T),
         quan_05_control = quantile(sampled_control,0.05 ,na.rm = T),
         quan_05_trades = quantile(sampled_trades,0.05 ,na.rm = T),
         quan_01_control = quantile(sampled_control,0.0001 ,na.rm = T),

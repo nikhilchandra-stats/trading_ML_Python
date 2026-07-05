@@ -66,17 +66,19 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "D:/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2019-01-01"
+start_date = "2022-06-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "SPX500_USD",
-    "DE30_EUR",
-    "XAU_USD",
+    "AUD_USD",
+    "UK10YB_GBP",
+    "XCU_USD",
+    "XAG_USD",
+    "USB30Y_USD",
     "USD_JPY",
-    "JP225_USD"
+    "BTC_USD"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -89,6 +91,7 @@ Indices_Metals_Bonds[[1]] <-
     assets =   assets_to_port
   ) %>%
   distinct()
+
 Indices_Metals_Bonds[[2]] <-
   get_db_data_quickly_algo(
     db_location = db_location,
@@ -100,25 +103,25 @@ Indices_Metals_Bonds[[2]] <-
   ) %>%
   distinct()
 
-Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
-Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
+Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= start_date)
+Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= start_date)
 
 stop_factor_var = 10
-profit_factor_var = 40
+profit_factor_var = 30
 risk_dollar_value_var = 5
 end_period = 130
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 70
+end_point_profit = 15
 
-regression_length = 25000
+regression_length = 12000
 direct_return_cols = 24
 lag_value_error = end_period + 1
 low_to_price_lengths = c(400)
 cor_periods = c(50)
 dependant_var = "Final_Return"
 save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/"
-model_prefix = "Equity"
+model_prefix = "Mixed"
 
 correlation_data <-
   get_portfolio_rolling_data(
@@ -130,7 +133,7 @@ correlation_data <-
 
 all_dates_sim <-
   correlation_data %>%
-  filter(Date >= as_datetime("2020-01-01") + dhours(regression_length + 500) ) %>%
+  filter(Date >= as_datetime(start_date) + dhours(regression_length) ) %>%
   pull(Date) %>%
   unique()
 
@@ -222,7 +225,8 @@ gen_port_LM_with_Errors_Bayes_Gen_Model(
   interact_list_prefix = NULL
 )
 
-training_date <- "2022-08-16 18:00:00 AEST"
+gc()
+# training_date <- "2022-08-16 18:00:00 AEST"
 model_prediction_data <-
   gen_port_LM_with_Errors_Bayes_Preds_algo(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
@@ -264,20 +268,19 @@ model_prediction_data <-
       slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
     rolling_predicted_10000_2000 =
       slider::slide_dbl(predicted, .f = ~ mean(.x, na.rm = T), .before = 2000)
-  ) %>%
-  dplyr::select(Date, Asset, contains("pred"), Final_Return)
+  )
 
 trade_statment <-
-  "(portfolio_pred_10000_mean_roll_50 > 12)|
-   (portfolio_pred_10000 >= portfolio_pred_10000_mean_roll_250 + 0.5*portfolio_pred_10000_sd_roll_250)|
-   (portfolio_pred_10000 >= portfolio_pred_10000_mean_roll_50 + 1*portfolio_pred_10000_sd_roll_50)"
+  "(portfolio_pred_10000_mean_roll_1000 > 5 & portfolio_pred_10000_mean_roll_1000 < 1000)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_250 + 1.5*portfolio_pred_10000_sd_roll_250 &
+    portfolio_pred_10000 < portfolio_pred_10000_mean_roll_250 + 2*portfolio_pred_10000_sd_roll_250)|
+   (predicted > 1 & predicted < 8)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_50 + 1*portfolio_pred_10000_sd_roll_50 &
+    portfolio_pred_10000 < portfolio_pred_10000_mean_roll_50 + 1.8*portfolio_pred_10000_sd_roll_50)|
+   (portfolio_pred_10000_mean_roll_600 > 8 & portfolio_pred_10000_mean_roll_600 < 1000)|
+   (rolling_predicted_10000_400 > rolling_predicted_10000_2000 &
+   rolling_predicted_10000_200 < rolling_predicted_10000_2000)"
 
-trade_statment <-
-  "predicted > 0 & predicted < 100"
-
-trade_statment <-
-  "(portfolio_pred_10000 > 8 & portfolio_pred_10000 < 1000)|
-   (predicted > 8 & predicted < 1000)"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -292,7 +295,7 @@ dim(analyse_performance %>% filter(trade_col == "Long"))[1]
 dim(analyse_performance)[1]
 
 control_data <-
-  model_prediction_data %>%
+  analyse_performance %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
@@ -317,54 +320,8 @@ analyse_performance %>%
   geom_line(size = 0.8) +
   facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
-  scale_y_continuous(n.breaks = 30, labels = scales::label_dollar()) +
+  scale_y_continuous(n.breaks = 10, labels = scales::label_dollar()) +
   theme(legend.position = "bottom")
-
-total_worst_case <- run_all_sims_temp(samples_x = 200000,
-                                      sim_length = 200,
-                                      control_data = control_data,
-                                      analyse_performance = analyse_performance)
-
-
-sim_result_list <- list()
-control_data_asset <-
-  model_prediction_data %>%
-  group_by(Date, Asset) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  group_by(Asset) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  group_by(Asset) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  ungroup() %>%
-  mutate(trade_col = "Control")
-
-analyse_performance_asset <-
-  analyse_performance %>%
-  filter(trade_col == "Long") %>%
-  group_by(Date, Asset) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  group_by(Asset) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  group_by(Asset) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  ungroup() %>%
-  mutate(trade_col = "Long")
-
-for (i in 1:length(assets_to_port) ) {
-
-  sim_result_list[[i]] <-
-    run_all_sims_temp(samples_x = 100000,
-                    sim_length = 1000,
-                    control_data = control_data_asset %>% filter(Asset == assets_to_port[i]),
-                    analyse_performance = analyse_performance_asset %>% filter(Asset == assets_to_port[i])) %>%
-    mutate(Asset = assets_to_port[i])
-
-}
-
-worst_cases <-
-  sim_result_list %>% map_dfr(bind_rows)
 
 analyse_performance_sum <-
   model_prediction_data %>%
@@ -393,42 +350,43 @@ analyse_performance_sum <-
   )
 
 
-run_all_sims_temp <-
-  function(
-    samples_x = 100000,
-    sim_length = 1000,
-    control_data,
-    analyse_performance
-    ) {
 
-    sampled_control <- numeric(samples_x)
-    sampled_trades <- numeric(samples_x)
-    dim_control <- dim(control_data)[1]
-    dim_trades <- dim(analyse_performance)[1]
-    returns_control <- control_data %>% pull(Final_Return) %>% as.numeric()
-    returns_trades <- analyse_performance %>% pull(Final_Return) %>% as.numeric()
+check_list <- list()
+sd_check <- c(0, 1,1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4)
+for (j in 1:length(sd_check) ) {
 
-    for (i in 1:samples_x) {
+  trade_statment <-
+    glue::glue("portfolio_pred_2500 > trained_mean_2500 + {sd_check[j]}*trained_sd_2500")
 
-      control_samples <- round(runif(n= 1, min = 1, max = dim_control - sim_length))
-      trade_samples <- round(runif(n= 1, min = 1, max = dim_trades - sim_length))
+  check_list[[j]] <-
+    model_prediction_data %>%
+    mutate(
+      trade_col = eval(parse(text = trade_statment))
+    ) %>%
+    mutate(
+      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+    ) %>%
+    mutate(
+      pos_detect_TRUE =
+        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
+      pos_detect_Ned =
+        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
 
-      sampled_control[i] <- sum(returns_control[control_samples:(control_samples + sim_length)])
-      sampled_trades[i] <- sum(returns_trades[trade_samples:(trade_samples + sim_length)])
+      neg_detect_TRUE =
+        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
+      neg_detect_Ned =
+        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
 
-    }
+    ) %>%
+    group_by(Asset) %>%
+    summarise(
+      TRUE_pos_rate = sum(pos_detect_TRUE, na.rm=T)/( sum(pos_detect_TRUE, na.rm = T) + sum(pos_detect_Ned, na.rm = T) ),
+      TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/( sum(neg_detect_TRUE, na.rm = T) + sum(neg_detect_Ned, na.rm = T))
+    ) %>%
+    mutate(sd_check = sd_check[j])
 
-    summary_results <-
-      tibble(
-        mean_results_control = mean(sampled_control, na.rm = T),
-        mean_results_trades = mean(sampled_trades, na.rm = T),
-        quan_05_control = quantile(sampled_control,0.05 ,na.rm = T),
-        quan_05_trades = quantile(sampled_trades,0.05 ,na.rm = T),
-        quan_01_control = quantile(sampled_control,0.0001 ,na.rm = T),
-        quan_01_trades = quantile(sampled_trades,0.0001 ,na.rm = T)
-      )
+}
 
-    return(summary_results)
-  }
-
-
+check_list_dfr <-
+  check_list %>%
+  map_dfr(bind_rows)

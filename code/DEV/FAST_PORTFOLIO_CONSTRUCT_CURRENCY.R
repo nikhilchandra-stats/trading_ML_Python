@@ -66,7 +66,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "D:/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2019-01-01"
+start_date = "2020-06-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 

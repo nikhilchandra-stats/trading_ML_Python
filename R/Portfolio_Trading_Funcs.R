@@ -386,7 +386,7 @@ general_rolling_asset_cor <-
     wide_data <-
       wide_pivot_asset_data(
         all_asset_data = all_asset_data,
-        assets_to_use  = assets_to_port,
+        assets_to_use  = assets_to_use,
         cor_col_to_use = cor_col_to_use
       )
 
@@ -509,7 +509,7 @@ get_portfolio_rolling_data <-
     Low_Price_Data <-
       general_rolling_Diff_cols(
         all_asset_data = asset_data,
-        assets_to_use  = assets_to_port,
+        assets_to_use  = asset_of_interest,
         base_col = "Price",
         col_to_minus = "Low",
         diff_periods = low_to_price_lengths,
@@ -521,7 +521,7 @@ get_portfolio_rolling_data <-
     High_Price_Data <-
       general_rolling_Diff_cols(
         all_asset_data = asset_data,
-        assets_to_use  = assets_to_port,
+        assets_to_use  = asset_of_interest,
         base_col = "High",
         col_to_minus = "Price",
         diff_periods = low_to_price_lengths,
@@ -545,7 +545,7 @@ get_portfolio_rolling_data <-
       cor_dat_X[[i]] <-
         general_rolling_asset_cor(
           all_asset_data = combined_data,
-          assets_to_use  = assets_to_port,
+          assets_to_use  = asset_of_interest,
           cor_col_to_use = diff_cols[i],
           cor_periods = cor_periods
         )
@@ -2114,6 +2114,8 @@ gen_port_LM_with_Errors_Bayes_data <-
     model_prefix = "Static"
     ) {
 
+    message(glue::glue("Dimensions cor_high_diff_data {dim(cor_high_diff_data)[1]} \n"))
+
     reg_dat <-
       cor_high_diff_data %>%
       ungroup() %>%
@@ -2123,10 +2125,14 @@ gen_port_LM_with_Errors_Bayes_data <-
       # ) %>%
       filter(if_all(everything(), ~ !is.na(.)))
 
+    message(glue::glue("Dimensions reg_dat {dim(reg_dat)[1]} \n"))
+
     reg_vars <-
       names(reg_dat) %>%
       keep(~ !str_detect(.x, "Date") & !str_detect(.x, "Final_Return")) %>%
       unlist()
+
+    message(glue::glue("Dimensions reg_vars {length(reg_vars)} \n"))
 
     lagged_returns_x <-
       seq(lag_value_error + 1, lag_value_error + 20,1) %>%
@@ -2439,6 +2445,8 @@ gen_port_LM_with_Errors_Bayes_data <-
      left_join(brownian_tech_data_100_200) %>%
      left_join(brownian_tech_data_80_200)
 
+   message(glue::glue("Dimensions reg_dat {dim(reg_dat)[1]} \n"))
+
    rm(state_space_data, technical_data_final_return, technical_data_period_24, period_lag_cols,
       technical_data_period_4, technical_data_period_8,
       technical_data_period_4, technical_data_period_12,
@@ -2488,6 +2496,87 @@ gen_port_LM_with_Errors_Bayes_data <-
                                   col_to_use = "period_return_90_Price",
                                   lag_period_to_use = 90)
 
+   #Added After the best model was found, delete if it reduces returns
+   state_space_data_70 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_70_Price",
+       required_lag = 70, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   state_space_data_65 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_65_Price",
+       required_lag = 65, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   state_space_data_95 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_95_Price",
+       required_lag = 95, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   state_space_data_105 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_105_Price",
+       required_lag = 105, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   state_space_data_85 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_85_Price",
+       required_lag = 85, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   state_space_data_75 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_75_Price",
+       required_lag = 75, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   # state_space_data_97 <-
+   #   portfolio_LM_state_space(
+   #     portfolio_data = portfolio_actuals_data,
+   #     state_space_col = "period_return_97_Price",
+   #     required_lag = 97, #Does not need a plus 1 its built in
+   #     roll_period_state_space = 500
+   #   )
+
+   state_space_data_55 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_55_Price",
+       required_lag = 55, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   state_space_data_89 <-
+     portfolio_LM_state_space(
+       portfolio_data = portfolio_actuals_data,
+       state_space_col = "period_return_89_Price",
+       required_lag = 89, #Does not need a plus 1 its built in
+       roll_period_state_space = 500
+     )
+
+   # state_space_data_34 <-
+   #   portfolio_LM_state_space(
+   #     portfolio_data = portfolio_actuals_data,
+   #     state_space_col = "period_return_34_Price",
+   #     required_lag = 34, #Does not need a plus 1 its built in
+   #     roll_period_state_space = 500
+   #   )
+
    reg_dat <-
      reg_dat %>%
      left_join(brownian_tech_data_110_200) %>%
@@ -2495,10 +2584,27 @@ gen_port_LM_with_Errors_Bayes_data <-
      left_join(brownian_tech_data_90_500) %>%
      left_join(brownian_tech_data_110_500) %>%
      left_join(brownian_tech_data_90_750) %>%
-     left_join(brownian_tech_data_110_750)
+     left_join(brownian_tech_data_110_750) %>%
+     left_join(state_space_data_70) %>%
+     left_join(state_space_data_65) %>%
+     left_join(state_space_data_95) %>%
+     left_join(state_space_data_105) %>%
+     left_join(state_space_data_85) %>%
+     left_join(state_space_data_75) %>%
+     # left_join(state_space_data_97) %>%
+     left_join(state_space_data_55) %>%
+     left_join(state_space_data_89)
+     # left_join(state_space_data_34)
 
    rm(brownian_tech_data_110_200, brownian_tech_data_90_200, brownian_tech_data_110_750,
-      brownian_tech_data_90_750, brownian_tech_data_90_500, brownian_tech_data_110_500)
+      brownian_tech_data_90_750, brownian_tech_data_90_500, brownian_tech_data_110_500,
+      state_space_data_70, state_space_data_65,
+      state_space_data_95, state_space_data_105,
+      state_space_data_85, state_space_data_75,
+      state_space_data_97, state_space_data_55,
+      state_space_data_89, state_space_data_34)
+
+   message(glue::glue("Dimensions reg_dat {dim(reg_dat)[1]} \n"))
 
     reg_dat <- eval(parse(text = lagged_returns_statement))
 
@@ -2556,6 +2662,8 @@ gen_port_LM_with_Errors_Bayes_data <-
         # "return_based_model_1_pred",
         # "return_based_model_2_pred"
         ) %>% unique()
+
+    message(glue::glue("Dimensions reg_dat {dim(reg_dat)[1]} \n"))
 
     return(
       list(
@@ -2786,6 +2894,7 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
     training_date <- as_datetime(training_date)
 
     if(is.null(correlation_data)) {
+      message("Reached Correlation Data")
       correlation_data <-
         get_portfolio_rolling_data(
           asset_data = Indices_Metals_Bonds[[1]],
@@ -2793,6 +2902,7 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
           low_to_price_lengths = low_to_price_lengths,
           cor_periods = cor_periods
         )
+      message(glue::glue("Reached Correlation Data {dim(correlation_data)[1]}"))
     }
 
     portfolio_data_test <-
@@ -2813,6 +2923,8 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
         sum_as_portfolio = TRUE
       )
 
+    message(glue::glue("Reached portfolio_data_test with dim {dim(portfolio_data_test)[1]}"))
+
     reg_data_bayes_test <-
       gen_port_LM_with_Errors_Bayes_data(
         cor_high_diff_data = correlation_data,
@@ -2822,8 +2934,12 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
         date_filter_train = training_date,
         padding_value = 0,
         lag_value_error = lag_value_error,
-        direct_return_cols = direct_return_cols
+        direct_return_cols = direct_return_cols,
+        save_location = save_location,
+        model_prefix = model_prefix
       )
+
+    message(glue::glue("Reached reg_data_bayes_test with dim {dim(reg_data_bayes_test[[1]])[1]}"))
 
     reg_data_bayes_test[[1]] <-
       reg_data_bayes_test[[1]] %>%
@@ -2858,6 +2974,9 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
 
     rm(reg_data_bayes_test)
     gc()
+    rm(reg_data_bayes_test, correlation_data)
+
+    message(glue::glue("Reached model_prediction_data with dim {dim(model_prediction_data)[1]}"))
 
     model_prediction_data <-
       model_prediction_data %>%
@@ -2890,6 +3009,16 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
         portfolio_pred_10000_sd_roll_400 =
           slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ sd(.x, na.rm = T), .before = 400),
 
+        portfolio_pred_10000_mean_roll_600 =
+          slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ mean(.x, na.rm = T), .before = 600),
+        portfolio_pred_10000_sd_roll_600 =
+          slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ sd(.x, na.rm = T), .before = 600),
+
+        portfolio_pred_10000_mean_roll_1000 =
+          slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ mean(.x, na.rm = T), .before = 1000),
+        portfolio_pred_10000_sd_roll_1000 =
+          slider::slide_dbl(.x  = portfolio_pred_10000, .f = ~ sd(.x, na.rm = T), .before = 1000),
+
         rolling_predicted_10000_50 =
           slider::slide_dbl(predicted, .f = ~ mean(.x, na.rm = T), .before = 50),
         rolling_predicted_10000_100 =
@@ -2906,12 +3035,28 @@ gen_port_LM_with_Errors_Bayes_Preds_algo <-
         rolling_predicted_10000_200_sd =
           slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 200),
         rolling_predicted_10000_400_sd =
-          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 400)
+          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 400),
+
+        rolling_predicted_10000_50_sd =
+          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 50),
+        rolling_predicted_10000_100_sd =
+          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 100),
+        rolling_predicted_10000_200_sd =
+          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 200),
+        rolling_predicted_10000_400_sd =
+          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 400),
+
+        rolling_predicted_10000_2000_sd =
+          slider::slide_dbl(predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
+        rolling_predicted_10000_2000 =
+          slider::slide_dbl(predicted, .f = ~ mean(.x, na.rm = T), .before = 2000)
 
       ) %>%
-      ungroup()
+      ungroup() %>%
+      dplyr::select(Date, Asset, contains("pred"), Final_Return)
 
-    rm(portfolio_data_test)
+    rm(portfolio_data_test, reg_data_bayes_test, portfolio_data_test, correlation_data)
+    gc()
     return(model_prediction_data)
 
 
@@ -3260,5 +3405,196 @@ portfolio_LM_get_static_models_preds <-
       )
 
     return(returned_data)
+
+  }
+
+get_port_LM_trades_algo <-
+  function(
+    db_location = db_location,
+    start_date = start_date,
+    assets_to_port = assets_to_port,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    stop_factor_var = 10,
+    profit_factor_var = 40,
+    risk_dollar_value_var = 5,
+    end_period = 130,
+    trade_direction = "Long",
+    end_point_loss = -5,
+    end_point_profit = 70,
+    regression_length = 25000,
+    direct_return_cols = 24,
+    low_to_price_lengths = c(400),
+    cor_periods = c(50),
+    dependant_var = "Final_Return",
+    save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/",
+    model_prefix = "Equity",
+    training_date = "2022-08-16 18:00:00 AEST",
+    trade_statement = trade_statement,
+    current_time = current_time,
+    bug_db = "D:/trade_data/Day_Trader_Cor_Continuous_Models/bug_test.db",
+    start_bug_test = TRUE,
+    return_model_data = FALSE
+  ) {
+
+    # lag_value_error = end_period + 1
+
+    Indices_Metals_Bonds <- list()
+
+    Indices_Metals_Bonds[[1]] <-
+      get_db_data_quickly_algo(
+        db_location = db_location,
+        start_date = start_date,
+        end_date = as.character(today() + days(30)),
+        time_frame = "H1",
+        bid_or_ask = "ask",
+        assets = assets_to_port
+      ) %>%
+      distinct()
+
+    Indices_Metals_Bonds[[2]] <-
+      get_db_data_quickly_algo(
+        db_location = db_location,
+        start_date = start_date,
+        end_date = as.character(today() + days(30)),
+        time_frame = "H1",
+        bid_or_ask = "bid",
+        assets = assets_to_port
+      ) %>%
+      distinct()
+
+    message(glue::glue("Raw Asset Data Dimension: {dim(Indices_Metals_Bonds[[1]])[1] } \n"))
+    message(glue::glue("Raw Asset Data Dimension: {dim(Indices_Metals_Bonds[[2]])[1] } \n"))
+
+    #-----------Single Asset Model
+
+    tictoc::tic()
+
+    model_prediction_data <-
+      gen_port_LM_with_Errors_Bayes_Preds_algo(
+        Indices_Metals_Bonds = Indices_Metals_Bonds,
+        assets_to_port = assets_to_port,
+        stop_factor_var = stop_factor_var,
+        profit_factor_var = profit_factor_var,
+        risk_dollar_value_var = risk_dollar_value_var,
+        end_period = end_period,
+        trade_direction = trade_direction,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor,
+        end_point_loss = end_point_loss,
+        end_point_profit = end_point_profit,
+        low_to_price_lengths = low_to_price_lengths,
+        cor_periods = cor_periods,
+        regression_length = regression_length,
+        training_date =  training_date,
+        save_location = save_location,
+        model_prefix = model_prefix,
+        correlation_data = NULL,
+        direct_return_cols = direct_return_cols,
+        lag_value_error = end_period + 1,
+        filter_na_for_values = TRUE
+      )
+
+    max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
+    rm(Indices_Metals_Bonds)
+    gc()
+
+    message(glue::glue("Raw Dimension: {dim(model_prediction_data)[1] } \n"))
+
+    trade_dates <-
+      model_prediction_data %>%
+      ungroup() %>%
+      slice_max(Date)
+
+      message(glue::glue("Dimension at Max Date: {dim(trade_dates)[1] } \n"))
+
+    trade_dates<-
+      trade_dates %>%
+      mutate(
+        trade_col =
+          eval(parse(text = trade_statement))
+      ) %>%
+      ungroup() %>%
+      filter(trade_col == TRUE) %>%
+      distinct(Asset, Date)
+
+    message(glue::glue("discovered Trades: {dim(trade_dates)[1]} \n"))
+
+    message(glue::glue("Date in Data:{trade_dates$Date[1]} Date in Max: {max_date_in_data}"))
+
+    current_prices_ask <-
+      read_all_asset_data_intra_day(
+        asset_list_oanda = assets_to_port,
+        save_path_oanda_assets = "D://Asset Data/oanda_data/",
+        read_csv_or_API = "API",
+        time_frame = "H1",
+        bid_or_ask = "ask",
+        how_far_back = 2,
+        start_date = as_date(today() - days(3))
+      )%>%
+      map_dfr(bind_rows) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup()
+
+    single_asset_model_trades_filt <-
+      trade_dates %>%
+      mutate(trade_col = "Long",
+             stop_factor = stop_factor_var,
+             profit_factor = profit_factor_var,
+             periods_ahead = end_period,
+             risk_dollar_value = risk_dollar_value_var,
+             end_point_loss = end_point_loss,
+             end_point_profit = end_point_profit
+      ) %>%
+      group_by(Asset) %>%
+      slice_max(Date) %>%
+      ungroup() %>%
+      left_join(current_prices_ask %>%
+                  group_by(Asset) %>%
+                  slice_max(Date) %>%
+                  ungroup() %>%
+                  dplyr::select(-Date)) %>%
+      mutate(
+        time_diff =
+          abs(
+            as.numeric(
+              as_datetime(Date, tz = "Australia/Canberra") -
+                as_datetime(current_time, tz = "Australia/Canberra"),
+              units = "mins"
+            )
+          ),
+        date_check = max_date_in_data <= Date
+      ) %>%
+      group_by(Asset) %>%
+      slice_min(time_diff) %>%
+      ungroup()
+
+    bug_con <- connect_db(bug_db)
+    append_table_sql_lite(conn = bug_con,
+                          .data = single_asset_model_trades_filt %>%
+                            mutate(Date_Var_Now = as_datetime(now(), tz = "Australia/Canberra")),
+                          table_name = "bug_testing")
+    DBI::dbDisconnect(bug_con)
+    rm(bug_con)
+
+    single_asset_model_trades_filt <-
+      single_asset_model_trades_filt %>%
+      # filter(time_diff <= 70 & date_check == TRUE) %>%
+      filter(max_date_in_data <= Date)
+
+    message(glue::glue("Trades Found {dim(single_asset_model_trades_filt)[1]}"))
+
+    if(return_model_data) {
+
+      return(list(model_prediction_data, single_asset_model_trades_filt))
+
+    } else {
+
+      rm(model_prediction_data, current_prices_ask)
+
+      return(single_asset_model_trades_filt)
+
+    }
 
   }
