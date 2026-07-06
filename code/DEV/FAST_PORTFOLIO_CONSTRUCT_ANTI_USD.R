@@ -111,13 +111,13 @@ risk_dollar_value_var = 5
 end_period = 130
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 30
+end_point_profit = 7.5
 
 regression_length = 12000
-direct_return_cols = 50
+direct_return_cols = 60
 lag_value_error = end_period + 1
 low_to_price_lengths = c(400)
-cor_periods = c(50,100)
+cor_periods = c(50)
 dependant_var = "Final_Return"
 save_location = "D:/trade_data/Day_Trader_Cor_Continuous_Models/"
 model_prefix = "ANTI_USD"
@@ -270,12 +270,27 @@ model_prediction_data <-
   )
 
 trade_statment <-
-  "(predicted > 17 & predicted < 1000)|
-   (portfolio_pred_10000 > 10 & portfolio_pred_10000 < 25)"
+  "(portfolio_pred_10000 > 0 & portfolio_pred_10000 < 10)|
+   (portfolio_pred_10000_mean_roll_250 > 0 & portfolio_pred_10000_mean_roll_250 < 15)"
 
 trade_statment <-
-  "(portfolio_pred_10000 > 10 & portfolio_pred_10000 < 25)"
+  "
+   # (predicted > 0 & predicted < 5)|
+   (portfolio_pred_10000 > 2.5 & portfolio_pred_10000 < 20)|
+   (rolling_predicted_10000_200 > 5 & rolling_predicted_10000_200 < 1000)|
+   (rolling_predicted_10000_400 > 4 & rolling_predicted_10000_400 < 1000)|
+   (rolling_predicted_10000_50 > rolling_predicted_10000_2000 + 1.1*rolling_predicted_10000_2000_sd &
+   rolling_predicted_10000_50 < rolling_predicted_10000_2000 + 2*rolling_predicted_10000_2000_sd)|
+   (portfolio_pred_10000 > portfolio_pred_10000_mean_roll_250 + 1*portfolio_pred_10000_sd_roll_250 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_250 + 2*portfolio_pred_10000_sd_roll_250)
+"
 
+trade_statment <-
+  "(portfolio_pred_10000_mean_roll_250 > 7.5 & portfolio_pred_10000_mean_roll_250 < 15)"
+
+trade_statment <-
+  "(portfolio_pred_10000 > portfolio_pred_10000_mean_roll_250 + 1*portfolio_pred_10000_sd_roll_250 &
+   portfolio_pred_10000 < portfolio_pred_10000_mean_roll_250 + 2*portfolio_pred_10000_sd_roll_250)"
 
 analyse_performance <-
   model_prediction_data %>%
@@ -315,7 +330,7 @@ analyse_performance %>%
   geom_line(size = 0.8) +
   facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
-  scale_y_continuous(n.breaks = 10, labels = scales::label_dollar()) +
+  scale_y_continuous(n.breaks = 20, labels = scales::label_dollar()) +
   theme(legend.position = "bottom")
 
 analyse_performance_sum <-

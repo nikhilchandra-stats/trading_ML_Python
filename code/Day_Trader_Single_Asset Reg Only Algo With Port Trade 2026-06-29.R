@@ -133,13 +133,17 @@ Indices_Metals_Bonds[[2]] <-
   distinct()
 
 gc()
-rm(missing_assets)
+rm(missing_assets, db_location)
 gc()
-asset_list_oanda_single_asset <-
-  Indices_Metals_Bonds[[1]] %>%
-  distinct(Asset) %>%
-  pull(Asset) %>%
-  as.character()
+
+mean_values_by_asset_for_loop_H1_ask_algo <-
+  wrangle_asset_data(
+    asset_data_daily_raw = Indices_Metals_Bonds[[1]],
+    summarise_means = TRUE
+  )
+
+rm(Indices_Metals_Bonds)
+gc()
 
 #-------------Indicator Inputs
 
@@ -170,12 +174,6 @@ trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
 db_location = "D://Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 end_date_day = today() %>% as.character()
-
-mean_values_by_asset_for_loop_H1_ask <-
-  wrangle_asset_data(
-    asset_data_daily_raw = Indices_Metals_Bonds[[1]],
-    summarise_means = TRUE
-  )
 
 rm(Indices_Metals_Bonds)
 rm(starting_asset_data_ask_H1)
@@ -241,7 +239,7 @@ while (current_time < end_time) {
 
     #-------------------------------------Update Data
     trades_opened <- 1
-    how_far_back_date <- seq(today() - days(30), today(), by =  "days" ) %>%
+    how_far_back_date <- seq(today() - days(40), today(), by =  "days" ) %>%
       keep(
         ~ wday(.x) == 3
       ) %>%
@@ -360,6 +358,8 @@ while (current_time < end_time) {
               "USD_JPY",
               "BTC_USD"
             ),
+            currency_conversion = currency_conversion,
+            asset_infor = asset_infor,
             stop_factor_var = 10,
             profit_factor_var = 30,
             risk_dollar_value_var = 5,
@@ -408,7 +408,7 @@ while (current_time < end_time) {
             ~
               get_stops_profs_volume_trades(
                 tagged_trades = .x,
-                mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask,
+                mean_values_by_asset = mean_values_by_asset_for_loop_H1_ask_algo,
                 trade_col = "trade_col",
                 currency_conversion = currency_conversion,
                 risk_dollar_value = .x$risk_dollar_value[1] %>% as.numeric(),
