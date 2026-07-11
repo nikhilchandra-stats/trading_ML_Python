@@ -987,8 +987,8 @@ Single_Asset_V3_Read_in_Probs_Exclude_Copula <-
     state_space_data <-
       all_data_list$state_space_data
 
-    macro_model_data <-
-      all_data_list$macro_model_data
+    # macro_model_data <-
+    #   all_data_list$macro_model_data
 
     rm(all_data_list)
     gc()
@@ -1436,83 +1436,83 @@ Single_Asset_V3_get_all_data_for_model_Exc_copula <-
       state_space_list %>%
       reduce(left_join)
 
-    interest_rates <-
-      get_interest_rates(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    cpi_data <-
-      get_cpi(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    sentiment_index <-
-      create_sentiment_index(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1,
-        date_start = "2011-01-01",
-        end_date = today() %>% as.character(),
-        first_difference = TRUE,
-        scale_values = FALSE
-      )
-
-    gdp_data <-
-      get_GDP_countries(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    unemp_data <-
-      get_unemp_countries(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    manufac_pmi <-
-      get_manufac_countries(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    USD_Macro <-
-      get_additional_USD_Macro(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    EUR_Macro <-
-      get_additional_EUR_Macro(
-        raw_macro_data = raw_macro_data,
-        lag_days = 1
-      )
-
-    macro_model_data <-
-      prepare_macro_indicator_model_data(
-        asset_data = asset_data,
-        raw_macro_data = raw_macro_data,
-        Asset_of_interest = asset_of_interest,
-        interest_rates = interest_rates,
-        cpi_data = cpi_data,
-        gdp_data = gdp_data,
-        unemp_data = unemp_data,
-        manufac_pmi = manufac_pmi,
-        USD_Macro = USD_Macro,
-        EUR_Macro = EUR_Macro,
-        sentiment_index = sentiment_index,
-        countries_for_int_strength = c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"),
-        date_limit = as.character(today() + days(1))
-      ) %>%
-      mutate(
-        Asset = asset_of_interest
-      )
+    # interest_rates <-
+    #   get_interest_rates(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # cpi_data <-
+    #   get_cpi(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # sentiment_index <-
+    #   create_sentiment_index(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1,
+    #     date_start = "2011-01-01",
+    #     end_date = today() %>% as.character(),
+    #     first_difference = TRUE,
+    #     scale_values = FALSE
+    #   )
+    #
+    # gdp_data <-
+    #   get_GDP_countries(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # unemp_data <-
+    #   get_unemp_countries(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # manufac_pmi <-
+    #   get_manufac_countries(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # USD_Macro <-
+    #   get_additional_USD_Macro(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # EUR_Macro <-
+    #   get_additional_EUR_Macro(
+    #     raw_macro_data = raw_macro_data,
+    #     lag_days = 1
+    #   )
+    #
+    # macro_model_data <-
+    #   prepare_macro_indicator_model_data(
+    #     asset_data = asset_data,
+    #     raw_macro_data = raw_macro_data,
+    #     Asset_of_interest = asset_of_interest,
+    #     interest_rates = interest_rates,
+    #     cpi_data = cpi_data,
+    #     gdp_data = gdp_data,
+    #     unemp_data = unemp_data,
+    #     manufac_pmi = manufac_pmi,
+    #     USD_Macro = USD_Macro,
+    #     EUR_Macro = EUR_Macro,
+    #     sentiment_index = sentiment_index,
+    #     countries_for_int_strength = c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"),
+    #     date_limit = as.character(today() + days(1))
+    #   ) %>%
+    #   mutate(
+    #     Asset = asset_of_interest
+    #   )
 
     return(
       list(
         "AR_model_data" = AR_model_data,
-        "state_space_data" = state_space_data,
-        "macro_model_data" = macro_model_data
+        "state_space_data" = state_space_data
+        # "macro_model_data" = macro_model_data
       )
     )
 

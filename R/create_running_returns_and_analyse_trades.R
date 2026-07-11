@@ -2686,21 +2686,46 @@ get_portfolio_model_fast_summed <-
     asset_infor = asset_infor,
     end_point_loss = -3,
     end_point_profit = 10,
-    sum_as_portfolio = FALSE
+    sum_as_portfolio = FALSE,
+
+    overwrite_volume = NULL,
+    min_volume_only = FALSE,
+    return_only_interested_col = FALSE
   ) {
 
+    # actuals_data <-
+    #   get_actual_wins_losses(
+    #     assets_to_analyse =asset_of_interest,
+    #     asset_data = asset_data,
+    #     stop_factor = stop_factor_var,
+    #     profit_factor = profit_factor_var,
+    #     risk_dollar_value = risk_dollar_value_var,
+    #     trade_direction = trade_direction,
+    #     currency_conversion = currency_conversion,
+    #     asset_infor = asset_infor,
+    #     periods_ahead = end_period,
+    #
+    #     overwrite_volume = NULL,
+    #     min_volume_only = FALSE,
+    #     return_only_interested_col = FALSE
+    #   )
+
     actuals_data <-
-      get_actual_wins_losses(
-        assets_to_analyse =asset_of_interest,
-        asset_data = asset_data,
-        stop_factor = stop_factor_var,
-        profit_factor = profit_factor_var,
-        risk_dollar_value = risk_dollar_value_var,
-        trade_direction = trade_direction,
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        periods_ahead = end_period
-      )
+      get_actual_wins_losses_extended(
+      assets_to_analyse =asset_of_interest,
+      asset_data = asset_data,
+      stop_factor = stop_factor_var,
+      profit_factor = profit_factor_var,
+      risk_dollar_value = risk_dollar_value_var,
+      trade_direction = trade_direction,
+      currency_conversion = currency_conversion,
+      asset_infor = asset_infor,
+      periods_ahead = end_period,
+
+      overwrite_volume = overwrite_volume,
+      min_volume_only = min_volume_only,
+      return_only_interested_col = return_only_interested_col
+    )
 
     construct_string_loss <-
       seq(1,end_period,1) %>%
@@ -2755,9 +2780,7 @@ get_portfolio_model_fast_summed <-
         return_loss = eval(parse(text = construct_extract_loss_return_string)),
         return_win = eval(parse(text = construct_extract_win_return_string)),
         across(.cols = c(return_loss, return_win),
-               .fns = ~ ifelse(is.na(.),
-                               !!as.name(glue::glue("period_return_{end_period}_Price")),
-                               .))
+               .fns = ~ ifelse(is.na(.), !!as.name( glue::glue("period_return_{end_period}_Price") ), .))
       ) %>%
       mutate(
         Final_Return =
@@ -2775,15 +2798,12 @@ get_portfolio_model_fast_summed <-
       test <- test %>%
         group_by(Asset, Date, end_point_loss, end_point_profit, risk_dollar_value,
                  stop_factor, profit_factor, end_point_point_win, end_point_point_loss) %>%
-        summarise(
-                  Final_Return = sum(Final_Return, na.rm = T),
-                  across(contains( "period_return_"), ~ sum(., na.rm = T))
-                  )
+        summarise(Final_Return = sum(Final_Return, na.rm = T),
+                  across(.cols = contains("period_return_"), .fns = ~ sum(., na.rm = T) ) )
 
     }
 
     return(test)
 
   }
-
 

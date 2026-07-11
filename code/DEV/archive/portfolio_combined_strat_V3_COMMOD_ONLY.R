@@ -70,38 +70,34 @@ start_date = "2019-01-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
+available_assets <- get_available_V3_Assets()
+
 assets_to_port <-
   c(
-    "SPX500_USD",
-    "AU200_AUD",
-    "EU50_EUR",
-    "US2000_USD",
     "XAU_USD",
     "XCU_USD",
-    "AUD_USD",
-    "UK100_GBP",
-    "USD_JPY",
     "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
-
+    "NATGAS_USD",
+    "BTC_USD",
+    "XAG_USD",
+    "WHEAT_USD",
+    "SOYBN_USD",
+    "UK10YB_GBP",
+    "USB10Y_USD"
   ) %>% unique()
 
 assets_to_trade <-
   c(
-    "SPX500_USD",
-    "AU200_AUD",
-    "EU50_EUR",
-    "US2000_USD",
     "XAU_USD",
     "XCU_USD",
-    "AUD_USD",
-    "UK100_GBP",
-    "USD_JPY",
     "WTICO_USD",
-    "HK33_HKD",
-    "USD_SEK"
-
+    "NATGAS_USD",
+    "BTC_USD",
+    "XAG_USD",
+    "WHEAT_USD",
+    "SOYBN_USD",
+    "UK10YB_GBP",
+    "USB10Y_USD"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -128,6 +124,7 @@ Indices_Metals_Bonds[[2]] <-
 Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= "2019-01-01")
 Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= "2019-01-01")
 
+tictoc::tic()
 all_preds <-
   Portfolio_get_all_preds_frm_V3(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
@@ -142,29 +139,31 @@ all_preds <-
   )
 
 stop_factor_var = 10
-profit_factor_var = 15
-risk_dollar_value_var = 10
-end_period = 24
+profit_factor_var = 20
+risk_dollar_value_var = 5
+end_period = 50
 trade_direction = "Long"
-end_point_loss = -10
-end_point_profit = 20
+end_point_loss = -5
+end_point_profit = 10
 training_date <-  "2022-01-17 10:00:00 AEST"
 save_path = "C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/"
-file_name = "Equity_Port_V3_Bayes_More_vars"
+file_name = "COMMODODITIES_ONLY"
 regression_length = 18000
-direct_return_cols = 23
+direct_return_cols = 48
+total_lag_cols = end_period
 
-tictoc::tic()
 all_cor_V3_Data <-
   portfolio_get_V3_cor_data_TOTAL_SUMMED(
     Indices_Metals_Bonds = Indices_Metals_Bonds,
     all_preds = all_preds,
     assets_to_port = assets_to_port,
     # low_to_price_lengths = c(200, 50),
-    low_to_price_lengths = c(200, 50, 400),
-    cor_periods = c(100),
+    low_to_price_lengths = c(200, 400),
+    cor_periods = c(100, 200, 10),
     max_regs = 1000
   )
+tictoc::toc()
+
 
 all_cor_var_combos <-
   names(all_cor_V3_Data[[1]]) %>%
@@ -251,7 +250,8 @@ results_temp <-
     save_path = save_path,
     file_name = file_name,
     Bayes_or_LM = "Bayes",
-    sig_thresh_LM = 0.00001
+    # sig_thresh_LM = 1
+    sig_thresh_LM = 0.1
   )
 
 tictoc::toc()
@@ -312,7 +312,10 @@ all_cor_vars <-
 
 testing_prediction_data <-
   Porfolio_get_preds_V3_TOTAL_SUM_Bayes(
-    reg_dat = temp_reg_data_testing %>% filter(Date >= training_date),
+    reg_dat =
+      temp_reg_data_testing %>%
+      filter(Date >= training_date) %>%
+      filter(if_all(everything(), ~!is.na(.))),
     training_end_date = training_date,
     save_path = save_path,
     file_name = file_name,
@@ -342,38 +345,81 @@ model_prediction_data <-
     pred_10000_mean_roll_600 =
       slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 600),
     pred_10000_sd_roll_600 =
-      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 600)
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 600),
+
+    pred_10000_mean_roll_1000 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1000),
+    pred_10000_sd_roll_1000 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1000),
+
+    pred_10000_mean_roll_1500 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1500),
+    pred_10000_sd_roll_1500 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1500),
+
+    pred_10000_mean_roll_2000 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 2000),
+    pred_10000_sd_roll_2000 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
+
+    pred_10000_mean_roll_50 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 50),
+    pred_10000_sd_roll_50 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 50),
+
+    pred_10000_mean_roll_10 =
+      slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 10),
+    pred_10000_sd_roll_10 =
+      slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 10)
   )
 
-# db_con <- connect_db(path = "C:/Users/nikhi/Documents/trade_data/Equities_Bayes_Model_Results_1.db")
-# append_table_sql_lite(.data = model_prediction_data,
-#                      table_name = "Equities_Bayes_Model_V3",
-#                      conn = db_con)
+# 10 Dollars
+db_con <- connect_db("C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/Equity_Port_V3_Results.db")
+upload_dat <-
+  model_prediction_data %>%
+  mutate(
+    algo_name = file_name,
+    risk_dollar_value_var = risk_dollar_value_var,
+    stop_factor_var = stop_factor_var,
+    profit_factor_var = profit_factor_var,
+    end_period = end_period,
+    end_point_loss = end_point_loss,
+    end_point_profit = end_point_profit,
+    trade_statement = trade_statment
+  )
+append_table_sql_lite(.data = upload_dat,
+                      table_name = "Port_V3_Sim_Data",
+                      conn = db_con)
 
-# db_con <- connect_db(path = "C:/Users/nikhi/Documents/trade_data/Equities_Bayes_Model_Results_1.db")
-# model_prediction_data <-
-#   DBI::dbGetQuery(conn = db_con, statement = "SELECT * FROM Equities_Bayes_Model_V3") %>%
-#   mutate(Date = as_datetime(Date, tz = "Australia/Canberra"))
 
-#10 Dollars
+#For Sig Level = 1
 trade_statment <-
-  "(pred_10000_mean_roll_250 > 31)|(predicted > 32.5)|(pred_10000_mean_roll_500 > 17.5)"
-
+  "
+(pred_10000_mean_roll_10 < pred_10000_mean_roll_1500 + 1.4*pred_10000_sd_roll_1500 &
+  pred_10000_mean_roll_10 > pred_10000_mean_roll_1500 + 1*pred_10000_sd_roll_1500)|
+  (predicted < pred_10000_mean_roll_2000 + 1.5*pred_10000_sd_roll_2000 &
+  predicted > pred_10000_mean_roll_2000 + 0.9*pred_10000_sd_roll_2000)|
+  (predicted < pred_10000_mean_roll_1000 + 2.2*pred_10000_sd_roll_1000 &
+  predicted > pred_10000_mean_roll_1000 + 1.7*pred_10000_sd_roll_1000)|
+  (pred_10000_mean_roll_10 < pred_10000_mean_roll_500 + 10*pred_10000_sd_roll_500 &
+  pred_10000_mean_roll_10 > pred_10000_mean_roll_500 + 1.9*pred_10000_sd_roll_500)|
+  (pred_10000_mean_roll_10 < pred_10000_mean_roll_250 + 10*pred_10000_sd_roll_250 &
+  pred_10000_mean_roll_10 > pred_10000_mean_roll_250 + 1.9*pred_10000_sd_roll_250)|
+  (pred_10000_mean_roll_10 < pred_10000_mean_roll_100 + 1.8*pred_10000_sd_roll_100 &
+  pred_10000_mean_roll_10 > pred_10000_mean_roll_100 + 1.55*pred_10000_sd_roll_100)|
+  (pred_10000_mean_roll_10 < pred_10000_mean_roll_50 + 1.4*pred_10000_sd_roll_50 &
+  pred_10000_mean_roll_10 > pred_10000_mean_roll_50 + 1*pred_10000_sd_roll_50)|
+  (pred_10000_mean_roll_50 < pred_10000_mean_roll_250 + 1.7*pred_10000_sd_roll_250 &
+  pred_10000_mean_roll_50 > pred_10000_mean_roll_250 + 1.3*pred_10000_sd_roll_250)|
+  (pred_10000_mean_roll_50 < pred_10000_mean_roll_600 + 1000*pred_10000_sd_roll_600 &
+  pred_10000_mean_roll_50 > pred_10000_mean_roll_600 + 1.65*pred_10000_sd_roll_600)
+"
+#For Sig Level = 0.1
 trade_statment <-
-  "(pred_10000_mean_roll_250 > 28)|(pred_10000_mean_roll_500 > 22)|(pred_10000_mean_roll_100 > 56)|
-   (predicted > trained_mean + 3.25*trained_sd)|(pred_10000_mean_roll_600 > 15)"
-
-trade_statment <-
-  "(predicted > 40)|(pred_10000_mean_roll_250 > 26.5)|
-   (pred_10000_mean_roll_500 > 15)|(pred_10000_mean_roll_600 > 12.5)|
-   (pred_10000_mean_roll_100 > 32.5)"
-
-trade_statment <-
-  "pred_10000_mean_roll_100 > 32.5"
-
-# #Set to 400
-# trade_statment <-
-#   "(predicted < 80 & predicted > 50)"
+  "
+(pred_10000_mean_roll_50 < pred_10000_mean_roll_600 + 1000*pred_10000_sd_roll_600 &
+  pred_10000_mean_roll_50 > pred_10000_mean_roll_600 + 1.65*pred_10000_sd_roll_600)
+"
 
 analyse_performance <-
   model_prediction_data %>%
