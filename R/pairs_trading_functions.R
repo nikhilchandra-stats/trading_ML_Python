@@ -250,7 +250,8 @@ estimating_dual_copula <- function(
   rm(combined_data2)
   gc()
 
-  returned <- returned %>%
+  returned <-
+    returned %>%
     mutate(across(.cols = !matches("Date", ignore.case = FALSE),
                   .fns = ~ lag(.))) %>%
     mutate(
@@ -2301,7 +2302,7 @@ create_log_cumulative_returns <- function(
       arrange(Date) %>%
       dplyr::select(Date,
                     Return_Index = !!as.name(glue::glue("{asset_to_use[1]}_Return_Index"))
-                    ) %>%
+      ) %>%
       mutate(
         Asset = asset_to_use[1]
       )
@@ -2358,14 +2359,14 @@ create_PCA_Asset_Index <- function(
       Average_PCA = (PC1 + PC2)/2
     )
 
-  pca_calc1 %>%
-    mutate(index = row_number()) %>%
-    ggplot(aes(x = index)) +
-    geom_line(aes(y = PC1)) +
-    geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
-    geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
-    geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
-    theme_minimal()
+  # pca_calc1 %>%
+  #   mutate(index = row_number()) %>%
+  #   ggplot(aes(x = index)) +
+  #   geom_line(aes(y = PC1)) +
+  #   geom_line(aes(y = PC2), color = "darkred", linetype = "dashed") +
+  #   geom_line(aes(y = PC3), color = "darkgreen", linetype = "dashed") +
+  #   geom_line(aes(y = PC4), color = "darkorange", linetype = "dashed") +
+  #   theme_minimal()
 
   if(length(asset_to_use) >= 6) {
     returned_data <-
@@ -2534,7 +2535,7 @@ get_PCA_Index_rolling_cor_sd_mean <-
     raw_asset_data_for_PCA_cor = asset_data_to_use %>% filter(Asset == "SPX500_USD"),
     PCA_data = returned_data,
     rolling_period = 100
-    ) {
+  ) {
 
     returned_data_rolling_PCA_cor <-
       raw_asset_data_for_PCA_cor %>%
@@ -2607,12 +2608,12 @@ get_PCA_Index_rolling_cor_sd_mean <-
                                                .before = rolling_period),
 
         rolling_tan_angle_mean = slider::slide_dbl(.x = tan_angle,
-                                              .f = ~  mean(.x, na.rm = T),
-                                              .before = rolling_period),
+                                                   .f = ~  mean(.x, na.rm = T),
+                                                   .before = rolling_period),
 
         rolling_tan_angle_sd = slider::slide_dbl(.x = tan_angle,
-                                                   .f = ~  sd(.x, na.rm = T),
-                                                   .before = rolling_period)
+                                                 .f = ~  sd(.x, na.rm = T),
+                                                 .before = rolling_period)
       )
 
     return(returned_data_rolling_PCA_cor)
@@ -2785,6 +2786,7 @@ get_all_commod_USD <- function(
 #---Gold Index
 get_equity_index <-
   function(index_data) {
+
     major_indices_log_cumulative <-
       c("SPX500_USD", "US2000_USD", "AU200_AUD", "EU50_EUR", "SG30_SGD",
         "UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD") %>%
@@ -2820,7 +2822,13 @@ get_equity_index <-
                           "SG30_SGD","UK100_GBP", "CH20_CHF", "FR40_EUR", "HK33_HKD"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
-      )
+      )  %>%
+      rename(PC1_Equities = PC1,
+             PC2_Equities = PC2,
+             PC3_Equities = PC3,
+             PC4_Equities = PC4,
+             PC5_Equities = PC5,
+             PC6_Equities = PC6)
 
     rm(major_indices_log_cumulative)
     gc()
@@ -2832,13 +2840,13 @@ get_equity_index <-
 get_Gold_index <-
   function(index_data) {
     major_gold_log_cumulative <-
-      c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD") %>%
+      c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY") %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD")),
+              filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")),
             asset_to_use = c(.x[1]),
             price_col = "Open",
             return_long_format = TRUE
@@ -2846,7 +2854,7 @@ get_Gold_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD")) %>%
+          filter(Asset %in% c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY")) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
 
@@ -2859,7 +2867,7 @@ get_Gold_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY", "XAU_NZD", "XAU_CAD", "XAU_SGD"),
+        asset_to_use =  c("XAU_USD", "XAU_EUR", "XAU_GBP", "XAU_AUD", "XAU_JPY"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
       ) %>%
@@ -2890,13 +2898,13 @@ get_silver_index <-
   function(index_data) {
 
     major_silver_log_cumulative <-
-      c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF") %>%
+      c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY") %>%
       map_dfr(
         ~
           create_log_cumulative_returns(
             asset_data_to_use =
               index_data %>%
-              filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF")),
+              filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY")),
             asset_to_use = c(.x[1]),
             price_col = "Open",
             return_long_format = TRUE
@@ -2904,7 +2912,7 @@ get_silver_index <-
       ) %>%
       left_join(
         index_data %>%
-          filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF")) %>%
+          filter(Asset %in% c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY")) %>%
           dplyr::select(Date, Asset, Price, Open)
       )
 
@@ -2917,7 +2925,7 @@ get_silver_index <-
           ) %>%
           ungroup() %>%
           filter(!is.na(Return_Index_Diff)),
-        asset_to_use =  c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY", "XAG_NZD", "XAG_CHF" ),
+        asset_to_use =  c("XAG_USD", "XAG_EUR", "XAG_GBP", "XAG_AUD", "XAG_JPY"),
         price_col = "Return_Index_Diff",
         scale_values = TRUE
       ) %>%
@@ -3501,184 +3509,3 @@ create_and_test_LM <- function(.data = model_data,
   return( list(test_data, lm_model_train2, lm_model_train) )
 
 }
-
-
-#' create_cor_trig_indicators
-#'
-#' @param data_for_indicators
-#' @param tangent_period
-#' @param correlation_period
-#' @param Asset1
-#' @param Asset2
-#' @param asset_of_interest
-#'
-#' @return
-#' @export
-#'
-#' @examples
-create_cor_trig_indicators <-
-  function(data_for_indicators = Indices_Metals_Bonds[[1]],
-           tangent_period = 50,
-           correlation_period = 20,
-           Asset1 = "SPX500_USD",
-           Asset2 = "EU50_EUR",
-           asset_of_interest = "SPX500_USD") {
-
-    a1 <-
-      data_for_indicators %>%
-      filter(Asset == Asset1) %>%
-      arrange(Date) %>%
-      mutate(
-
-        !!as.name(paste0("rolling_Bull_Count_", Asset1))  :=
-          ifelse(Price > lag(Price), 1, -1 ),
-
-        !!as.name(paste0("rolling_Bear_Count_", Asset1)) :=
-          ifelse(Price <= lag(Price), 1, -1),
-
-        !!as.name(paste0("rolling_Bull_Count_", Asset1))  :=
-          ifelse( is.na( !!as.name(paste0("rolling_Bull_Count_", Asset1)) )  , 0, !!as.name(paste0("rolling_Bull_Count_", Asset1))   ),
-
-        !!as.name(paste0("rolling_Bear_Count_", Asset1))  :=
-          ifelse( is.na(  !!as.name(paste0("rolling_Bear_Count_", Asset1)) )  , 0, !!as.name(paste0("rolling_Bear_Count_", Asset1))   ),
-
-        # !!as.name(paste("rolling_Bull_Count_", Asset2)) := cumsum(!!as.name(paste("rolling_Bull_Count_", Asset2)) ),
-        !!as.name(paste0("rolling_Bull_Count_", Asset1)) :=
-          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bull_Count_", Asset1)),
-                            .f = sum,
-                            .before = tangent_period) ,
-        # !!as.name(paste("rolling_Bear_Count_", Asset2)) := cumsum( !!as.name(paste("rolling_Bear_Count_", Asset2)) ),
-        !!as.name(paste0("rolling_Bear_Count_", Asset1)) :=
-          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bear_Count_", Asset1)),
-                            .f = sum,
-                            .before = tangent_period),
-
-        !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ) :=
-          (Price - lag(Price, tangent_period))/tangent_period,
-        !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_High") ) :=
-          (High - lag(High, tangent_period))/tangent_period,
-        !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Low") ) :=
-          (Low - lag(Low, tangent_period))/tangent_period
-      ) %>%
-      ungroup() %>%
-      dplyr::select(Date,
-                    !!as.name(paste0(Asset1,"_Price") ) := Price,
-                    !!as.name(paste0(Asset1,"_High") ) := High,
-                    !!as.name(paste0(Asset1,"_Low") ) := Low,
-                    !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ),
-                    !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_High") ),
-                    !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Low") ),
-
-                    !!as.name(paste0("rolling_Bull_Count_", Asset1, "_", tangent_period)) := !!as.name(paste0("rolling_Bull_Count_", Asset1)),
-                    !!as.name(paste0("rolling_Bear_Count_", Asset1, "_", tangent_period)) := !!as.name(paste0("rolling_Bear_Count_", Asset1))
-      )  %>%
-      filter(!is.na(!!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ))) %>%
-      mutate(
-        across(
-          .cols = contains( c("_Tangent_", "rolling_Bull_Count_", "rolling_Bear_Count_") ) ,
-          .fns = ~ lag(.)
-        )
-      )
-
-    a2 <-
-      data_for_indicators %>%
-      filter(Asset == Asset2) %>%
-      arrange(Date) %>%
-      distinct() %>%
-      mutate(
-
-        !!as.name(paste0("rolling_Bull_Count_", Asset2))  :=
-          ifelse(Price > lag(Price), 1, -1 ),
-
-        !!as.name(paste0("rolling_Bear_Count_", Asset2)) :=
-          ifelse(Price <= lag(Price), 1, -1),
-
-        !!as.name(paste0("rolling_Bull_Count_", Asset2))  :=
-          ifelse( is.na( !!as.name(paste0("rolling_Bull_Count_", Asset2)) )  , 0, !!as.name(paste0("rolling_Bull_Count_", Asset2))   ),
-
-        !!as.name(paste0("rolling_Bear_Count_", Asset2))  :=
-          ifelse( is.na(  !!as.name(paste0("rolling_Bear_Count_", Asset2)) )  , 0, !!as.name(paste0("rolling_Bear_Count_", Asset2))   ),
-
-        # !!as.name(paste("rolling_Bull_Count_", Asset2)) := cumsum(!!as.name(paste("rolling_Bull_Count_", Asset2)) ),
-        !!as.name(paste0("rolling_Bull_Count_", Asset2)) :=
-          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bull_Count_", Asset2)),
-                            .f = sum,
-                            .before = tangent_period) ,
-        # !!as.name(paste("rolling_Bear_Count_", Asset2)) := cumsum( !!as.name(paste("rolling_Bear_Count_", Asset2)) ),
-        !!as.name(paste0("rolling_Bear_Count_", Asset2)) :=
-          slider::slide_dbl(.x = !!as.name(paste0("rolling_Bear_Count_", Asset2)),
-                            .f = sum,
-                            .before = tangent_period),
-
-        !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ) :=
-          (Price - lag(Price, tangent_period))/tangent_period,
-        !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_High") ) :=
-          (High - lag(High, tangent_period))/tangent_period,
-        !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Low") ) :=
-          (Low - lag(Low, tangent_period))/tangent_period
-      ) %>%
-      ungroup() %>%
-      dplyr::select(Date,
-                    !!as.name(paste0(Asset2,"_Price") ) := Price,
-                    !!as.name(paste0(Asset2,"_High") ) := High,
-                    !!as.name(paste0(Asset2,"_Low") ) := Low,
-                    !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ),
-                    !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_High") ),
-                    !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Low") ),
-
-                    !!as.name(paste0("rolling_Bull_Count_", Asset2, "_", tangent_period)) := !!as.name(paste0("rolling_Bull_Count_", Asset2)),
-                    !!as.name(paste0("rolling_Bear_Count_", Asset2, "_", tangent_period)) := !!as.name(paste0("rolling_Bear_Count_", Asset2))
-      )  %>%
-      filter(!is.na(!!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ))) %>%
-      mutate(
-        across(
-          .cols = contains( c("_Tangent_", "rolling_Bull_Count_", "rolling_Bear_Count_") ) ,
-          .fns = ~ lag(.)
-        )
-      )
-
-    tagged_data <-
-      a1 %>%
-      left_join(a2) %>%
-      arrange(Date) %>%
-      fill(
-        everything(), .direction = "down"
-      ) %>%
-      mutate(
-        !!as.name(paste0(Asset1,"_",Asset2, "_Cor_Price_",tangent_period,"_", correlation_period,"_Tan")) :=
-          slider::slide2_dbl(.x = !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Price") ),
-                             .y = !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Price") ),
-                             .f = ~ cor(.x, .y),
-                             .before = correlation_period),
-
-        !!as.name(paste0(Asset1,"_",Asset2, "_Cor_High_",tangent_period,"_", correlation_period,"_Tan")) :=
-          slider::slide2_dbl(.x = !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_High") ),
-                             .y = !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_High") ),
-                             .f = ~ cor(.x, .y),
-                             .before = correlation_period),
-
-        !!as.name(paste0(Asset1,"_",Asset2, "_Cor_Low_",tangent_period,"_", correlation_period,"_Tan")) :=
-          slider::slide2_dbl(.x = !!as.name(paste0(Asset1,"_Tangent_", tangent_period,"_Low") ),
-                             .y = !!as.name(paste0(Asset2,"_Tangent_", tangent_period,"_Low") ),
-                             .f = ~ cor(.x, .y),
-                             .before = correlation_period),
-
-        !!as.name(paste0(Asset1,"_",Asset2, "Cor_Bull_Run",tangent_period,"_", correlation_period,"_Tan")) :=
-          slider::slide2_dbl(.x = !!as.name(paste0("rolling_Bull_Count_", Asset1, "_", tangent_period)),
-                             .y = !!as.name(paste0("rolling_Bull_Count_", Asset2, "_", tangent_period)),
-                             .f = ~ cor(.x, .y),
-                             .before = correlation_period),
-
-        !!as.name(paste0(Asset1,"_",Asset2, "Cor_Bear_Run",tangent_period,"_", correlation_period,"_Tan")) :=
-          slider::slide2_dbl(.x = !!as.name(paste0("rolling_Bear_Count_", Asset1, "_", tangent_period)),
-                             .y = !!as.name(paste0("rolling_Bear_Count_", Asset2, "_", tangent_period)),
-                             .f = ~ cor(.x, .y),
-                             .before = correlation_period)
-      ) %>%
-      mutate(
-        Asset = asset_of_interest
-      )
-
-    return(tagged_data)
-
-  }

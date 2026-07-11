@@ -335,6 +335,99 @@ get_current_new_algo_trades <-
   }
 
 
+#' get_portfolio_model
+#'
+#' @param asset_data
+#' @param asset_of_interest
+#' @param stop_factor_long
+#' @param profit_factor_long
+#' @param risk_dollar_value_long
+#' @param end_period
+#' @param time_frame
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_portfolio_model <-
+  function(
+    asset_data = Indices_Metals_Bonds,
+    asset_of_interest = distinct_assets[1],
+    tagged_trades = tagged_trades,
+    stop_factor_long = 4,
+    profit_factor_long = 15,
+    risk_dollar_value_long = 5,
+    end_period = 24,
+    time_frame = "H1",
+    trade_direction = "Long"
+  ) {
+
+    Trades <-
+      create_running_profits(
+        asset_of_interest = asset_of_interest,
+        asset_data = asset_data,
+        stop_factor = stop_factor_long,
+        profit_factor = profit_factor_long,
+        risk_dollar_value = risk_dollar_value_long,
+        trade_direction = trade_direction,
+        currency_conversion = currency_conversion,
+        asset_infor = asset_infor
+      )
+
+    tagged_trades_distinct <-
+      tagged_trades %>%
+      filter(trade_col == trade_direction) %>%
+      distinct(Date, Asset) %>%
+      mutate(tagged_trade = TRUE)
+
+    Longs_pivoted_for_portfolio <-
+      Trades %>%
+      dplyr::select(Date, Asset, volume_required, stop_return, profit_return, stop_value, profit_value,
+                    contains("period_return_")) %>%
+      left_join(tagged_trades_distinct) %>%
+      filter(tagged_trade == TRUE) %>%
+      dplyr::select(-tagged_trade) %>%
+      pivot_longer(-c(Date, Asset, volume_required, stop_return, profit_return, stop_value, profit_value),
+                   values_to = "Return",
+                   names_to = "Period") %>%
+      mutate(
+        period_since_open =
+          str_remove_all(Period, "[A-Z]+|[a-z]+|_") %>%
+          str_trim() %>%
+          as.numeric(),
+
+        adjusted_Date =
+          case_when(
+            time_frame == "H1" ~ Date + dhours(period_since_open),
+            time_frame == "D" ~ Date + days(period_since_open)
+          )
+      ) %>%
+      filter(
+        period_since_open <= end_period
+      ) %>%
+      mutate(
+        identify_close =
+          case_when(
+            abs(Return) == abs(stop_return) & Return < 0 | abs(Return) == abs(profit_return) & Return > 0 ~ period_since_open
+          )
+      ) %>%
+      group_by(Date, Asset) %>%
+      mutate(
+        close_Date = min(identify_close, na.rm = T),
+        close_Date = ifelse(
+          is.infinite(close_Date),
+          end_period,
+          close_Date
+        )
+      ) %>%
+      ungroup() %>%
+      filter(period_since_open <= close_Date) %>%
+      dplyr::select(-identify_close)
+
+    return(Longs_pivoted_for_portfolio)
+
+  }
+
 get_all_realised_generic <-
   function(
     realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
@@ -374,12 +467,13 @@ get_all_realised_generic <-
         "BTC_USD",
         "XAU_USD"
       )
-    ) {
+  ) {
 
     db_con <-
       connect_db(realised_DB_path)
     asset_accumulator <- list()
 
+    safely_get_pos <- safely(get_closed_positions, otherwise = NULL)
 
     for (i in 1:length(distinct_assets) ) {
 
@@ -387,14 +481,16 @@ get_all_realised_generic <-
       current_account = account_var
 
       realised_trades_asset <-
-        get_closed_positions(account_var = current_account,
-                             asset = current_asset)
+        safely_get_pos(account_var = current_account,
+                             asset = current_asset) %>%
+        pluck('result')
 
       if(!is.null(realised_trades_asset)) {
 
         realised_trades_asset_filt <-
           realised_trades_asset %>%
-          filter((date_open) >= as_datetime(algo_start_date, tz = "Australia/Canberra"))
+          filter((date_open) >=
+                   as_datetime(algo_start_date))
       } else {
         realised_trades_asset_filt <- NULL
       }
@@ -433,8 +529,8 @@ get_all_realised_generic <-
 
       if(dim(anti_joined_data)[1] > 0) {
         append_table_sql_lite(.data = anti_joined_data,
-                             table_name = "realised_return",
-                             conn = db_con)
+                              table_name = "realised_return",
+                              conn = db_con)
       }
 
     }
@@ -455,7 +551,7 @@ get_realised_trades_from_db_generic <-
     returned <-
       DBI::dbGetQuery(conn = db_con,
                       statement = glue::glue("SELECT * FROM {table_name}")
-                      ) %>%
+      ) %>%
       mutate(date_closed = as_datetime(date_closed, tz = "Australia/Canberra"),
              date_open = as_datetime(date_open, tz ="Australia/Canberra"))
 

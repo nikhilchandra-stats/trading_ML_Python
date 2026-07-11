@@ -286,7 +286,7 @@ get_oanda_data_candles <- function(assets = assets_x,
         `from` = glue::glue('{date_var}{time}'),
         `granularity` = granularity,
         `count` = how_far_back,
-        `alignmentTimezone` = "Australia/Sydney"
+        `alignmentTimezone` = "Australia/Canberra"
       )
     }else{
       params = list(
@@ -294,7 +294,7 @@ get_oanda_data_candles <- function(assets = assets_x,
         `from` = glue::glue('{date_var_start}{time}'),
         `granularity` = granularity,
         `count` = 2000,
-        `alignmentTimezone` = 'Australia/Sydney'
+        `alignmentTimezone` = 'Australia/Canberra'
       )
 
     }
@@ -343,7 +343,7 @@ get_oanda_data_candles <- function(assets = assets_x,
       ) %>%
       dplyr::mutate(time_frame = granularity ) %>%
       dplyr::mutate(
-        date_time = lubridate::as_datetime(date_time, tz = "Australia/Sydney"),
+        date_time = lubridate::as_datetime(date_time, tz = "Australia/Canberra"),
         date = lubridate::as_date(
           paste0( lubridate::year(date_time),"-",lubridate::month(date_time),"_",lubridate::day(date_time))
         ),
@@ -391,8 +391,8 @@ get_oanda_data_position_book <- function(assets = assets_x){
 
 
 get_closed_positions <- function(save_csv = FALSE,
-                                 account_var = 2,
-                                 asset = "AUD_USD"){
+                                 account_var = 1,
+                                 asset = "XAU_USD"){
 
     headers = c(
       `Content-Type` = 'application/json',
@@ -413,27 +413,32 @@ get_closed_positions <- function(save_csv = FALSE,
 
     returned_value <- jsonlite::fromJSON( jsonlite::prettify(res))
 
-    returned_value$trades <-  returned_value$trades
+    returned_value$trades <-
+      returned_value$trades
 
-    if( any(class(returned_value$trades) == "data.frame") ) {
+    stop_points <- returned_value$trades$stopLossOrder %>%
+      dplyr::select(id = tradeID, stop_price = price)
+    profit_points <- returned_value$trades$takeProfitOrder%>%
+      dplyr::select(id = tradeID, profit_price = price)
 
-      complete_frame <- returned_value$trades  %>%
-        select(-takeProfitOrder,-stopLossOrder) %>%
-        mutate(
-          date_open = as_datetime(openTime),
-          date_closed = as_datetime(closeTime)
-        )  %>%
-        distinct(id, instrument, realizedPL, date_closed, date_open, initialUnits,
-                 financing, dividendAdjustment) %>%
-        mutate(
-          account_var = account_var
-        ) %>%
-        rename(Asset =instrument)
-    } else {
-
-      complete_frame <- NULL
-
-    }
+    complete_frame <- returned_value$trades  %>%
+      select(-takeProfitOrder,-stopLossOrder) %>%
+      mutate(
+        date_open = as_datetime(openTime, tz = "Australia/Canberra"),
+        date_closed = as_datetime(closeTime, tz = "Australia/Canberra")
+      )  %>%
+      distinct(id, instrument,price ,realizedPL, date_closed, date_open, initialUnits,
+               financing, dividendAdjustment) %>%
+      mutate(
+        account_var = account_var
+      ) %>%
+      rename(Asset =instrument) %>%
+      left_join(stop_points) %>%
+      rename(open_price = price) %>%
+      mutate(
+        stop_price = as.numeric(stop_price),
+        open_price = as.numeric(open_price)
+      )
 
     return(complete_frame)
 
@@ -637,7 +642,7 @@ get_aud_conversion <- function(asset_data_daily_raw = asset_data_daily_raw) {
     pull(adjusted_conversion)
 
   SEK_ZAR_HUF_NOK_conversion <- asset_data_daily_raw %>%
-    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY|USD_MXN|USD_CNH|USD_CZK"))  %>%
+    filter(str_detect(Asset, "USD_SEK|USD_NOK|USD_HUF|USD_ZAR|CNY|USD_MXN|USD_CNH"))  %>%
     group_by(Asset) %>%
     slice_max(Date)  %>%
     ungroup() %>%

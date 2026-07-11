@@ -70,11 +70,11 @@ get_db_price <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset 
 #'
 #' @examples
 get_db_price_asset <- function(db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data.db",
-                               start_date = "2012-01-01",
-                               end_date = "2020-01-01",
-                               time_frame = "D",
-                               bid_or_ask = "ask",
-                               asset = "AUD_USD") {
+                         start_date = "2012-01-01",
+                         end_date = "2020-01-01",
+                         time_frame = "D",
+                         bid_or_ask = "ask",
+                         asset = "AUD_USD") {
 
   start_date_integer <- start_date %>% as_datetime(tz = "Australia/Canberra") %>% as.integer()
   end_date_integer <- (as_datetime(end_date, tz = "Australia/Canberra") + days(1)) %>% as.integer()
@@ -293,15 +293,15 @@ update_local_db_file <- function(
     data_to_Update %>%
     mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
     ungroup()
-  # mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
-  # left_join(
-  #   dates_by_asset %>%
-  #     ungroup() %>%
-  #     mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
-  #     dplyr::select(Asset,  DB_Date = Date)
-  # ) %>%
-  # filter(Date > DB_Date| is.na(DB_Date)) %>%
-  # dplyr::select(-DB_Date)
+    # mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+    # left_join(
+    #   dates_by_asset %>%
+    #     ungroup() %>%
+    #     mutate(Date = as_datetime(Date, tz = "Australia/Canberra")) %>%
+    #     dplyr::select(Asset,  DB_Date = Date)
+    # ) %>%
+    # filter(Date > DB_Date| is.na(DB_Date)) %>%
+    # dplyr::select(-DB_Date)
 
   table_name <-
     case_when(

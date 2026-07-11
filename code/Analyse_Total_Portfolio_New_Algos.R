@@ -5,7 +5,7 @@ all_aud_symbols <- get_oanda_symbols() %>%
 asset_infor <- get_instrument_info()
 aud_assets <- read_all_asset_data_intra_day(
   asset_list_oanda = all_aud_symbols,
-  save_path_oanda_assets = "C:/Users/Nikhil Chandra/Documents/Asset Data/oanda_data/",
+  save_path_oanda_assets = "C:/Users/nikhi/Documents/Asset Data/oanda_data/",
   read_csv_or_API = "API",
   time_frame = "D",
   bid_or_ask = "bid",
@@ -88,96 +88,11 @@ asset_list_oanda =
   unique()
 
 asset_infor <- get_instrument_info()
-raw_macro_data <- get_macro_event_data()
 
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "D",
-  bid_or_ask = "ask",
-  how_far_back = 25,
-  asset_list_oanda = asset_list_oanda
-)
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "ask",
-  how_far_back = 25,
-  asset_list_oanda = asset_list_oanda
-)
-
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "D",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda,
-  how_far_back = 25
-)
-update_local_db_file(
-  db_location = db_location,
-  time_frame = "H1",
-  bid_or_ask = "bid",
-  asset_list_oanda = asset_list_oanda,
-  how_far_back = 25
-)
+db_location = "C:/Users/nikhi/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 
 #--------------------------------------------------------------
 
-start_date = "2025-11-01"
-end_date = "2025-12-12"
-
-Indices_Metals_Bonds <-
-  get_Port_Buy_Data(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = end_date,
-    time_frame = "H1"
-  )
-
-distinct_assets <-
-  Indices_Metals_Bonds[[1]] %>%
-  pull(Asset) %>%
-  unique()
-
-port_return_list <- list()
-
-for (i in 1:length(distinct_assets)) {
-
-  trades_to_tag_with_returns_long <-
-    Indices_Metals_Bonds[[1]] %>%
-    ungroup() %>%
-    distinct(Asset, Date) %>%
-    mutate(trade_col = "Long") %>%
-    filter(trade_col == "Long")
-
-  port_return_list[[i]] <-
-    get_portfolio_model(
-      asset_data = Indices_Metals_Bonds,
-      asset_of_interest = distinct_assets[i],
-      tagged_trades = trades_to_tag_with_returns_long,
-      stop_factor_long = 6,
-      profit_factor_long = 20,
-      risk_dollar_value_long = 5,
-      end_period = 20,
-      time_frame = "H1"
-    )
-
-}
-
-port_return_dfr <-
-  port_return_list %>%
-  map_dfr( ~
-             .x %>%
-             dplyr::select(adjusted_Date, Asset, Return, Date, close_Date, period_since_open)
-  ) %>%
-  ungroup() %>%
-  group_by(adjusted_Date, Asset, Date,close_Date ) %>%
-  summarise(Return = sum(Return),
-            trades_open = n_distinct(Date)) %>%
-  group_by(adjusted_Date) %>%
-  mutate(
-    Total_Return = sum(Return)
-  )
 
 assets_to_get_results <-
   c("EUR_USD", #1
@@ -220,7 +135,7 @@ assets_to_get_results <-
     "UK10YB_GBP", #38
     "JP225Y_JPY", #39
     "ETH_USD", #40
-    # "EUR_CHF", #1 EUR_CHF
+    "EUR_CHF", #1 EUR_CHF
     "EUR_SEK" , #2 EUR_SEK
     "GBP_CHF", #3 GBP_CHF
     "GBP_JPY", #4 GBP_JPY
@@ -232,13 +147,13 @@ assets_to_get_results <-
     "GBP_NZD" , #10 GBP_NZD
     "NZD_CHF" , #11 NZD_CHF
     "USD_MXN" , #12 USD_MXN
-    # "XPD_USD" , #13 XPD_USD
-    # "XPT_USD" , #14 XPT_USD
+    "XPD_USD" , #13 XPD_USD
+    "XPT_USD" , #14 XPT_USD
     "NATGAS_USD" , #15 NATGAS_USD
     "SG30_SGD" , #16 SG30_SGD
-    # "SOYBN_USD" , #17 SOYBN_USD
-    # "WHEAT_USD" , #18 WHEAT_USD
-    # "SUGAR_USD" , #19 SUGAR_USD
+    "SOYBN_USD" , #17 SOYBN_USD
+    "WHEAT_USD" , #18 WHEAT_USD
+    "SUGAR_USD" , #19 SUGAR_USD
     "DE30_EUR" , #20 DE30_EUR
     "UK10YB_GBP" , #21 UK10YB_GBP
     "JP225_USD" , #22 JP225_USD
@@ -250,22 +165,71 @@ assets_to_get_results <-
   ) %>% unique()
 
 get_all_realised_generic(
-  realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
+  realised_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_realised.db",
   write_or_append = "append",
   account_var = 1,
-  algo_start_date = "2026-02-25",
+  algo_start_date = "2026-04-27",
   distinct_assets = assets_to_get_results
 )
 
+trade_tracker_DB <- connect_db("C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close.db")
+all_trades_so_far <-
+  DBI::dbGetQuery(conn = trade_tracker_DB,
+                  "SELECT * FROM trade_tracker")
+DBI::dbDisconnect(trade_tracker_DB)
+gc()
+
+trade_tracker_DB <- connect_db("C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db")
+all_trades_so_far2 <-
+  DBI::dbGetQuery(conn = trade_tracker_DB,
+                  "SELECT * FROM trade_tracker")
+DBI::dbDisconnect(trade_tracker_DB)
+gc()
+
+all_trades_so_far_comb <-
+  all_trades_so_far %>%
+  bind_rows(all_trades_so_far2) %>%
+  distinct()
+
+distinct_assets <-
+  all_trades_so_far_comb %>%
+  distinct(Asset, account_var, trade_col, tradeID) %>%
+  rename(id = tradeID) %>%
+  mutate(inLocalDB = TRUE)
+
 newest_results <-
   get_realised_trades_from_db_generic(
-    realised_DB_path = "C:/Users/Nikhil Chandra/Documents/trade_data/trade_tracker_realised.db",
+    realised_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_realised.db",
     table_name = "realised_return"
   ) %>%
   mutate(date_closed = as_datetime(date_closed))
 
 newest_results_sum <-
   newest_results %>%
+  left_join(distinct_assets) %>%
+  filter(inLocalDB == TRUE, !is.na(inLocalDB )) %>%
+  filter(date_open >= "2026-03-24") %>%
+  group_by(id, Asset, account_var, initialUnits) %>%
+  mutate(kk = row_number()) %>%
+  slice_min(kk) %>%
+  ungroup() %>%
+  dplyr::select(-kk) %>%
+  mutate(
+    across(.cols = c(initialUnits, dividendAdjustment, financing),
+           .fns = ~ as.numeric(.))
+  ) %>%
+  mutate(Net_Profit = realizedPL + dividendAdjustment + financing)
+
+newest_results_sum <-
+  newest_results %>%
+  left_join(distinct_assets) %>%
+  filter(inLocalDB == TRUE, !is.na(inLocalDB )) %>%
+  filter(date_open >= "2026-03-24") %>%
+  group_by(id, Asset, account_var, initialUnits) %>%
+  mutate(kk = row_number()) %>%
+  slice_min(kk) %>%
+  ungroup() %>%
+  dplyr::select(-kk) %>%
   group_by(id, Asset, account_var, initialUnits) %>%
   mutate(kk = row_number()) %>%
   slice_min(kk) %>%
@@ -290,7 +254,7 @@ newest_results_sum <-
   ungroup() %>%
   dplyr::select(-kk) %>%
   mutate(filter_var = TRUE) %>%
-  filter(Date >= "2026-01-19")
+  filter(Date >= "2026-03-24")
 
 
 results_sum <-
@@ -366,7 +330,15 @@ results_sum_asset <-
 
 newest_results_sum_actuals <-
   newest_results %>%
-  filter(date_open >= "2026-01-19") %>%
+  filter(date_open >= "2026-03-24") %>%
+  left_join(distinct_assets) %>%
+  filter(inLocalDB == TRUE, !is.na(inLocalDB )) %>%
+  filter(date_open >= "2026-03-24") %>%
+  group_by(id, Asset, account_var, initialUnits) %>%
+  mutate(kk = row_number()) %>%
+  slice_min(kk) %>%
+  ungroup() %>%
+  dplyr::select(-kk) %>%
   dplyr::select(Asset, Date = date_open, initialUnits, date_closed , realizedPL, financing, dividendAdjustment) %>%
   mutate(
     across(.cols = c(realizedPL, financing, dividendAdjustment), .fns = ~ as.numeric(.)),
@@ -402,7 +374,7 @@ newest_results_sum_actuals %>%
 
 newest_results_sum_actuals <-
   newest_results %>%
-  filter(date_open >= "2026-01-19") %>%
+  filter(date_open >= "2026-03-24") %>%
   dplyr::select(Asset, Date = date_open, initialUnits,
                 date_closed , realizedPL, financing, dividendAdjustment) %>%
   mutate(
@@ -439,3 +411,45 @@ newest_results_sum_actuals$Returns %>% sum()
 newest_results_sum_actuals$gross_result %>% sum()
 newest_results_sum_actuals$financing %>% sum()
 
+
+newest_results_sum_actuals_all_algos <-
+  newest_results %>%
+  filter(date_open >= "2026-03-24") %>%
+  filter(date_open >= "2026-03-24") %>%
+  group_by(id, Asset, account_var, initialUnits) %>%
+  mutate(kk = row_number()) %>%
+  slice_min(kk) %>%
+  ungroup() %>%
+  dplyr::select(-kk) %>%
+  dplyr::select(Asset, Date = date_open, initialUnits, date_closed , realizedPL, financing, dividendAdjustment) %>%
+  mutate(
+    across(.cols = c(realizedPL, financing, dividendAdjustment), .fns = ~ as.numeric(.)),
+    net_result = realizedPL + financing + dividendAdjustment,
+    gross_result = realizedPL
+  ) %>%
+  mutate(
+    Date = floor_date(Date, unit = "hour"),
+    date_closed = floor_date(date_closed, unit = "hour"),
+    trade_col =
+      case_when(
+        initialUnits > 0 ~ "Long",
+        initialUnits < 0 ~ "Short"
+      )
+  ) %>%
+  ungroup() %>%
+  filter(trade_col == "Long") %>%
+  arrange(date_closed) %>%
+  mutate(
+    cumulative_return_gross = cumsum(gross_result),
+    cumulative_return = cumsum(net_result),
+    gross_result = cumsum(gross_result)
+  )
+
+newest_results_sum_actuals_all_algos$financing %>% sum() + (newest_results_sum_actuals$dividendAdjustment %>% sum())
+
+
+newest_results_sum_actuals_all_algos %>%
+  ggplot(aes(x = date_closed)) +
+  geom_line(aes(y = cumulative_return_gross), color = "red") +
+  geom_line(aes(y = cumulative_return), color = "black") +
+  theme_minimal()
