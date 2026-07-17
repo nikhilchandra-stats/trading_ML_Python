@@ -2690,7 +2690,8 @@ get_portfolio_model_fast_summed <-
 
     overwrite_volume = NULL,
     min_volume_only = FALSE,
-    return_only_interested_col = FALSE
+    return_only_interested_col = FALSE,
+    return_only_Final = FALSE
   ) {
 
     # actuals_data <-
@@ -2793,6 +2794,9 @@ get_portfolio_model_fast_summed <-
         risk_dollar_value = risk_dollar_value_var
       )
 
+    rm(actuals_data)
+    gc()
+
     if(sum_as_portfolio == TRUE) {
 
       test <- test %>%
@@ -2800,6 +2804,16 @@ get_portfolio_model_fast_summed <-
                  stop_factor, profit_factor, end_point_point_win, end_point_point_loss) %>%
         summarise(Final_Return = sum(Final_Return, na.rm = T),
                   across(.cols = contains("period_return_"), .fns = ~ sum(., na.rm = T) ) )
+
+    }
+
+    if(return_only_interested_col == TRUE) {
+
+      test <- test %>%
+        group_by(Asset, Date, end_point_loss, end_point_profit, risk_dollar_value,
+                 stop_factor, profit_factor, end_point_point_win, end_point_point_loss) %>%
+        summarise(Final_Return = sum(Final_Return, na.rm = T),
+                  across(.cols = contains("Final_Return"), .fns = ~ sum(., na.rm = T) ) )
 
     }
 

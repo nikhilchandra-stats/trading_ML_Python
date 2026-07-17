@@ -226,6 +226,9 @@ create_running_profits_get_volumes <-
 
     final_data <- eval(parse(text = Final_Statement_required))
 
+    rm(asset_data, bid_price)
+    gc()
+
     if(return_only_interested_col == TRUE) {
 
       final_data <-
@@ -325,6 +328,9 @@ get_actual_wins_losses_extended <- function(
       profit_factor = profit_factor,
       periods_ahead = periods_ahead
     )
+
+  rm(temp_actual_wins_losses)
+  gc()
 
   return(actual_wins_losses)
 

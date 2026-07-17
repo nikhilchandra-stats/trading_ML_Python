@@ -2601,3 +2601,681 @@ portfolio_V3_generate_random_returns <-
     return(random_return_tibble)
 
   }
+
+#' portfolio_get_deviation_from_total
+#'
+#' @param total_return_portfolio
+#' @param portfolio_data
+#' @param periods_to_use_deviation
+#'
+#' @return
+#' @export
+#'
+#' @examples
+portfolio_get_deviation_from_total <-
+  function(
+    total_return_portfolio = total_return_portfolio,
+    portfolio_data = portfolio_data,
+    periods_to_use_deviation = c(1,3,4),
+    mean_periods_deviation = c(50, 100)
+  ) {
+
+
+    periods_to_use_deviation_cols_glue <-
+      periods_to_use_deviation %>%
+      map(
+        ~ glue::glue("period_return_{.x}_Price")
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = ",")
+
+    select_statement <-
+      glue::glue("portfolio_data %>% ungroup() %>% dplyr::select(Date, Asset, {periods_to_use_deviation_cols_glue})")
+
+    select_statement_total <-
+      glue::glue("total_return_portfolio %>% ungroup() %>% dplyr::select(Date, {periods_to_use_deviation_cols_glue})")
+
+    portfolio_data <-
+      eval(parse(text=select_statement))
+
+    total_return_portfolio <-
+      eval(parse(text=select_statement_total))
+
+    names(total_return_portfolio) <-
+      names(total_return_portfolio) %>%
+      map(
+        ~ case_when(str_detect(.x, "period") ~ glue::glue("total_{.x}"),
+                    TRUE ~ .x)
+      ) %>%
+      unlist() %>%
+      as.character()
+
+    joined_data <-
+      portfolio_data %>%
+      left_join(total_return_portfolio)
+
+    difference_statements <-
+      periods_to_use_deviation %>%
+      map(
+        ~ glue::glue("single_vs_total_return_{.x} = lag(total_period_return_{.x}_Price, {.x} + 1) - lag(period_return_{.x}_Price, {.x} + 1)")
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+
+    difference_statements_mean <- list()
+    for (i in 1:length(mean_periods_deviation)) {
+
+      difference_statements_mean[[i]] <-
+        periods_to_use_deviation %>%
+        map(
+          ~ glue::glue("single_vs_total_return_mean_{.x}_{mean_periods_deviation[i]} = slider::slide_dbl(.x = single_vs_total_return_{.x}, .f = ~mean(.x, na.rm = T), .before = {mean_periods_deviation[i]} )")
+        )
+
+    }
+
+    difference_statements_mean <-
+      difference_statements_mean %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    # correlation_statements <-
+    #   periods_to_use_deviation %>%
+    #   map(
+    #     ~ glue::glue("single_vs_total_return_cor_{.x} = slider::slide2_dbl(.x = lag(total_period_return_{.x}_Price, {.x} + 1), .y = lag(period_return_{.x}_Price, {.x} + 1), .f = ~ cor(.x, .y), .before = {cor_period})
+    #                  lag(total_period_return_{.x}_Price, {.x} + 1) - lag(period_return_{.x}_Price, {.x} + 1)")
+    #   ) %>%
+    #   unlist() %>%
+    #   paste(collapse = ",")
+
+    execuate_statement <-
+      glue::glue("joined_data %>% ungroup() %>% group_by(Asset) %>% arrange(Asset, .by_group = TRUE) %>% group_by(Asset) %>% mutate({difference_statements}, {difference_statements_mean}) %>% dplyr::select(Date, Asset, contains('single_vs_total_return_'))")
+
+    returned_data <- eval(parse(text = execuate_statement))
+
+    return(returned_data)
+
+  }
+
+#' portfolio_get_return_auto_cor
+#'
+#' @param portfolio_data
+#' @param auto_cor_cols
+#' @param cor_skip_periods
+#' @param cor_period
+#'
+#' @return
+#' @export
+#'
+#' @examples
+portfolio_get_return_auto_cor <-
+  function(
+    cor_data_to_auto_cor = portfolio_data_train,
+    auto_cor_cols = 25,
+    cor_skip_periods = c(2,4,5,6),
+    suffix_var = "",
+    cor_period = 50
+  ) {
+
+
+    statement_accumulator <- list()
+    for (i in 1:length(cor_skip_periods) ) {
+
+      statement_accumulator[[i]] <-
+        seq(1,auto_cor_cols-cor_skip_periods[i],1) %>%
+        map(
+          ~ glue::glue("auto_cor_return_{.x}_{.x + cor_skip_periods[i]}_{suffix_var} =
+                               slider::slide2_dbl(.x = lag(period_return_{.x}_Price, {.x + 1}),
+                                                   .y = lag(period_return_{.x + cor_skip_periods[i]}_Price, {.x + 1 + cor_skip_periods[i]}),
+                                                   .f = ~ cor(.x, .y),
+                                                   .before = {cor_period})")
+        ) %>%
+        paste(collapse = ",")
+
+    }
+
+    message("Function:portfolio_get_return_auto_cor line 2642 ")
+
+    autocor_cols_glue <-
+      statement_accumulator %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = ",")
+
+    message("Function:portfolio_get_return_auto_cor line 2650 ")
+
+    complete_statements <-
+      glue::glue("cor_data_to_auto_cor %>%
+                    group_by(Asset) %>%
+                    arrange(Date, .by_group = TRUE) %>%
+                    group_by(Asset) %>%
+                    mutate({autocor_cols_glue}) %>%
+                    ungroup() %>%
+                    dplyr::select(Date, Asset, contains('auto_cor_return_'))")
+
+    message("Function:portfolio_get_return_auto_cor line 2661 ")
+
+    message(glue::glue("{dim(cor_data_to_auto_cor)[1]} dim for Portfolio Dat in portfolio_get_return_auto_cor"))
+
+    returned_data <- eval(parse(text = complete_statements))
+
+    rm(cor_data_to_auto_cor)
+    gc()
+
+    return(returned_data)
+
+  }
+
+#' get_portfolio_dat_no_V3_New
+#'
+#' @param portfolio_data
+#' @param xtnd_ss_cols_PR_cols
+#' @param xtnd_ss_cols_BR_periods
+#' @param lag_dependant
+#' @param auto_cor_cols
+#' @param cor_skip_periods
+#' @param cor_period
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_portfolio_dat_no_V3_New <-
+  function(
+    portfolio_data = portfolio_data_train,
+    xtnd_ss_cols_PR_cols = c(10,20,30,40,50, 60),
+    xtnd_ss_cols_BR_periods = c(100,200,300),
+    lag_dependant = end_period + 1,
+    auto_cor_cols = 25,
+    cor_skip_periods = c(2,4,5,6),
+    cor_period = 50,
+    periods_to_use_deviation = c(1,3,4),
+    mean_periods_deviation = c(50, 100)
+  ) {
+
+    total_reg_data <-
+      portfolio_data %>%
+      ungroup() %>%
+      distinct(Date, Asset)
+
+    total_return_portfolio <-
+      portfolio_data %>%
+      ungroup() %>%
+      group_by(Date) %>%
+      summarise(
+        across(.cols = c(Final_Return, contains("period_return_")),
+               .fns = ~ sum(., na.rm = T))
+      ) %>%
+      ungroup() %>%
+      mutate(Asset = "Portfolio") %>%
+      mutate(across(.cols = contains("period_return_"), .fns = ~ as.numeric(.)))
+
+    deviation_data <-
+      portfolio_get_deviation_from_total(
+        total_return_portfolio = total_return_portfolio,
+        portfolio_data = portfolio_data,
+        periods_to_use_deviation = periods_to_use_deviation,
+        mean_periods_deviation = mean_periods_deviation
+      )
+
+    req_ss_extnd_cols_PR <-
+      xtnd_ss_cols_PR_cols %>%
+      map(
+        ~
+          glue::glue(
+            "
+          state_space_data_PR_{.x} <-
+              portfolio_LM_state_space(
+                  portfolio_data = portfolio_data,
+                  state_space_col = 'period_return_{.x}_Price' ,
+                  required_lag = {.x}, #Does not need a plus 1 its built in
+                  roll_period_state_space = 500
+                )"
+          )
+      )  %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = "\n")
+
+    req_ss_extnd_cols_PR_names <-
+      xtnd_ss_cols_PR_cols %>%
+      map(
+        ~ glue::glue("state_space_data_PR_{.x}")
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = ",")
+
+    req_ss_extnd_cols_PR_list <-
+      glue::glue("All_state_space_data_PR <- list({req_ss_extnd_cols_PR_names})")
+
+    rm_statement <- glue::glue("rm({req_ss_extnd_cols_PR_names})")
+
+    eval(parse(text = req_ss_extnd_cols_PR))
+    eval(parse(text = req_ss_extnd_cols_PR_list))
+    eval(parse(text = rm_statement))
+    gc()
+
+    All_state_space_data_PR <-
+      All_state_space_data_PR %>%
+      reduce(left_join)
+
+    All_state_space_data_PR <-
+      All_state_space_data_PR %>%
+      dplyr::select(Date, contains("state_space"))
+
+    message("Made it to State SPace End line 2750")
+
+    # state_space_data_FR_500 <-
+    #   portfolio_LM_state_space(
+    #     portfolio_data = portfolio_data,
+    #     state_space_col = "Final_Return",
+    #     required_lag = lag_dependant, #Does not need a plus 1 its built in
+    #     roll_period_state_space = 500
+    #   )
+
+    All_state_space_data_PR <-
+      All_state_space_data_PR
+      # left_join(
+      #   state_space_data_FR_500 %>%
+      #     dplyr::select(Date, Asset,  contains("state_space"))
+      # )
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(All_state_space_data_PR %>% ungroup()) %>%
+      left_join(deviation_data %>% ungroup())
+
+    rm(deviation_data)
+
+    message("Made it to State SPace joined with TOtal Reg End line 2771")
+
+    req_BR_extnd_cols_PR <-
+      xtnd_ss_cols_BR_periods %>%
+      map(
+        ~ glue::glue("
+          brownian_tech_data_{.x} <-
+                portfolio_LM_brownian_checks(portfolio_data = portfolio_data,
+                                             brownian_period = {.x},
+                                             col_to_use = 'period_return_1_Price',
+                                             lag_period_to_use = 1)
+          brownian_tech_data_FR_{.x} <-
+                portfolio_LM_brownian_checks(portfolio_data = portfolio_data,
+                                             brownian_period = {.x},
+                                             col_to_use = 'Final_Return',
+                                             lag_period_to_use = {lag_dependant} )"
+        )
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = "\n")
+
+    req_BR_extnd_cols_PR_names <-
+      xtnd_ss_cols_BR_periods %>%
+      map(
+        ~ glue::glue("brownian_tech_data_{.x}, brownian_tech_data_FR_{.x}")
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = ",")
+
+    req_BR_extnd_cols_PR_list <-
+      glue::glue("All_BR_data_PR <- list({req_BR_extnd_cols_PR_names})")
+
+    rm_statement <- glue::glue("rm({req_BR_extnd_cols_PR_names})")
+
+    eval(parse(text = req_BR_extnd_cols_PR))
+    message("Made it to Brownian First Statement req_BR_extnd_cols_PR line 2808")
+    eval(parse(text = req_BR_extnd_cols_PR_list))
+    message("Made it to Brownian Second Statement req_BR_extnd_cols_PR line 2810")
+    eval(parse(text = rm_statement))
+    message("Made it to Brownian Third Statement req_BR_extnd_cols_PR line 2812")
+    gc()
+
+    All_BR_data_PR <-
+      All_BR_data_PR %>%
+      reduce(left_join)
+
+    message("Made it to All_BR_data_PR statement line 2819")
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(All_BR_data_PR %>%
+                  dplyr::select(Date, Asset, contains("brownian"))
+      )
+
+    message("Made it to total_reg_data statement line 2827")
+
+    rm(All_state_space_data_PR, All_BR_data_PR)
+
+    auto_cor_cols_asset_level <-
+      portfolio_get_return_auto_cor(
+        cor_data_to_auto_cor = portfolio_data,
+        auto_cor_cols = auto_cor_cols,
+        cor_skip_periods = cor_skip_periods,
+        cor_period = cor_period
+      ) %>%
+      ungroup()
+
+    gc()
+
+    message("Made it to auto_cor_cols statement line 2840")
+
+
+    auto_cor_cols_total <-
+      portfolio_get_return_auto_cor(
+        cor_data_to_auto_cor = total_return_portfolio,
+        auto_cor_cols = auto_cor_cols,
+        suffix_var = "total",
+        cor_skip_periods = cor_skip_periods,
+        cor_period = cor_period
+      ) %>%
+      ungroup() %>%
+      dplyr::select(-Asset)
+
+    gc()
+    rm(total_return_portfolio)
+    gc()
+
+    message("Made it to auto_cor_cols_total statement line 2854")
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(auto_cor_cols_asset_level) %>%
+      left_join(auto_cor_cols_total)
+
+    message("Made it to total_reg_data statement line 2861")
+
+    rm(auto_cor_cols_asset_level, auto_cor_cols_total)
+    gc()
+
+    Final_Returns <-
+      portfolio_data %>%
+      distinct(Date, Asset, Final_Return)
+
+    message("Made it to Final_Returns statement line 2878")
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(Final_Returns)
+
+    message("Made it to total_reg_data statement line 2884")
+
+    # reg_vars <-
+    #   names(total_reg_data) %>%
+    #   keep(~ str_detect(.x, "auto_cor|brownian|state_space"))
+
+    gc()
+
+    return(total_reg_data)
+
+  }
+
+#' portfolio_gen_model_no_V3_New
+#'
+#' @param reg_dat
+#' @param reg_vars
+#' @param training_end_date
+#' @param Bayes_or_LM
+#' @param save_path
+#' @param dependant_var
+#'
+#' @return
+#' @export
+#'
+#' @examples
+portfolio_gen_model_no_V3_New <-
+  function(
+    reg_dat = temp_reg_data_train,
+    reg_vars = all_cor_vars,
+    training_end_date,
+    Bayes_or_LM = "LM",
+    save_path = save_location,
+    dependant_var = "Final_Return",
+    sig_thresh_LM = 1,
+    file_name = file_name,
+    reg_samples = 2500
+    ) {
+
+    training_data <-
+      reg_dat %>%
+      ungroup() %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
+      filter(Date <= training_end_date) %>%
+      group_by(Asset) %>%
+      slice_sample(n = reg_samples) %>%
+      ungroup()
+
+    rm(reg_dat)
+    gc()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var, independant = reg_vars)
+
+    LM_model <- lm(data = training_data %>% filter(Final_Return != 0),
+                   formula = lm_form)
+
+    sig_coefs <-
+      get_sig_coefs(LM_model, p_value_thresh_for_inputs = sig_thresh_LM)
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-7)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-6)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-5)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-4)
+    }
+
+    if(length(sig_coefs) < 1) {
+      sig_coefs <- get_sig_coefs(LM_model, p_value_thresh_for_inputs = 10^-3)
+    }
+
+    sig_coefs <-
+      sig_coefs %>%
+      keep(~ !str_detect(.x, "Asset[A-Z][A-Z]") ) %>%
+      unlist()
+
+    sig_coefs <-
+      c(sig_coefs, "Asset") %>%
+      unlist()
+
+    lm_form <-
+      create_lm_formula(dependant = dependant_var,
+                        independant = sig_coefs)
+
+    if(Bayes_or_LM == "Bayes") {
+      LM_model <- bayesreg::bayesreg(formula = lm_form,
+                                     data = training_data %>% filter(Final_Return != 0),
+                                     model = "normal")
+    }
+
+    if(Bayes_or_LM == "LM") {
+
+      LM_model <- lm(formula = lm_form,
+                     data = training_data %>% filter(Final_Return != 0))
+    }
+
+    training_data <-
+      training_data %>%
+      filter(if_all(everything() ,~ !is.na(.)))
+
+    predicted_train <- predict(newdata = training_data,
+                               object =  LM_model, type = "response")
+
+    means_by_asset <-
+      training_data %>%
+      mutate(preds = predicted_train) %>%
+      summarise(
+        trained_mean = mean(preds, na.rm = T),
+        trained_sd = sd(preds, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      dplyr::select(trained_mean, trained_sd)
+
+    saveRDS(LM_model,
+            file = glue::glue("{save_path}/{file_name}.RDS") )
+
+    write.csv(
+      means_by_asset,
+      file = glue::glue("{save_path}/{file_name}_Mean_SD.csv"),
+      row.names = FALSE
+    )
+
+    rm(testing_data, training_data, all_cor_V3_Data, LM_model, predicted_train,predicted )
+    gc()
+
+    return(NULL)
+
+  }
+
+portfolio_read_model_no_V3_New <-
+  function(
+    reg_dat = temp_reg_data_test,
+    training_end_date,
+    save_path = save_location,
+    file_name = file_name
+    ) {
+
+    LM_model <- readRDS(file = glue::glue("{save_path}/{file_name}.RDS") )
+
+    LM_model$model <- NULL
+    LM_model$fitted.values <- NULL
+    gc()
+
+    reg_dat <-
+      reg_dat %>% filter(Date > training_end_date)
+
+    gc()
+
+    predicted_test <- predict(newdata = reg_dat,
+                               object =  LM_model,
+                              type = "response")
+
+    rm(LM_model)
+
+    model_prediction_data <-
+      reg_dat %>%
+      filter(Date > training_end_date) %>%
+      mutate(predicted = predicted_test) %>%
+      ungroup() %>%
+      dplyr::select(Date, Asset, Final_Return, predicted)
+
+    rm(reg_dat)
+    gc()
+
+  model_prediction_data <-
+      model_prediction_data %>%
+      group_by(Date) %>%
+      mutate(
+        predicted_portfolio = sum(predicted, na.rm = T)
+      ) %>%
+      ungroup() %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        pred_10000_mean_roll_250 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 250),
+        pred_10000_sd_roll_250 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 250),
+
+        pred_10000_mean_roll_500 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 500),
+        pred_10000_sd_roll_500 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500),
+
+        pred_10000_mean_roll_100 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
+        pred_10000_sd_roll_100 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100),
+
+        pred_10000_mean_roll_600 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 600),
+        pred_10000_sd_roll_600 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 600),
+
+        pred_10000_mean_roll_1000 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1000),
+        pred_10000_sd_roll_1000 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1000),
+
+        pred_10000_mean_roll_1500 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1500),
+        pred_10000_sd_roll_1500 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1500),
+
+        pred_10000_mean_roll_2000 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 2000),
+        pred_10000_sd_roll_2000 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
+
+        pred_10000_mean_roll_50 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 50),
+        pred_10000_sd_roll_50 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 50),
+
+        pred_10000_mean_roll_10 =
+          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 10),
+        pred_10000_sd_roll_10 =
+          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 10),
+
+
+        pred_portfolio_10000_mean_roll_250 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 250),
+        pred_portfolio_10000_sd_roll_250 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 250),
+
+        pred_portfolio_10000_mean_roll_500 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 500),
+        pred_portfolio_10000_sd_roll_500 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 500),
+
+        pred_portfolio_10000_mean_roll_100 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 100),
+        pred_portfolio_10000_sd_roll_100 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 100),
+
+        pred_portfolio_10000_mean_roll_600 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 600),
+        pred_portfolio_10000_sd_roll_600 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 600),
+
+        pred_portfolio_10000_mean_roll_1000 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 1000),
+        pred_portfolio_10000_sd_roll_1000 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 1000),
+
+        pred_portfolio_10000_mean_roll_1500 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 1500),
+        pred_portfolio_10000_sd_roll_1500 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 1500),
+
+        pred_portfolio_10000_mean_roll_2000 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 2000),
+        pred_portfolio_10000_sd_roll_2000 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 2000),
+
+        pred_portfolio_10000_mean_roll_50 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 50),
+        pred_portfolio_10000_sd_roll_50 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 50),
+
+        pred_portfolio_10000_mean_roll_10 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 10),
+        pred_portfolio_10000_sd_roll_10 =
+          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 10),
+
+      )
+
+    return(model_prediction_data)
+
+  }
