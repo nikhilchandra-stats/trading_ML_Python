@@ -663,7 +663,7 @@ while (current_time < end_time) {
   }
 
   if(trades_closed == 0 &
-     now(tzone = "Australia/Canberra") >= as_datetime("2026-07-06 07:00:00", tz = "Australia/Canberra") ) {
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-07-13 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 
@@ -931,10 +931,10 @@ while (current_time < end_time) {
     Sys.sleep(10)
   }
 
-  if(now(tzone = "Australia/Canberra") < as_datetime("2026-07-06 07:00:00", tz = "Australia/Canberra")) {
-    time_remaining <-
-      as.numeric(as_datetime("2026-07-06 07:00:00", tz = "Australia/Canberra") - now(tzone = "Australia/Canberra"), "mins")
-    Sys.sleep(time_remaining*60 - 60*10)
-  }
+  # if(now(tzone = "Australia/Canberra") < as_datetime("2026-07-13 07:00:00", tz = "Australia/Canberra")) {
+  #   time_remaining <-
+  #     as.numeric(as_datetime("2026-07-13 07:00:00", tz = "Australia/Canberra") - now(tzone = "Australia/Canberra"), "mins")
+  #   Sys.sleep(time_remaining*60 - 60*10)
+  # }
 
 }
