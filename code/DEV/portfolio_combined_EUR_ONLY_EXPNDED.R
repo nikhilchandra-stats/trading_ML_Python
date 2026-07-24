@@ -65,15 +65,16 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-start_date = "2018-06-01"
+start_date = "2017-06-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "CORN_USD",
-    "SOYBN_USD",
-    "SUGAR_USD"
+    "EUR_JPY",
+    "EUR_USD",
+    "EUR_GBP",
+    "EU50_EUR"
   ) %>% unique()
 
 stop_factor_var = 10
@@ -91,7 +92,7 @@ low_to_price_lengths = c(400)
 cor_period = c(50)
 dependant_var = "Final_Return"
 save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/"
-file_name = "WHEAT_SUGAR_SOY_NON_V3_NEW_MODEL"
+file_name = "EUR_EXPNDED_ONLY_NON_V3_NEW_MODEL"
 training_date = "2022-02-01"
 testing_date = as_date(training_date) + months(3)
 
@@ -184,9 +185,9 @@ portfolio_gen_model_no_V3_New(
   Bayes_or_LM = "LM",
   save_path = save_location,
   dependant_var = "Final_Return",
-  sig_thresh_LM = 0.15,
+  sig_thresh_LM = 1,
   file_name = file_name,
-  reg_samples = 14000
+  reg_samples = 30000
 )
 
 rm(temp_reg_data_train)
@@ -276,53 +277,31 @@ model_predicted_data <-
     file_name = file_name
   )
 
+model_predicted_data <-
+  model_predicted_data %>%
+  filter(Date > training_date)
+
 rm(temp_reg_data_test)
 gc()
 
-
 trade_statment <-
   "
-    (pred_10000_mean_roll_10 > pred_10000_mean_roll_500 + 1.85*pred_10000_sd_roll_500 &
-    pred_10000_mean_roll_10 < pred_10000_mean_roll_500 + 20*pred_10000_sd_roll_500)|
-    (pred_10000_mean_roll_10 > pred_10000_mean_roll_1500 + 2*pred_10000_sd_roll_1500 &
-    pred_10000_mean_roll_10 < pred_10000_mean_roll_1500 + 20*pred_10000_sd_roll_1500)|
-    (pred_10000_mean_roll_10 > pred_10000_mean_roll_1000 + 1.8*pred_10000_sd_roll_1000 &
-    pred_10000_mean_roll_10 < pred_10000_mean_roll_1000 + 20*pred_10000_sd_roll_1000)|
-    (pred_10000_mean_roll_10 > pred_10000_mean_roll_600 + 1.9*pred_10000_sd_roll_600 &
-    pred_10000_mean_roll_10 < pred_10000_mean_roll_600 + 20*pred_10000_sd_roll_600)|
-    (pred_10000_mean_roll_10 > pred_10000_mean_roll_250 + 2.1*pred_10000_sd_roll_250 &
-    pred_10000_mean_roll_10 < pred_10000_mean_roll_250 + 20*pred_10000_sd_roll_250)|
-    (pred_10000_mean_roll_50 > pred_10000_mean_roll_500 + 1.65*pred_10000_sd_roll_500 &
-    pred_10000_mean_roll_50 < pred_10000_mean_roll_500 + 20*pred_10000_sd_roll_500)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1000 + 2.1*pred_portfolio_10000_sd_roll_1000 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1000 + 20*pred_portfolio_10000_sd_roll_1000)|
-  (pred_portfolio_10000_mean_roll_50 > pred_portfolio_10000_mean_roll_1500 + 2.1*pred_portfolio_10000_sd_roll_1500 &
-  pred_portfolio_10000_mean_roll_50 < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1500 + 2.6*pred_portfolio_10000_sd_roll_1500 &
+  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1500 + 1.25*pred_portfolio_10000_sd_roll_1500 &
   pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_500 + 2.25*pred_portfolio_10000_sd_roll_500 &
+  (predicted_portfolio > pred_portfolio_10000_mean_roll_1500 + 1.25*pred_portfolio_10000_sd_roll_1500 &
+  predicted_portfolio < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
+  (predicted_portfolio > pred_portfolio_10000_mean_roll_1000 + 1.15*pred_portfolio_10000_sd_roll_1000 &
+  predicted_portfolio < pred_portfolio_10000_mean_roll_1000 + 20*pred_portfolio_10000_sd_roll_1000)|
+  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_500 + 1.2*pred_portfolio_10000_sd_roll_500 &
   pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)|
-  (pred_portfolio_10000_mean_roll_50 > pred_portfolio_10000_mean_roll_250 + 1.5*pred_portfolio_10000_sd_roll_250 &
-  pred_portfolio_10000_mean_roll_50 < pred_portfolio_10000_mean_roll_250 + 20*pred_portfolio_10000_sd_roll_250)|
-  (pred_portfolio_10000_mean_roll_100 > 45 & pred_portfolio_10000_mean_roll_100 < 1000)|
-    (pred_portfolio_10000_mean_roll_50 > pred_portfolio_10000_mean_roll_600 + 1.5*pred_portfolio_10000_sd_roll_600 &
-  pred_portfolio_10000_mean_roll_50 < pred_portfolio_10000_mean_roll_600 + 20*pred_portfolio_10000_sd_roll_600)|
-  (pred_portfolio_10000_mean_roll_100 > pred_portfolio_10000_mean_roll_600 + 1.4*pred_portfolio_10000_sd_roll_600 &
-  pred_portfolio_10000_mean_roll_100 < pred_portfolio_10000_mean_roll_600 + 20*pred_portfolio_10000_sd_roll_600)
+  (predicted_portfolio > pred_portfolio_10000_mean_roll_500 + 1.1*pred_portfolio_10000_sd_roll_500 &
+  predicted_portfolio < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)
 "
 
 trade_statment <-
   "
-    (pred_10000_mean_roll_50 > pred_10000_mean_roll_1000 + 2.05*pred_10000_sd_roll_1000 &
-    pred_10000_mean_roll_50 < pred_10000_mean_roll_1000 + 2.5*pred_10000_sd_roll_1000)|
-    (pred_10000_mean_roll_50 > pred_10000_mean_roll_1500 + 2.1*pred_10000_sd_roll_1500 &
-    pred_10000_mean_roll_50 < pred_10000_mean_roll_1500 + 20*pred_10000_sd_roll_1500)
-"
-
-trade_statment <-
-  "
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1000 + 2*pred_portfolio_10000_sd_roll_1000 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1000 + 20*pred_portfolio_10000_sd_roll_1000)
+  (predicted_portfolio > pred_portfolio_10000_mean_roll_500 + 1.1*pred_portfolio_10000_sd_roll_500 &
+  predicted_portfolio < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)
 "
 
 analyse_performance <-
