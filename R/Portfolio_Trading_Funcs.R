@@ -3447,17 +3447,16 @@ portfolio_no_V3_New_algo_variant <-
 
       model_predicted_data <-
         model_predicted_data %>%
-        mutate(
-          trade_col = eval(parse(text = trade_statement))
-        ) %>%
-        mutate(
-          trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-        ) %>%
         filter(Asset %in% assets_to_port) %>%
         group_by(Asset) %>%
         slice_max(Date)
 
       message(glue::glue("Check Algo Filtered and If Executed (model_predicted_data): {dim(model_predicted_data)[1]} \n"))
+
+      max_date_pre_filt <-
+        model_predicted_data %>% pull(Date) %>% max(na.rm = T)
+
+      message(glue::glue("Check Max Date before trade statement Filter (model_predicted_data): {max_date_pre_filt} \n"))
 
       max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
       rm(Indices_Metals_Bonds)
