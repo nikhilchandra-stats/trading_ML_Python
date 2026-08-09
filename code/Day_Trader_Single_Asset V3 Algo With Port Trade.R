@@ -212,7 +212,7 @@ DBI::dbDisconnect(db_con_trade_statements)
 rm(db_con_trade_statements)
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
-run_trades = TRUE
+run_trades = FALSE
 
 while (current_time < end_time) {
 
@@ -662,8 +662,17 @@ while (current_time < end_time) {
 
   }
 
+
+# Close Trades ------------------------------------------------------------
+
+  if(
+    now(tzone = "Australia/Canberra") < as_datetime("2026-08-10 06:00:00", tz = "Australia/Canberra")
+  ){
+    Sys.sleep(600)
+  }
+
   if(trades_closed == 0 &
-     now(tzone = "Australia/Canberra") >= as_datetime("2026-07-13 07:00:00", tz = "Australia/Canberra") ) {
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-08-10 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 
