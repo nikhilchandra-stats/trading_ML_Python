@@ -212,7 +212,7 @@ post_preds_all_rolling_and_originals <-
     # start_index = 1,
     # end_index = 40,
     start_index = 1,
-    end_index = 38,
+    end_index = 19,
     risk_dollar_value = 15,
     trade_direction = "Long",
     stop_value_var = 10,
@@ -238,6 +238,62 @@ post_preds_all_rolling_and_originals <-
     post_dependant_threshold = 0,
     model_data_store_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2.db",
     save_path = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Single_Asset_V2_trade_store_stop_2"
+  )
+
+actual_wins_losses <-
+  get_actual_wins_losses(
+    assets_to_analyse =
+      c("EUR_USD", #1
+        "EU50_EUR", #2
+        "SPX500_USD", #3
+        "US2000_USD", #4
+        "USB10Y_USD", #5
+        "USD_JPY", #6
+        "AUD_USD", #7
+        "EUR_GBP", #8
+        "AU200_AUD" ,#9
+        "EUR_AUD", #10
+        "WTICO_USD", #11
+        "UK100_GBP", #12
+        "USD_CAD", #13
+        "GBP_USD", #14
+        "GBP_CAD", #15
+        "EUR_JPY", #16
+        "EUR_NZD", #17
+        "XAG_USD", #18
+        "XAG_EUR", #19
+        "XAG_AUD", #20
+        "XAG_NZD", #21
+        "HK33_HKD", #22
+        "FR40_EUR", #23
+        "BTC_USD", #24
+        "XAG_GBP", #25
+        "GBP_AUD", #26
+        "USD_SEK", #27
+        "USD_SGD", #28
+        "NZD_USD", #29
+        "GBP_NZD", #30
+        "XCU_USD", #31
+        "NATGAS_USD", #32
+        "GBP_JPY", #33
+        "SG30_SGD", #34
+        "XAU_USD", #35
+        "EUR_SEK", #36
+        "XAU_AUD", #37
+        "UK10YB_GBP", #38
+        "JP225Y_JPY", #39
+        "ETH_USD" #40
+      ),
+    asset_data = Indices_Metals_Bonds,
+    # stop_factor = 5,
+    # profit_factor = 15,
+    stop_factor = 10,
+    profit_factor = 60,
+    risk_dollar_value = 10,
+    trade_direction = "Long",
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    periods_ahead = period_var
   )
 
 post_preds_all_rolling_and_originals_2 <-
@@ -285,102 +341,3 @@ generated_preds <-
   filter(
     Date >= as.character(as_date("2023-01-01")  )
   )
-
-
-actual_wins_losses <-
-  get_actual_wins_losses(
-    assets_to_analyse =
-      c("XAU_USD" #1
-      ),
-    asset_data = Indices_Metals_Bonds,
-    stop_factor = 3,
-    profit_factor = 6,
-    risk_dollar_value = 10,
-    trade_direction = "Long",
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor,
-    periods_ahead = period_var
-  )
-
-trade_statement <-
-  "
-  #Stop Factor = 3, Profit Factor = 6, End Point = 24
-  (
-  pred_copula_1 >= 190 &
-  pred_copula_1 <= 230 &
-  Asset == 'HK33_HKD'
-  )|
-  (
-  pred_combined_1 >= 140 &
-  pred_combined_1 <= 200 &
-  Asset == 'HK33_HKD'
-  )|
-  (
-  pred_combined_3 >= 15 &
-  pred_combined_3 <= 45 &
-  Asset == 'HK33_HKD'
-  )|
-  (
-  pred_combined_5 >= 3100 &
-  pred_combined_5 <= 10000 &
-  Asset == 'HK33_HKD'
-  )|
-
-"
-cumulative_returns_sim_data <-
-  get_total_portfolio_summary(
-    generated_preds = generated_preds %>%
-      filter(Asset == "XAU_USD")
-      # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_statement = trade_statement,
-    actual_wins_losses =actual_wins_losses %>%
-      filter(Asset == "XAU_USD")
-      # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_direction = "Long",
-    return_col = "period_return_24_Price"
-  )
-
-cumulative_returns_sim_data %>%
-  ggplot(aes(x = Date, y = Cumulative_Return)) +
-  geom_line() +
-  geom_vline(aes(xintercept = as_datetime("2026-02-28 08:00:00")), color = "red", linetype = 'dashed', size = 0.7) +
-  facet_wrap(.~trade_col, scales = "free") +
-  scale_y_continuous(n.breaks = 20) +
-  theme_minimal()
-
-asset_summaries_control <-
-  get_asset_random_sim_returns(
-    generated_preds = generated_preds %>%
-      filter(Asset == "XAU_USD")
-      # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_statement = "str_detect(Asset, '[A-Z]')",
-    actual_wins_losses = actual_wins_losses %>%
-      filter(Asset == "XAU_USD")
-      # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_direction = "Long",
-    return_col = "period_return_24_Price",
-    simulations = 5000,
-    samples = 50
-  )
-
-asset_summaries <-
-  get_asset_random_sim_returns(
-    generated_preds = generated_preds %>%
-      filter(Asset == "XAU_USD")
-      # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_statement = trade_statement,
-    actual_wins_losses = actual_wins_losses %>%
-      filter(Asset == "XAU_USD")
-      # filter( str_detect(Asset, "[A-Z]"))
-    ,
-    trade_direction = "Long",
-    return_col = "period_return_24_Price",
-    simulations = 7000,
-    samples = 50
-  )
-

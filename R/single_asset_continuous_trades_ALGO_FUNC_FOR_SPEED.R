@@ -160,7 +160,9 @@ single_asset_algo_generate_preds_STRPED_SPEED <-
                 "XAG_USD", #18
                 "XAU_USD",#19
                 "HK33_HKD", #20
-                "NATGAS_USD" #21
+                "NATGAS_USD", #21
+                "XCU_USD", #22
+                "FR40_EUR" #23
       ),
       couplua_assets =
         list(
@@ -271,6 +273,16 @@ single_asset_algo_generate_preds_STRPED_SPEED <-
           c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD",
             "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "EUR_USD", "USD_JPY",
             "GBP_USD", "AUD_USD", "USD_CAD", "WTICO_USD", "XAG_USD") %>% unique(), #21
+
+          # "XCU_USD", #22
+          c("XAG_JPY", "XAG_GBP", "XAG_EUR", "XAG_AUD", "XAU_USD", "EU50_EUR", "SPX500_USD",
+            "XAG_NZD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_EUR", "EUR_USD", "USD_JPY",
+            "GBP_USD", "AUD_USD", "USD_CAD", "USD_SEK", "XAG_USD") %>% unique(), #22
+
+          # "FR40_EUR" #23
+          c("UK100_GBP", "EU50_EUR", "XAG_USD", "AU200_AUD",
+            "XAU_USD", "USB10Y_USD", "SPX500_USD", "EUR_USD", "EUR_AUD",
+            "XAU_EUR", "XAG_EUR", "EUR_NZD", "EUR_JPY") %>% unique() #23
         ),
       countries_for_int_strength =
         list(
@@ -295,7 +307,9 @@ single_asset_algo_generate_preds_STRPED_SPEED <-
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #18
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #19
           c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #20
-          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD") #21
+          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #21
+          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD"), #22
+          c("GBP", "USD", "EUR", "AUD", "JPY", "NZD", "CAD") #23
         )
     )
     assets_to_analyse <-
