@@ -166,19 +166,6 @@ for (i in 1:dim(test_parameters)[1] ) {
 
     asset_accumulator[[j]] <- temp
 
-    # if(c == 1 & rerun_DB == TRUE){
-    #   write_table_sql_lite(.data = temp,
-    #                        table_name = "Return_Structure_Stored",
-    #                        conn = db_con_returns,
-    #                        overwrite_true = TRUE)
-    # }
-    #
-    # if(c != 1 | rerun_DB == FALSE){
-    #   append_table_sql_lite(.data = temp,
-    #                         table_name = "Return_Structure_Stored",
-    #                         conn = db_con_returns)
-    # }
-    #
     rm(temp)
     gc()
 
@@ -212,7 +199,7 @@ for (i in 1:dim(test_parameters)[1] ) {
       seq(100,2000,100) %>%
       map(
         ~
-          glue::glue("min_{.x} = period_return_{xx[k]}_Price - lag(period_return_{xx[k]}_Price, {.x})")
+          glue::glue("min_{.x}_period_{xx[k]} = period_return_{xx[k]}_Price - lag(period_return_{xx[k]}_Price, {.x})")
       ) %>%
       unlist()
   }
@@ -224,12 +211,18 @@ for (i in 1:dim(test_parameters)[1] ) {
     paste(collapse = ",")
 
   statements_min_all_mutate <-
-    glue::glue("cumulative_structure %>% group_by(Asset) %>% arrange(Date, .by_group = TRUE) %>% mutate({statements_min_all})")
+    glue::glue("cumulative_structure %>%
+                  group_by(Asset, end_point_loss, end_point_profit, risk_dollar_value,
+                           stop_factor,profit_factor, end_point_point_win, end_point_point_loss) %>%
+                  arrange(Date, .by_group = TRUE) %>%
+                  mutate({statements_min_all})")
 
   cumulative_structure <-
     asset_accumulator %>%
     map_dfr(bind_rows) %>%
-    group_by(Asset) %>%
+    group_by(Asset,
+             end_point_loss, end_point_profit, risk_dollar_value,
+             stop_factor,profit_factor, end_point_point_win, end_point_point_loss) %>%
     arrange(Date, .by_group = TRUE) %>%
     mutate(
       across(.cols = c(period_return_10_Price, period_return_20_Price,
@@ -246,8 +239,97 @@ for (i in 1:dim(test_parameters)[1] ) {
              .fns = ~ cumsum(.) )
     )
 
+  cumulative_constructs_all <- eval(parse(text = statements_min_all_mutate))
+
   cumulative_structure_mins <-
-    eval(parse(text = statements_min_all_mutate))
+    cumulative_constructs_all %>%
+    filter(if_all(everything(), ~!is.na(.) )) %>%
+    group_by(Asset,
+             end_point_loss, end_point_profit, risk_dollar_value,
+             stop_factor,profit_factor, end_point_point_win, end_point_point_loss) %>%
+    summarise(across(.cols = contains("min_"), .fns = ~ min(., na.rm = T))) %>%
+    ungroup() %>%
+    mutate(
+      struct = 0.00001
+    )
+
+  cumulative_structure_maxes <-
+    cumulative_constructs_all %>%
+    filter(if_all(everything(), ~!is.na(.) )) %>%
+    group_by(Asset,
+             end_point_loss, end_point_profit, risk_dollar_value,
+             stop_factor,profit_factor, end_point_point_win, end_point_point_loss) %>%
+    summarise(across(.cols = contains("min_"), .fns = ~ max(., na.rm = T))) %>%
+    ungroup() %>%
+    mutate(
+      struct = 1
+    )
+
+  observed_prob_struct_glue <-
+    seq(0.05, 0.95, 0.025)
+
+  observed_prob_struct_glue <-
+    c(0.01, observed_prob_struct_glue, 0.99) %>%
+    map(
+      ~ glue::glue("
+                  cumulative_structure_{.x*1000} <-
+                    cumulative_constructs_all %>%
+                    filter(if_all(everything(), ~!is.na(.) )) %>%
+                    group_by(Asset,
+                             end_point_loss, end_point_profit, risk_dollar_value,
+                             stop_factor,profit_factor, end_point_point_win, end_point_point_loss) %>%
+                    summarise(across(.cols = contains('min_'),
+                                     .fns = ~ quantile(., {.x},  na.rm = T))) %>%
+
+                    ungroup() %>%
+                    mutate(
+                      struct = {.x}
+                    )
+                   ")
+    ) %>%
+    unlist() %>%
+    paste(collapse = "\n")
+
+ combined_quant_glue <-
+   c(0.01, seq(0.05, 0.95, 0.025), 0.99) %>%
+   map(~ glue::glue("cumulative_structure_{.x*1000}")) %>%
+   unlist() %>%
+   paste(collapse = ",")
+
+ combined_quant_glue <-
+   glue::glue("list(cumulative_structure_mins, {combined_quant_glue}, cumulative_structure_maxes) %>% map_dfr(bind_rows)")
+
+ eval(parse(text = observed_prob_struct_glue))
+
+ combined_quant_list <-
+   eval(parse(text = combined_quant_glue))
+
+ combined_quant_glue <-
+   c(0.01, seq(0.05, 0.95, 0.025), 0.99) %>%
+   map(~ glue::glue("cumulative_structure_{.x*1000}")) %>%
+   unlist() %>%
+   paste(collapse = ",")
+
+ combined_quant_rm_glue <-
+   glue::glue("rm({combined_quant_glue})")
+
+ eval(parse(text = combined_quant_rm_glue))
+
+ gc()
+
+ if(i == 1 & rerun_DB == TRUE){
+   write_table_sql_lite(.data = temp,
+                        table_name = "Return_Structure_Stored",
+                        conn = db_con_returns,
+                        overwrite_true = TRUE)
+ }
+
+ if(i != 1 | rerun_DB == FALSE){
+   append_table_sql_lite(.data = temp,
+                         table_name = "Return_Structure_Stored",
+                         conn = db_con_returns)
+ }
+
 
 }
 
