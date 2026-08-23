@@ -72,23 +72,7 @@ end_date = today() %>% as.character()
 assets_to_port =
   c(
     "SPX500_USD",
-    "XAG_USD",
-    "DE30_EUR",
-    "NATGAS_USD",
-    "HK33_HKD",
-    "JP225_USD",
     "XAU_USD",
-    "USB30Y_USD",
-    "USD_JPY",
-    "USD_CAD",
-    "EUR_AUD",
-    "EUR_GBP",
-    "CN50_USD",
-    "AU200_AUD",
-    "UK100_GBP",
-    "CH20_CHF",
-    "XCU_USD",
-    "EU50_EUR",
     "BTC_USD",
     "EU50_EUR"
   ) %>% unique()
@@ -132,11 +116,11 @@ test_parameters <-
     end_point_profit = abs(end_point_loss)*ceiling(profit_factor_var/stop_factor_var)
   )
 
-db_con_returns <- connect_db("C:/Users/nikhi/Documents/Asset Data/Return_Structure_Stored.db")
+db_con_returns <- connect_db("C:/Users/nikhi/Documents/Asset Data/Return_Structure_Stored_MIXED.db")
 rerun_DB <- TRUE
 c = 0
 
-for (i in 288:dim(test_parameters)[1] ) {
+for (i in 1:dim(test_parameters)[1] ) {
 
   stop_factor_var = test_parameters$stop_factor_var[i]
   profit_factor_var = test_parameters$profit_factor_var[i]
@@ -145,6 +129,7 @@ for (i in 288:dim(test_parameters)[1] ) {
   trade_direction = "Long"
   end_point_loss = test_parameters$end_point_loss[i]
   end_point_profit = test_parameters$end_point_profit[i]
+  asset_accumulator <- list()
 
   for (j in 1:length(assets_to_port)) {
     c = c + 1
@@ -179,23 +164,90 @@ for (i in 288:dim(test_parameters)[1] ) {
 
     gc()
 
-    if(c == 1 & rerun_DB == TRUE){
-      write_table_sql_lite(.data = temp,
-                           table_name = "Return_Structure_Stored",
-                           conn = db_con_returns,
-                           overwrite_true = TRUE)
-    }
+    asset_accumulator[[j]] <- temp
 
-    if(c != 1 | rerun_DB == FALSE){
-      append_table_sql_lite(.data = temp,
-                            table_name = "Return_Structure_Stored",
-                            conn = db_con_returns)
-    }
-
+    # if(c == 1 & rerun_DB == TRUE){
+    #   write_table_sql_lite(.data = temp,
+    #                        table_name = "Return_Structure_Stored",
+    #                        conn = db_con_returns,
+    #                        overwrite_true = TRUE)
+    # }
+    #
+    # if(c != 1 | rerun_DB == FALSE){
+    #   append_table_sql_lite(.data = temp,
+    #                         table_name = "Return_Structure_Stored",
+    #                         conn = db_con_returns)
+    # }
+    #
     rm(temp)
     gc()
 
   }
+
+  cumulative_structure <-
+    asset_accumulator %>%
+    map_dfr(bind_rows) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    mutate(
+      across(.cols = c(period_return_10_Price, period_return_20_Price,
+                       period_return_30_Price, period_return_40_Price, period_return_50_Price,
+                       period_return_60_Price, period_return_70_Price, period_return_80_Price,
+                       period_return_90_Price, period_return_100_Price, period_return_110_Price,
+                       period_return_120_Price, period_return_130_Price),
+             .fns = ~ ifelse(is.na(.), 0, .) ),
+      across(.cols = c(period_return_10_Price, period_return_20_Price,
+                       period_return_30_Price, period_return_40_Price, period_return_50_Price,
+                       period_return_60_Price, period_return_70_Price, period_return_80_Price,
+                       period_return_90_Price, period_return_100_Price, period_return_110_Price,
+                       period_return_120_Price, period_return_130_Price),
+             .fns = ~ cumsum(.) )
+    )
+
+  xx <- c(10,20,30,40,50,60,70,80,90,100,110,120,130)
+  statements_min <- list()
+
+  for (k in 1:length(xx) ) {
+    statements_min[[k]] <-
+      seq(100,2000,100) %>%
+      map(
+        ~
+          glue::glue("min_{.x} = period_return_{xx[k]}_Price - lag(period_return_{xx[k]}_Price, {.x})")
+      ) %>%
+      unlist()
+  }
+
+  statements_min_all <-
+    statements_min %>%
+    unlist() %>%
+    as.character() %>%
+    paste(collapse = ",")
+
+  statements_min_all_mutate <-
+    glue::glue("cumulative_structure %>% group_by(Asset) %>% arrange(Date, .by_group = TRUE) %>% mutate({statements_min_all})")
+
+  cumulative_structure <-
+    asset_accumulator %>%
+    map_dfr(bind_rows) %>%
+    group_by(Asset) %>%
+    arrange(Date, .by_group = TRUE) %>%
+    mutate(
+      across(.cols = c(period_return_10_Price, period_return_20_Price,
+                       period_return_30_Price, period_return_40_Price, period_return_50_Price,
+                       period_return_60_Price, period_return_70_Price, period_return_80_Price,
+                       period_return_90_Price, period_return_100_Price, period_return_110_Price,
+                       period_return_120_Price, period_return_130_Price),
+             .fns = ~ ifelse(is.na(.), 0, .) ),
+      across(.cols = c(period_return_10_Price, period_return_20_Price,
+                       period_return_30_Price, period_return_40_Price, period_return_50_Price,
+                       period_return_60_Price, period_return_70_Price, period_return_80_Price,
+                       period_return_90_Price, period_return_100_Price, period_return_110_Price,
+                       period_return_120_Price, period_return_130_Price),
+             .fns = ~ cumsum(.) )
+    )
+
+  cumulative_structure_mins <-
+    eval(parse(text = statements_min_all_mutate))
 
 }
 

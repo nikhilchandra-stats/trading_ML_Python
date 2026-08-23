@@ -344,27 +344,27 @@ trade_statment <-
 
 trade_statment <-
   "
-  # (predicted_25 > 4 &
-  # predicted_25 <  1000 & Asset == 'GBP_NZD')|
-  # (predicted_25 > 3 &
-  # predicted_25 <  1000 & Asset == 'GBP_USD')|
+  (predicted_25 > 4 &
+  predicted_25 <  1000 & Asset == 'GBP_NZD')|
+  (predicted_25 > 3 &
+  predicted_25 <  1000 & Asset == 'GBP_USD')|
 
-  (predicted_mean > 5 &
-  predicted_mean <  1000 & Asset == 'GBP_CHF')|
-  (predicted_mean > 7.5 &
+  # (predicted_mean > 6 &
+  # predicted_mean <  1000 & Asset == 'GBP_CHF')
+  (predicted_mean > 0 &
   predicted_mean <  1000 & Asset == 'GBP_NZD')|
   (predicted_mean > 5 &
-  predicted_mean <  1000 & Asset == 'GBP_USD')
+  predicted_mean <  1000 & Asset == 'GBP_USD')|
 
-  # (predicted_50 >= pred_10000_mean_roll_250 + 2*pred_10000_sd_roll_250 &
-  # predicted_50 <=  pred_10000_mean_roll_250 + 50*pred_10000_sd_roll_250 &
-  # Asset == 'GBP_CHF')|
-  # (predicted_50 >= pred_10000_mean_roll_250 + 0*pred_10000_sd_roll_250 &
-  # predicted_50 <=  pred_10000_mean_roll_250 + 50*pred_10000_sd_roll_250 &
-  # Asset == 'GBP_NZD')|
-  # (predicted_50 >= pred_10000_mean_roll_250 + 3*pred_10000_sd_roll_250 &
-  # predicted_50 <=  pred_10000_mean_roll_250 + 50*pred_10000_sd_roll_250 &
-  # Asset == 'GBP_USD')
+  (predicted_50 >= pred_10000_mean_roll_250 + 2*pred_10000_sd_roll_250 &
+  predicted_50 <=  pred_10000_mean_roll_250 + 50*pred_10000_sd_roll_250 &
+  Asset == 'GBP_CHF')|
+  (predicted_50 >= pred_10000_mean_roll_250 + 0*pred_10000_sd_roll_250 &
+  predicted_50 <=  pred_10000_mean_roll_250 + 50*pred_10000_sd_roll_250 &
+  Asset == 'GBP_NZD')|
+  (predicted_50 >= pred_10000_mean_roll_250 + 3*pred_10000_sd_roll_250 &
+  predicted_50 <=  pred_10000_mean_roll_250 + 50*pred_10000_sd_roll_250 &
+  Asset == 'GBP_USD')
 "
 
 analyse_performance <-
