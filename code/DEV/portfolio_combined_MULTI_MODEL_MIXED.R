@@ -71,11 +71,9 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "XAU_USD",
-    "XAU_EUR",
-    "XAU_GBP",
-    "XAG_USD",
-    "XAG_EUR"
+    "USD_SEK",
+    "USD_CZK",
+    "USD_MXN"
   ) %>% unique()
 
 stop_factor_var = 5

@@ -54,7 +54,7 @@ asset_list_oanda =
     "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
     "XAG_NZD",
     "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
-    "XAU_NZD",
+    "XAU_NZD", "CN50_USD","XAU_XAG",
     "BTC_USD", "LTC_USD", "BCH_USD",
     "US30_USD", "FR40_EUR", "US2000_USD", "CH20_CHF", "SPX500_USD", "AU200_AUD",
     "JP225_USD", "JP225Y_JPY", "SG30_SGD", "EU50_EUR", "HK33_HKD",
@@ -71,9 +71,9 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "GBP_NZD",
-    "GBP_AUD",
-    "GBP_USD"
+    "WHEAT_USD",
+    "WTICO_USD",
+    "SOYBN_USD"
   ) %>% unique()
 
 stop_factor_var = 10
@@ -82,7 +82,7 @@ risk_dollar_value_var = 5
 end_period = 132
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 20
+end_point_profit = 5
 
 regression_length = 25000
 direct_return_cols = 24
@@ -91,7 +91,7 @@ low_to_price_lengths = c(400)
 cor_period = c(50)
 dependant_var = "Final_Return"
 save_location = "C:/Users/nikhi/Documents/trade_data/Day_Trader_Non_V3_Random_Models/"
-training_date = "2023-06-01"
+training_date = "2021-02-01"
 testing_date = as_date(training_date) + months(3)
 
 xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100)
@@ -103,7 +103,7 @@ cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16)
 periods_to_use_deviation = c(1,10,20,30,40,50)
 mean_periods_deviation = c(50, 100)
 reg_iterations = 1000
-file_name_base_line = "GBP_MULTI_MODEL_"
+file_name_base_line = "COMMOD_MULTI_MODEL_"
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -300,7 +300,7 @@ gc()
 model_predicted_data_list <- list()
 
 for (i in 1:reg_iterations) {
-# tictoc::tic()
+
   file_name = glue::glue("{file_name_base_line}{i}")
 
   model_predicted_data_list[[i]] <-
@@ -310,7 +310,6 @@ for (i in 1:reg_iterations) {
       save_path = save_location,
       file_name = file_name
     )
-  # tictoc::toc()
 
 }
 
@@ -318,11 +317,14 @@ model_predicted_data <-
   model_predicted_data_list %>%
   map_dfr(bind_rows) %>%
   filter(Date > training_date) %>%
+  filter(Date > as_date(start_date) + dhours(1000)) %>%
   group_by(Date, Asset) %>%
   summarise(Final_Return = mean(Final_Return, na.rm = T),
             predicted_mean = mean(predicted, na.rm  = T),
             predicted_10 = quantile(predicted, 0.10 ,na.rm  = T),
             predicted_25 = quantile(predicted, 0.25 ,na.rm  = T),
+            predicted_30 = quantile(predicted, 0.3 ,na.rm  = T),
+            predicted_40 = quantile(predicted, 0.4 ,na.rm  = T),
             predicted_50 = quantile(predicted, 0.5 ,na.rm  = T),
             predicted_60 = quantile(predicted, 0.6 ,na.rm  = T),
             predicted_75 = quantile(predicted, 0.75 ,na.rm  = T),
@@ -333,6 +335,8 @@ model_predicted_data <-
     predicted_portfolio = sum(predicted_mean, na.rm = T),
     predicted_portfolio_10 = sum(predicted_10, na.rm = T),
     predicted_portfolio_25 = sum(predicted_25, na.rm = T),
+    predicted_portfolio_30 = sum(predicted_30, na.rm = T),
+    predicted_portfolio_40 = sum(predicted_40, na.rm = T),
     predicted_portfolio_50 = sum(predicted_50, na.rm = T),
     predicted_portfolio_60 = sum(predicted_60, na.rm = T),
     predicted_portfolio_75 = sum(predicted_75, na.rm = T),
@@ -436,11 +440,11 @@ trade_statment <-
 
 trade_statment <-
   "
-
-
-  (pnorm_250_roll_250_perc10 > 0.56 & pnorm_250_roll_250_perc10 < 1000 & Asset == 'GBP_AUD')|
-  (pred_10000_mean_roll_250_port > 4 & pred_10000_mean_roll_250_port < 1000 & Asset == 'GBP_USD')|
-  (pnorm_1000_roll_1000_perc25 > 0.57 & pnorm_1000_roll_1000_perc25 < 1000 & Asset == 'GBP_NZD')
+  (pnorm_1000_port_roll_1000 > 0.62 & pnorm_1000_port_roll_1000 < 1 & Asset == 'WTICO_USD')|
+  (pnorm_100_roll_100 > 0.62 & pnorm_100_roll_100 < 0.8 & Asset == 'SOYBN_USD')|
+  (pnorm_250_roll_250 > 0.77 & pnorm_250_roll_250 < 1 & Asset == 'SOYBN_USD')|
+  (pnorm_250_roll_250_perc25 > 0.6 & pnorm_250_roll_250_perc25 < 0.8 & Asset == 'WHEAT_USD')|
+  (pnorm_250_perc25 > 0.775 & pnorm_250_perc25 < 1 & Asset == 'WTICO_USD')
 "
 
 analyse_performance <-
@@ -490,11 +494,11 @@ analyse_performance %>%
 # AUC Pred Section --------------------------------------------------------
 
 auc_roc_list <- list()
-col_to_test <- "pnorm_250_roll_250_perc10"
-col_to_test_port <- "pnorm_250_roll_250_perc10"
+col_to_test <- "pnorm_250_perc25"
+col_to_test_port <- "pnorm_250_perc25"
 c = 0
 
-# for (i in seq(-2.5,10,0.1)) {
+# for (i in seq(-2.5,15,0.1)) {
 for (i in seq(0.01,0.99, 0.01)) {
   c = c + 1
 

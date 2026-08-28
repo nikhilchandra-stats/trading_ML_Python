@@ -3121,6 +3121,10 @@ portfolio_gen_model_no_V3_New <-
       ungroup() %>%
       dplyr::select(trained_mean, trained_sd)
 
+    LM_model$model <- NULL
+    LM_model$fitted.values <- NULL
+    gc()
+
     saveRDS(LM_model,
             file = glue::glue("{save_path}/{file_name}.RDS") )
 
@@ -3145,14 +3149,18 @@ portfolio_read_model_no_V3_New <-
     file_name = file_name
   ) {
 
+    message("reading in LM File")
     LM_model <- readRDS(file = glue::glue("{save_path}/{file_name}.RDS") )
 
     LM_model$model <- NULL
     LM_model$fitted.values <- NULL
     gc()
+    message("Finished reading in LM File")
 
     reg_dat <-
-      reg_dat %>% filter(Date > training_end_date)
+      reg_dat %>%
+      ungroup() %>%
+      filter(Date > training_end_date)
 
     gc()
 
@@ -3164,6 +3172,7 @@ portfolio_read_model_no_V3_New <-
 
     model_prediction_data <-
       reg_dat %>%
+      ungroup() %>%
       filter(Date > training_end_date) %>%
       mutate(predicted = predicted_test) %>%
       ungroup() %>%
@@ -3174,107 +3183,108 @@ portfolio_read_model_no_V3_New <-
 
     model_prediction_data <-
       model_prediction_data %>%
+      ungroup() %>%
       group_by(Date) %>%
       mutate(
         predicted_portfolio = sum(predicted, na.rm = T)
       ) %>%
-      ungroup() %>%
-      group_by(Asset) %>%
-      arrange(Date, .by_group = TRUE) %>%
-      group_by(Asset) %>%
-      mutate(
-        pred_10000_mean_roll_250 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 250),
-        pred_10000_sd_roll_250 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 250),
-
-        pred_10000_mean_roll_500 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 500),
-        pred_10000_sd_roll_500 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500),
-
-        pred_10000_mean_roll_100 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
-        pred_10000_sd_roll_100 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100),
-
-        pred_10000_mean_roll_600 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 600),
-        pred_10000_sd_roll_600 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 600),
-
-        pred_10000_mean_roll_1000 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1000),
-        pred_10000_sd_roll_1000 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1000),
-
-        pred_10000_mean_roll_1500 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1500),
-        pred_10000_sd_roll_1500 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1500),
-
-        pred_10000_mean_roll_2000 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 2000),
-        pred_10000_sd_roll_2000 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
-
-        pred_10000_mean_roll_50 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 50),
-        pred_10000_sd_roll_50 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 50),
-
-        pred_10000_mean_roll_10 =
-          slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 10),
-        pred_10000_sd_roll_10 =
-          slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 10),
-
-
-        pred_portfolio_10000_mean_roll_250 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 250),
-        pred_portfolio_10000_sd_roll_250 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 250),
-
-        pred_portfolio_10000_mean_roll_500 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 500),
-        pred_portfolio_10000_sd_roll_500 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 500),
-
-        pred_portfolio_10000_mean_roll_100 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 100),
-        pred_portfolio_10000_sd_roll_100 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 100),
-
-        pred_portfolio_10000_mean_roll_600 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 600),
-        pred_portfolio_10000_sd_roll_600 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 600),
-
-        pred_portfolio_10000_mean_roll_1000 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 1000),
-        pred_portfolio_10000_sd_roll_1000 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 1000),
-
-        pred_portfolio_10000_mean_roll_1500 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 1500),
-        pred_portfolio_10000_sd_roll_1500 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 1500),
-
-        pred_portfolio_10000_mean_roll_2000 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 2000),
-        pred_portfolio_10000_sd_roll_2000 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 2000),
-
-        pred_portfolio_10000_mean_roll_50 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 50),
-        pred_portfolio_10000_sd_roll_50 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 50),
-
-        pred_portfolio_10000_mean_roll_10 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 10),
-        pred_portfolio_10000_sd_roll_10 =
-          slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 10),
-
-      )
+      ungroup()
+      # group_by(Asset) %>%
+      # arrange(Date, .by_group = TRUE) %>%
+      # group_by(Asset) %>%
+      # mutate(
+      #   pred_10000_mean_roll_250 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 250),
+      #   pred_10000_sd_roll_250 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 250),
+      #
+      #   pred_10000_mean_roll_500 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 500),
+      #   pred_10000_sd_roll_500 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 500),
+      #
+      #   pred_10000_mean_roll_100 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 100),
+      #   pred_10000_sd_roll_100 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 100),
+      #
+      #   pred_10000_mean_roll_600 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 600),
+      #   pred_10000_sd_roll_600 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 600),
+      #
+      #   pred_10000_mean_roll_1000 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1000),
+      #   pred_10000_sd_roll_1000 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1000),
+      #
+      #   pred_10000_mean_roll_1500 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 1500),
+      #   pred_10000_sd_roll_1500 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 1500),
+      #
+      #   pred_10000_mean_roll_2000 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 2000),
+      #   pred_10000_sd_roll_2000 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 2000),
+      #
+      #   pred_10000_mean_roll_50 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 50),
+      #   pred_10000_sd_roll_50 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 50),
+      #
+      #   pred_10000_mean_roll_10 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ mean(.x, na.rm = T), .before = 10),
+      #   pred_10000_sd_roll_10 =
+      #     slider::slide_dbl(.x  = predicted, .f = ~ sd(.x, na.rm = T), .before = 10),
+      #
+      #
+      #   pred_portfolio_10000_mean_roll_250 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 250),
+      #   pred_portfolio_10000_sd_roll_250 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 250),
+      #
+      #   pred_portfolio_10000_mean_roll_500 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 500),
+      #   pred_portfolio_10000_sd_roll_500 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 500),
+      #
+      #   pred_portfolio_10000_mean_roll_100 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 100),
+      #   pred_portfolio_10000_sd_roll_100 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 100),
+      #
+      #   pred_portfolio_10000_mean_roll_600 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 600),
+      #   pred_portfolio_10000_sd_roll_600 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 600),
+      #
+      #   pred_portfolio_10000_mean_roll_1000 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 1000),
+      #   pred_portfolio_10000_sd_roll_1000 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 1000),
+      #
+      #   pred_portfolio_10000_mean_roll_1500 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 1500),
+      #   pred_portfolio_10000_sd_roll_1500 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 1500),
+      #
+      #   pred_portfolio_10000_mean_roll_2000 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 2000),
+      #   pred_portfolio_10000_sd_roll_2000 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 2000),
+      #
+      #   pred_portfolio_10000_mean_roll_50 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 50),
+      #   pred_portfolio_10000_sd_roll_50 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 50),
+      #
+      #   pred_portfolio_10000_mean_roll_10 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ mean(.x, na.rm = T), .before = 10),
+      #   pred_portfolio_10000_sd_roll_10 =
+      #     slider::slide_dbl(.x  = predicted_portfolio, .f = ~ sd(.x, na.rm = T), .before = 10),
+      #
+      # )
 
     return(model_prediction_data)
 
