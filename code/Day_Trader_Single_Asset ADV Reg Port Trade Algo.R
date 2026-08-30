@@ -102,7 +102,7 @@ raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date_global = "2022-01-01"
+start_date_global = "2022-02-01"
 end_date = today() %>% as.character()
 
 Indices_Metals_Bonds <- list()
@@ -367,6 +367,7 @@ while (current_time < end_time) {
             asset_infor = asset_infor,
             db_location = db_location,
             start_date = "2021-11-01",
+            # start_date = "2021-11-30",
             profit_factor_var = 50,
             risk_dollar_value_var = 5,
             end_period = 132,
@@ -397,54 +398,55 @@ while (current_time < end_time) {
 
         message(dim(single_asset_model_trades_EUR_ONLY)[1])
 
-        single_asset_model_trades_AUD_ONLY <-
-          portfolio_no_V3_New_algo_variant(
-            assets_to_port =
-              c(
-                "AUD_NZD",
-                "NZD_USD",
-                "AUD_USD",
-                "AUD_JPY"
-              ) %>% unique(),
-            stop_factor_var = 25,
-            currency_conversion = currency_conversion,
-            asset_infor = asset_infor,
-            db_location = db_location,
-            start_date = "2021-11-01",
-            profit_factor_var = 50,
-            risk_dollar_value_var = 5,
-            end_period = 132,
-            trade_direction = "Long",
-            end_point_loss = -5,
-            end_point_profit = 10,
-            regression_length = 25000,
-            direct_return_cols = 24,
-            lag_value_error = 132 + 1,
-            low_to_price_lengths = c(400),
-            cor_period = c(50),
-            dependant_var = "Final_Return",
-            save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/",
-            file_name = "AUD_NZD_COMBO_NON_V3_NEW_MODEL",
-            training_date = "2022-02-01",
-            testing_date ="2021-11-01",
-            xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100),
-            xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
-            lag_dependant = 132 + 1,
-            auto_cor_cols = 40,
-            cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
-            periods_to_use_deviation = c(1,10,20,30,40,50),
-            mean_periods_deviation = c(50, 100),
-            estimate_trades = TRUE,
-            trade_statement = trade_statment_AUD_ONLY,
-            current_time = current_time
-          )
+        # single_asset_model_trades_AUD_ONLY <-
+        #   portfolio_no_V3_New_algo_variant(
+        #     assets_to_port =
+        #       c(
+        #         "AUD_NZD",
+        #         "NZD_USD",
+        #         "AUD_USD",
+        #         "AUD_JPY"
+        #       ) %>% unique(),
+        #     stop_factor_var = 25,
+        #     currency_conversion = currency_conversion,
+        #     asset_infor = asset_infor,
+        #     db_location = db_location,
+        #     # start_date = "2021-11-01",
+        #     start_date = "2021-11-30",
+        #     profit_factor_var = 50,
+        #     risk_dollar_value_var = 5,
+        #     end_period = 132,
+        #     trade_direction = "Long",
+        #     end_point_loss = -5,
+        #     end_point_profit = 10,
+        #     regression_length = 25000,
+        #     direct_return_cols = 24,
+        #     lag_value_error = 132 + 1,
+        #     low_to_price_lengths = c(400),
+        #     cor_period = c(50),
+        #     dependant_var = "Final_Return",
+        #     save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/",
+        #     file_name = "AUD_NZD_COMBO_NON_V3_NEW_MODEL",
+        #     training_date = "2022-02-01",
+        #     testing_date ="2021-11-01",
+        #     xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100),
+        #     xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
+        #     lag_dependant = 132 + 1,
+        #     auto_cor_cols = 40,
+        #     cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
+        #     periods_to_use_deviation = c(1,10,20,30,40,50),
+        #     mean_periods_deviation = c(50, 100),
+        #     estimate_trades = TRUE,
+        #     trade_statement = trade_statment_AUD_ONLY,
+        #     current_time = current_time
+        #   )
 
         # message(dim(single_asset_model_trades_AUD_ONLY)[1])
         message(glue::glue("Finish Time {now(tz = 'Australia/Canberra')}"))
 
         single_asset_model_trades_filt <-
-          single_asset_model_trades_EUR_ONLY %>%
-          bind_rows(single_asset_model_trades_AUD_ONLY)
+          single_asset_model_trades_EUR_ONLY
+          # bind_rows(single_asset_model_trades_AUD_ONLY)
         tictoc::toc()
 
         message(dim(single_asset_model_trades_filt)[1])
@@ -621,7 +623,14 @@ while (current_time < end_time) {
 
   }
 
-  if(trades_closed == 0 ) {
+  if(
+    now(tzone = "Australia/Canberra") < as_datetime("2026-08-24 06:00:00", tz = "Australia/Canberra")
+  ){
+    Sys.sleep(600)
+  }
+
+  if(trades_closed == 0 &
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-08-24 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 
