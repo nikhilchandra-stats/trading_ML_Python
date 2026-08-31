@@ -74,7 +74,13 @@ assets_to_port =
     "SPX500_USD",
     "XAU_USD",
     "BTC_USD",
-    "EU50_EUR"
+    "EU50_EUR",
+    "USD_JPY",
+    "HK33_HKD",
+    "JP225Y_JPY",
+    "XCU_USD",
+    "UK100_GBP",
+    "DE30_EUR"
   ) %>% unique()
 
 Indices_Metals_Bonds <- list()
@@ -120,7 +126,7 @@ db_con_returns <- connect_db("C:/Users/nikhi/Documents/Asset Data/Return_Structu
 rerun_DB <- TRUE
 c = 0
 
-for (i in 1:dim(test_parameters)[1] ) {
+for (i in 30:dim(test_parameters)[1] ) {
 
   stop_factor_var = test_parameters$stop_factor_var[i]
   profit_factor_var = test_parameters$profit_factor_var[i]
@@ -171,26 +177,8 @@ for (i in 1:dim(test_parameters)[1] ) {
 
   }
 
-  cumulative_structure <-
-    asset_accumulator %>%
-    map_dfr(bind_rows) %>%
-    group_by(Asset) %>%
-    arrange(Date, .by_group = TRUE) %>%
-    mutate(
-      across(.cols = c(period_return_10_Price, period_return_20_Price,
-                       period_return_30_Price, period_return_40_Price, period_return_50_Price,
-                       period_return_60_Price, period_return_70_Price, period_return_80_Price,
-                       period_return_90_Price, period_return_100_Price, period_return_110_Price,
-                       period_return_120_Price, period_return_130_Price),
-             .fns = ~ ifelse(is.na(.), 0, .) ),
-      across(.cols = c(period_return_10_Price, period_return_20_Price,
-                       period_return_30_Price, period_return_40_Price, period_return_50_Price,
-                       period_return_60_Price, period_return_70_Price, period_return_80_Price,
-                       period_return_90_Price, period_return_100_Price, period_return_110_Price,
-                       period_return_120_Price, period_return_130_Price),
-             .fns = ~ cumsum(.) )
-    )
 
+  gc()
   xx <- c(10,20,30,40,50,60,70,80,90,100,110,120,130)
   statements_min <- list()
 
@@ -238,6 +226,9 @@ for (i in 1:dim(test_parameters)[1] ) {
                        period_return_120_Price, period_return_130_Price),
              .fns = ~ cumsum(.) )
     )
+
+  rm(asset_accumulator)
+  gc()
 
   cumulative_constructs_all <- eval(parse(text = statements_min_all_mutate))
 
@@ -315,21 +306,46 @@ for (i in 1:dim(test_parameters)[1] ) {
 
  eval(parse(text = combined_quant_rm_glue))
 
+ final_data <-
+   combined_quant_list %>%
+   pivot_longer(-c(
+     Asset,
+     end_point_loss, end_point_profit, risk_dollar_value,
+     stop_factor,profit_factor, end_point_point_win, end_point_point_loss,
+     struct
+   ),
+   names_to = "string_var",
+   values_to = "Returns"
+   ) %>%
+   mutate(
+     End_Period =
+       str_remove_all(string_var, "min_[0-9]+_") %>%
+       str_remove_all("_|[a-z]+|[A-Z]+") %>%
+       as.numeric(),
+     Lag_Minus_Period =
+       str_remove_all(string_var, "_period_[0-9]+") %>%
+       str_remove_all("_|[a-z]+|[A-Z]+") %>%
+       as.numeric()
+   )
+
+
  gc()
 
  if(i == 1 & rerun_DB == TRUE){
-   write_table_sql_lite(.data = temp,
+   write_table_sql_lite(.data = final_data,
                         table_name = "Return_Structure_Stored",
                         conn = db_con_returns,
                         overwrite_true = TRUE)
  }
 
  if(i != 1 | rerun_DB == FALSE){
-   append_table_sql_lite(.data = temp,
+   append_table_sql_lite(.data = final_data,
                          table_name = "Return_Structure_Stored",
                          conn = db_con_returns)
  }
 
+ rm(final_data, cumulative_constructs_all, cumulative_structure, asset_accumulator)
+ gc()
 
 }
 

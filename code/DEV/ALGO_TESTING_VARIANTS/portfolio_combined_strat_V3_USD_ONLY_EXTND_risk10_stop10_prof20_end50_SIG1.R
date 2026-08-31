@@ -196,23 +196,23 @@ tictoc::toc()
 
 
 # # 10 Dollars
-db_con <- connect_db("C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/Port_V3_Results_Store.db")
-upload_dat <-
-  model_prediction_data %>%
-  mutate(
-    algo_name = file_name,
-    risk_dollar_value_var = risk_dollar_value_var,
-    stop_factor_var = stop_factor_var,
-    profit_factor_var = profit_factor_var,
-    end_period = end_period,
-    end_point_loss = end_point_loss,
-    end_point_profit = end_point_profit,
-    trade_statement = trade_statment,
-    sig_thresh_LM = sig_thresh_LM
-  )
-append_table_sql_lite(.data = upload_dat,
-                      table_name = "Port_V3_Sim_Data",
-                      conn = db_con)
+# db_con <- connect_db("C:/Users/nikhi/Documents/trade_data/single_asset_v3_Bayes_Reg_Portfolio/Port_V3_Results_Store.db")
+# upload_dat <-
+#   model_prediction_data %>%
+#   mutate(
+#     algo_name = file_name,
+#     risk_dollar_value_var = risk_dollar_value_var,
+#     stop_factor_var = stop_factor_var,
+#     profit_factor_var = profit_factor_var,
+#     end_period = end_period,
+#     end_point_loss = end_point_loss,
+#     end_point_profit = end_point_profit,
+#     trade_statement = trade_statment,
+#     sig_thresh_LM = sig_thresh_LM
+#   )
+# append_table_sql_lite(.data = upload_dat,
+#                       table_name = "Port_V3_Sim_Data",
+#                       conn = db_con)
 
 #For Sig Level = 0.01
 
@@ -277,18 +277,18 @@ analyse_performance %>%
   slice_max(Date) %>%
   pull(Final_Return_Cumulative)
 
-# analyse_performance %>%
-#   bind_rows(control) %>%
-#   filter(Date <= "2022-04-01") %>%
-#   ggplot(aes(x = Date, y = Final_Return_Cumulative
-#              ,color = trade_col
-#   )) +
-#   geom_line() +
-#   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-#   facet_wrap(.~trade_col, scales = "free") +
-#   theme_minimal() +
-#   scale_y_continuous(n.breaks = 10) +
-#   theme(legend.position = "bottom")
+analyse_performance %>%
+  bind_rows(control) %>%
+  filter(Date >= "2026-07-01") %>%
+  ggplot(aes(x = Date, y = Final_Return_Cumulative
+             ,color = trade_col
+  )) +
+  geom_line() +
+  # geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
+  facet_wrap(.~trade_col, scales = "free") +
+  theme_minimal() +
+  scale_y_continuous(n.breaks = 10) +
+  theme(legend.position = "bottom")
 
 
 analyse_performance_sum <-

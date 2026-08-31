@@ -666,13 +666,13 @@ while (current_time < end_time) {
 # Close Trades ------------------------------------------------------------
 
   if(
-    now(tzone = "Australia/Canberra") < as_datetime("2026-08-17 06:00:00", tz = "Australia/Canberra")
+    now(tzone = "Australia/Canberra") < as_datetime("2026-08-24 06:00:00", tz = "Australia/Canberra")
   ){
     Sys.sleep(600)
   }
 
   if(trades_closed == 0 &
-     now(tzone = "Australia/Canberra") >= as_datetime("2026-08-17 07:00:00", tz = "Australia/Canberra") ) {
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-08-24 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 
