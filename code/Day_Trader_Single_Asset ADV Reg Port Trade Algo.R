@@ -198,65 +198,19 @@ assets_to_use_algo <- assets_to_algo
 
 trade_statement_EUR_ONLY <-
   "
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1500 + 1.25*pred_portfolio_10000_sd_roll_1500 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_1500 + 1.25*pred_portfolio_10000_sd_roll_1500 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_1000 + 1.15*pred_portfolio_10000_sd_roll_1000 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_1000 + 20*pred_portfolio_10000_sd_roll_1000)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_500 + 1.2*pred_portfolio_10000_sd_roll_500 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_500 + 1.1*pred_portfolio_10000_sd_roll_500 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_250 + 1.25*pred_portfolio_10000_sd_roll_250 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_250 + 20*pred_portfolio_10000_sd_roll_250 )|
-  (pred_portfolio_10000_mean_roll_50 > pred_portfolio_10000_mean_roll_250 + 1*pred_portfolio_10000_sd_roll_250 &
-  pred_portfolio_10000_mean_roll_50 < pred_portfolio_10000_mean_roll_250 + 20*pred_portfolio_10000_sd_roll_250 )|
-  (pred_10000_mean_roll_50 > pred_10000_mean_roll_1500 + 1.5*pred_10000_sd_roll_1500 &
-  pred_10000_mean_roll_50 < pred_10000_mean_roll_1500 + 20*pred_10000_sd_roll_1500) |
-  (pred_10000_mean_roll_50 > pred_10000_mean_roll_1000 + 1.325*pred_10000_sd_roll_1000 &
-  pred_10000_mean_roll_50 < pred_10000_mean_roll_1000 + 20*pred_10000_sd_roll_1000 )
+   (pnorm_1001_port > 0.55 & pnorm_1001_port <= 1 & Asset == 'EUR_JPY')|
+   (pnorm_1001_port > 0.64 & pnorm_1001_port <= 0.825 & Asset == 'EUR_GBP')|
+   (pnorm_1001_port > 0.55 & pnorm_1001_port <= 1  & Asset == 'EU50_EUR')|
+   (pnorm_1001_port > 0.61 & pnorm_1001_port <= 0.85 & Asset == 'EUR_USD')|
+
+   (pnorm_1500_port > 0.6 & pnorm_1500_port <= 1 & Asset == 'EUR_JPY')|
+   (pnorm_1500_port > 0.67 & pnorm_1500_port <= 0.825 & Asset == 'EUR_GBP')|
+   (pnorm_1500_port > 0.75 & pnorm_1500_port <= 1  & Asset == 'EU50_EUR')|
+   (pnorm_1500_port > 0.8 & pnorm_1500_port <= 1 & Asset == 'EUR_USD')
 "
 
 trade_statment_AUD_ONLY <-
   "
-  (predicted_portfolio > 14 & predicted_portfolio < 1000)|
-  (pred_10000_mean_roll_10 > pred_10000_mean_roll_1000 + 2.25*pred_10000_sd_roll_1000 &
-  pred_10000_mean_roll_10 < pred_10000_mean_roll_1000 + 30*pred_10000_sd_roll_1000)|
-  (pred_10000_mean_roll_10 > pred_10000_mean_roll_1500 + 2.6*pred_10000_sd_roll_1500 &
-  pred_10000_mean_roll_10 < pred_10000_mean_roll_1500 + 30*pred_10000_sd_roll_1500)|
-   (predicted > 11 & predicted < 1000)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_1500 + 2.6*pred_portfolio_10000_sd_roll_1500 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_1500 + 30*pred_portfolio_10000_sd_roll_1500)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1500 + 2.25*pred_portfolio_10000_sd_roll_1500 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1500 + 30*pred_portfolio_10000_sd_roll_1500)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1000 + 2.25*pred_portfolio_10000_sd_roll_1000 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1000 + 30*pred_portfolio_10000_sd_roll_1000)|
-  (pred_portfolio_10000_mean_roll_100 > pred_portfolio_10000_mean_roll_1000 + 1.4*pred_portfolio_10000_sd_roll_1000 &
-  pred_portfolio_10000_mean_roll_100 < pred_portfolio_10000_mean_roll_1000 + 30*pred_portfolio_10000_sd_roll_1000)|
-  (pred_portfolio_10000_mean_roll_250 > 8 & pred_portfolio_10000_mean_roll_250 < 11)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_100 + 2.3*pred_portfolio_10000_sd_roll_100 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_100 + 30*pred_portfolio_10000_sd_roll_100)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_100 + 1.65*pred_portfolio_10000_sd_roll_100 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_100 + 30*pred_portfolio_10000_sd_roll_100)|
-  (pred_portfolio_10000_mean_roll_50 > pred_portfolio_10000_mean_roll_100 + 0.85*pred_portfolio_10000_sd_roll_100 &
-  pred_portfolio_10000_mean_roll_50 < pred_portfolio_10000_mean_roll_100 + 30*pred_portfolio_10000_sd_roll_100)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_250 + 2.5*pred_portfolio_10000_sd_roll_250 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_250 + 30*pred_portfolio_10000_sd_roll_250)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_500 + 2.8*pred_portfolio_10000_sd_roll_500 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_500 + 30*pred_portfolio_10000_sd_roll_500)|
-  (pred_portfolio_10000_mean_roll_50 > pred_portfolio_10000_mean_roll_500 + 2.25*pred_portfolio_10000_sd_roll_500 &
-  pred_portfolio_10000_mean_roll_50 < pred_portfolio_10000_mean_roll_500 + 30*pred_portfolio_10000_sd_roll_500)|
-  (pred_portfolio_10000_mean_roll_50 < pred_10000_mean_roll_500 - 5.1*pred_10000_sd_roll_500 &
-  pred_portfolio_10000_mean_roll_50 > pred_10000_mean_roll_500 - 30*pred_10000_sd_roll_500)|
-  (pred_portfolio_10000_mean_roll_50 < pred_10000_mean_roll_250 - 6*pred_10000_sd_roll_250 &
-  pred_portfolio_10000_mean_roll_50 > pred_10000_mean_roll_250 - 30*pred_10000_sd_roll_250)|
-  (pred_portfolio_10000_mean_roll_10 < pred_10000_mean_roll_600 - 6*pred_10000_sd_roll_600 &
-  pred_portfolio_10000_mean_roll_10 > pred_10000_mean_roll_600 - 30*pred_10000_sd_roll_600)|
-  (pred_portfolio_10000_mean_roll_50 < pred_10000_mean_roll_600 - 5*pred_10000_sd_roll_600 &
-  pred_portfolio_10000_mean_roll_50 > pred_10000_mean_roll_600 - 30*pred_10000_sd_roll_600)|
-  (predicted_portfolio < pred_10000_mean_roll_600 - 6*pred_10000_sd_roll_600 &
-  predicted_portfolio > pred_10000_mean_roll_600 - 30*pred_10000_sd_roll_600)
 "
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
@@ -367,7 +321,6 @@ while (current_time < end_time) {
             asset_infor = asset_infor,
             db_location = db_location,
             start_date = "2021-11-01",
-            # start_date = "2021-11-30",
             profit_factor_var = 50,
             risk_dollar_value_var = 5,
             end_period = 132,
@@ -391,6 +344,7 @@ while (current_time < end_time) {
             cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
             periods_to_use_deviation = c(1,10,20,30,40,50),
             mean_periods_deviation = c(50, 100),
+
             estimate_trades = TRUE,
             trade_statement = trade_statement_EUR_ONLY,
             current_time = current_time
@@ -624,13 +578,13 @@ while (current_time < end_time) {
   }
 
   if(
-    now(tzone = "Australia/Canberra") < as_datetime("2026-08-24 06:00:00", tz = "Australia/Canberra")
+    now(tzone = "Australia/Canberra") < as_datetime("2026-09-21 06:00:00", tz = "Australia/Canberra")
   ){
     Sys.sleep(600)
   }
 
   if(trades_closed == 0 &
-     now(tzone = "Australia/Canberra") >= as_datetime("2026-08-24 07:00:00", tz = "Australia/Canberra") ) {
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-09-21 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 

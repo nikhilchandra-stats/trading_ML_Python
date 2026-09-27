@@ -1,13 +1,13 @@
 helpeR::load_custom_functions()
 
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 M15.db"
 all_aud_symbols <- get_oanda_symbols()
 asset_list_oanda = get_oanda_symbols()
-time_frame = "H1"
+time_frame = "M15"
 bid_or_ask = "bid"
 how_far_back = 10
-ending_date = "2026-07-20"
-starting_date = "2011-01-01"
+ending_date = "2026-09-23"
+starting_date = "2022-01-01"
 
 db_con <- connect_db(path = db_location)
 table_name <-
@@ -43,7 +43,7 @@ write_table_sql_lite(.data = data_to_Update_dfr,
                      table_name = table_name,
                      conn = db_con)
 
-for (j in 55:length(asset_list_oanda)) {
+for (j in 1:length(asset_list_oanda)) {
 
   current_latest_data <-
     DBI::dbGetQuery(conn = db_con,

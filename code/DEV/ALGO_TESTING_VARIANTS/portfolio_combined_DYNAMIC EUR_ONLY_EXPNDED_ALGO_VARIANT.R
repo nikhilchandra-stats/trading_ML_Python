@@ -65,7 +65,7 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-start_date = "2017-01-01"
+start_date = "2013-01-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
@@ -92,8 +92,8 @@ low_to_price_lengths = c(400)
 cor_period = c(50)
 dependant_var = "Final_Return"
 save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/"
-file_name = "EUR_EXPNDED_ONLY_NON_V3_NEW_MODEL"
-training_date = "2022-02-01"
+file_name = "Pre_EUR_EXPNDED_ONLY_NON_V3_NEW_MODEL_2026_09_25"
+training_date = "2016-02-01"
 testing_date = as_date(training_date) + months(3)
 
 xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100)
@@ -192,159 +192,4 @@ portfolio_gen_model_no_V3_New(
 
 rm(temp_reg_data_train)
 gc()
-
-#-----------------------------------------------------------------------------------
-load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
-testing_date = "2021-11-01"
-start_date = testing_date
-end_date = today() %>% as.character()
-Indices_Metals_Bonds <- list()
-
-Indices_Metals_Bonds[[1]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = as.character(today() + days(30)),
-    time_frame = "H1",
-    bid_or_ask = "ask",
-    assets =   assets_to_port
-  ) %>%
-  distinct()
-Indices_Metals_Bonds[[2]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = as.character(today() + days(30)),
-    time_frame = "H1",
-    bid_or_ask = "bid",
-    assets =   assets_to_port
-  ) %>%
-  distinct()
-
-
-Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date >= testing_date)
-Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date >= testing_date)
-
-portfolio_data_test <-
-  get_portfolio_model_fast_summed(
-    asset_data = Indices_Metals_Bonds %>% map(~ .x %>% filter(Date > testing_date)),
-    asset_of_interest = assets_to_port,
-    stop_factor_var = stop_factor_var,
-    profit_factor_var = profit_factor_var,
-    risk_dollar_value_var = risk_dollar_value_var,
-    end_period = end_period,
-    time_frame = "H1",
-    trade_direction = trade_direction,
-    currency_conversion = currency_conversion,
-    asset_infor = asset_infor,
-    end_point_loss = end_point_loss,
-    end_point_profit = end_point_profit,
-    sum_as_portfolio = TRUE,
-
-    overwrite_volume = NULL,
-    min_volume_only = FALSE,
-    return_only_interested_col = FALSE,
-    return_only_Final = TRUE
-  )
-
-gc()
-
-temp_reg_data_test <-
-  get_portfolio_dat_no_V3_New(
-    portfolio_data = portfolio_data_test,
-    xtnd_ss_cols_PR_cols = xtnd_ss_cols_PR_cols,
-    xtnd_ss_cols_BR_periods = xtnd_ss_cols_BR_periods,
-    lag_dependant = lag_dependant,
-    auto_cor_cols = auto_cor_cols,
-    cor_skip_periods = cor_skip_periods,
-    cor_period = cor_period,
-    periods_to_use_deviation = periods_to_use_deviation,
-    mean_periods_deviation = mean_periods_deviation
-  )
-
-gc()
-rm(portfolio_data_test)
-gc()
-rm(Indices_Metals_Bonds)
-gc()
-
-model_predicted_data <-
-  portfolio_read_model_no_V3_New(
-    reg_dat = temp_reg_data_test,
-    training_end_date = training_date,
-    save_path = save_location,
-    file_name = file_name
-  )
-
-model_predicted_data <-
-  model_predicted_data %>%
-  filter(Date > training_date)
-
-rm(temp_reg_data_test)
-gc()
-
-trade_statment <-
-  "
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_1500 + 1.25*pred_portfolio_10000_sd_roll_1500 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_1500 + 1.25*pred_portfolio_10000_sd_roll_1500 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_1500 + 20*pred_portfolio_10000_sd_roll_1500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_1000 + 1.15*pred_portfolio_10000_sd_roll_1000 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_1000 + 20*pred_portfolio_10000_sd_roll_1000)|
-  (pred_portfolio_10000_mean_roll_10 > pred_portfolio_10000_mean_roll_500 + 1.2*pred_portfolio_10000_sd_roll_500 &
-  pred_portfolio_10000_mean_roll_10 < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)|
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_500 + 1.1*pred_portfolio_10000_sd_roll_500 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)
-"
-
-trade_statment <-
-  "
-  (predicted_portfolio > pred_portfolio_10000_mean_roll_500 + 1.1*pred_portfolio_10000_sd_roll_500 &
-  predicted_portfolio < pred_portfolio_10000_mean_roll_500 + 20*pred_portfolio_10000_sd_roll_500)
-"
-
-analyse_performance <-
-  model_predicted_data %>%
-  mutate(
-    trade_col = eval(parse(text = trade_statment))
-  ) %>%
-  mutate(
-    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-  )
-
-control <-
-  analyse_performance %>%
-  group_by(Date) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  mutate(trade_col = "Control")
-
-analyse_performance <-
-  analyse_performance %>%
-  filter(trade_col == "Long") %>%
-  group_by(Date) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  mutate(trade_col = "Long")
-
-dim(control)[1]
-dim(analyse_performance)[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 20) +
-  theme(legend.position = "bottom")
 

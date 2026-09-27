@@ -3121,6 +3121,9 @@ portfolio_gen_model_no_V3_New <-
       ungroup() %>%
       dplyr::select(trained_mean, trained_sd)
 
+    LM_model$model <- NULL
+    LM_model$fitted.values <- NULL
+
     saveRDS(LM_model,
             file = glue::glue("{save_path}/{file_name}.RDS") )
 
@@ -3438,7 +3441,63 @@ portfolio_no_V3_New_algo_variant <-
 
     model_predicted_data <-
       model_predicted_data %>%
-      filter(Date > training_date)
+      ungroup() %>%
+      filter(Date > training_date) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        pnorm_100 = pcauchy(predicted, location = pred_10000_mean_roll_100, scale = pred_10000_sd_roll_100),
+        pnorm_100_roll_100 = slider::slide_dbl(.x  = pnorm_100, .f = ~ mean(.x, na.rm = T), .before = 100),
+
+        pnorm_100_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_100, scale = pred_portfolio_10000_sd_roll_100),
+        pnorm_100_roll_100_port = slider::slide_dbl(.x  = pnorm_100_port, .f = ~ mean(.x, na.rm = T), .before = 100),
+
+        pnorm_250 = pcauchy(predicted, location = pred_10000_mean_roll_250, scale = pred_10000_sd_roll_250),
+        pnorm_250_roll_250 = slider::slide_dbl(.x  = pnorm_250, .f = ~ mean(.x, na.rm = T), .before = 250),
+
+        pnorm_250_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_250, scale = pred_portfolio_10000_sd_roll_250),
+        pnorm_250_roll_250_port = slider::slide_dbl(.x  = pnorm_250_port, .f = ~ mean(.x, na.rm = T), .before = 250),
+
+        pnorm_500 = pcauchy(predicted, location = pred_10000_mean_roll_500, scale = pred_10000_sd_roll_500),
+        pnorm_500_roll_500 = slider::slide_dbl(.x  = pnorm_500, .f = ~ mean(.x, na.rm = T), .before = 500),
+
+        pnorm_500_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_500, scale = pred_portfolio_10000_sd_roll_500),
+        pnorm_500_roll_500_port = slider::slide_dbl(.x  = pnorm_500_port, .f = ~ mean(.x, na.rm = T), .before = 500),
+
+        pnorm_1001 = pcauchy(predicted, location = pred_10000_mean_roll_1000, scale = pred_10000_sd_roll_1000),
+        pnorm_1001_roll_1001 = slider::slide_dbl(.x  = pnorm_1001, .f = ~ mean(.x, na.rm = T), .before = 1001),
+
+        pnorm_1001_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_1000, scale = pred_portfolio_10000_sd_roll_1000),
+        pnorm_1001_roll_1001_port = slider::slide_dbl(.x  = pnorm_1001_port, .f = ~ mean(.x, na.rm = T), .before = 1001),
+
+        pnorm_1500 = pcauchy(predicted, location = pred_10000_mean_roll_1500, scale = pred_10000_sd_roll_1500),
+        pnorm_1500_roll_1500 = slider::slide_dbl(.x  = pnorm_1500, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_1500_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_1500, scale = pred_portfolio_10000_sd_roll_1500),
+        pnorm_1500_roll_1500_port = slider::slide_dbl(.x  = pnorm_1500_port, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_2000 = pcauchy(predicted, location = pred_10000_mean_roll_2000, scale = pred_10000_sd_roll_2000),
+        pnorm_2000_roll_2000 = slider::slide_dbl(.x  = pnorm_2000, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+        pnorm_2000_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_2000, scale = pred_portfolio_10000_sd_roll_2000),
+        pnorm_2000_roll_2000_port = slider::slide_dbl(.x  = pnorm_2000_port, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+        pnorm_1500_mean_10 = pcauchy(pred_10000_mean_roll_10, location = pred_10000_mean_roll_1500, scale = pred_10000_sd_roll_1500),
+        pnorm_1500_mean_10_roll_1500 = slider::slide_dbl(.x  = pnorm_1500_mean_10, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_1500_mean_10_port = pcauchy(pred_portfolio_10000_mean_roll_10, location = pred_portfolio_10000_mean_roll_1500, scale = pred_portfolio_10000_sd_roll_1500),
+        pnorm_1500_mean_10_roll_1500_port = slider::slide_dbl(.x  = pnorm_1500_mean_10_port, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_2000_mean_1000 = pcauchy(pred_10000_mean_roll_1000, location = pred_10000_mean_roll_2000, scale = pred_10000_sd_roll_2000),
+        pnorm_2000_mean_1000_roll_2000 = slider::slide_dbl(.x  = pnorm_2000_mean_1000, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+        pnorm_2000_mean_1000_port = pcauchy(pred_portfolio_10000_mean_roll_1000, location = pred_portfolio_10000_mean_roll_2000, scale = pred_portfolio_10000_sd_roll_2000),
+        pnorm_2000_mean_1000_roll_2000_port = slider::slide_dbl(.x  = pnorm_2000_mean_1000_port, .f = ~ mean(.x, na.rm = T), .before = 2000)
+
+
+      ) %>%
+      ungroup()
 
     rm(temp_reg_data_test)
     gc()
@@ -3545,5 +3604,141 @@ portfolio_no_V3_New_algo_variant <-
 
     return(model_predicted_data)
 
+
+  }
+
+
+#' get_bull_bear_rolling
+#'
+#' @param portfolio_data
+#' @param roll_periods
+#' @param bull_threshold
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_bull_bear_rolling <-
+  function(portfolio_data,
+           roll_periods = c(50,100,200)) {
+
+    roll_bull_bear_ratio <-
+      portfolio_data %>%
+      mutate(
+        !!as.name('period_return_1_Price') := lag(!!as.name('period_return_1_Price'), 1)
+      ) %>%
+      filter(!is.na(!!as.name('period_return_1_Price'))) %>%
+      group_by(Asset) %>%
+      mutate(
+        cumulative_return_1 = cumsum(!!as.name('period_return_1_Price'))
+      )
+
+    roll_periods_statements <-
+      roll_periods %>%
+      map(
+        ~
+          glue::glue("
+
+        cumulative_return_1_diff_roll_{.x} =
+          !!as.name('cumulative_return_1') - lag( !!as.name('cumulative_return_1'), {.x}),
+
+        cumulative_return_1_diff_roll_{.x}_max =
+          slider::slide_dbl(.x = cumulative_return_1_diff_roll_{.x},
+                            .f = ~ max(.x, na.rm = T),
+                            .before = {.x}),
+
+        cumulative_return_1_diff_roll_{.x}_min =
+          slider::slide_dbl(.x = cumulative_return_1_diff_roll_{.x},
+                            .f = ~ min(.x, na.rm = T),
+                            .before = {.x}),
+
+        cumulative_return_1_diff_roll_{.x}_max_mean =
+          slider::slide_dbl(.x = cumulative_return_1_diff_roll_{.x}_max,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = {.x}),
+
+        cumulative_return_1_diff_roll_{.x}_min_mean =
+          slider::slide_dbl(.x = cumulative_return_1_diff_roll_{.x}_min,
+                            .f = ~ mean(.x, na.rm = T),
+                            .before = {.x}),
+
+        cumulative_return_1_diff_roll_{.x}_max_sd =
+          slider::slide_dbl(.x = cumulative_return_1_diff_roll_{.x}_max,
+                            .f = ~ sd(.x, na.rm = T),
+                            .before = {.x}),
+
+        cumulative_return_1_diff_roll_{.x}_min_sd =
+          slider::slide_dbl(.x = cumulative_return_1_diff_roll_{.x}_min,
+                            .f = ~ sd(.x, na.rm = T),
+                            .before = {.x}),
+
+        Bull_{.x}_0 =
+        ifelse(cumulative_return_1_diff_roll_{.x} >=
+                   cumulative_return_1_diff_roll_{.x}_max_mean + 0*cumulative_return_1_diff_roll_{.x}_max_sd,
+                   1, 0),
+
+       Bull_{.x}_05 =
+         ifelse(cumulative_return_1_diff_roll_{.x} >=
+                   cumulative_return_1_diff_roll_{.x}_max_mean + 0.5*cumulative_return_1_diff_roll_{.x}_max_sd,
+                   1, 0),
+
+       Bull_{.x}_1 =
+         ifelse(cumulative_return_1_diff_roll_{.x} >=
+                   cumulative_return_1_diff_roll_{.x}_max_mean + 1*cumulative_return_1_diff_roll_{.x}_max_sd,
+                   1, 0),
+
+       Bull_{.x}_15 =
+         ifelse(cumulative_return_1_diff_roll_{.x} >=
+                   cumulative_return_1_diff_roll_{.x}_max_mean + 1.5*cumulative_return_1_diff_roll_{.x}_max_sd,
+                   1, 0),
+
+       Bull_{.x}_2 =
+         ifelse(cumulative_return_1_diff_roll_{.x} >=
+                   cumulative_return_1_diff_roll_{.x}_max_mean + 2*cumulative_return_1_diff_roll_{.x}_max_sd,
+                   1, 0),
+
+
+       Bear_{.x}_05 =
+         ifelse(cumulative_return_1_diff_roll_{.x} <=
+                   cumulative_return_1_diff_roll_{.x}_min_mean + 0.5*cumulative_return_1_diff_roll_{.x}_min_sd,
+                   1, 0),
+
+       Bear_{.x}_1 =
+         ifelse(cumulative_return_1_diff_roll_{.x} <=
+                   cumulative_return_1_diff_roll_{.x}_min_mean + 1*cumulative_return_1_diff_roll_{.x}_min_sd,
+                   1, 0),
+
+       Bear_{.x}_15 =
+         ifelse(cumulative_return_1_diff_roll_{.x} <=
+                   cumulative_return_1_diff_roll_{.x}_min_mean + 1.5*cumulative_return_1_diff_roll_{.x}_min_sd,
+                   1, 0),
+
+       Bear_{.x}_2 =
+         ifelse(cumulative_return_1_diff_roll_{.x} <=
+                   cumulative_return_1_diff_roll_{.x}_min_mean + 2*cumulative_return_1_diff_roll_{.x}_min_sd,
+                   1, 0)
+               ")
+
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+
+    roll_periods_statements_mutate <-
+      glue::glue("roll_bull_bear_ratio %>%
+                   group_by(Asset) %>%
+                   arrange(Date, .by_group = TRUE) %>%
+                   group_by(Asset) %>%
+                   mutate({roll_periods_statements})")
+
+    final_data <-
+      eval(parse(text = roll_periods_statements_mutate)) %>%
+      filter(if_all(everything(), ~!is.na(.))) %>%
+      mutate(
+        across(contains("Bull")|contains("Bear"), .fns = ~ cumsum(.))
+      )
+
+
+    return(final_data)
 
   }
