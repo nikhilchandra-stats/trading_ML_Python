@@ -1,31 +1,31 @@
 helpeR::load_custom_functions()
 
 analyse_new_algos(
-  trade_tracker_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close.db",
+  trade_tracker_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close endpoints.db",
   realised_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_realised.db",
-  algo_start_date = "2025-10-13"
+  algo_start_date = "2026-09-01"
 )
 
 analyse_new_algos(
-  trade_tracker_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db",
+  trade_tracker_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close endpoints 2.db",
   realised_DB_path = "C:/Users/nikhi/Documents/trade_data/trade_tracker_realised.db",
-  algo_start_date = "2025-10-13"
+  algo_start_date = "2026-09-01"
 )
 
 newest_results <-
   get_current_new_algo_trades(realised_DB_path ="C:/Users/nikhi/Documents/trade_data/trade_tracker_realised.db")
 
-trade_tracker_DB <- connect_db("C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close.db")
+trade_tracker_DB <- connect_db( "C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close endpoints.db")
 all_trades_so_far <-
   DBI::dbGetQuery(conn = trade_tracker_DB,
-                  "SELECT * FROM trade_tracker")
+                  "SELECT * FROM trade_tracker_endpoints")
 DBI::dbDisconnect(trade_tracker_DB)
 gc()
 
-trade_tracker_DB <- connect_db("C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close 2.db")
+trade_tracker_DB <- connect_db("C:/Users/nikhi/Documents/trade_data/trade_tracker_daily_buy_close endpoints 2.db")
 all_trades_so_far2 <-
   DBI::dbGetQuery(conn = trade_tracker_DB,
-                  "SELECT * FROM trade_tracker")
+                  "SELECT * FROM trade_tracker_endpoints")
 DBI::dbDisconnect(trade_tracker_DB)
 gc()
 
@@ -42,6 +42,7 @@ distinct_assets <-
 
 newest_results_sum <-
   newest_results %>%
+  filter(date_open >= '2026-09-07') %>%
   left_join(distinct_assets) %>%
   filter(inLocalDB == TRUE, !is.na(inLocalDB )) %>%
   # filter(date_open >= "2025-11-17") %>%
@@ -72,63 +73,51 @@ combined_results %>%
   geom_line() +
   theme_minimal()
 
-write.csv(newest_results_sum,
-          "C:/Users/nikhi/Documents/Repos/macrodatasetsraw/data/trade_results_msi_pc_new_algos.csv",
-          row.names = FALSE)
+upload_results_con <-
+  connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-get_realised_trades_from_repo <-
-  function(filt_date = "2025-10-20") {
+all_result_data <-
+  DBI::dbGetQuery(conn = upload_results_con,
+                  statement = "SELECT * FROM real_results_new_algo")
 
-    d1 <- read_csv("https://raw.githubusercontent.com/nikhilchandra-stats/macrodatasetsraw/refs/heads/master/data/trade_results_desktop_algos.csv")
-    d2 <- read_csv("https://raw.githubusercontent.com/nikhilchandra-stats/macrodatasetsraw/refs/heads/master/data/trade_results_msi_pc_new_algos.csv")
+all_result_data_sum <-
+  all_result_data %>%
+  mutate(Date = as_datetime(Date)) %>%
+  filter(Date >= '2026-09-07') %>%
+  group_by(Date, trade_col) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  group_by(trade_col) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  group_by(trade_col) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return))  %>%
+  ungroup()
 
-    d1_results <-
-      d1 %>%
-      group_by(id, Asset, account_var, initialUnits) %>%
-      mutate(kk = row_number()) %>%
-      slice_min(kk) %>%
-      ungroup() %>%
-      dplyr::select(-kk) %>%
-      filter(date_open >= filt_date) %>%
-      pull(Net_Profit) %>%
-      sum()
+combined_realised_simulated <-
+  combined_results %>%
+  dplyr::select(Date = date_open,
+                Net_Profit = Net_Profit) %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Net_Profit, na.rm = T)) %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(
+    return_type = "Real"
+  ) %>%
+  bind_rows(
+    all_result_data_sum %>% mutate(return_type = "Sim")
+  )
 
-    d2_results <-
-      d2 %>%
-      group_by(id, Asset, account_var, initialUnits) %>%
-      mutate(kk = row_number()) %>%
-      slice_min(kk) %>%
-      ungroup() %>%
-      dplyr::select(-kk) %>%
-      filter(date_open >= filt_date) %>%
-      pull(Net_Profit) %>%
-      sum()
 
-    combined_results <-
-      d2 %>%
-      mutate(trade_source = "24 Period") %>%
-      bind_rows(d1 %>%
-                  mutate(trade_source = "5 Period") ) %>%
-      group_by(id, Asset, account_var, initialUnits,  trade_source) %>%
-      mutate(kk = row_number()) %>%
-      slice_min(kk) %>%
-      ungroup() %>%
-      dplyr::select(-kk) %>%
-      filter(date_open >= filt_date) %>%
-      group_by(trade_source) %>%
-      arrange(date_closed, .by_group = TRUE) %>%
-      group_by(trade_source) %>%
-      mutate(cumulative_return = cumsum(Net_Profit)) %>%
-      ungroup()
 
-    total_return <-
-      combined_results$Net_Profit %>% sum()
-
-    combined_results %>%
-      ggplot(aes(x = date_closed, y = cumulative_return)) +
-      geom_line() +
-      facet_wrap(.~trade_source, scales = "free") +
-      theme_minimal()
-
-    }
-
+combined_realised_simulated %>%
+  ungroup() %>%
+  ggplot(aes(x = Date, y = Final_Return_Cumulative
+             ,color = return_type
+  )) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
+  # facet_wrap(.~trade_col, scales = "free") +
+  theme_minimal() +
+  scale_y_continuous(n.breaks = 30) +
+  theme(legend.position = "bottom", axis.text = element_text(size = 7))

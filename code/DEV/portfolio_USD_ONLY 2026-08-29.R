@@ -65,29 +65,31 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2016-01-01"
+start_date = "2015-01-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "SPX500_USD",
-    "CH20_CHF",
-    "DE30_EUR",
-    "EU50_EUR",
-    "US2000_USD",
-    "HK33_HKD",
-    "JP225Y_JPY",
-    "UK100_GBP"
+    # "AUD_USD",
+    # "EUR_GBP",
+    "USD_CHF",
+    "USD_CAD",
+    "USD_JPY",
+    "USD_SEK",
+    "USD_MXN"
   ) %>% unique()
 
-stop_factor_var = 3
-profit_factor_var = 6
+# stop_factor_var = 10
+# profit_factor_var = 10
+stop_factor_var = 10
+profit_factor_var = 8
 risk_dollar_value_var = 5
 end_period = 132
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 10
+# end_point_profit = 5
+end_point_profit = 4
 
 regression_length = 25000
 direct_return_cols = 24
@@ -96,18 +98,18 @@ low_to_price_lengths = c(400)
 cor_period = c(50)
 dependant_var = "Final_Return"
 save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/"
-file_name = "FAST_EQUITY_EXPNDED_ONLY_FAST_NON_V3"
-training_date = "2022-02-01"
+file_name = "USD_ONLY_NON_V3_NEW_MODEL"
+training_date = "2021-02-01"
 testing_date = as_date(training_date) + months(3)
 
 xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130)
-xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500)
+xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500)
 lag_dependant = end_period + 1
-auto_cor_cols = 20
-cor_skip_periods = c(1,2,4,5,6,8,10)
+auto_cor_cols = 5
+cor_skip_periods = c(1,2,3)
 
-periods_to_use_deviation = c(1,10,20,30,40,50, 60, 70, 80, 90, 100)
-mean_periods_deviation = c(50,75 ,100)
+periods_to_use_deviation = c(1,5,10,15,20,30,40,50, 60, 70, 80, 90, 100)
+mean_periods_deviation = c(25,50,75,100)
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -191,7 +193,7 @@ portfolio_gen_model_no_V3_New(
   dependant_var = "Final_Return",
   sig_thresh_LM = 1,
   file_name = file_name,
-  reg_samples = 70000
+  reg_samples = 80000
 )
 
 rm(temp_reg_data_train)

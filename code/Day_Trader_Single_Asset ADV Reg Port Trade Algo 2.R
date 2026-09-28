@@ -101,7 +101,7 @@ asset_infor <- get_instrument_info()
 raw_macro_data <- get_macro_event_data()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
 start_date_global = "2021-11-01"
 end_date = today() %>% as.character()
 
@@ -109,29 +109,28 @@ Indices_Metals_Bonds <- list()
 
 assets_to_algo =
   c(
-    "SPX500_USD",
-    "CH20_CHF",
-    "DE30_EUR",
-    "EU50_EUR",
-    "US2000_USD",
-    "HK33_HKD",
-    "JP225Y_JPY",
-    "UK100_GBP",
+    "NZD_USD",
+    "AUD_CAD",
+    "AUD_USD",
+    "AUD_NZD",
+    "AUD_CHF",
 
-    "SPX500_USD",
-    "CH20_CHF",
-    "DE30_EUR",
-    "XAU_USD",
-    "XAG_USD",
-    "HK33_HKD",
-    "JP225Y_JPY",
-    "UK100_GBP",
-
-    "XAU_USD",
-    "BTC_USD",
-    "XCU_USD",
+    "AUD_USD",
+    "EUR_GBP",
+    "USD_CHF",
+    "USD_CAD",
     "USD_JPY",
-    "NAS100_USD"
+
+    "XAU_USD",
+    "SPX500_USD",
+    "WTICO_USD",
+    "EU50_EUR",
+    "JP225_USD",
+
+    "SOYBN_USD",
+    "SUGAR_USD",
+    "WHEAT_USD",
+    "XCU_USD"
   ) %>% unique()
 
 Indices_Metals_Bonds[[1]] <-
@@ -192,10 +191,10 @@ account_number_short_equity <- "001-011-1615559-005"
 account_name_short_equity <- "equity_short"
 
 trade_tracker_DB_path <-
-  "C:/Users/nikhi/Documents//trade_data/trade_tracker_daily_buy_close endpoints.db"
+  "C:/Users/nikhi/Documents//trade_data/trade_tracker_daily_buy_close endpoints 2.db"
 trade_tracker_DB <- connect_db(trade_tracker_DB_path)
 
-db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
 end_date_day = today() %>% as.character()
 
 rm(Indices_Metals_Bonds)
@@ -210,59 +209,91 @@ gc()
 
 assets_to_use_algo <- assets_to_algo
 
-trade_statement_GLOBAL_EQUITY <-
+trade_statement_AUD_STOP_10 <-
   "
-  (pnorm_1001_port > 0.775 & pnorm_1001_port <= 1 & Asset == 'CH20_CHF')|
-  (pnorm_1001_port > 0.7 & pnorm_1001_port <= 1 & Asset == 'DE30_EUR')|
-  (pnorm_1001_port > 0.79 & pnorm_1001_port <= 1 & Asset == 'HK33_HKD')|
-  (pnorm_1001_port > 0.725 & pnorm_1001_port <= 1 & Asset == 'JP225Y_JPY')|
-  (pnorm_1001_port > 0.75 & pnorm_1001_port <= 1 & Asset == 'UK100_GBP')|
-  (pnorm_1001_port > 0.75 & pnorm_1001_port <= 0.8 & Asset == 'XAU_USD')|
-  (pnorm_2000_mean_1000_port >= 0.5655 & pnorm_2000_mean_1000_port <= 1 & Asset == 'SPX500_USD')|
-  (pnorm_2000 > 0.65 & pnorm_2000 <= 0.85 & Asset == 'XAU_USD')|
-  (pnorm_2000_port > 0.65 & pnorm_2000_port <= 0.85 & Asset == 'XAG_USD')|
-  (pnorm_2000_port > 0.775 & pnorm_2000_port <= 1 & Asset == 'CH20_CHF')|
-  (pnorm_2000_port > 0.8 & pnorm_2000_port <= 1 & Asset == 'UK100_GBP')|
-  (pnorm_250_port > 0.51 & pnorm_250_port <= 1 & Asset == 'XAG_USD')|
-  (pnorm_1001_port > 0.7 & pnorm_1001_port <= 1 & Asset == 'SPX500_USD')|
-  (pnorm_2000_port > 0.68 & pnorm_2000_port <= 1 & Asset == 'JP225Y_JPY')
-"
-trade_statement_GLOBAL_EQUITY_FAST <-
-  "
-    (pnorm_250_roll_250_port > 0.64 & pnorm_250_roll_250_port < 1 & Asset == 'CH20_CHF')|
-    (pnorm_250_roll_250_port > 0.525 & pnorm_250_roll_250_port < 1 & Asset == 'DE30_EUR')|
-    (pnorm_250_roll_250_port > 0.50 & pnorm_250_roll_250_port < 1 & Asset == 'EU50_EUR')|
-    (pnorm_250_roll_250_port > 0.57 & pnorm_250_roll_250_port < 1 & Asset == 'HK33_HKD')|
-    (pnorm_250_roll_250_port > 0.525 & pnorm_250_roll_250_port < 1 & Asset == 'JP225Y_JPY')|
-    (pnorm_250_roll_250_port > 0.54 & pnorm_250_roll_250_port < 1 & Asset == 'SPX500_USD')|
-    (pnorm_250_roll_250_port > 0.525 & pnorm_250_roll_250_port < 1 & Asset == 'UK100_GBP')|
-    (pnorm_250_roll_250_port > 0.55 & pnorm_250_roll_250_port < 0.6 & Asset == 'US2000_USD')
+  (rolling_error_var_pnorm > 0.99 & Asset == 'AUD_USD')|
+  (rolling_error_var_pnorm > 0.965 & Asset == 'AUD_CAD')|
+  (rolling_error_var_pnorm > 0.99 & Asset == 'AUD_CHF')|
+  (pnorm_50_port > 0.85 & Asset == 'AUD_USD')|
+  (pnorm_100_roll_100_port > 0.75 & Asset == 'NZD_USD')|
+  (pnorm_1001_port > 0.7 & pnorm_1001_port < 1 & Asset == 'AUD_USD')|
+  (pnorm_250 > 0.61 & Asset == 'AUD_NZD')|
+  (pnorm_50_roll_50_port > 0.63 & Asset == 'AUD_USD')|
+  (pnorm_50_roll_50_port > 0.775)|
+  (pnorm_100_port > 0.875)|
+  (pnorm_error_75_vs_50_rate_50 > 0.925 & pnorm_error_75_vs_50_rate_50 < 0.99 & Asset == 'AUD_NZD')|
+  (pnorm_error_200_rate_100 > 0.99 & pnorm_error_200_rate_100 <= 1 & Asset == 'AUD_CAD')
 
-  "
-
-trade_statement_MIXED <-
-  "
-  (pnorm_error_5_rate_50 > 0.525 & pnorm_error_5_rate_50 <= 1 &
-  pnorm_2000_mean_1000_roll_2000_port > 0.525)|
-  (pnorm_error_5_rate_100 > 0.525 & pnorm_error_5_rate_100 < 1 &
-  pnorm_2000_mean_1000_roll_2000_port > 0.525 & pnorm_2000_mean_1000_roll_2000_port < 1)|
-  (pnorm_error_200_rate_100 > 0.55 & pnorm_error_200_rate_100 > 0 &
-  pnorm_2000_mean_1000_roll_2000_port > 0.55)|
-  (pnorm_error_5_rate_100 > 0.5 & pnorm_error_5_rate_100 < 1 &
-  pnorm_1500_mean_10_port > 0.7)|
-  (pnorm_error_20_rate_50 > 0.55 & pnorm_error_20_rate_50 < 0.95 &
-  pnorm_1500_mean_10_port > 0.55)|
-  (pnorm_error_20_rate_50 > 0.55 & pnorm_error_20_rate_50 < 0.95 &
-  pnorm_1001_port > 0.55)|
-  (pnorm_error_5_rate_50 > 0.55 & pnorm_error_5_rate_50 < 0.925 &
-  pnorm_1001_port > 0.525)|
-  (pnorm_error_5_rate_50 > 0.55 & pnorm_error_5_rate_50 < 0.9125 &
-  pnorm_1001_port > 0.5)|
-  (pnorm_error_5_rate_50 > 0.6 & pnorm_error_5_rate_50 < 0.9125 &
-  pnorm_2000_mean_1000_roll_2000_port > 0.5)|
-  (rolling_error_var_pnorm > 0.85 & pnorm_error_200_rate_50 > 0.85)
 "
 
+trade_statement_USD_STOP_10 <-
+  "
+  (pnorm_100_roll_100 > 0.64 & pnorm_100_roll_100 <= 1 & Asset == 'USD_CHF')|
+  (pnorm_100_roll_100 > 0.55 & pnorm_100_roll_100 <= 1 & Asset == 'USD_CAD')|
+  (pnorm_500_roll_500 > 0.54 & pnorm_500_roll_500 <= 1 & Asset == 'AUD_USD')|
+  (pnorm_500_roll_500 > 0.53 & pnorm_500_roll_500 <= 1 & Asset == 'EUR_GBP')|
+  (rolling_error_var_pnorm > 0.9 & rolling_error_var_pnorm <= 0.99)|
+  (pnorm_error_5_vs_100rate_100 > 0.9 & pnorm_error_5_vs_100rate_100 <= 0.99 & Asset == 'USD_JPY')|
+  (pnorm_error_5_vs_100rate_100 > 0.95 & pnorm_error_5_vs_100rate_100 <= 1 & Asset == 'EUR_GBP')|
+  (pnorm_error_75_vs_50_rate_50 > 0.8 & pnorm_error_75_vs_50_rate_50 <= 0.99 )|
+  (pnorm_250_roll_250_port > 0.73 & pnorm_250_roll_250_port <= 1)
+"
+
+trade_statement_MIXED_STOP_3 <-
+  "
+  (rolling_error_var_pnorm >= 0.91 & Asset == 'SPX500_USD' )|
+  (rolling_error_var_pnorm >= 0.51 & Asset == 'XAU_USD' )|
+  (rolling_error_var_pnorm >= 0.91 & Asset == 'JP225_USD' )|
+  (rolling_error_var_pnorm >= 0.56 & Asset == 'WTICO_USD' )|
+  (rolling_error_var_pnorm >= 0.56 & Asset == 'WTICO_USD' )|
+
+  (pnorm_error_5_rate_50 >= 0.88 & Asset == 'SPX500_USD')|
+  (pnorm_error_5_rate_50 >= 0.55 & Asset == 'XAU_USD')|
+  (pnorm_error_5_rate_50 >= 0.86 & Asset == 'EU50_EUR')|
+  (pnorm_error_5_rate_50 >= 0.98 & Asset == 'WTICO_USD')|
+
+  (pnorm_100 >= 0.68 & Asset == 'SPX500_USD')|
+  (pnorm_100 >= 0.74 & Asset == 'JP225_USD')|
+  (pnorm_100 >= 0.71 & Asset == 'XAU_USD')|
+  (pnorm_100 >= 0.73 & Asset == 'WTICO_USD')|
+
+  (pnorm_250 >= 0.73 & Asset == 'JP225_USD')|
+  (pnorm_250 >= 0.57 & Asset == 'XAU_USD')|
+  (pnorm_250 >= 0.75 & Asset == 'SPX500_USD')|
+  (pnorm_250 >= 0.77 & Asset == 'EU50_EUR')|
+  (pnorm_250 >= 0.79 & Asset == 'WTICO_USD')|
+
+  (pnorm_250_port >= 0.6 & Asset == 'WTICO_USD')|
+  (pnorm_250_port >= 0.55 & Asset == 'XAU_USD')|
+  (pnorm_250_port >= 0.56 & Asset == 'JP225_USD')|
+  (pnorm_250_port >= 0.69 & Asset == 'EU50_EUR')|
+  (pnorm_250_port >= 0.85 & Asset == 'SPX500_USD')|
+
+  (pnorm_500_port >= 0.60 & Asset == 'WTICO_USD')|
+  (pnorm_500_port >= 0.55 & Asset == 'XAU_USD')|
+  (pnorm_500_port >= 0.51 & Asset == 'JP225_USD')|
+  (pnorm_500_port >= 0.68 & Asset == 'EU50_EUR')|
+
+  (pnorm_1001_port >= 0.59 & Asset == 'WTICO_USD')|
+  (pnorm_1001_port >= 0.56 & Asset == 'XAU_USD')|
+  (pnorm_1001_port >= 0.55 & Asset == 'JP225_USD')|
+  (pnorm_1001_port >= 0.58 & Asset == 'EU50_EUR')
+"
+
+trade_statement_SOFT_COMM_STOP_15 <-
+  "
+ (rolling_error_var_pnorm > 0.88 & Asset == 'SUGAR_USD')|
+ (rolling_error_var_pnorm > 0.98 & Asset == 'SOYBN_USD')|
+ (pnorm_error_75_vs_50_rate_50 > 0.6 & pnorm_error_75_vs_50_rate_50 < 0.99999 & Asset == 'XCU_USD')|
+ (pnorm_error_75_vs_50_rate_50 > 0.99 & Asset == 'SUGAR_USD')|
+ (pnorm_error_5_rate_50 > 0.999999999999 & Asset == 'WHEAT_USD')|
+ (pnorm_error_200_rate_50 > 0.96 & Asset == 'SUGAR_USD')|
+ (pnorm_error_200_rate_100 > 0.96 & Asset == 'SUGAR_USD')|
+ (pnorm_error_200_rate_100 > 0.99 & Asset == 'SOYBN_USD')|
+ (pnorm_error_200_rate_100 > 0.5 & Asset == 'XCU_USD')|
+ (pnorm_100 > 0.65 & Asset == 'XCU_USD')|
+ (pnorm_error_50_rate_50 > 0.99 & Asset == 'SOYBN_USD')
+"
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
 run_trades = TRUE
@@ -358,32 +389,27 @@ while (current_time < end_time) {
         rm(how_far_back_date, how_far_back_var, Indices_Metals_Bonds)
 
         tictoc::tic()
-        single_asset_model_trades_GLOBAL_EQUITY <-
+        single_asset_model_trades_AUD_STOP_10 <-
           portfolio_no_V3_New_algo_pnorm_version(
             assets_to_port =
               c(
-                "SPX500_USD",
-                "CH20_CHF",
-                "DE30_EUR",
-                "XAU_USD",
-                "XAG_USD",
-                "HK33_HKD",
-                "JP225Y_JPY",
-                "UK100_GBP"
+                "NZD_USD",
+                "AUD_CAD",
+                "AUD_USD",
+                "AUD_NZD",
+                "AUD_CHF"
               ) %>% unique(),
-            stop_factor_var = 5,
+            stop_factor_var = 10,
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
             db_location = db_location,
             start_date = "2021-11-01",
-            # profit_factor_var = 60,
-            profit_factor_var = 80,
+            profit_factor_var = 15,
             risk_dollar_value_var = 5,
             end_period = 132,
             trade_direction = "Long",
             end_point_loss = -5,
-            # end_point_profit = 55,
-            end_point_profit = 75,
+            end_point_profit = 7.25,
             regression_length = 25000,
             direct_return_cols = 24,
             lag_value_error = 132 + 1,
@@ -392,43 +418,88 @@ while (current_time < end_time) {
             dependant_var = "Final_Return",
             save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
             # file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL",
-            file_name = "EQUITY_GOLD_EXPNDED_ONLY_NON_V3_NEW_MODEL",
+            file_name = "AUD_ONLY_STOP_10_PROF_15_NON_V3_NEW_MODEL",
             training_date = "2022-02-01",
             testing_date ="2021-11-01",
             xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
             xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500),
             lag_dependant = 132 + 1,
-            auto_cor_cols = 20,
-            cor_skip_periods = c(1,2,4,5,6,8,10),
-            periods_to_use_deviation = c(1,10,20,30,40,50, 60, 70, 80, 90, 100),
-            mean_periods_deviation = c(50,75,100),
+            auto_cor_cols = 10,
+            cor_skip_periods = c(1,2,4,5),
+            periods_to_use_deviation = c(1,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+            mean_periods_deviation = c(25,50,75,100, 150, 200, 250),
 
-            run_additional_calc = FALSE,
+            run_additional_calc = TRUE,
             estimate_trades = TRUE,
-            trade_statement = trade_statement_GLOBAL_EQUITY,
+            trade_statement = trade_statement_AUD_STOP_10,
             current_time = current_time
           )
 
-        message(dim(single_asset_model_trades_GLOBAL_EQUITY)[1])
+        message(dim(single_asset_model_trades_AUD_STOP_10)[1])
 
-        single_asset_model_trades_GLOBAL_EQUITY_FAST <-
+        single_asset_model_trades_USD_STOP_10 <-
           portfolio_no_V3_New_algo_pnorm_version(
             assets_to_port =
               c(
+                "AUD_USD",
+                "EUR_GBP",
+                "USD_CHF",
+                "USD_CAD",
+                "USD_JPY"
+              ) %>% unique(),
+            stop_factor_var = 10,
+            currency_conversion = currency_conversion,
+            asset_infor = asset_infor,
+            db_location = db_location,
+            start_date = "2021-01-01",
+            profit_factor_var = 10,
+            risk_dollar_value_var = 5,
+            end_period = 132,
+            trade_direction = "Long",
+            end_point_loss = -5,
+            end_point_profit = 5,
+            regression_length = 25000,
+            direct_return_cols = 24,
+            lag_value_error = 132 + 1,
+            low_to_price_lengths = c(400),
+            cor_period = c(50),
+            dependant_var = "Final_Return",
+            save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
+            # file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL",
+            file_name = "USD_ONLY_STOP_10_PROF_10_NON_V3_NEW_MODEL",
+            training_date = "2021-02-01",
+            testing_date ="2021-01-01",
+            xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
+            xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500),
+            lag_dependant = 132 + 1,
+            auto_cor_cols = 5,
+            cor_skip_periods = c(1,2,3),
+            periods_to_use_deviation = c(1,5,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+            mean_periods_deviation = c(25,50,75,100),
+
+            run_additional_calc = TRUE,
+            estimate_trades = TRUE,
+            trade_statement = trade_statement_USD_STOP_10,
+            current_time = current_time
+          )
+
+        message(dim(single_asset_model_trades_USD_STOP_10)[1])
+
+        single_asset_model_trades_MIXED_STOP_3 <-
+          portfolio_no_V3_New_algo_pnorm_version(
+            assets_to_port =
+              c(
+                "XAU_USD",
                 "SPX500_USD",
-                "CH20_CHF",
-                "DE30_EUR",
+                "WTICO_USD",
                 "EU50_EUR",
-                "US2000_USD",
-                "HK33_HKD",
-                "JP225Y_JPY",
-                "UK100_GBP"
+                "JP225_USD"
               ) %>% unique(),
             stop_factor_var = 3,
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
             db_location = db_location,
-            start_date = "2021-11-01",
+            start_date = "2024-01-01",
             profit_factor_var = 6,
             risk_dollar_value_var = 5,
             end_period = 132,
@@ -442,45 +513,46 @@ while (current_time < end_time) {
             cor_period = c(50),
             dependant_var = "Final_Return",
             save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
-            file_name = "FAST_EQUITY_EXPNDED_ONLY_FAST_NON_V3",
-            training_date = "2022-02-01",
-            testing_date ="2021-11-01",
+            # file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL",
+            file_name = "MIXED_LONG_TRAIN_NON_V3_NEW_MODEL",
+            training_date = "2025-07-01",
+            testing_date ="2024-01-01",
             xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
-            xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
+            xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500, 10),
             lag_dependant = 132 + 1,
-            auto_cor_cols = 20,
-            cor_skip_periods = c(1,2,4,5,6,8,10),
-            periods_to_use_deviation = c(1,10,20,30,40,50, 60, 70, 80, 90, 100),
-            mean_periods_deviation = c(50,75 ,100),
+            auto_cor_cols = 5,
+            cor_skip_periods = c(1,2,3),
+            periods_to_use_deviation = c(5,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+            mean_periods_deviation = c(10,25,50,75,100),
 
-            run_additional_calc = FALSE,
+            run_additional_calc = TRUE,
             estimate_trades = TRUE,
-            trade_statement = trade_statement_GLOBAL_EQUITY_FAST,
+            trade_statement = trade_statement_MIXED_STOP_3,
             current_time = current_time
           )
 
+        message(dim(single_asset_model_trades_MIXED_STOP_3)[1])
 
-        single_asset_model_trades_MIXED <-
+        single_asset_model_trades_SOFT_COMM_STOP_15 <-
           portfolio_no_V3_New_algo_pnorm_version(
             assets_to_port =
               c(
-                "XAU_USD",
-                "BTC_USD",
-                "XCU_USD",
-                "USD_JPY",
-                "NAS100_USD"
+                "SOYBN_USD",
+                "SUGAR_USD",
+                "WHEAT_USD",
+                "XCU_USD"
               ) %>% unique(),
-            stop_factor_var = 10,
+            stop_factor_var = 15,
             currency_conversion = currency_conversion,
             asset_infor = asset_infor,
             db_location = db_location,
-            start_date = "2021-11-01",
-            profit_factor_var = 100,
+            start_date = "2021-01-01",
+            profit_factor_var = 20,
             risk_dollar_value_var = 5,
             end_period = 132,
             trade_direction = "Long",
             end_point_loss = -5,
-            end_point_profit = 50,
+            end_point_profit = 6.7,
             regression_length = 25000,
             direct_return_cols = 24,
             lag_value_error = 132 + 1,
@@ -488,30 +560,32 @@ while (current_time < end_time) {
             cor_period = c(50),
             dependant_var = "Final_Return",
             save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
-            file_name = "MIXED_NON_V3_NEW_MODEL",
-            training_date = "2022-02-01",
-            testing_date ="2021-11-01",
+            # file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL",
+            file_name = "SOFT_COMM_LONG_TRAIN_NON_V3_NEW_MODEL",
+            training_date = "2021-02-01",
+            testing_date ="2021-01-01",
             xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
-            xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
+            xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500, 10),
             lag_dependant = 132 + 1,
-            auto_cor_cols = 20,
-            cor_skip_periods = c(1,2,4,5,6,8,10),
-            periods_to_use_deviation = c(1,10,20,30,40,50, 60, 70, 80, 90, 100),
-            mean_periods_deviation = c(50,75 ,100),
-            run_additional_calc = TRUE,
+            auto_cor_cols = 5,
+            cor_skip_periods = c(1,2,3),
+            periods_to_use_deviation = c(5,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+            mean_periods_deviation = c(10,25,50,75,100),
 
+            run_additional_calc = TRUE,
             estimate_trades = TRUE,
-            trade_statement = trade_statement_MIXED,
+            trade_statement = trade_statement_SOFT_COMM_STOP_15,
             current_time = current_time
           )
 
-        message(dim(single_asset_model_trades_MIXED)[1])
-        message(glue::glue("Finish Time {now(tz = 'Australia/Canberra')}"))
+        message(dim(single_asset_model_trades_SOFT_COMM_STOP_15)[1])
 
         single_asset_model_trades_filt <-
-          single_asset_model_trades_GLOBAL_EQUITY %>%
-          bind_rows(single_asset_model_trades_GLOBAL_EQUITY_FAST) %>%
-          bind_rows(single_asset_model_trades_MIXED)
+          single_asset_model_trades_AUD_STOP_10 %>%
+          bind_rows(single_asset_model_trades_USD_STOP_10)%>%
+          bind_rows(single_asset_model_trades_MIXED_STOP_3)%>%
+          bind_rows(single_asset_model_trades_SOFT_COMM_STOP_15)
+
         tictoc::toc()
 
         message(dim(single_asset_model_trades_filt)[1])

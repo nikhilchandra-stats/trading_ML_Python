@@ -3622,6 +3622,7 @@ portfolio_no_V3_New_algo_pnorm_version <-
     cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
     periods_to_use_deviation = c(1,10,20,30,40,50),
     mean_periods_deviation = c(50, 100),
+    run_additional_calc = FALSE,
     estimate_trades = FALSE,
     trade_statement = NULL,
     current_time = now() %>% as_datetime()
@@ -3763,11 +3764,24 @@ portfolio_no_V3_New_algo_pnorm_version <-
         pnorm_2000_mean_1000_roll_2000 = slider::slide_dbl(.x  = pnorm_2000_mean_1000, .f = ~ mean(.x, na.rm = T), .before = 2000),
 
         pnorm_2000_mean_1000_port = pcauchy(pred_portfolio_10000_mean_roll_1000, location = pred_portfolio_10000_mean_roll_2000, scale = pred_portfolio_10000_sd_roll_2000),
-        pnorm_2000_mean_1000_roll_2000_port = slider::slide_dbl(.x  = pnorm_2000_mean_1000_port, .f = ~ mean(.x, na.rm = T), .before = 2000)
+        pnorm_2000_mean_1000_roll_2000_port = slider::slide_dbl(.x  = pnorm_2000_mean_1000_port, .f = ~ mean(.x, na.rm = T), .before = 2000),
 
+        pnorm_50 = pcauchy(predicted, location = pred_10000_mean_roll_50, scale = pred_10000_sd_roll_50),
+        pnorm_50_roll_50 = slider::slide_dbl(.x  = pnorm_50, .f = ~ mean(.x, na.rm = T), .before = 50),
+
+        pnorm_50_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_50, scale = pred_portfolio_10000_sd_roll_50),
+        pnorm_50_roll_50_port = slider::slide_dbl(.x  = pnorm_50_port, .f = ~ mean(.x, na.rm = T), .before = 50),
+
+        pnorm_1001_port_roll_100 =
+          slider::slide_dbl(.x  = pnorm_1001_port, .f = ~ mean(.x, na.rm = T), .before = 100)
 
       ) %>%
       ungroup()
+
+    if(run_additional_calc == TRUE) {
+      model_predicted_data <-
+        additional_error_rate_calc(model_predicted_data_raw = model_predicted_data)
+    }
 
     rm(temp_reg_data_test)
     gc()
@@ -3874,5 +3888,195 @@ portfolio_no_V3_New_algo_pnorm_version <-
 
     return(model_predicted_data)
 
+
+  }
+
+
+#' additional_error_rate_calc
+#'
+#' @param model_predicted_data
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+additional_error_rate_calc <-
+  function(model_predicted_data_raw) {
+
+    eval_state_error_rate <-
+      seq(0, 200, 1) %>%
+      map(
+        ~ glue::glue(
+          "
+    error_rate_mean_{.x} =
+      case_when(
+        lag(Final_Return) == 0 | is.na(lag(Final_Return, {.x} + 132 )) ~ 0,
+        lag(predicted + 132) > 0 & lag(Final_Return, {.x}+ 132) > 0  ~ 1,
+        lag(predicted + 132) < 0 & lag(Final_Return, {.x}+ 132) < 0  ~ 1,
+        lag(predicted + 132) > 0 & lag(Final_Return, {.x}+ 132) < 0 ~ -1,
+        lag(predicted + 132) < 0 & lag(Final_Return, {.x}+ 132) > 0 ~ -1
+      )"
+        )
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    eval_state_error_rate_sum_5 <-
+      seq(0, 5, 1) %>%
+      map(~ glue::glue("error_rate_mean_{.x}")) %>%
+      unlist() %>%
+      paste(collapse = " + ")
+
+    eval_state_error_rate_sum_20 <-
+      seq(0, 20, 1) %>%
+      map(~ glue::glue("error_rate_mean_{.x}")) %>%
+      unlist() %>%
+      paste(collapse = " + ")
+
+    eval_state_error_rate_sum_50 <-
+      seq(0, 50, 1) %>%
+      map(~ glue::glue("error_rate_mean_{.x}")) %>%
+      unlist() %>%
+      paste(collapse = " + ")
+
+    eval_state_error_rate_sum_75 <-
+      seq(0, 75, 1) %>%
+      map(~ glue::glue("error_rate_mean_{.x}")) %>%
+      unlist() %>%
+      paste(collapse = " + ")
+
+    eval_state_error_rate_sum_100 <-
+      seq(0, 100, 1) %>%
+      map(~ glue::glue("error_rate_mean_{.x}")) %>%
+      unlist() %>%
+      paste(collapse = " + ")
+
+    eval_state_error_rate_sum_200 <-
+      seq(0, 200, 1) %>%
+      map(~ glue::glue("error_rate_mean_{.x}")) %>%
+      unlist() %>%
+      paste(collapse = " + ")
+
+    error_mutate_statement <-
+      glue::glue("
+            model_predicted_data_raw %>%
+            group_by(Asset) %>%
+            arrange(Date, .by_group = TRUE) %>%
+            group_by(Asset) %>%
+            mutate(
+            {eval_state_error_rate},
+            total_error_5 = {eval_state_error_rate_sum_5},
+            total_error_20 = {eval_state_error_rate_sum_20},
+            total_error_50 = {eval_state_error_rate_sum_50},
+            total_error_75 = {eval_state_error_rate_sum_75},
+            total_error_100 = {eval_state_error_rate_sum_100},
+            total_error_200 = {eval_state_error_rate_sum_200}
+            )
+             ")
+
+    model_predicted_data_raw <-
+      eval(parse(text = error_mutate_statement))
+
+    model_predicted_data_raw <-
+      model_predicted_data_raw %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        total_error_100_roll_100_mean =
+          slider::slide_dbl(.x = total_error_100, .f = ~ mean(.x, na.rm = T), .before = 100),
+        total_error_100_roll_100_sd =
+          slider::slide_dbl(.x = total_error_100, .f = ~ sd(.x, na.rm = T), .before = 100),
+        pnorm_error_100_rate_100 =
+          pnorm(total_error_100, mean = total_error_100_roll_100_mean, sd = total_error_100_roll_100_sd),
+
+        total_error_100_roll_50_mean =
+          slider::slide_dbl(.x = total_error_100, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_100_roll_50_sd =
+          slider::slide_dbl(.x = total_error_100, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_100_rate_50 =
+          pnorm(total_error_100, mean = total_error_100_roll_50_mean, sd = total_error_100_roll_50_sd),
+
+        total_error_50_roll_50_mean =
+          slider::slide_dbl(.x = total_error_50, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_50_roll_50_sd =
+          slider::slide_dbl(.x = total_error_50, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_50_rate_50 =
+          pnorm(total_error_50, mean = total_error_50_roll_50_mean, sd = total_error_50_roll_50_sd),
+
+        total_error_20_roll_50_mean =
+          slider::slide_dbl(.x = total_error_20, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_20_roll_50_sd =
+          slider::slide_dbl(.x = total_error_20, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_20_rate_50 =
+          pnorm(total_error_20, mean = total_error_20_roll_50_mean, sd = total_error_20_roll_50_sd),
+
+
+        total_error_20_roll_100_mean =
+          slider::slide_dbl(.x = total_error_20, .f = ~ mean(.x, na.rm = T), .before = 100),
+        total_error_20_roll_100_sd =
+          slider::slide_dbl(.x = total_error_20, .f = ~ sd(.x, na.rm = T), .before = 100),
+        pnorm_error_20_rate_100 =
+          pnorm(total_error_20, mean = total_error_20_roll_100_mean, sd = total_error_20_roll_100_sd),
+
+        total_error_20_roll_50_mean =
+          slider::slide_dbl(.x = total_error_20, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_20_roll_50_sd =
+          slider::slide_dbl(.x = total_error_20, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_20_rate_50 =
+          pnorm(total_error_20, mean = total_error_20_roll_50_mean, sd = total_error_20_roll_50_sd),
+
+
+        total_error_200_roll_100_mean =
+          slider::slide_dbl(.x = total_error_200, .f = ~ mean(.x, na.rm = T), .before = 100),
+        total_error_200_roll_100_sd =
+          slider::slide_dbl(.x = total_error_200, .f = ~ sd(.x, na.rm = T), .before = 100),
+        pnorm_error_200_rate_100 =
+          pnorm(total_error_200, mean = total_error_200_roll_100_mean, sd = total_error_200_roll_100_sd),
+
+        total_error_200_roll_50_mean =
+          slider::slide_dbl(.x = total_error_200, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_200_roll_50_sd =
+          slider::slide_dbl(.x = total_error_200, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_200_rate_50 =
+          pnorm(total_error_200, mean = total_error_200_roll_50_mean, sd = total_error_200_roll_50_sd),
+
+
+        total_error_5_roll_100_mean =
+          slider::slide_dbl(.x = total_error_5, .f = ~ mean(.x, na.rm = T), .before = 100),
+        total_error_5_roll_100_sd =
+          slider::slide_dbl(.x = total_error_5, .f = ~ sd(.x, na.rm = T), .before = 100),
+        pnorm_error_5_rate_100 =
+          pnorm(total_error_5, mean = total_error_5_roll_100_mean, sd = total_error_5_roll_100_sd),
+
+        total_error_5_roll_50_mean =
+          slider::slide_dbl(.x = total_error_5, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_5_roll_50_sd =
+          slider::slide_dbl(.x = total_error_5, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_5_rate_50 =
+          pnorm(total_error_5, mean = total_error_5_roll_50_mean, sd = total_error_5_roll_50_sd),
+
+        total_error_75_roll_50_mean =
+          slider::slide_dbl(.x = total_error_75, .f = ~ mean(.x, na.rm = T), .before = 50),
+        total_error_75_roll_50_sd =
+          slider::slide_dbl(.x = total_error_75, .f = ~ sd(.x, na.rm = T), .before = 50),
+        pnorm_error_75_rate_50 =
+          pnorm(total_error_75, total_error_75_roll_50_mean, total_error_75_roll_50_sd),
+        pnorm_error_75_vs_50_rate_50 =
+          pnorm(total_error_50, total_error_75_roll_50_mean, total_error_75_roll_50_sd),
+
+        pnorm_error_5_vs_100rate_100 =
+          pnorm(total_error_50, mean = total_error_200_roll_100_mean, sd = total_error_200_roll_100_sd),
+
+        rolling_error_var_mean=
+          slider::slide_dbl(.x = total_error_200_roll_50_sd, .f = ~ mean(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_sd=
+          slider::slide_dbl(.x = total_error_200_roll_50_sd, .f = ~ sd(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_pnorm = pnorm(total_error_200_roll_50_sd, rolling_error_var_mean, rolling_error_var_sd)
+
+      ) %>%
+      ungroup()
+
+    return(model_predicted_data_raw)
 
   }

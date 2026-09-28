@@ -215,7 +215,7 @@ analyse_new_algos <-
     trade_tracker_DB <- connect_db(trade_tracker_DB_path)
     all_trades_so_far <-
       DBI::dbGetQuery(conn = trade_tracker_DB,
-                      "SELECT * FROM trade_tracker")
+                      "SELECT * FROM trade_tracker_endpoints")
     DBI::dbDisconnect(trade_tracker_DB)
     gc()
 
@@ -285,6 +285,9 @@ analyse_new_algos <-
       append_table_sql_lite(.data = asset_accumulator_dfr_upload,
                             table_name = "trade_tracker_realised",
                             conn = realised_DB_path_con)
+      # write_table_sql_lite(.data = asset_accumulator_dfr_upload,
+      #                       table_name = "trade_tracker_realised",
+      #                       conn = realised_DB_path_con)
       DBI::dbDisconnect(realised_DB_path_con)
       rm(realised_DB_path_con)
     }

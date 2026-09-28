@@ -74,15 +74,15 @@ assets_to_port =
     "SPX500_USD",
     "CH20_CHF",
     "DE30_EUR",
-    "EU50_EUR",
-    "US2000_USD",
+    "XAU_USD",
+    "XAG_USD",
     "HK33_HKD",
     "JP225Y_JPY",
     "UK100_GBP"
   ) %>% unique()
 
-stop_factor_var = 10
-profit_factor_var = 50
+stop_factor_var = 5
+profit_factor_var = 60
 risk_dollar_value_var = 5
 end_period = 132
 trade_direction = "Long"
@@ -96,18 +96,19 @@ low_to_price_lengths = c(400)
 cor_period = c(50)
 dependant_var = "Final_Return"
 save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/"
-file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL"
+# file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL"
+file_name = "EQUITY_GOLD_EXPNDED_ONLY_NON_V3_NEW_MODEL"
 training_date = "2022-02-01"
 testing_date = as_date(training_date) + months(3)
 
-xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100)
-xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500)
+xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130)
+xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500)
 lag_dependant = end_period + 1
-auto_cor_cols = 40
-cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16)
+auto_cor_cols = 20
+cor_skip_periods = c(1,2,4,5,6,8,10)
 
-periods_to_use_deviation = c(1,10,20,30,40,50)
-mean_periods_deviation = c(50, 100)
+periods_to_use_deviation = c(1,10,20,30,40,50, 60, 70, 80, 90, 100)
+mean_periods_deviation = c(50,75,100)
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
