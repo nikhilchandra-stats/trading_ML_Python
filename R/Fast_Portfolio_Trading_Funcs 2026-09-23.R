@@ -1008,5 +1008,311 @@ generate_post_model <-
 
   }
 
+portfolio_Dynamic_no_V3_algo_variant <-
+  function(
+    assets_to_port =
+      c(
+        "AUD_CAD",
+        "AUD_USD",
+        "AUD_JPY"
+      ) %>% unique(),
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db",
+    start_date = "2022-02-01",
+    end_period = 132,
+
+    slippage_percent = 0,
+    risk_dollar_value = 5,
+    volatility_factor_stop = 2,
+    volatility_factor_profit = 3,
+    profit_multiple = 1.1,
+    running_volatility_period_max = 20,
+    running_volatility_period_mean = 100,
+
+    trade_direction = "Long",
+    regression_length = 25000,
+    direct_return_cols = 24,
+    lag_value_error = end_period + 1,
+
+    cor_period = c(50),
+    dependant_var = "Final_Return",
+    save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/",
+    file_name = "AUD_CURR_NON_V3_NEW_MODEL",
+    training_date = "2022-02-01",
+    testing_date = NULL,
+    xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100),
+    xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
+    xtnd_rolling_volatility = c(20,50,60,80,100),
+    xtnd_rolling_bull_bear = c(50,100),
+    lag_dependant = end_period + 1,
+    auto_cor_cols = 40,
+    cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
+    periods_to_use_deviation = c(1,10,20,30,40,50),
+    mean_periods_deviation = c(50, 100),
+    estimate_trades = FALSE,
+    trade_statement = NULL,
+    current_time = now() %>% as_datetime()
+  ) {
+
+    if(is.null(testing_date)) { testing_date <- training_date}
+
+    Indices_Metals_Bonds <- list()
+
+    Indices_Metals_Bonds[[1]] <-
+      get_db_data_quickly_algo(
+        db_location = db_location,
+        start_date = start_date,
+        end_date = as.character(today() + days(30)),
+        time_frame = "H1",
+        bid_or_ask = "ask",
+        assets =   assets_to_port
+      ) %>%
+      distinct()
+    Indices_Metals_Bonds[[2]] <-
+      get_db_data_quickly_algo(
+        db_location = db_location,
+        start_date = start_date,
+        end_date = as.character(today() + days(30)),
+        time_frame = "H1",
+        bid_or_ask = "bid",
+        assets =   assets_to_port
+      ) %>%
+      distinct()
+
+
+    Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date > testing_date)
+    Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date > testing_date)
+
+    message("Portfolio Returns TEst calc start")
+    portfolio_data_test <-
+      get_dynamic_stop_prof_returns(
+        Ask_Data = Indices_Metals_Bonds[[1]],
+        Bid_Data = Indices_Metals_Bonds[[2]],
+        periods_wanted = end_period,
+        trade_direction = "Long",
+        currency_conversion =currency_conversion,
+        asset_infor = asset_infor,
+        slippage_percent = slippage_percent,
+        risk_dollar_value = risk_dollar_value,
+        volatility_factor_stop = volatility_factor_stop,
+        volatility_factor_profit = volatility_factor_profit,
+        profit_multiple = profit_multiple,
+        running_volatility_period_max = running_volatility_period_max,
+        running_volatility_period_mean = running_volatility_period_mean
+      )
+    message("Portfolio Returns TEst calc End")
+
+    gc()
+
+    message("temp_reg_data_test Returns TEst calc start")
+    temp_reg_data_test <-
+      get_dynamic_portfolio_no_V3(
+        portfolio_data = portfolio_data_test,
+        xtnd_ss_cols_PR_cols = xtnd_ss_cols_PR_cols,
+        xtnd_ss_cols_BR_periods = xtnd_ss_cols_BR_periods,
+        xtnd_rolling_volatility = xtnd_rolling_volatility,
+        xtnd_rolling_bull_bear = xtnd_rolling_bull_bear,
+        lag_dependant = lag_dependant,
+        auto_cor_cols = auto_cor_cols,
+        cor_skip_periods = cor_skip_periods,
+        cor_period = cor_period,
+        periods_to_use_deviation = periods_to_use_deviation,
+        mean_periods_deviation = mean_periods_deviation
+      ) %>%
+      ungroup() %>%
+      filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.) & !is.nan(.) )) %>%
+      mutate(
+        running_volatility_period_max = running_volatility_period_max,
+        running_volatility_period_mean = running_volatility_period_mean,
+
+        volatility_factor_stop = volatility_factor_stop,
+        volatility_factor_profit = volatility_factor_profit
+      )
+    message("temp_reg_data_test Returns TEst calc End")
+
+    gc()
+    rm(portfolio_data_test)
+    gc()
+    rm(Indices_Metals_Bonds)
+    gc()
+
+    model_predicted_data <-
+      portfolio_read_model_no_V3_New(
+        reg_dat = temp_reg_data_test,
+        training_end_date = training_date,
+        save_path = save_location,
+        file_name = file_name
+      )
+
+    message(glue::glue("Check Algo Estimated (model_predicted_data): {dim(model_predicted_data)[1]} \n"))
+
+    model_predicted_data <-
+      model_predicted_data %>%
+      ungroup() %>%
+      filter(Date > training_date) %>%
+      group_by(Asset) %>%
+      arrange(Date, .by_group = TRUE) %>%
+      group_by(Asset) %>%
+      mutate(
+        pnorm_100 = pcauchy(predicted, location = pred_10000_mean_roll_100, scale = pred_10000_sd_roll_100),
+        pnorm_100_roll_100 = slider::slide_dbl(.x  = pnorm_100, .f = ~ mean(.x, na.rm = T), .before = 100),
+
+        pnorm_100_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_100, scale = pred_portfolio_10000_sd_roll_100),
+        pnorm_100_roll_100_port = slider::slide_dbl(.x  = pnorm_100_port, .f = ~ mean(.x, na.rm = T), .before = 100),
+
+        pnorm_250 = pcauchy(predicted, location = pred_10000_mean_roll_250, scale = pred_10000_sd_roll_250),
+        pnorm_250_roll_250 = slider::slide_dbl(.x  = pnorm_250, .f = ~ mean(.x, na.rm = T), .before = 250),
+
+        pnorm_250_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_250, scale = pred_portfolio_10000_sd_roll_250),
+        pnorm_250_roll_250_port = slider::slide_dbl(.x  = pnorm_250_port, .f = ~ mean(.x, na.rm = T), .before = 250),
+
+        pnorm_500 = pcauchy(predicted, location = pred_10000_mean_roll_500, scale = pred_10000_sd_roll_500),
+        pnorm_500_roll_500 = slider::slide_dbl(.x  = pnorm_500, .f = ~ mean(.x, na.rm = T), .before = 500),
+
+        pnorm_500_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_500, scale = pred_portfolio_10000_sd_roll_500),
+        pnorm_500_roll_500_port = slider::slide_dbl(.x  = pnorm_500_port, .f = ~ mean(.x, na.rm = T), .before = 500),
+
+        pnorm_1001 = pcauchy(predicted, location = pred_10000_mean_roll_1000, scale = pred_10000_sd_roll_1000),
+        pnorm_1001_roll_1001 = slider::slide_dbl(.x  = pnorm_1001, .f = ~ mean(.x, na.rm = T), .before = 1001),
+
+        pnorm_1001_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_1000, scale = pred_portfolio_10000_sd_roll_1000),
+        pnorm_1001_roll_1001_port = slider::slide_dbl(.x  = pnorm_1001_port, .f = ~ mean(.x, na.rm = T), .before = 1001),
+
+        pnorm_1500 = pcauchy(predicted, location = pred_10000_mean_roll_1500, scale = pred_10000_sd_roll_1500),
+        pnorm_1500_roll_1500 = slider::slide_dbl(.x  = pnorm_1500, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_1500_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_1500, scale = pred_portfolio_10000_sd_roll_1500),
+        pnorm_1500_roll_1500_port = slider::slide_dbl(.x  = pnorm_1500_port, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_2000 = pcauchy(predicted, location = pred_10000_mean_roll_2000, scale = pred_10000_sd_roll_2000),
+        pnorm_2000_roll_2000 = slider::slide_dbl(.x  = pnorm_2000, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+        pnorm_2000_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_2000, scale = pred_portfolio_10000_sd_roll_2000),
+        pnorm_2000_roll_2000_port = slider::slide_dbl(.x  = pnorm_2000_port, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+        pnorm_1500_mean_10 = pcauchy(pred_10000_mean_roll_10, location = pred_10000_mean_roll_1500, scale = pred_10000_sd_roll_1500),
+        pnorm_1500_mean_10_roll_1500 = slider::slide_dbl(.x  = pnorm_1500_mean_10, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_1500_mean_10_port = pcauchy(pred_portfolio_10000_mean_roll_10, location = pred_portfolio_10000_mean_roll_1500, scale = pred_portfolio_10000_sd_roll_1500),
+        pnorm_1500_mean_10_roll_1500_port = slider::slide_dbl(.x  = pnorm_1500_mean_10_port, .f = ~ mean(.x, na.rm = T), .before = 1500),
+
+        pnorm_2000_mean_1000 = pcauchy(pred_10000_mean_roll_1000, location = pred_10000_mean_roll_2000, scale = pred_10000_sd_roll_2000),
+        pnorm_2000_mean_1000_roll_2000 = slider::slide_dbl(.x  = pnorm_2000_mean_1000, .f = ~ mean(.x, na.rm = T), .before = 2000),
+
+        pnorm_2000_mean_1000_port = pcauchy(pred_portfolio_10000_mean_roll_1000, location = pred_portfolio_10000_mean_roll_2000, scale = pred_portfolio_10000_sd_roll_2000),
+        pnorm_2000_mean_1000_roll_2000_port = slider::slide_dbl(.x  = pnorm_2000_mean_1000_port, .f = ~ mean(.x, na.rm = T), .before = 2000)
+
+
+      ) %>%
+      ungroup()
+
+    rm(temp_reg_data_test)
+    gc()
+
+    if(estimate_trades == TRUE & !is.null(trade_statement)) {
+
+      model_predicted_data <-
+        model_predicted_data %>%
+        filter(Asset %in% assets_to_port) %>%
+        group_by(Asset) %>%
+        slice_max(Date)
+
+      message(glue::glue("Check Algo Filtered and If Executed (model_predicted_data): {dim(model_predicted_data)[1]} \n"))
+
+      max_date_pre_filt <-
+        model_predicted_data %>% pull(Date) %>% max(na.rm = T)
+
+      message(glue::glue("Check Max Date before trade statement Filter (model_predicted_data): {max_date_pre_filt} \n"))
+
+      max_date_in_data <- floor_date(as_datetime(now(), tz = "Australia/Canberra"), "hour")
+      rm(Indices_Metals_Bonds)
+      gc()
+
+      trade_dates <-
+        model_predicted_data %>%
+        ungroup() %>%
+        slice_max(Date)
+
+      trade_dates<-
+        trade_dates %>%
+        mutate(
+          trade_col =
+            eval(parse(text = trade_statement))
+        ) %>%
+        ungroup() %>%
+        filter(trade_col == TRUE) %>%
+        distinct(Asset, Date)
+
+      message(glue::glue("discovered Trades: {dim(trade_dates)[1]} \n"))
+
+      message(glue::glue("Date in Data:{trade_dates$Date[1]} Date in Max: {max_date_in_data}"))
+
+      current_prices_ask <-
+        read_all_asset_data_intra_day(
+          asset_list_oanda = assets_to_port,
+          save_path_oanda_assets = "D://Asset Data/oanda_data/",
+          read_csv_or_API = "API",
+          time_frame = "H1",
+          bid_or_ask = "ask",
+          how_far_back = 2,
+          start_date = as_date(today() - days(3))
+        )%>%
+        map_dfr(bind_rows) %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup()
+
+      single_asset_model_trades_filt <-
+        trade_dates %>%
+        mutate(trade_col = "Long",
+               stop_factor = stop_factor_var,
+               profit_factor = profit_factor_var,
+               periods_ahead = end_period,
+               risk_dollar_value = risk_dollar_value_var,
+               end_point_loss = end_point_loss,
+               end_point_profit = end_point_profit
+        ) %>%
+        group_by(Asset) %>%
+        slice_max(Date) %>%
+        ungroup() %>%
+        left_join(current_prices_ask %>%
+                    group_by(Asset) %>%
+                    slice_max(Date) %>%
+                    ungroup() %>%
+                    dplyr::select(-Date)) %>%
+        mutate(
+          time_diff =
+            abs(
+              as.numeric(
+                as_datetime(Date, tz = "Australia/Canberra") -
+                  as_datetime(current_time, tz = "Australia/Canberra"),
+                units = "mins"
+              )
+            ),
+          date_check = max_date_in_data <= Date
+        ) %>%
+        group_by(Asset) %>%
+        slice_min(time_diff) %>%
+        ungroup()
+
+      message(glue::glue("Trades Found Pre Filt {dim(single_asset_model_trades_filt)[1]}"))
+
+      single_asset_model_trades_filt <-
+        single_asset_model_trades_filt %>%
+        # filter(time_diff <= 70 & date_check == TRUE) %>%
+        filter(max_date_in_data <= Date)
+
+      message(glue::glue("Trades Found {dim(single_asset_model_trades_filt)[1]}"))
+
+
+      return(single_asset_model_trades_filt)
+
+    }
+
+    return(model_predicted_data)
+
+
+  }
 
 

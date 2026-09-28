@@ -65,6 +65,7 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+training_data_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/training_data.db"
 start_date = "2013-01-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
@@ -73,7 +74,7 @@ assets_to_port =
   c(
     "NAS100_USD",
     "XPT_USD",
-    "USD_ZAR"
+    "CH20_CHF"
   ) %>% unique()
 
 
@@ -106,64 +107,83 @@ periods_to_use_deviation = c(1,10,20,30,40,50)
 mean_periods_deviation = c(50, 100)
 
 
+Indices_Metals_Bonds[[1]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    # end_date = sim_end %>% as_date() %>% as.character(),
+    time_frame = "H1",
+    bid_or_ask = "ask",
+    assets =   assets_to_port
+  ) %>%
+  distinct()
+Indices_Metals_Bonds[[2]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = start_date,
+    end_date = as.character(today() + days(30)),
+    # end_date = sim_end %>% as_date() %>% as.character(),
+    time_frame = "H1",
+    bid_or_ask = "bid",
+    assets =   assets_to_port
+  ) %>%
+  distinct()
+
 final_sim_date <-
  as_datetime(training_date, tz = "Australia/Canberra") - dhours(5000)
 sim_date_vector <-
   seq(as_datetime(start_date, tz = "Australia/Canberra"), final_sim_date, "hours")
 
-running_volatility_period_max_vec <-
-  tibble(running_volatility_period_max = seq(20,300,20))
+volatility_factor_stop_vec <-
+  tibble(volatility_factor_stop = c(1,3,5,7,9))
 
 running_volatility_tibble <-
-  c(100, 150, 200, 250, 300, 350, 400) %>%
+  c(1,3,5,7,9) %>%
   map_dfr(
     ~
-      running_volatility_period_max_vec %>%
+      volatility_factor_stop_vec %>%
       mutate(
-        running_volatility_period_mean = .x
+        volatility_factor_profit = .x
       )
+  )
+
+running_volatility_tibble <-
+  c(20,100) %>%
+  map_dfr(
+    ~
+      running_volatility_tibble %>%
+      mutate(running_volatility_period_max = .x)
+  )
+
+running_volatility_tibble <-
+  c(100,200) %>%
+  map_dfr(
+    ~
+      running_volatility_tibble %>%
+      mutate(running_volatility_period_mean = .x)
   )
 
 temp_reg_data_train_list <-list()
 
 for (i in 1:dim(running_volatility_tibble)[1] ) {
 
-  running_volatility_period_max = running_volatility_tibble$running_volatility_period_max[i]
-  running_volatility_period_mean = running_volatility_tibble$running_volatility_period_mean[i]
+  volatility_factor_stop = running_volatility_tibble$volatility_factor_stop[i]
+  volatility_factor_profit = running_volatility_tibble$volatility_factor_profit[i]
+
+  running_volatility_period_max = 100
+  running_volatility_period_mean = 200
 
   sim_start = sim_date_vector %>% sample(size = 1)
   sim_end = sim_start + dhours(5000)
 
-  Indices_Metals_Bonds[[1]] <-
-    get_db_data_quickly_algo(
-      db_location = db_location,
-      start_date = sim_start  %>% as_date() %>% as.character(),
-      # end_date = as.character(today() + days(30)),
-      end_date = sim_end %>% as_date() %>% as.character(),
-      time_frame = "H1",
-      bid_or_ask = "ask",
-      assets =   assets_to_port
-    ) %>%
-    distinct()
-  Indices_Metals_Bonds[[2]] <-
-    get_db_data_quickly_algo(
-      db_location = db_location,
-      start_date = sim_start  %>% as_date() %>% as.character(),
-      # end_date = as.character(today() + days(30)),
-      end_date = sim_end %>% as_date() %>% as.character(),
-      time_frame = "H1",
-      bid_or_ask = "bid",
-      assets =   assets_to_port
-    ) %>%
-    distinct()
-
-  Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date <= sim_end)
-  Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date <= sim_end)
+  temp_ask <- Indices_Metals_Bonds[[1]] %>% ungroup() %>%  filter(Date <= sim_end, Date >= sim_start)
+  temp_bid <- Indices_Metals_Bonds[[2]] %>% ungroup() %>%  filter(Date <= sim_end, Date >= sim_start)
 
   portfolio_data_train <-
     get_dynamic_stop_prof_returns(
-      Ask_Data = Indices_Metals_Bonds[[1]],
-      Bid_Data = Indices_Metals_Bonds[[2]],
+      Ask_Data = temp_ask,
+      Bid_Data = temp_bid,
       periods_wanted = end_period,
       trade_direction = "Long",
       currency_conversion =currency_conversion,
@@ -198,31 +218,58 @@ for (i in 1:dim(running_volatility_tibble)[1] ) {
     mutate(
       running_volatility_period_max = running_volatility_tibble$running_volatility_period_max[i],
       running_volatility_period_mean = running_volatility_tibble$running_volatility_period_mean[i]
+    )%>%
+    mutate(
+      volatility_factor_stop = running_volatility_tibble$volatility_factor_stop[i],
+      volatility_factor_profit = running_volatility_tibble$volatility_factor_profit[i]
     )
 
 }
 
 temp_reg_data_train <-
-  temp_reg_data_train %>%
+  temp_reg_data_train_list %>%
   map_dfr(bind_rows)
 
+
+training_data_db_con <- connect_db(training_data_db)
+
+# append_table_sql_lite(.data = temp_reg_data_train,
+#                      table_name = "training_data",
+#                      conn = training_data_db_con)
+
+DBI::dbDisconnect(training_data_db_con)
+rm(training_data_db_con)
+gc()
+
+temp_reg_data_train <-
+  DBI::dbGetQuery(conn = training_data_db_con, statement = "SELECT * FROM training_data") %>%
+  mutate(
+    Date = as_datetime(Date, tz = "Australia/Canberra")
+  ) %>%
+  group_by(running_volatility_period_max, running_volatility_period_mean, Asset) %>%
+  slice_sample(n = 500) %>%
+  ungroup()
+
+DBI::dbDisconnect(training_data_db_con)
+rm(training_data_db_con)
+gc()
 
 all_cor_vars <-
   names(temp_reg_data_train) %>%
   keep(~
          str_detect(.x, "auto_cor|brownian|state_space|single_vs_total_return|roll_vol|cumulative_return_1_diff_roll|Bull|Bear")|
-         (.x == "running_volatility_period_max")|
-         (.x == "running_volatility_period_mean") ) %>%
+         (.x == "volatility_factor_stop")|
+         (.x == "volatility_factor_profit") ) %>%
   unlist() %>%
   as.character() %>%
   unique()
 
-rm(portfolio_data_train)
+rm(portfolio_data_train, Indices_Metals_Bonds)
 gc()
 gc()
 
 portfolio_gen_model_no_V3_New(
-  reg_dat = temp_reg_data_train,
+  reg_dat = temp_reg_data_train %>% ungroup() ,
   reg_vars = all_cor_vars,
   training_end_date = training_date,
   Bayes_or_LM = "LM",
