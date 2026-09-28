@@ -50,9 +50,9 @@ asset_list_oanda =
     "CH20_CHF", "ESPIX_EUR",
     "XPT_USD",
     "EUR_AUD", "SOYBN_USD",
-    "US2000_USD", "AUD_JPY",
+    "US2000_USD",
     "XAG_USD", "XAG_EUR", "XAG_CAD", "XAG_AUD", "XAG_GBP", "XAG_JPY", "XAG_SGD", "XAG_CHF",
-    "XAG_NZD", "CN50_USD","XAU_XAG",
+    "XAG_NZD",
     "XAU_USD", "XAU_EUR", "XAU_CAD", "XAU_AUD", "XAU_GBP", "XAU_JPY", "XAU_SGD", "XAU_CHF",
     "XAU_NZD", "CN50_USD","XAU_XAG",
     "BTC_USD", "LTC_USD", "BCH_USD",
@@ -71,18 +71,18 @@ Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "AUD_USD",
-    "AUD_NZD",
-    "NZD_USD"
+    "JP225_USD",
+    "HK33_HKD",
+    "XAU_USD"
   ) %>% unique()
 
 stop_factor_var = 10
-profit_factor_var = 50
+profit_factor_var = 100
 risk_dollar_value_var = 5
 end_period = 132
 trade_direction = "Long"
 end_point_loss = -5
-end_point_profit = 25
+end_point_profit = 100
 
 regression_length = 25000
 direct_return_cols = 24
@@ -103,7 +103,7 @@ cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16)
 periods_to_use_deviation = c(1,10,20,30,40,50)
 mean_periods_deviation = c(50, 100)
 reg_iterations = 1000
-file_name_base_line = "AUD_MULTI_MODEL_"
+file_name_base_line = "ASIAN_EQUITY_MULTI_MODEL_"
 
 Indices_Metals_Bonds[[1]] <-
   get_db_data_quickly_algo(
@@ -437,29 +437,18 @@ tictoc::toc()
 trade_statment <-
   "
 "
-col_to_test <- "predicted_mean"
-col_to_test_mean <- "pred_10000_mean_roll_1000"
-col_to_test_sd <- "pred_10000_sd_roll_1000"
+
 trade_statment <-
   "
-  (pnorm_250_roll_250_perc10 > 0.75 & pnorm_250_roll_250_perc10 < 1 & Asset == 'AUD_NZD')|
-  (pnorm_250_roll_250_perc10 > 0.81 & pnorm_250_roll_250_perc10 < 1 & Asset == 'AUD_USD')|
-  (pnorm_250_roll_250_perc10 > 0.80 & pnorm_250_roll_250_perc10 < 1 & Asset == 'NZD_USD')|
-  (pnorm_100_roll_100 > 0.7 & pnorm_100_roll_100 < 0.8 & Asset == 'AUD_USD')|
-  (pnorm_250_roll_250_perc25 > 0.77 & pnorm_250_roll_250_perc25 < 1 & Asset == 'NZD_USD')|
-  (pnorm_250_roll_250_perc25 > 0.72 & pnorm_250_roll_250_perc25 < 1 & Asset == 'AUD_NZD')|
-  (pnorm_250_port_roll_250 > 0.75 & pnorm_250_port_roll_250 < 0.8 & Asset == 'NZD_USD')|
-  (predicted_40 > 0.1 & predicted_40 < 1.5 & Asset == 'AUD_USD')|
-  (predicted_mean >= pred_10000_mean_roll_1000 + 1.2*pred_10000_sd_roll_1000 &
-  predicted_mean <= pred_10000_mean_roll_1000 + 2*pred_10000_sd_roll_1000 &
-  Asset == 'NZD_USD')|
-  (predicted_mean >= pred_10000_mean_roll_1000 + 1.4*pred_10000_sd_roll_1000 &
-  predicted_mean <= pred_10000_mean_roll_1000 + 2*pred_10000_sd_roll_1000 &
-  Asset == 'AUD_USD')|
-  (predicted_50 >= pred_10000_mean_roll_1000 + 1*pred_10000_sd_roll_1000 &
-  predicted_50 <= pred_10000_mean_roll_1000 + 2.1*pred_10000_sd_roll_1000 &
-  Asset == 'NZD_USD')
+  # (predicted_40 > 0 & predicted_40 < 1000 & Asset == 'WHEAT_USD')|
+  # (predicted_40 > 0 & predicted_40 < 1000 & Asset == 'WTICO_USD')|
+  # (predicted_40 > 0 & predicted_40 < 1000 & Asset == 'SOYBN_USD')|
 
+  (pnorm_1000_port_roll_1000 > 0.62 & pnorm_1000_port_roll_1000 < 1 & Asset == 'WTICO_USD')|
+  (pnorm_100_roll_100 > 0.62 & pnorm_100_roll_100 < 0.8 & Asset == 'SOYBN_USD')|
+  (pnorm_250_roll_250 > 0.77 & pnorm_250_roll_250 < 1 & Asset == 'SOYBN_USD')|
+  (pnorm_250_roll_250_perc25 > 0.6 & pnorm_250_roll_250_perc25 < 0.8 & Asset == 'WHEAT_USD')|
+  (pnorm_250_perc25 > 0.775 & pnorm_250_perc25 < 1 & Asset == 'WTICO_USD')
 "
 
 analyse_performance <-
@@ -507,15 +496,14 @@ analyse_performance %>%
 
 
 # AUC Pred Section --------------------------------------------------------
-# pnorm_250_perc25
-thresh_value = 5
+
 auc_roc_list <- list()
-col_to_test <- "predicted_mean"
-col_to_test_port <- "predicted_mean"
+col_to_test <- "pnorm_250_perc25"
+col_to_test_port <- "pnorm_250_perc25"
 c = 0
 
-for (i in seq(-2.5,10,0.1)) {
-# for (i in seq(0.01,0.99, 0.01)) {
+# for (i in seq(-2.5,15,0.1)) {
+for (i in seq(0.01,0.99, 0.01)) {
   c = c + 1
 
   trade_statment <-
@@ -566,14 +554,14 @@ for (i in seq(-2.5,10,0.1)) {
     ungroup() %>%
     mutate(
       pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
       pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
 
       neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
       neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > thresh_value, 1, 0)
+        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
 
     ) %>%
     summarise(
@@ -599,14 +587,14 @@ for (i in seq(-2.5,10,0.1)) {
     ) %>%
     mutate(
       pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
       pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
 
       neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
       neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > thresh_value, 1, 0)
+        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
 
     ) %>%
     group_by(Asset) %>%
@@ -663,20 +651,16 @@ auc_roc %>%
   group_by(Asset) %>%
   slice_head(n = 1)
 
-auc_roc_filt <-
-  auc_roc %>%
-  filter(threshold >= 0.5)
-
 # AUC Roll Mean Section ---------------------------------------------------
 
 auc_roc_list <- list()
-col_to_test <- "predicted_50"
-col_to_test_mean <- "pred_10000_mean_roll_1000"
-col_to_test_sd <- "pred_10000_sd_roll_1000"
+col_to_test <- "predicted_25"
+col_to_test_mean <- "pred_10000_mean_roll_1000_perc25"
+col_to_test_sd <- "pred_10000_sd_roll_1000_perc25"
 
-col_to_test_port <- "predicted_50"
-col_to_test_mean_port <- "pred_10000_mean_roll_1000"
-col_to_test_sd_port <- "pred_10000_sd_roll_1000"
+col_to_test_port <- "predicted_25"
+col_to_test_mean_port <- "pred_10000_mean_roll_1000_perc25"
+col_to_test_sd_port <- "pred_10000_sd_roll_1000_perc25"
 c = 0
 
 for (i in seq(-1,3, 0.1)) {
@@ -728,14 +712,14 @@ for (i in seq(-1,3, 0.1)) {
     ungroup() %>%
     mutate(
       pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
       pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
 
       neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
       neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > thresh_value, 1, 0)
+        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
 
     ) %>%
     summarise(
@@ -761,14 +745,14 @@ for (i in seq(-1,3, 0.1)) {
     ) %>%
     mutate(
       pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return > 0, 1, 0),
       pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "Long" & Final_Return <= 0, 1, 0),
 
       neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= thresh_value, 1, 0),
+        ifelse(trade_col == "No Trade" & Final_Return <= 0, 1, 0),
       neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > thresh_value, 1, 0)
+        ifelse(trade_col == "No Trade" & Final_Return > 0, 1, 0)
 
     ) %>%
     group_by(Asset) %>%
@@ -822,6 +806,3 @@ auc_roc %>%
   group_by(Asset) %>%
   slice_max(Final_Return)
 
-auc_roc_filt <-
-  auc_roc %>%
-  filter(threshold >= 0)
