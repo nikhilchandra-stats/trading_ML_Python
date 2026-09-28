@@ -65,310 +65,174 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-start_date = "2017-01-01"
+start_date = "2013-01-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()
 
 assets_to_port =
   c(
-    "EUR_JPY",
-    "EUR_USD",
-    "EUR_GBP",
-    "EU50_EUR"
+    "NAS100_USD",
+    "XPT_USD",
+    "USD_ZAR"
   ) %>% unique()
 
-stop_factor_var = 10
-profit_factor_var = 50
-risk_dollar_value_var = 5
+
 end_period = 132
 trade_direction = "Long"
-end_point_loss = -5
-end_point_profit = 25
+slippage_percent = 0
+risk_dollar_value = 5
+volatility_factor_stop = 2
+volatility_factor_profit = 3
+profit_multiple = 1.1
 
 regression_length = 25000
 direct_return_cols = 24
 lag_value_error = end_period + 1
-low_to_price_lengths = c(400)
-cor_period = c(50)
 dependant_var = "Final_Return"
 save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/"
-file_name = "EUR_EXPNDED_ONLY_NON_V3_NEW_MODEL"
-training_date = "2022-02-01"
+file_name = "DYNAMIC_MIXED_NO_V3"
+training_date = "2020-02-01"
 testing_date = as_date(training_date) + months(3)
 
 xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100)
 xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500)
+xtnd_rolling_volatility = c(20,50,60,80,100)
+xtnd_rolling_bull_bear = c(50,100)
 lag_dependant = end_period + 1
 auto_cor_cols = 40
+cor_period = c(50)
 cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16)
-
 periods_to_use_deviation = c(1,10,20,30,40,50)
 mean_periods_deviation = c(50, 100)
 
-Indices_Metals_Bonds[[1]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = as.character(today() + days(30)),
-    time_frame = "H1",
-    bid_or_ask = "ask",
-    assets =   assets_to_port
-  ) %>%
-  distinct()
-Indices_Metals_Bonds[[2]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = as.character(today() + days(30)),
-    time_frame = "H1",
-    bid_or_ask = "bid",
-    assets =   assets_to_port
-  ) %>%
-  distinct()
 
-Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date <= training_date)
-Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date <= training_date)
+final_sim_date <-
+ as_datetime(training_date, tz = "Australia/Canberra") - dhours(5000)
+sim_date_vector <-
+  seq(as_datetime(start_date, tz = "Australia/Canberra"), final_sim_date, "hours")
 
-portfolio_data_train <-
-  get_dynamic_stop_prof_returns(
-    Ask_Data = Indices_Metals_Bonds[[1]],
-    Bid_Data = Indices_Metals_Bonds[[2]],
-    periods_wanted = end_period,
-    trade_direction = "Long",
-    currency_conversion =currency_conversion,
-    asset_infor = asset_infor,
-    slippage_percent = 0,
-    risk_dollar_value = 5,
-    volatility_factor_stop = 2,
-    volatility_factor_profit = 2,
-    profit_multiple = 1.1,
-    running_volatility_period_max = 20,
-    running_volatility_period_mean = 100
+running_volatility_period_max_vec <-
+  tibble(running_volatility_period_max = seq(20,300,20))
+
+running_volatility_tibble <-
+  c(100, 150, 200, 250, 300, 350, 400) %>%
+  map_dfr(
+    ~
+      running_volatility_period_max_vec %>%
+      mutate(
+        running_volatility_period_mean = .x
+      )
   )
 
+temp_reg_data_train_list <-list()
 
-get_dynamic_portfolio_no_V3 <-
-  function(
-    portfolio_data = portfolio_data_train,
-    xtnd_ss_cols_PR_cols = c(1,2,5,10),
-    roll_period_state_space = 500,
-    xtnd_ss_cols_BR_periods = c(100,200,300),
-    xtnd_rolling_volatility = c(20,50,60,80,100),
-    lag_dependant = end_period + 1,
-    auto_cor_cols = 25,
-    cor_skip_periods = c(2,4,5,6),
-    cor_period = 50,
-    periods_to_use_deviation = c(1,3,4),
-    mean_periods_deviation = c(50, 100)
-    ) {
+for (i in 1:dim(running_volatility_tibble)[1] ) {
 
-    total_reg_data <-
-      portfolio_data %>%
-      ungroup() %>%
-      distinct(Date, Asset)
+  running_volatility_period_max = running_volatility_tibble$running_volatility_period_max[i]
+  running_volatility_period_mean = running_volatility_tibble$running_volatility_period_mean[i]
 
-    total_return_portfolio <-
-      portfolio_data %>%
-      ungroup() %>%
-      group_by(Date) %>%
-      summarise(
-        across(.cols = c(Final_Return, contains("period_return_")),
-               .fns = ~ sum(., na.rm = T))
-      ) %>%
-      ungroup() %>%
-      mutate(Asset = "Portfolio") %>%
-      mutate(across(.cols = contains("period_return_"), .fns = ~ as.numeric(.)))
+  sim_start = sim_date_vector %>% sample(size = 1)
+  sim_end = sim_start + dhours(5000)
 
-    deviation_data <-
-      portfolio_get_deviation_from_total(
-        total_return_portfolio = total_return_portfolio,
-        portfolio_data = portfolio_data,
-        periods_to_use_deviation = periods_to_use_deviation,
-        mean_periods_deviation = mean_periods_deviation
-      )
+  Indices_Metals_Bonds[[1]] <-
+    get_db_data_quickly_algo(
+      db_location = db_location,
+      start_date = sim_start  %>% as_date() %>% as.character(),
+      # end_date = as.character(today() + days(30)),
+      end_date = sim_end %>% as_date() %>% as.character(),
+      time_frame = "H1",
+      bid_or_ask = "ask",
+      assets =   assets_to_port
+    ) %>%
+    distinct()
+  Indices_Metals_Bonds[[2]] <-
+    get_db_data_quickly_algo(
+      db_location = db_location,
+      start_date = sim_start  %>% as_date() %>% as.character(),
+      # end_date = as.character(today() + days(30)),
+      end_date = sim_end %>% as_date() %>% as.character(),
+      time_frame = "H1",
+      bid_or_ask = "bid",
+      assets =   assets_to_port
+    ) %>%
+    distinct()
 
-    req_ss_extnd_cols_PR <-
-      xtnd_ss_cols_PR_cols %>%
-      map(
-        ~
-          glue::glue(
-            "
-          state_space_data_PR_{.x} <-
-              portfolio_LM_state_space(
-                  portfolio_data = portfolio_data,
-                  state_space_col = 'period_return_{.x}_Price' ,
-                  required_lag = {.x}, #Does not need a plus 1 its built in
-                  roll_period_state_space = {roll_period_state_space}
-                )"
-          )
-      )  %>%
-      unlist() %>%
-      as.character() %>%
-      paste(collapse = "\n")
+  Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date <= sim_end)
+  Indices_Metals_Bonds[[2]] <- Indices_Metals_Bonds[[2]] %>% filter(Date <= sim_end)
 
-    req_ss_extnd_cols_PR_names <-
-      xtnd_ss_cols_PR_cols %>%
-      map(
-        ~ glue::glue("state_space_data_PR_{.x}")
-      ) %>%
-      unlist() %>%
-      as.character() %>%
-      paste(collapse = ",")
-
-    req_ss_extnd_cols_PR_list <-
-      glue::glue("All_state_space_data_PR <- list({req_ss_extnd_cols_PR_names})")
-
-    rm_statement <- glue::glue("rm({req_ss_extnd_cols_PR_names})")
-
-    eval(parse(text = req_ss_extnd_cols_PR))
-    eval(parse(text = req_ss_extnd_cols_PR_list))
-    eval(parse(text = rm_statement))
-    gc()
-
-    All_state_space_data_PR <-
-      All_state_space_data_PR %>%
-      reduce(left_join)
-
-    All_state_space_data_PR <-
-      All_state_space_data_PR %>%
-      dplyr::select(Date, Asset, contains("state_space"))
-
-    message("Made it to State SPace End line 2750")
-
-    All_state_space_data_PR <- All_state_space_data_PR
-
-    total_reg_data <-
-      total_reg_data %>%
-      left_join(All_state_space_data_PR %>% ungroup()) %>%
-      left_join(deviation_data %>% ungroup())
-
-    rm(deviation_data)
-
-    message("Made it to State SPace joined with TOtal Reg End line 2771")
-
-    req_BR_extnd_cols_PR <-
-      xtnd_ss_cols_BR_periods %>%
-      map(
-        ~ glue::glue("
-          brownian_tech_data_{.x} <-
-                portfolio_LM_brownian_checks(portfolio_data = portfolio_data,
-                                             brownian_period = {.x},
-                                             col_to_use = 'period_return_1_Price',
-                                             lag_period_to_use = 1)
-          brownian_tech_data_FR_{.x} <-
-                portfolio_LM_brownian_checks(portfolio_data = portfolio_data,
-                                             brownian_period = {.x},
-                                             col_to_use = 'Final_Return',
-                                             lag_period_to_use = {lag_dependant} )"
-        )
-      ) %>%
-      unlist() %>%
-      as.character() %>%
-      paste(collapse = "\n")
-
-    req_BR_extnd_cols_PR_names <-
-      xtnd_ss_cols_BR_periods %>%
-      map(
-        ~ glue::glue("brownian_tech_data_{.x}, brownian_tech_data_FR_{.x}")
-      ) %>%
-      unlist() %>%
-      as.character() %>%
-      paste(collapse = ",")
-
-    req_BR_extnd_cols_PR_list <-
-      glue::glue("All_BR_data_PR <- list({req_BR_extnd_cols_PR_names})")
-
-    rm_statement <- glue::glue("rm({req_BR_extnd_cols_PR_names})")
-
-    eval(parse(text = req_BR_extnd_cols_PR))
-    message("Made it to Brownian First Statement req_BR_extnd_cols_PR line 2808")
-    eval(parse(text = req_BR_extnd_cols_PR_list))
-    message("Made it to Brownian Second Statement req_BR_extnd_cols_PR line 2810")
-    eval(parse(text = rm_statement))
-    message("Made it to Brownian Third Statement req_BR_extnd_cols_PR line 2812")
-    gc()
-
-    All_BR_data_PR <-
-      All_BR_data_PR %>%
-      reduce(left_join)
-
-    message("Made it to All_BR_data_PR statement line 2819")
-
-    total_reg_data <-
-      total_reg_data %>%
-      left_join(All_BR_data_PR %>%
-                  dplyr::select(Date, Asset, contains("brownian"))
-      )
-
-    message("Made it to total_reg_data statement line 2827")
-
-    rm(All_state_space_data_PR, All_BR_data_PR)
+  portfolio_data_train <-
+    get_dynamic_stop_prof_returns(
+      Ask_Data = Indices_Metals_Bonds[[1]],
+      Bid_Data = Indices_Metals_Bonds[[2]],
+      periods_wanted = end_period,
+      trade_direction = "Long",
+      currency_conversion =currency_conversion,
+      asset_infor = asset_infor,
+      slippage_percent = slippage_percent,
+      risk_dollar_value = risk_dollar_value,
+      volatility_factor_stop = volatility_factor_stop,
+      volatility_factor_profit = volatility_factor_profit,
+      profit_multiple = profit_multiple,
+      running_volatility_period_max = running_volatility_period_max,
+      running_volatility_period_mean = running_volatility_period_mean
+    )
 
 
-    vola_roll_max_statements <-
-      xtnd_rolling_volatility %>%
-      map(
-        ~
-          glue::glue("roll_vol_{.x}_max = slider::slide_dbl(.x = ( lag(Bid_High) - lag(Ask_Price) ), .f = ~ (max(cumsum(diff(.x)), na.rm = T)) ,.before = {.x})")
-      ) %>%
-      unlist()
+  temp_reg_data_train_list[[i]] <-
+    get_dynamic_portfolio_no_V3(
+      portfolio_data = portfolio_data_train,
+      xtnd_ss_cols_PR_cols = xtnd_ss_cols_PR_cols,
+      xtnd_ss_cols_BR_periods = xtnd_ss_cols_BR_periods,
+      xtnd_rolling_volatility = xtnd_rolling_volatility,
+      xtnd_rolling_bull_bear = xtnd_rolling_bull_bear,
+      lag_dependant = lag_dependant,
+      auto_cor_cols = auto_cor_cols,
+      cor_skip_periods = cor_skip_periods,
+      cor_period = cor_period,
+      periods_to_use_deviation = periods_to_use_deviation,
+      mean_periods_deviation = mean_periods_deviation
+    ) %>%
+    ungroup() %>%
+    filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.) & !is.nan(.) )) %>%
+    slice_sample(n = 2500) %>%
+    mutate(
+      running_volatility_period_max = running_volatility_tibble$running_volatility_period_max[i],
+      running_volatility_period_mean = running_volatility_tibble$running_volatility_period_mean[i]
+    )
 
-    vola_roll_min_statements <-
-      xtnd_rolling_volatility %>%
-      map(
-        ~
-          glue::glue("roll_vol_{.x}_min = slider::slide_dbl(.x = (lag(Ask_Price) - lag(Bid_Low)), .f = ~ (min(cumsum(diff(.x)), na.rm = T)) ,.before = {.x})")
+}
 
-      ) %>%
-      unlist()
+temp_reg_data_train <-
+  temp_reg_data_train %>%
+  map_dfr(bind_rows)
 
-    vola_roll_all <-
-      list(
-        vola_roll_max_statements,
-        vola_roll_min_statements
-      ) %>%
-      unlist() %>%
-      paste(collapse = ",")
 
-    vola_roll_all_mutate <-
-      glue::glue("portfolio_data %>%
-                   group_by(Asset) %>%
-                   arrange(Date, .by_group = TRUE) %>%
-                   group_by(Asset) %>%
-                   mutate({vola_roll_all}) %>%
-                   dplyr::select(Date, Asset, contains('roll_vol_')) ")
+all_cor_vars <-
+  names(temp_reg_data_train) %>%
+  keep(~
+         str_detect(.x, "auto_cor|brownian|state_space|single_vs_total_return|roll_vol|cumulative_return_1_diff_roll|Bull|Bear")|
+         (.x == "running_volatility_period_max")|
+         (.x == "running_volatility_period_mean") ) %>%
+  unlist() %>%
+  as.character() %>%
+  unique()
 
-    all_vol_data <- eval(parse(text = vola_roll_all_mutate))
+rm(portfolio_data_train)
+gc()
+gc()
 
-    total_reg_data <-
-      total_reg_data %>%
-      left_join(all_vol_data %>%
-                  ungroup() %>%
-                  dplyr::select(Date, Asset, contains("roll_vol_"))
-      )
+portfolio_gen_model_no_V3_New(
+  reg_dat = temp_reg_data_train,
+  reg_vars = all_cor_vars,
+  training_end_date = training_date,
+  Bayes_or_LM = "LM",
+  save_path = save_location,
+  dependant_var = "Final_Return",
+  sig_thresh_LM = 1,
+  file_name = file_name,
+  reg_samples = 100000
+)
 
-    rm(all_vol_data)
-    gc()
-
-    bull_bear_data <-
-      get_bull_bear_rolling(
-        portfolio_data = portfolio_data,
-        roll_periods = c(50,100,200)
-      )
-
-    total_reg_data <-
-      total_reg_data %>%
-      left_join(
-        bull_bear_data %>%
-          ungroup() %>%
-          dplyr::select(Date, Asset, contains("cumulative"), contains("Bull"), contains("Bear"))
-      )
-
-    rm(bull_bear_data)
-    gc()
-
-    return(total_reg_data)
-
-  }
-
+rm(temp_reg_data_train)
+gc()
 

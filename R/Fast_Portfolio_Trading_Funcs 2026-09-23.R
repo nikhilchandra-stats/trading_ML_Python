@@ -366,6 +366,264 @@ get_dynamic_stop_prof_returns <-
 
   }
 
+#' get_dynamic_portfolio_no_V3
+#'
+#' @param portfolio_data
+#' @param xtnd_ss_cols_PR_cols
+#' @param roll_period_state_space
+#' @param xtnd_ss_cols_BR_periods
+#' @param xtnd_rolling_volatility
+#' @param xtnd_rolling_bull_bear
+#' @param lag_dependant
+#' @param auto_cor_cols
+#' @param cor_skip_periods
+#' @param cor_period
+#' @param periods_to_use_deviation
+#' @param mean_periods_deviation
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_dynamic_portfolio_no_V3 <-
+  function(
+    portfolio_data = portfolio_data_train,
+    xtnd_ss_cols_PR_cols = c(1,2,5,10),
+    roll_period_state_space = 500,
+    xtnd_ss_cols_BR_periods = c(100,200,300),
+    xtnd_rolling_volatility = c(20,50,60,80,100),
+    xtnd_rolling_bull_bear = c(50,100),
+    lag_dependant = end_period + 1,
+    auto_cor_cols = 25,
+    cor_skip_periods = c(2,4,5,6),
+    cor_period = 50,
+    periods_to_use_deviation = c(1,3,4),
+    mean_periods_deviation = c(50, 100)
+  ) {
+
+    total_reg_data <-
+      portfolio_data %>%
+      ungroup() %>%
+      distinct(Date, Asset)
+
+    total_return_portfolio <-
+      portfolio_data %>%
+      ungroup() %>%
+      group_by(Date) %>%
+      summarise(
+        across(.cols = c(Final_Return, contains("period_return_")),
+               .fns = ~ sum(., na.rm = T))
+      ) %>%
+      ungroup() %>%
+      mutate(Asset = "Portfolio") %>%
+      mutate(across(.cols = contains("period_return_"), .fns = ~ as.numeric(.)))
+
+    deviation_data <-
+      portfolio_get_deviation_from_total(
+        total_return_portfolio = total_return_portfolio,
+        portfolio_data = portfolio_data,
+        periods_to_use_deviation = periods_to_use_deviation,
+        mean_periods_deviation = mean_periods_deviation
+      )
+
+    req_ss_extnd_cols_PR <-
+      xtnd_ss_cols_PR_cols %>%
+      map(
+        ~
+          glue::glue(
+            "
+          state_space_data_PR_{.x} <-
+              portfolio_LM_state_space(
+                  portfolio_data = portfolio_data,
+                  state_space_col = 'period_return_{.x}_Price' ,
+                  required_lag = {.x}, #Does not need a plus 1 its built in
+                  roll_period_state_space = {roll_period_state_space}
+                )"
+          )
+      )  %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = "\n")
+
+    req_ss_extnd_cols_PR_names <-
+      xtnd_ss_cols_PR_cols %>%
+      map(
+        ~ glue::glue("state_space_data_PR_{.x}")
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = ",")
+
+    req_ss_extnd_cols_PR_list <-
+      glue::glue("All_state_space_data_PR <- list({req_ss_extnd_cols_PR_names})")
+
+    rm_statement <- glue::glue("rm({req_ss_extnd_cols_PR_names})")
+
+    eval(parse(text = req_ss_extnd_cols_PR))
+    eval(parse(text = req_ss_extnd_cols_PR_list))
+    eval(parse(text = rm_statement))
+    gc()
+
+    All_state_space_data_PR <-
+      All_state_space_data_PR %>%
+      reduce(left_join)
+
+    All_state_space_data_PR <-
+      All_state_space_data_PR %>%
+      dplyr::select(Date, Asset, contains("state_space"))
+
+    message("Made it to State SPace End line 2750")
+
+    All_state_space_data_PR <- All_state_space_data_PR
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(All_state_space_data_PR %>% ungroup()) %>%
+      left_join(deviation_data %>% ungroup())
+
+    rm(deviation_data)
+
+    message("Made it to State SPace joined with TOtal Reg End line 2771")
+
+    req_BR_extnd_cols_PR <-
+      xtnd_ss_cols_BR_periods %>%
+      map(
+        ~ glue::glue("
+          brownian_tech_data_{.x} <-
+                portfolio_LM_brownian_checks(portfolio_data = portfolio_data,
+                                             brownian_period = {.x},
+                                             col_to_use = 'period_return_1_Price',
+                                             lag_period_to_use = 1)
+          brownian_tech_data_FR_{.x} <-
+                portfolio_LM_brownian_checks(portfolio_data = portfolio_data,
+                                             brownian_period = {.x},
+                                             col_to_use = 'Final_Return',
+                                             lag_period_to_use = {lag_dependant} )"
+        )
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = "\n")
+
+    req_BR_extnd_cols_PR_names <-
+      xtnd_ss_cols_BR_periods %>%
+      map(
+        ~ glue::glue("brownian_tech_data_{.x}, brownian_tech_data_FR_{.x}")
+      ) %>%
+      unlist() %>%
+      as.character() %>%
+      paste(collapse = ",")
+
+    req_BR_extnd_cols_PR_list <-
+      glue::glue("All_BR_data_PR <- list({req_BR_extnd_cols_PR_names})")
+
+    rm_statement <- glue::glue("rm({req_BR_extnd_cols_PR_names})")
+
+    eval(parse(text = req_BR_extnd_cols_PR))
+    message("Made it to Brownian First Statement req_BR_extnd_cols_PR line 2808")
+    eval(parse(text = req_BR_extnd_cols_PR_list))
+    message("Made it to Brownian Second Statement req_BR_extnd_cols_PR line 2810")
+    eval(parse(text = rm_statement))
+    message("Made it to Brownian Third Statement req_BR_extnd_cols_PR line 2812")
+    gc()
+
+    All_BR_data_PR <-
+      All_BR_data_PR %>%
+      reduce(left_join)
+
+    message("Made it to All_BR_data_PR statement line 2819")
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(All_BR_data_PR %>%
+                  dplyr::select(Date, Asset, contains("brownian"))
+      )
+
+    message("Made it to total_reg_data statement line 2827")
+
+    rm(All_state_space_data_PR, All_BR_data_PR)
+
+
+    vola_roll_max_statements <-
+      xtnd_rolling_volatility %>%
+      map(
+        ~
+          glue::glue("roll_vol_{.x}_max = slider::slide_dbl(.x = ( lag(Bid_High) - lag(Ask_Price) ), .f = ~ (max(cumsum(diff(.x)), na.rm = T)) ,.before = {.x})")
+      ) %>%
+      unlist()
+
+    vola_roll_min_statements <-
+      xtnd_rolling_volatility %>%
+      map(
+        ~
+          glue::glue("roll_vol_{.x}_min = slider::slide_dbl(.x = (lag(Ask_Price) - lag(Bid_Low)), .f = ~ (min(cumsum(diff(.x)), na.rm = T)) ,.before = {.x})")
+
+      ) %>%
+      unlist()
+
+    vola_roll_all <-
+      list(
+        vola_roll_max_statements,
+        vola_roll_min_statements
+      ) %>%
+      unlist() %>%
+      paste(collapse = ",")
+
+    vola_roll_all_mutate <-
+      glue::glue("portfolio_data %>%
+                   group_by(Asset) %>%
+                   arrange(Date, .by_group = TRUE) %>%
+                   group_by(Asset) %>%
+                   mutate({vola_roll_all}) %>%
+                   dplyr::select(Date, Asset, contains('roll_vol_')) ")
+
+    all_vol_data <- eval(parse(text = vola_roll_all_mutate))
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(all_vol_data %>%
+                  ungroup() %>%
+                  dplyr::select(Date, Asset, contains("roll_vol_"))
+      )
+
+    rm(all_vol_data)
+    gc()
+
+    bull_bear_data <-
+      get_bull_bear_rolling(
+        portfolio_data = portfolio_data,
+        roll_periods = xtnd_rolling_bull_bear
+      )
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(
+        bull_bear_data %>%
+          ungroup() %>%
+          dplyr::select(Date, Asset, contains("cumulative"), contains("Bull"), contains("Bear"))
+      )
+
+    rm(bull_bear_data)
+    gc()
+
+    Final_Returns <-
+      portfolio_data %>%
+      distinct(Date, Asset, Final_Return)
+
+    message("Made it to Final_Returns statement line 2878")
+
+    total_reg_data <-
+      total_reg_data %>%
+      left_join(Final_Returns)
+
+    message("Made it to total_reg_data statement line 2884")
+
+    return(total_reg_data)
+
+  }
+
+
+
 
 #' get_post_no_V3_probs
 #'
