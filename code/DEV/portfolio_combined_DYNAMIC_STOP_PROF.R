@@ -136,10 +136,10 @@ sim_date_vector <-
   seq(as_datetime(start_date, tz = "Australia/Canberra"), final_sim_date, "hours")
 
 volatility_factor_stop_vec <-
-  tibble(volatility_factor_stop = c(1,3,5,7,9))
+  tibble(volatility_factor_stop = c(1,3,5,7,9, 11))
 
 running_volatility_tibble <-
-  c(1,3,5,7,9) %>%
+  c(1,3,5,7,9, 11) %>%
   map_dfr(
     ~
       volatility_factor_stop_vec %>%
@@ -149,7 +149,7 @@ running_volatility_tibble <-
   )
 
 running_volatility_tibble <-
-  c(20,100) %>%
+  c(20,100,200) %>%
   map_dfr(
     ~
       running_volatility_tibble %>%
@@ -259,7 +259,9 @@ all_cor_vars <-
   keep(~
          str_detect(.x, "auto_cor|brownian|state_space|single_vs_total_return|roll_vol|cumulative_return_1_diff_roll|Bull|Bear")|
          (.x == "volatility_factor_stop")|
-         (.x == "volatility_factor_profit") ) %>%
+         (.x == "volatility_factor_profit")|
+         (.x == "running_volatility_period_max")|
+         (.x == "running_volatility_period_mean") ) %>%
   unlist() %>%
   as.character() %>%
   unique()

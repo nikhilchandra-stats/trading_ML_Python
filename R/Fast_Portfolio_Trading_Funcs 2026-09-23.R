@@ -102,6 +102,15 @@ fast_return_estimates_atomic <-
       return(prof_point)
     }
 
+
+    if(return_col == "stop_value") {
+      return(stop_value)
+    }
+
+    if(return_col == "profit_value") {
+      return(profit_value)
+    }
+
     if(return_col == 'adjusted_conversion') {
       return(adjusted_conversion)
     }
@@ -245,6 +254,37 @@ get_dynamic_stop_prof_returns <-
             asset_infor = asset_infor,
             min_volume_only = FALSE,
             return_col = "prof_point"
+          ),
+
+
+        stop_value =
+          fast_return_estimates_atomic(
+            Asset = Asset,
+            risk_dollar_value = risk_dollar_value,
+            Asset_Price = Ask_Price,
+            stop_distance = abs(running_volatility_stop),
+            profit_distance = profit_multiple*abs(running_volatility_prof),
+            trade_col = trade_direction,
+            slippage_percent = slippage_percent,
+            currency_conversion =currency_conversion,
+            asset_infor = asset_infor,
+            min_volume_only = FALSE,
+            return_col = "stop_value"
+          ),
+
+        profit_value =
+          fast_return_estimates_atomic(
+            Asset = Asset,
+            risk_dollar_value = risk_dollar_value,
+            Asset_Price = Ask_Price,
+            stop_distance = abs(running_volatility_stop),
+            profit_distance = profit_multiple*abs(running_volatility_prof),
+            trade_col = trade_direction,
+            slippage_percent = slippage_percent,
+            currency_conversion =currency_conversion,
+            asset_infor = asset_infor,
+            min_volume_only = FALSE,
+            return_col = "profit_value"
           ),
 
         adjusted_conversion =
@@ -1008,7 +1048,7 @@ generate_post_model <-
 
   }
 
-portfolio_Dynamic_no_V3_algo_variant <-
+portfolio_Dynamic_no_V3_algo_variant_Loop <-
   function(
     assets_to_port =
       c(
@@ -1050,35 +1090,69 @@ portfolio_Dynamic_no_V3_algo_variant <-
     cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
     periods_to_use_deviation = c(1,10,20,30,40,50),
     mean_periods_deviation = c(50, 100),
+    run_additional_calc = FALSE,
+    last_date = NULL,
+
     estimate_trades = FALSE,
     trade_statement = NULL,
     current_time = now() %>% as_datetime()
+
   ) {
 
     if(is.null(testing_date)) { testing_date <- training_date}
 
     Indices_Metals_Bonds <- list()
 
-    Indices_Metals_Bonds[[1]] <-
-      get_db_data_quickly_algo(
-        db_location = db_location,
-        start_date = start_date,
-        end_date = as.character(today() + days(30)),
-        time_frame = "H1",
-        bid_or_ask = "ask",
-        assets =   assets_to_port
-      ) %>%
-      distinct()
-    Indices_Metals_Bonds[[2]] <-
-      get_db_data_quickly_algo(
-        db_location = db_location,
-        start_date = start_date,
-        end_date = as.character(today() + days(30)),
-        time_frame = "H1",
-        bid_or_ask = "bid",
-        assets =   assets_to_port
-      ) %>%
-      distinct()
+    if(is.null(last_date)){
+
+      Indices_Metals_Bonds[[1]] <-
+        get_db_data_quickly_algo(
+          db_location = db_location,
+          start_date = start_date,
+          end_date = as.character(today() + days(30)),
+          time_frame = "H1",
+          bid_or_ask = "ask",
+          assets =   assets_to_port
+        ) %>%
+        distinct()
+      Indices_Metals_Bonds[[2]] <-
+        get_db_data_quickly_algo(
+          db_location = db_location,
+          start_date = start_date,
+          end_date = as.character(today() + days(30)),
+          time_frame = "H1",
+          bid_or_ask = "bid",
+          assets =   assets_to_port
+        ) %>%
+        distinct()
+
+    } else {
+
+      Indices_Metals_Bonds[[1]] <-
+        get_db_data_quickly_algo(
+          db_location = db_location,
+          start_date = start_date,
+          # end_date = as.character(today() + days(30)),
+          end_date = last_date,
+          time_frame = "H1",
+          bid_or_ask = "ask",
+          assets =   assets_to_port
+        ) %>%
+        distinct()
+      Indices_Metals_Bonds[[2]] <-
+        get_db_data_quickly_algo(
+          db_location = db_location,
+          start_date = start_date,
+          # end_date = as.character(today() + days(30)),
+          end_date = last_date,
+          time_frame = "H1",
+          bid_or_ask = "bid",
+          assets =   assets_to_port
+        ) %>%
+        distinct()
+
+    }
+
 
 
     Indices_Metals_Bonds[[1]] <- Indices_Metals_Bonds[[1]] %>% filter(Date > testing_date)
@@ -1171,6 +1245,16 @@ portfolio_Dynamic_no_V3_algo_variant <-
       message("temp_reg_data_test Returns TEst calc End")
 
       gc()
+      needed_port_join_on <-
+        portfolio_data_test %>%
+        ungroup() %>%
+        dplyr::select(Date, Asset, volume_adj,
+                      stop_value, profit_value,
+                      volatility_factor_profit,
+                      volatility_factor_stop,
+                      running_volatility_period_max,
+                      running_volatility_period_mean)
+
       rm(portfolio_data_test)
       gc()
 
@@ -1242,7 +1326,8 @@ portfolio_Dynamic_no_V3_algo_variant <-
 
 
         ) %>%
-        ungroup()
+        ungroup() %>%
+        left_join(needed_port_join_on)
 
       rm(temp_reg_data_test)
       gc()
@@ -1255,6 +1340,11 @@ portfolio_Dynamic_no_V3_algo_variant <-
     model_predicted_data <-
       model_predicted_data %>%
       map_dfr(bind_rows)
+
+    if(run_additional_calc == TRUE) {
+      model_predicted_data <-
+        additional_error_rate_calc(model_predicted_data_raw = model_predicted_data)
+    }
 
     if(estimate_trades == TRUE & !is.null(trade_statement)) {
 
@@ -1362,5 +1452,3 @@ portfolio_Dynamic_no_V3_algo_variant <-
 
 
   }
-
-

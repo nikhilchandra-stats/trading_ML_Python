@@ -68,74 +68,87 @@ db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Mos
 
 assets_to_port =
   c(
-    "NAS100_USD",
-    "XPT_USD",
-    "CH20_CHF"
+    "FR40_EUR",
+    "BTC_USD",
+    "CN50_USD"
   ) %>% unique()
 
-model_predicted_data_list <- list()
+model_predicted_data_raw <- list()
+date_sequences <-
+  tibble(
+    start_date = c("2026-02-01","2025-06-01", "2025-01-01",
+                   "2024-06-01", "2024-01-01", "2023-06-01", "2023-01-01",
+                   "2022-06-01", "2022-01-01", "2021-06-01")
+  ) %>%
+  mutate(
+    start_date = as_date(start_date),
+    end_date = start_date + dhours(5000)
+  )
 
-training_date = "2022-02-01"
-testing_date = training_date
-
-final_sim_date <-
-  as_datetime(today(), tz = "Australia/Canberra") - dhours(10000)
-sim_date_vector <-
-  seq(as_datetime(testing_date, tz = "Australia/Canberra"), final_sim_date, "hours")
-
-for (j in 1:5) {
+for (i in 1:dim(date_sequences)[1] ) {
 
   tictoc::tic()
-    model_predicted_data_list[[i]] <-
-      portfolio_Dynamic_no_V3_algo_variant(
-        assets_to_port =
-          c(
-            "NAS100_USD",
-            "XPT_USD",
-            "CH20_CHF"
-          ) %>% unique(),
-        currency_conversion = currency_conversion,
-        asset_infor = asset_infor,
-        db_location = db_location,
-        start_date = "2025-01-01",
-        end_period = 132,
-        trade_direction = "Long",
-        slippage_percent = 0,
-        risk_dollar_value = 5,
-        volatility_factor_stop = c(1,5,9),
-        volatility_factor_profit = c(2,10,15),
-        profit_multiple = 1.1,
-        running_volatility_period_max = c(20,100),
-        running_volatility_period_mean = c(100,200),
+  model_predicted_data_raw[[i]] <-
+    portfolio_Dynamic_no_V3_algo_variant_Loop(
+      assets_to_port =
+        c(
+          "FR40_EUR",
+          "BTC_USD",
+          "CN50_USD"
+        ) %>% unique(),
+      currency_conversion = currency_conversion,
+      asset_infor = asset_infor,
+      db_location = db_location,
+      # start_date = "2025-01-01",
+      start_date = date_sequences$start_date[i] %>% as.character(),
+      end_period = 132,
+      trade_direction = "Long",
+      slippage_percent = 0,
+      risk_dollar_value = 5,
+      volatility_factor_stop = c(1,3,6,12),
+      volatility_factor_profit = c(1,3,6,12),
+      profit_multiple = 1.1,
+      running_volatility_period_max = c(20),
+      running_volatility_period_mean = c(100),
 
-        regression_length = 25000,
-        direct_return_cols = 24,
-        lag_value_error = 132 + 1,
+      regression_length = 25000,
+      direct_return_cols = 24,
+      lag_value_error = 132 + 1,
 
-        dependant_var = "Final_Return",
-        save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/",
-        file_name = "DYNAMIC_MIXED_NO_V3",
-        training_date = training_date,
-        testing_date =testing_date,
+      dependant_var = "Final_Return",
+      save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/",
+      file_name = "DYNAMIC_MIXED_NO_V3",
+      training_date = "2020-02-01",
+      # testing_date ="2025-01-01",
+      testing_date = date_sequences$start_date[i] %>% as.character(),
 
-        xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100),
-        xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
-        xtnd_rolling_volatility = c(20,50,60,80,100),
-        xtnd_rolling_bull_bear = c(50,100),
-        lag_dependant = 132 + 1,
-        auto_cor_cols = 40,
-        cor_period = c(50),
-        cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
-        periods_to_use_deviation = c(1,10,20,30,40,50),
-        mean_periods_deviation = c(50, 100),
+      xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100),
+      xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
+      xtnd_rolling_volatility = c(20,50,60,80,100),
+      xtnd_rolling_bull_bear = c(50,100),
+      lag_dependant = 132 + 1,
+      auto_cor_cols = 40,
+      cor_period = c(50),
+      cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
+      periods_to_use_deviation = c(1,10,20,30,40,50),
+      mean_periods_deviation = c(50, 100),
+      last_date = date_sequences$end_date[i] %>% as.character(),
 
-        estimate_trades = FALSE,
-        trade_statement = NULL
-      )
+      estimate_trades = FALSE,
+      trade_statement = NULL
+    )
   tictoc::toc()
 
-
 }
+
+
+model_predicted_data <-
+  model_predicted_data_raw %>%
+  group_by(Date, Asset) %>%
+  slice_max(predicted) %>%
+  ungroup() %>%
+  additional_error_rate_calc() %>%
+  dplyr::select(Date, Asset, contains('pnorm'), Final_Return)
 
 model_predicted_data<-
   model_predicted_data_list %>%
