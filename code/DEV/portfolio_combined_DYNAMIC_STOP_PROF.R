@@ -233,7 +233,7 @@ temp_reg_data_train <-
 
 training_data_db_con <- connect_db(training_data_db)
 
-# append_table_sql_lite(.data = temp_reg_data_train,
+# write_table_sql_lite(.data = temp_reg_data_train,
 #                      table_name = "training_data",
 #                      conn = training_data_db_con)
 
@@ -241,13 +241,15 @@ DBI::dbDisconnect(training_data_db_con)
 rm(training_data_db_con)
 gc()
 
+
 temp_reg_data_train <-
   DBI::dbGetQuery(conn = training_data_db_con, statement = "SELECT * FROM training_data") %>%
   mutate(
     Date = as_datetime(Date, tz = "Australia/Canberra")
   ) %>%
-  group_by(running_volatility_period_max, running_volatility_period_mean, Asset) %>%
-  slice_sample(n = 500) %>%
+  group_by(running_volatility_period_max, running_volatility_period_mean,
+           volatility_factor_profit, volatility_factor_stop ,Asset) %>%
+  slice_sample(n = 700) %>%
   ungroup()
 
 DBI::dbDisconnect(training_data_db_con)
@@ -259,7 +261,9 @@ all_cor_vars <-
   keep(~
          str_detect(.x, "auto_cor|brownian|state_space|single_vs_total_return|roll_vol|cumulative_return_1_diff_roll|Bull|Bear")|
          (.x == "volatility_factor_stop")|
-         (.x == "volatility_factor_profit") ) %>%
+         (.x == "volatility_factor_profit")|
+         (.x == "running_volatility_period_max")|
+         (.x == "running_volatility_period_mean") ) %>%
   unlist() %>%
   as.character() %>%
   unique()

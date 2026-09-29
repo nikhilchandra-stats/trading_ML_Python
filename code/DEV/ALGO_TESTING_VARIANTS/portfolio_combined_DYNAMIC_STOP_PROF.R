@@ -73,49 +73,21 @@ assets_to_port =
     "CH20_CHF"
   ) %>% unique()
 
-volatility_factor_stop_vec <-
-  tibble(volatility_factor_stop = c(1,3,5,7,9))
-
-running_volatility_tibble <-
-  c(1,3,5,7,9) %>%
-  map_dfr(
-    ~
-      volatility_factor_stop_vec %>%
-      mutate(
-        volatility_factor_profit = .x
-      )
+model_predicted_data_raw <- list()
+date_sequences <-
+  tibble(
+    start_date = c("2026-02-01","2025-06-01", "2025-01-01", "2024-06-01", "2024-01-01", "2023-06-01", "2023-01-01", "2022-06-01")
+  ) %>%
+  mutate(
+    start_date = as_date(start_date),
+    end_date = start_date + dhours(5000)
   )
 
-running_volatility_tibble <-
-  c(20,100) %>%
-  map_dfr(
-    ~
-      running_volatility_tibble %>%
-      mutate(running_volatility_period_max = .x)
-  )
+for (i in 1:dim(date_sequences)[1] ) {
 
-running_volatility_tibble <-
-  c(100,200) %>%
-  map_dfr(
-    ~
-      running_volatility_tibble %>%
-      mutate(running_volatility_period_mean = .x)
-  )
-
-
-model_predicted_data_list <- list()
-
-tictoc::tic()
-for (i in 1:dim(running_volatility_tibble)[1] ) {
-
-  volatility_factor_stop = running_volatility_tibble$volatility_factor_stop[i]
-  volatility_factor_profit = running_volatility_tibble$volatility_factor_profit[i]
-
-  running_volatility_period_max = running_volatility_tibble$running_volatility_period_max[i]
-  running_volatility_period_mean = running_volatility_tibble$running_volatility_period_mean[i]
-
-  model_predicted_data_list[[i]] <-
-    portfolio_Dynamic_no_V3_algo_variant(
+  tictoc::tic()
+  model_predicted_data_raw[[i]] <-
+    portfolio_Dynamic_no_V3_algo_variant_Loop(
       assets_to_port =
         c(
           "NAS100_USD",
@@ -125,16 +97,17 @@ for (i in 1:dim(running_volatility_tibble)[1] ) {
       currency_conversion = currency_conversion,
       asset_infor = asset_infor,
       db_location = db_location,
-      start_date = "2025-01-01",
+      # start_date = "2025-01-01",
+      start_date = date_sequences$start_date[i] %>% as.character(),
       end_period = 132,
       trade_direction = "Long",
       slippage_percent = 0,
       risk_dollar_value = 5,
-      volatility_factor_stop = volatility_factor_stop,
-      volatility_factor_profit = volatility_factor_profit,
+      volatility_factor_stop = c(1,3,6,12),
+      volatility_factor_profit = c(1,3,6,12),
       profit_multiple = 1.1,
-      running_volatility_period_max = running_volatility_period_max,
-      running_volatility_period_mean = running_volatility_period_mean,
+      running_volatility_period_max = c(20),
+      running_volatility_period_mean = c(100),
 
       regression_length = 25000,
       direct_return_cols = 24,
@@ -144,7 +117,8 @@ for (i in 1:dim(running_volatility_tibble)[1] ) {
       save_location = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/",
       file_name = "DYNAMIC_MIXED_NO_V3",
       training_date = "2022-02-01",
-      testing_date ="2025-01-01",
+      # testing_date ="2025-01-01",
+      testing_date = date_sequences$start_date[i] %>% as.character(),
 
       xtnd_ss_cols_PR_cols = c(1,5,10,20,30,40,50,60,70,80,120, 100),
       xtnd_ss_cols_BR_periods = c(100,200,300, 50, 150, 250, 350, 25, 500),
@@ -156,27 +130,34 @@ for (i in 1:dim(running_volatility_tibble)[1] ) {
       cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
       periods_to_use_deviation = c(1,10,20,30,40,50),
       mean_periods_deviation = c(50, 100),
+      last_date = date_sequences$end_date[i] %>% as.character(),
 
       estimate_trades = FALSE,
       trade_statement = NULL
     )
+  tictoc::toc()
+
 }
-tictoc::toc()
 
-model_predicted_data<-
-  model_predicted_data_list %>%
-  map_dfr(bind_rows)  %>%
-  group_by(Date) %>%
+
+model_predicted_data <-
+  model_predicted_data_raw %>%
+  group_by(Date, Asset) %>%
   slice_max(predicted) %>%
-  ungroup()
-
+  ungroup() %>%
+  additional_error_rate_calc() %>%
+  dplyr::select(Date, Asset, contains('pnorm'), Final_Return)
 
 trade_statment <-
-  ""
+  "
+   # (pnorm_100 > 0.75 & Asset == 'CH20_CHF')|
+   # (pnorm_100 > 0.75 & Asset == 'NAS100_USD')|
+   (pnorm_100 > 0.875 & Asset == 'XPT_USD')
+"
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset == "EUR_JPY") %>%
+  filter(Asset == "XPT_USD") %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -219,14 +200,40 @@ analyse_performance %>%
   scale_y_continuous(n.breaks = 20) +
   theme(legend.position = "bottom")
 
+analyse_performance %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(
+    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
+    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
+    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
+    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
+    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
+    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
+    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000),
+    XX7 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1250),
+    XX8 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 2500)
+  ) %>%
+  summarise(
+    min0 = min(X, na.rm = T),
+    min1 = min(XX, na.rm = T),
+    min2 = min(XX2, na.rm = T),
+    min3 = min(XX3, na.rm = T),
+    min4 = min(XX4, na.rm = T),
+    min5 = min(XX5, na.rm = T),
+    min6 = min(XX6, na.rm = T),
+    min7 = min(XX7, na.rm = T),
+    min8 = min(XX8, na.rm = T)
+  )
+
 # AUC Pred Section --------------------------------------------------------
 
 names(model_predicted_data)
 
 return_thresh <- 5
 auc_roc_list <- list()
-col_to_test <- "predicted"
-col_to_test_port <- "predicted"
+col_to_test <- "pnorm_100"
+col_to_test_port <- "pnorm_100"
 c = 0
 
 # for (i in seq(0,15,0.5)) {
@@ -439,7 +446,7 @@ auc_roc %>%
 
 auc_roc_filt <-
   auc_roc %>%
-  # filter(threshold >= 0) %>%
+  filter(threshold >= 0.5) %>%
   filter(!is.nan(TRUE_pos_rate)) %>%
   group_by(Asset) %>%
   slice_max(Final_Return) %>%
@@ -674,7 +681,7 @@ auc_roc %>%
 
 auc_roc_filt <-
   auc_roc %>%
-  filter(threshold >= 0) %>%
+  filter(threshold >= 0.5) %>%
   filter(!is.nan(TRUE_pos_rate)) %>%
   group_by(Asset) %>%
   slice_max(Final_Return) %>%
