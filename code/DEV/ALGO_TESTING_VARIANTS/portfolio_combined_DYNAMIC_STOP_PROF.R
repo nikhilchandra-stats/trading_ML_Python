@@ -65,6 +65,7 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+training_data_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/training_data.db"
 
 assets_to_port =
   c(
@@ -76,11 +77,13 @@ assets_to_port =
 model_predicted_data_raw <- list()
 date_sequences <-
   tibble(
-    start_date = c("2026-02-01","2025-06-01", "2025-01-01", "2024-06-01", "2024-01-01", "2023-06-01", "2023-01-01", "2022-06-01")
+    start_date = c("2026-02-01","2025-06-01", "2025-01-01",
+                   "2024-06-01", "2024-01-01", "2023-06-01",
+                   "2023-01-01", "2022-06-01")
   ) %>%
   mutate(
     start_date = as_date(start_date),
-    end_date = start_date + dhours(5000)
+    end_date = start_date + dhours(4000)
   )
 
 for (i in 1:dim(date_sequences)[1] ) {
@@ -103,10 +106,10 @@ for (i in 1:dim(date_sequences)[1] ) {
       trade_direction = "Long",
       slippage_percent = 0,
       risk_dollar_value = 5,
-      volatility_factor_stop = c(1,3,6,12),
-      volatility_factor_profit = c(1,3,6,12),
-      profit_multiple = 1.1,
-      running_volatility_period_max = c(20),
+      volatility_factor_stop = c(2,4,6,12),
+      volatility_factor_profit = c(2,4,6,12),
+      profit_multiple = 1,
+      running_volatility_period_max = c(20,50),
       running_volatility_period_mean = c(100),
 
       regression_length = 25000,
@@ -131,6 +134,7 @@ for (i in 1:dim(date_sequences)[1] ) {
       periods_to_use_deviation = c(1,10,20,30,40,50),
       mean_periods_deviation = c(50, 100),
       last_date = date_sequences$end_date[i] %>% as.character(),
+      run_additional_calc = TRUE,
 
       estimate_trades = FALSE,
       trade_statement = NULL
@@ -139,25 +143,88 @@ for (i in 1:dim(date_sequences)[1] ) {
 
 }
 
+training_data_db_con <- connect_db(training_data_db)
+raw_upload <-
+  model_predicted_data_raw %>%
+  map_dfr(bind_rows)
+
+gc()
+
+write_table_sql_lite(.data = raw_upload,
+                     table_name = "testing",
+                     conn = training_data_db_con)
+rm(raw_upload)
+gc()
+DBI::dbDisconnect(training_data_db_con)
+rm(training_data_db_con)
+gc()
+
 
 model_predicted_data <-
   model_predicted_data_raw %>%
+  map_dfr(bind_rows) %>%
   group_by(Date, Asset) %>%
   slice_max(predicted) %>%
   ungroup() %>%
   additional_error_rate_calc() %>%
   dplyr::select(Date, Asset, contains('pnorm'), Final_Return)
+gc()
 
+dyn_pred_thresh = 20
+gc()
+
+model_predicted_data <-
+  model_predicted_data_raw %>%
+  map_dfr(bind_rows) %>%
+  group_by(Date, Asset) %>%
+  mutate(
+    trade_tagging =
+      case_when(
+        any(predicted_portfolio > dyn_pred_thresh) == TRUE & predicted_portfolio == max(predicted_portfolio, na.rm = T) ~ TRUE,
+        TRUE ~ FALSE
+      )
+  ) %>%
+  group_by(Date, Asset) %>%
+  mutate(
+    trade_tagging =
+      case_when(
+        any(predicted_portfolio > dyn_pred_thresh) == FALSE &
+          trade_tagging == FALSE &
+          abs(predicted_portfolio) == min( abs(predicted_portfolio), na.rm = T) ~ TRUE,
+        TRUE ~ trade_tagging
+      )
+  ) %>%
+  ungroup() %>%
+  filter(trade_tagging == TRUE) %>%
+  group_by(Date, Asset) %>%
+  filter(abs(predicted) == min(abs(predicted), na.rm = T)) %>%
+  ungroup() %>%
+  additional_error_rate_calc() %>%
+  dplyr::select(Date, Asset, contains('pnorm'), Final_Return)
+gc()
+
+names(model_predicted_data)
 trade_statment <-
   "
-   # (pnorm_100 > 0.75 & Asset == 'CH20_CHF')|
-   # (pnorm_100 > 0.75 & Asset == 'NAS100_USD')|
-   (pnorm_100 > 0.875 & Asset == 'XPT_USD')
+   (pnorm_100 > 0.875 & Asset == 'XPT_USD')|
+   # (pnorm_500 <= 0.85 & pnorm_500 > 0.825 & Asset == 'XPT_USD')|
+   (pnorm_500 <= 0.85 & pnorm_500_port > 0.825 & Asset == 'XPT_USD')|
+
+   (pnorm_250 > 0.8 & Asset == 'NAS100_USD')|
+   (pnorm_100 > 0.825 & Asset == 'CH20_CHF')|
+   (pnorm_250 <= 1 & pnorm_250 > 0.825 & Asset == 'CH20_CHF')|
+   (pnorm_500 <= 1 & pnorm_500 > 0.8 & Asset == 'NAS100_USD')|
+   (pnorm_500 <= 1 & pnorm_500 > 0.825 & Asset == 'CH20_CHF')
+
+   # any(Predicted > 20)
+   # (pnorm_100 > 0.875)
+
+
 "
 
 analyse_performance <-
   model_predicted_data %>%
-  filter(Asset == "XPT_USD") %>%
+  # filter(Asset == "XPT_USD") %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -232,12 +299,12 @@ names(model_predicted_data)
 
 return_thresh <- 5
 auc_roc_list <- list()
-col_to_test <- "pnorm_100"
-col_to_test_port <- "pnorm_100"
+col_to_test <- "pnorm_500_port"
+col_to_test_port <- "pnorm_500_port"
 c = 0
 
 # for (i in seq(0,15,0.5)) {
-for (i in seq(0.01,0.99, 0.01)) {
+for (i in seq(0.01,0.99, 0.02)) {
   c = c + 1
 
   trade_statment <-
