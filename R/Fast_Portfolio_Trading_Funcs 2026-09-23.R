@@ -392,7 +392,11 @@ get_dynamic_stop_prof_returns <-
       paste(collapse = ",")
 
     Final_Statement_required <-
-      glue::glue("asset_data_with_indicator %>% mutate({required_case_whens})")
+      glue::glue("asset_data_with_indicator %>%
+                  group_by(Asset) %>%
+                  arrange(Date, .by_group = TRUE) %>%
+                  group_by(Asset) %>%
+                  mutate({required_case_whens})")
 
     final_data <- eval(parse(text = Final_Statement_required))
 

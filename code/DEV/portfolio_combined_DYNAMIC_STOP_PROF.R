@@ -265,6 +265,17 @@ temp_reg_data_train <-
   # slice_sample(n = 100) %>%
   # ungroup()
 
+temp_reg_data_train2 <-
+  DBI::dbGetQuery(conn = training_data_db_con,
+                  statement =
+                    "SELECT * FROM training_data
+                     ORDER BY RANDOM()
+                     LIMIT 200000"
+  ) %>%
+  mutate(
+    Date = as_datetime(Date, tz = "Australia/Canberra")
+  )
+
 DBI::dbDisconnect(training_data_db_con)
 rm(training_data_db_con)
 gc()
@@ -294,7 +305,7 @@ portfolio_gen_model_no_V3_New(
   dependant_var = "Final_Return",
   sig_thresh_LM = 1,
   file_name = file_name,
-  reg_samples = 100000
+  reg_samples = 450000
 )
 
 rm(temp_reg_data_train)
