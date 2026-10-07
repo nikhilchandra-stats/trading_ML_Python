@@ -578,13 +578,13 @@ while (current_time < end_time) {
   }
 
   if(
-    now(tzone = "Australia/Canberra") < as_datetime("2026-09-28 06:00:00", tz = "Australia/Canberra")
+    now(tzone = "Australia/Canberra") < as_datetime("2026-10-05 06:00:00", tz = "Australia/Canberra")
   ){
     Sys.sleep(600)
   }
 
   if(trades_closed == 0 &
-     now(tzone = "Australia/Canberra") >= as_datetime("2026-09-28 07:00:00", tz = "Australia/Canberra") ) {
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-10-05 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 

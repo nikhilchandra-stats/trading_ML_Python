@@ -65,48 +65,32 @@ asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
-training_data_db <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/training_data.db"
-start_date = "2019-01-01"
-training_date = today() %>% as.character()
-end_date = today() %>% as.character()
+correlation_DB_Store <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/correlation_data.db"
+start_date = "2009-01-01"
+# training_date = today() %>% as.character()
+training_date = '2021-01-01'
+# end_date = today() %>% as.character()
+end_date = '2021-01-01'
 assets_to_port <- c("HK33_HKD", "XAU_USD", "XAG_USD", "EUR_USD", "USD_JPY", "SPX500_USD", "EUR_JPY", "EU50_EUR",
                     "JP225_USD", "UK100_GBP", "BTC_USD", "NATGAS_USD", "DE30_EUR", "WTICO_USD",
                     "FR40_EUR", "WHEAT_USD", "SOYBN_USD", "SUGAR_USD", "XCU_USD", "AUD_USD", "USD_CAD",
-                    "GBP_USD", "NZD_USD", "USD_CHF", "NAS100_USD", "CH20_CHF", "USD_NOK", "USD_SEK") %>% unique()
+                    "GBP_USD", "NZD_USD", "USD_CHF", "NAS100_USD", "CH20_CHF", "USD_NOK", "USD_SEK",
+                    "US2000_USD", "USB30Y_USD", "AUD_NZD", "EUR_GBP", "EUR_NZD", "GBP_JPY", "CAD_JPY",
+                    "EUR_CAD") %>% unique()
 
-Indices_Metals_Bonds[[1]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = training_date,
-    # end_date = sim_end %>% as_date() %>% as.character(),
-    time_frame = "H1",
-    bid_or_ask = "ask",
-    assets =assets_to_port
-  ) %>%
-  distinct()
-Indices_Metals_Bonds[[2]] <-
-  get_db_data_quickly_algo(
-    db_location = db_location,
-    start_date = start_date,
-    end_date = training_date,
-    # end_date = sim_end %>% as_date() %>% as.character(),
-    time_frame = "H1",
-    bid_or_ask = "bid",
-    assets =assets_to_port
-  ) %>%
-  distinct()
+Indices_Metals_Bonds <- list()
 
+date_increment = 10000
 final_sim_date <-
-  as_datetime(training_date, tz = "Australia/Canberra") - dhours(8000)
+  as_datetime(training_date, tz = "Australia/Canberra") - dhours(date_increment)
 sim_date_vector <-
   seq(as_datetime(start_date, tz = "Australia/Canberra"), final_sim_date, "hours")
 
 volatility_factor_stop_vec <-
-  tibble(volatility_factor_stop = c(1,3,5,7, 9,12))
+  tibble(volatility_factor_stop = c(2,5,8,10,12))
 
 running_volatility_tibble <-
-  c(1,3,5,7, 9,12) %>%
+  c(2,5,8,10,12) %>%
   map_dfr(
     ~
       volatility_factor_stop_vec %>%
@@ -116,7 +100,7 @@ running_volatility_tibble <-
   )
 
 running_volatility_tibble <-
-  c(20, 60, 90 ,120) %>%
+  c(20, 60,120, 200) %>%
   map_dfr(
     ~
       running_volatility_tibble %>%
@@ -124,102 +108,48 @@ running_volatility_tibble <-
   )
 
 running_volatility_tibble <-
-  c(100,200,300) %>%
+  c(100,200,50) %>%
   map_dfr(
     ~
       running_volatility_tibble %>%
       mutate(running_volatility_period_mean = .x)
   )
 
-
-
-temp_reg_data_train_list <-list()
-all_assets_to_test <-
-  assets_to_port %>%
-  map_dfr(
-    ~
-      tibble(
-        Asset_1 = assets_to_port,
-      ) %>%
-      mutate(
-        Asset_2 = .x
-      )
-  ) %>%
-  filter(Asset_1 != Asset_2)
-
-rm(assets_to_port)
-
-correlation_DB_Store <-
-  "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/correlation_store.db"
-
-
 c = 0
+redo_DB = FALSE
+for (j in 1:100) {
 
-for (i in 1:dim(running_volatility_tibble)[1] ) {
+  sim_start = sim_date_vector %>% sample(size = 1)
+  sim_end = sim_start + dhours(date_increment)
+  Indices_Metals_Bonds <- list()
+  gc()
 
-  temp_list_statment <- list()
+  Indices_Metals_Bonds[[1]] <-
+    get_db_data_quickly_algo(
+      db_location = db_location,
+      start_date = sim_start %>% as_date() %>% as.character(),
+      end_date = sim_end %>% as_date() %>% as.character(),
+      # end_date = sim_end %>% as_date() %>% as.character(),
+      time_frame = "H1",
+      bid_or_ask = "ask",
+      assets =assets_to_port
+    ) %>%
+    distinct()
+  Indices_Metals_Bonds[[2]] <-
+    get_db_data_quickly_algo(
+      db_location = db_location,
+      start_date = sim_start %>% as_date() %>% as.character(),
+      end_date = sim_end %>% as_date() %>% as.character(),
+      # end_date = sim_end %>% as_date() %>% as.character(),
+      time_frame = "H1",
+      bid_or_ask = "bid",
+      assets =assets_to_port
+    ) %>%
+    distinct()
 
- for (j in 1:dim(all_assets_to_test)[1]) {
-
-   volatility_factor_stop = running_volatility_tibble$volatility_factor_stop[i]
-   volatility_factor_profit = running_volatility_tibble$volatility_factor_profit[i]
-
-   running_volatility_period_max = running_volatility_tibble$running_volatility_period_max[i]
-   running_volatility_period_mean = running_volatility_tibble$running_volatility_period_mean[i]
-
-   profit_multiple = 1
-   risk_dollar_value = 5
-   slippage_percent = 0
-   end_period = 132
-
-   temp_list_statment[[j]] <-
-     glue::glue(
-     "
-     temp_{j} <-
-      get_dynamic_stop_prof_returns(
-        Ask_Data = temp_ask,
-        Bid_Data = temp_bid,
-        periods_wanted = {end_period},
-        trade_direction = 'Long',
-        currency_conversion =currency_conversion,
-        asset_infor = asset_infor,
-        slippage_percent = {slippage_percent},
-        risk_dollar_value = {risk_dollar_value},
-        volatility_factor_stop = {volatility_factor_stop},
-        volatility_factor_profit = {volatility_factor_profit},
-        profit_multiple = {profit_multiple},
-        running_volatility_period_max = {running_volatility_period_max},
-        running_volatility_period_mean = {running_volatility_period_mean}
-      ) %>%
-      ungroup() %>%
-      dplyr::select(Date, Asset, Final_Return, volatility_factor_stop, volatility_factor_profit, profit_multiple,
-                    running_volatility_period_max, running_volatility_period_mean) %>%
-      filter(!is.na(Final_Return))"
-   )
-
- }
-
-  temp_list_statment_eval <-
-    temp_list_statment %>%
-    unlist() %>%
-    paste(collapse = "\n")
-
-  eval(parse(text = temp_list_statment_eval))
-
-
-  for (j in 1:dim(all_assets_to_test)[1]) {
+  for (i in 1:dim(running_volatility_tibble)[1] ) {
 
     c = c + 1
-
-    assets_to_port =
-      c(
-        all_assets_to_test$Asset_1[j],
-        all_assets_to_test$Asset_2[j]
-      ) %>% unique()
-
-    temp_ask <- Indices_Metals_Bonds[[1]] %>% ungroup() %>% filter(Asset %in% assets_to_port)
-    temp_bid <- Indices_Metals_Bonds[[2]] %>% ungroup() %>% filter(Asset %in% assets_to_port)
-
     volatility_factor_stop = running_volatility_tibble$volatility_factor_stop[i]
     volatility_factor_profit = running_volatility_tibble$volatility_factor_profit[i]
 
@@ -231,9 +161,10 @@ for (i in 1:dim(running_volatility_tibble)[1] ) {
     slippage_percent = 0
     end_period = 132
 
-    sim_start = sim_date_vector %>% sample(size = 1)
-    sim_end = sim_start + dhours(10000)
+    temp_ask <- Indices_Metals_Bonds[[1]] %>% ungroup()
+    temp_bid <- Indices_Metals_Bonds[[2]] %>% ungroup()
 
+    tictoc::tic()
     portfolio_data_train <-
       get_dynamic_stop_prof_returns(
         Ask_Data = temp_ask,
@@ -249,63 +180,237 @@ for (i in 1:dim(running_volatility_tibble)[1] ) {
         profit_multiple = profit_multiple,
         running_volatility_period_max = running_volatility_period_max,
         running_volatility_period_mean = running_volatility_period_mean
-      )
-
-    final_loop_temp <-
-      portfolio_data_train %>%
+      ) %>%
       ungroup() %>%
       dplyr::select(Date, Asset, Final_Return, volatility_factor_stop, volatility_factor_profit, profit_multiple,
                     running_volatility_period_max, running_volatility_period_mean) %>%
       filter(!is.na(Final_Return))
 
     distinct_params <-
-      final_loop_temp %>%
+      portfolio_data_train %>%
       distinct(
         volatility_factor_stop, volatility_factor_profit, profit_multiple,
         running_volatility_period_max, running_volatility_period_mean
       )
 
-    covariance_matrix <-
-      final_loop_temp %>%
-      dplyr::select(Date, Asset,Final_Return ) %>%
-      pivot_wider(names_from = Asset, values_from = Final_Return)  %>%
+    COV_matrix <-
+      portfolio_data_train %>%
+      dplyr::select(Date, Asset, Final_Return) %>%
+      pivot_wider(names_from = Asset, values_from = Final_Return) %>%
+      filter(if_all(everything(), ~ !is.na(.))) %>%
       dplyr::select(-Date) %>%
+      cor()
+
+    asset_rows <- row.names(COV_matrix)
+
+    COV_matrix_tibble <-
+      COV_matrix %>%
+      as_tibble() %>%
       mutate(
-        COV_Period = running_volatility_period_mean*5,
-        !!as.name(glue::glue("{all_assets_to_test$Asset_1[j]}_COV_{all_assets_to_test$Asset_2[j]}"))
-        := slider::slide2_dbl(.x = !!as.name(all_assets_to_test$Asset_1[j]),
-                              .y = !!as.name(all_assets_to_test$Asset_2[j]),
-                              .f = cor,
-                              .before = running_volatility_period_mean,
-                              .complete = FALSE)
+        Asset_2 = asset_rows
       ) %>%
-      rename(Asset_1_Return = 1,
-             Asset_2_Return = 2,
-             Correlation = 4) %>%
+      pivot_longer(-Asset_2, values_to = "correlation", names_to = "Asset_1") %>%
       mutate(
-        Asset_1 = all_assets_to_test$Asset_1[j],
-        Asset_2 = all_assets_to_test$Asset_2[j]
+        start_date = sim_start %>% as_date() %>% as.character(),
+        end_date = sim_end %>% as_date() %>% as.character()
       ) %>%
       bind_cols(distinct_params)
+
+    Expected_Returns <-
+      portfolio_data_train %>%
+      dplyr::select(Date, Asset, Final_Return) %>%
+      group_by(Asset) %>%
+      summarise(
+        Mean_Return = mean(Final_Return, na.rm = T),
+        SDEV = sd(Final_Return, na.rm = T)
+      ) %>%
+      rename(
+        Asset_2 = Asset
+      )
+
+    COV_matrix_tibble <-
+      COV_matrix_tibble %>%
+      left_join(
+        Expected_Returns %>%
+          rename(
+            Mean_Return_Asset_2 = Mean_Return,
+            SDEV_Asset_2 = SDEV
+          )
+        )%>%
+      left_join(
+        Expected_Returns %>%
+          rename(
+            Asset_1 = Asset_2,
+            Mean_Return_Asset_1 = Mean_Return,
+            SDEV_Asset_1 = SDEV
+          )
+      )
+
+    tictoc::toc()
 
     correlation_DB_Store_con <-
       connect_db(correlation_DB_Store)
 
-    if(c == 1) {
+    if(c == 1 & redo_DB == TRUE) {
 
       write_table_sql_lite(conn = correlation_DB_Store_con,
-                           .data = covariance_matrix,
+                           .data = COV_matrix_tibble,
                            table_name = "COR_DATA")
 
     } else {
 
       append_table_sql_lite(conn = correlation_DB_Store_con,
-                           .data = covariance_matrix,
-                           table_name = "COR_DATA")
+                            .data = COV_matrix_tibble,
+                            table_name = "COR_DATA")
 
     }
 
   }
 
+  rm(Indices_Metals_Bonds)
+  gc()
+
+
 }
+
+corr_summary <-
+  get_correlation_data_summary(
+    correlation_DB_Store_con = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/correlation_data.db",
+    date_max_filt = '2020-01-01',
+    start_date_min = '2010-01-01'
+  )
+biggest_negatives <-
+  get_cor_biggest_negatives(
+    corr_summary = corr_summary,
+    asset_2_highest_negs = 10,
+    asset_2_ev_filt = 5,
+    filter_for_positive_EV_only = TRUE,
+    filter_biggest_EVs_First = FALSE
+  )
+biggest_negatives_max_EV <-
+  get_cor_biggest_negatives(
+    corr_summary = corr_summary,
+    asset_2_highest_negs = 10,
+    asset_2_ev_filt = 5,
+    filter_for_positive_EV_only = TRUE,
+    filter_biggest_EVs_First = TRUE
+  )
+
+assets_to_test <-
+  get_top_X_neg_cors(biggest_negatives = biggest_negatives_max_EV)
+
+# Assess Portoflios -------------------------------------------------------
+Indices_Metals_Bonds <- list()
+gc()
+sim_start <- "2016-01-01"
+sim_end <- today() %>% as.character()
+
+all_required_assets <-
+  c(assets_to_test$Asset_2, assets_to_test$Asset_1) %>% unique()
+
+
+Indices_Metals_Bonds[[1]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = sim_start %>% as_date() %>% as.character(),
+    end_date = sim_end %>% as_date() %>% as.character(),
+    # end_date = sim_end %>% as_date() %>% as.character(),
+    time_frame = "H1",
+    bid_or_ask = "ask",
+    assets =all_required_assets
+  ) %>%
+  distinct()
+Indices_Metals_Bonds[[2]] <-
+  get_db_data_quickly_algo(
+    db_location = db_location,
+    start_date = sim_start %>% as_date() %>% as.character(),
+    end_date = sim_end %>% as_date() %>% as.character(),
+    # end_date = sim_end %>% as_date() %>% as.character(),
+    time_frame = "H1",
+    bid_or_ask = "bid",
+    assets =all_required_assets
+  ) %>%
+  distinct()
+
+strategy_analysis_1 <-
+  rolling_cor_strategy(
+    ask_data = Indices_Metals_Bonds[[1]],
+    bid_data = Indices_Metals_Bonds[[2]],
+    asset_grouping_data = assets_to_test,
+    cor_rolling_period = 200,
+    sum_rolling_period = 200,
+    slippage_percent = 0,
+    risk_dollar_value = 5,
+    profit_multiple = 1,
+    end_period = 132,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor
+  )
+
+names(strategy_analysis_1)
+
+trade_statment <-
+  "
+  (USD_CHF_EUR_USD_SlidingPnormCor_200 > 0.5 & Asset %in% c('USD_CHF', 'EUR_USD') )|
+  (AUD_USD_USD_CAD_SlidingPnormCor_200 > 0.65 & Asset %in% c('AUD_USD', 'USD_CAD') )|
+  (NZD_USD_USD_NOK_SlidingPnormCor_200 < 0.4 & Asset %in% c('NZD_USD', 'USD_NOK') )|
+  (USB30Y_USD_USD_JPY_SlidingPnormCor_200 < 0.4 & Asset %in% c('USB30Y_USD', 'USD_JPY'))|
+  (CAD_JPY_EUR_CAD_SlidingPnormCor_200 > 0.5 & Asset %in% c('CAD_JPY', 'EUR_CAD') )|
+  (GBP_USD_USD_SEK_SlidingPnormCor_200 > 0.55 & Asset %in% c('GBP_USD', 'USD_SEK') )|
+  (EUR_NZD_SPX500_USD_SlidingPnormCor_200 > 0.55 & Asset %in% c('EUR_NZD', 'SPX500_USD'))|
+  (XAU_USD_JP225_USD_SlidingPnormCor_200 > 0.5 & Asset %in% c('XAU_USD', 'JP225_USD'))|
+  (BTC_USD_WHEAT_USD_SlidingPnormCor_200 < 0.4 & Asset %in% c('BTC_USD', 'WHEAT_USD') )
+"
+
+analyse_performance <-
+  strategy_analysis_1 %>%
+  filter(Asset %in% c('NZD_USD', 'USD_NOK', 'USD_CHF',
+                      'EUR_USD', 'AUD_USD', 'USD_CAD',
+                      'USB30Y_USD', 'USD_JPY',
+                      'CAD_JPY', 'EUR_CAD',
+                      'GBP_USD', 'USD_SEK',
+                      'EUR_NZD', 'SPX500_USD',
+                      'XAU_USD', 'JP225_USD',
+                      'BTC_USD', 'WHEAT_USD') ) %>%
+  # filter(Asset %in% c('BTC_USD', 'WHEAT_USD') ) %>%
+  filter(!is.na(Final_Return)) %>%
+  mutate(
+    trade_col = eval(parse(text = trade_statment))
+  ) %>%
+  mutate(
+    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+  )
+
+control <-
+  analyse_performance %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  filter(!is.na(Final_Return)) %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Control")
+
+analyse_performance <-
+  analyse_performance %>%
+  filter(trade_col == "Long") %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Long")
+
+analyse_performance %>%
+  bind_rows(control) %>%
+  # filter(Date <= '2024-01-01') %>%
+  ggplot(aes(x = Date, y = Final_Return_Cumulative
+             ,color = trade_col
+  )) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
+  facet_wrap(.~trade_col, scales = "free") +
+  theme_minimal() +
+  scale_y_continuous(n.breaks = 20) +
+  theme(legend.position = "bottom")
 

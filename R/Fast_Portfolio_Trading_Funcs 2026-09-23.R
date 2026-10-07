@@ -396,7 +396,8 @@ get_dynamic_stop_prof_returns <-
                   group_by(Asset) %>%
                   arrange(Date, .by_group = TRUE) %>%
                   group_by(Asset) %>%
-                  mutate({required_case_whens})")
+                  mutate({required_case_whens}) %>%
+                  ungroup() ")
 
     final_data <- eval(parse(text = Final_Statement_required))
 
