@@ -347,42 +347,82 @@ strategy_analysis_1 <-
     asset_infor = asset_infor
   )
 
+strategy_analysis_2 <-
+  rolling_cor_strategy(
+    ask_data = Indices_Metals_Bonds[[1]],
+    bid_data = Indices_Metals_Bonds[[2]],
+    asset_grouping_data = assets_to_test,
+    cor_rolling_period = 1000,
+    sum_rolling_period = 200,
+    slippage_percent = 0,
+    risk_dollar_value = 5,
+    profit_multiple = 1,
+    end_period = 132,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor
+  )
+
 names(strategy_analysis_1)
+names(strategy_analysis_2)
 
 trade_statment <-
   "
-  (USD_CHF_EUR_USD_SlidingPnormCor_200 > 0.5 & Asset %in% c('USD_CHF', 'EUR_USD') )|
-  (AUD_USD_USD_CAD_SlidingPnormCor_200 > 0.65 & Asset %in% c('AUD_USD', 'USD_CAD') )|
-  (NZD_USD_USD_NOK_SlidingPnormCor_200 < 0.4 & Asset %in% c('NZD_USD', 'USD_NOK') )|
-  (USB30Y_USD_USD_JPY_SlidingPnormCor_200 < 0.4 & Asset %in% c('USB30Y_USD', 'USD_JPY'))|
-  (CAD_JPY_EUR_CAD_SlidingPnormCor_200 > 0.5 & Asset %in% c('CAD_JPY', 'EUR_CAD') )|
-  (GBP_USD_USD_SEK_SlidingPnormCor_200 > 0.55 & Asset %in% c('GBP_USD', 'USD_SEK') )|
-  (EUR_NZD_SPX500_USD_SlidingPnormCor_200 > 0.55 & Asset %in% c('EUR_NZD', 'SPX500_USD'))|
-  (XAU_USD_JP225_USD_SlidingPnormCor_200 > 0.5 & Asset %in% c('XAU_USD', 'JP225_USD'))|
-  (BTC_USD_WHEAT_USD_SlidingPnormCor_200 < 0.4 & Asset %in% c('BTC_USD', 'WHEAT_USD') )
+  (CAD_JPY_USD_CAD_SlidingPnormCor_200 > 0.8 & Asset %in% c('CAD_JPY', 'USD_CAD') )|
+  (USD_CHF_GBP_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('USD_CHF', 'GBP_USD') )|
+  (USD_NOK_EUR_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('USD_NOK', 'EUR_USD'))|
+  (NZD_USD_USD_SEK_SlidingPnormCor_200 > 0.8 & Asset %in% c('NZD_USD', 'USD_SEK'))|
+  (EUR_NZD_AUD_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('EUR_NZD', 'AUD_USD'))|
+  (GBP_JPY_EUR_GBP_SlidingPnormCor_200 > 0.8 & Asset %in% c('GBP_JPY', 'EUR_GBP'))|
+  (USD_JPY_XAU_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('USD_JPY'))|
+  (EUR_CAD_CH20_CHF_SlidingPnormCor_200 > 0.8 & Asset %in% c('EUR_CAD'))|
+  (NATGAS_USD_BTC_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('NATGAS_USD'))
+"
+
+trade_statment2 <-
+  "
+  (CAD_JPY_USD_CAD_SlidingPnormCor_1000 > 0.8 & Asset %in% c('CAD_JPY', 'USD_CAD') )|
+  (USD_CHF_GBP_USD_SlidingPnormCor_1000 < 0.1 & Asset %in% c('USD_CHF', 'GBP_USD') )|
+  (USD_NOK_EUR_USD_SlidingPnormCor_1000 < 0.2 & Asset %in% c('USD_NOK', 'EUR_USD') )|
+  (NZD_USD_USD_SEK_SlidingPnormCor_1000 > 0.9 & Asset %in% c('NZD_USD', 'USD_SEK') )
 "
 
 analyse_performance <-
   strategy_analysis_1 %>%
-  filter(Asset %in% c('NZD_USD', 'USD_NOK', 'USD_CHF',
-                      'EUR_USD', 'AUD_USD', 'USD_CAD',
-                      'USB30Y_USD', 'USD_JPY',
-                      'CAD_JPY', 'EUR_CAD',
-                      'GBP_USD', 'USD_SEK',
-                      'EUR_NZD', 'SPX500_USD',
-                      'XAU_USD', 'JP225_USD',
-                      'BTC_USD', 'WHEAT_USD') ) %>%
-  # filter(Asset %in% c('BTC_USD', 'WHEAT_USD') ) %>%
+  # filter(Asset %in% c(
+  #                     'USD_CHF', 'GBP_USD', 'CAD_JPY',
+  #                     'USD_CAD', 'USD_NOK', 'EUR_USD',
+  #                     # 'JP225_USD', 'USB30Y_USD',
+  #                     # 'USD_JPY', 'XAU_USD',
+  #                     'NZD_USD', 'USD_SEK',
+  #                     'EUR_NZD', 'AUD_USD'
+  #                     ) ) %>%
+  # filter(Asset %in% c('EUR_NZD', 'AUD_USD') ) %>%
+  filter(!(Asset %in% c('JP225_USD', 'USB30Y_USD', 'XAU_USD', 'CH20_CHF', 'BTC_USD'))) %>%
   filter(!is.na(Final_Return)) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
   mutate(
     trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-  )
+  ) %>%
+  dplyr::select(Date, Final_Return, trade_col)
+
+analyse_performance2 <-
+  strategy_analysis_2 %>%
+  filter(Asset %in% c('NZD_USD', 'USD_SEK') ) %>%
+  filter(!is.na(Final_Return)) %>%
+  mutate(
+    trade_col = eval(parse(text = trade_statment2))
+  ) %>%
+  mutate(
+    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+  ) %>%
+  dplyr::select(Date, Final_Return, trade_col)
+
 
 control <-
-  analyse_performance %>%
+  analyse_performance2 %>%
+  # bind_rows(analyse_performance %>% dplyr::select(Date, Final_Return, trade_col)) %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
@@ -391,8 +431,9 @@ control <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Control")
 
-analyse_performance <-
-  analyse_performance %>%
+analyse_performance_comp <-
+  analyse_performance2 %>%
+  # bind_rows(analyse_performance %>% dplyr::select(Date, Final_Return, trade_col)) %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -401,7 +442,7 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-analyse_performance %>%
+analyse_performance_comp %>%
   bind_rows(control) %>%
   # filter(Date <= '2024-01-01') %>%
   ggplot(aes(x = Date, y = Final_Return_Cumulative
@@ -409,7 +450,7 @@ analyse_performance %>%
   )) +
   geom_line() +
   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
+  # facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
   scale_y_continuous(n.breaks = 20) +
   theme(legend.position = "bottom")
