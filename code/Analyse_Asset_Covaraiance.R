@@ -64,7 +64,7 @@ asset_list_oanda =
 asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
 correlation_DB_Store <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/correlation_data.db"
 start_date = "2009-01-01"
 # training_date = today() %>% as.character()
@@ -342,9 +342,11 @@ strategy_analysis_1 <-
     slippage_percent = 0,
     risk_dollar_value = 5,
     profit_multiple = 1,
-    end_period = 132,
+    end_period = 72,
     currency_conversion = currency_conversion,
-    asset_infor = asset_infor
+    asset_infor = asset_infor,
+    return_col_to_analyse = "period_return_72_Price",
+    return_period_lag = 72
   )
 
 strategy_analysis_2 <-
@@ -352,53 +354,44 @@ strategy_analysis_2 <-
     ask_data = Indices_Metals_Bonds[[1]],
     bid_data = Indices_Metals_Bonds[[2]],
     asset_grouping_data = assets_to_test,
-    cor_rolling_period = 1000,
-    sum_rolling_period = 200,
+    cor_rolling_period = 400,
+    sum_rolling_period = 400,
     slippage_percent = 0,
     risk_dollar_value = 5,
     profit_multiple = 1,
-    end_period = 132,
+    end_period = 72,
     currency_conversion = currency_conversion,
-    asset_infor = asset_infor
+    asset_infor = asset_infor,
+    return_col_to_analyse = "period_return_72_Price",
+    return_period_lag = 72
   )
 
 names(strategy_analysis_1)
 names(strategy_analysis_2)
 
+training_data <-
+  strategy_analysis_1 %>%
+  left_join(strategy_analysis_2)
+
 trade_statment <-
   "
-  (CAD_JPY_USD_CAD_SlidingPnormCor_200 > 0.8 & Asset %in% c('CAD_JPY', 'USD_CAD') )|
-  (USD_CHF_GBP_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('USD_CHF', 'GBP_USD') )|
-  (USD_NOK_EUR_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('USD_NOK', 'EUR_USD'))|
-  (NZD_USD_USD_SEK_SlidingPnormCor_200 > 0.8 & Asset %in% c('NZD_USD', 'USD_SEK'))|
-  (EUR_NZD_AUD_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('EUR_NZD', 'AUD_USD'))|
-  (GBP_JPY_EUR_GBP_SlidingPnormCor_200 > 0.8 & Asset %in% c('GBP_JPY', 'EUR_GBP'))|
-  (USD_JPY_XAU_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('USD_JPY'))|
-  (EUR_CAD_CH20_CHF_SlidingPnormCor_200 > 0.8 & Asset %in% c('EUR_CAD'))|
-  (NATGAS_USD_BTC_USD_SlidingPnormCor_200 > 0.8 & Asset %in% c('NATGAS_USD'))
+  (
+  (JP225_USD_USB30Y_USD_SlidingPnormCor_400 < 0.4) &
+  # (JP225_USD_USB30Y_USD_SlidingPnormCor_200 < 0.2) &
+  Asset %in% c('JP225_USD', 'USB30Y_USD')
+  )|
+  (
+  (USD_CAD_CAD_JPY_SlidingPnormCor_400 < 0.05) &
+  # (USD_CAD_CAD_JPY_SlidingPnormCor_200 < 0.2) &
+  Asset %in% c('USD_CAD', 'CAD_JPY')
+  )
 "
 
-trade_statment2 <-
-  "
-  (CAD_JPY_USD_CAD_SlidingPnormCor_1000 > 0.8 & Asset %in% c('CAD_JPY', 'USD_CAD') )|
-  (USD_CHF_GBP_USD_SlidingPnormCor_1000 < 0.1 & Asset %in% c('USD_CHF', 'GBP_USD') )|
-  (USD_NOK_EUR_USD_SlidingPnormCor_1000 < 0.2 & Asset %in% c('USD_NOK', 'EUR_USD') )|
-  (NZD_USD_USD_SEK_SlidingPnormCor_1000 > 0.9 & Asset %in% c('NZD_USD', 'USD_SEK') )
-"
 
 analyse_performance <-
-  strategy_analysis_1 %>%
-  # filter(Asset %in% c(
-  #                     'USD_CHF', 'GBP_USD', 'CAD_JPY',
-  #                     'USD_CAD', 'USD_NOK', 'EUR_USD',
-  #                     # 'JP225_USD', 'USB30Y_USD',
-  #                     # 'USD_JPY', 'XAU_USD',
-  #                     'NZD_USD', 'USD_SEK',
-  #                     'EUR_NZD', 'AUD_USD'
-  #                     ) ) %>%
-  # filter(Asset %in% c('EUR_NZD', 'AUD_USD') ) %>%
-  filter(!(Asset %in% c('JP225_USD', 'USB30Y_USD', 'XAU_USD', 'CH20_CHF', 'BTC_USD'))) %>%
-  filter(!is.na(Final_Return)) %>%
+  training_data %>%
+  filter(Asset %in% c('JP225_USD', 'USB30Y_USD') ) %>%
+  # filter(!is.na(Final_Return)) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -407,22 +400,9 @@ analyse_performance <-
   ) %>%
   dplyr::select(Date, Final_Return, trade_col)
 
-analyse_performance2 <-
-  strategy_analysis_2 %>%
-  filter(Asset %in% c('NZD_USD', 'USD_SEK') ) %>%
-  filter(!is.na(Final_Return)) %>%
-  mutate(
-    trade_col = eval(parse(text = trade_statment2))
-  ) %>%
-  mutate(
-    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-  ) %>%
-  dplyr::select(Date, Final_Return, trade_col)
-
 
 control <-
-  analyse_performance2 %>%
-  # bind_rows(analyse_performance %>% dplyr::select(Date, Final_Return, trade_col)) %>%
+  analyse_performance %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
@@ -432,8 +412,7 @@ control <-
   mutate(trade_col = "Control")
 
 analyse_performance_comp <-
-  analyse_performance2 %>%
-  # bind_rows(analyse_performance %>% dplyr::select(Date, Final_Return, trade_col)) %>%
+  analyse_performance %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -450,7 +429,7 @@ analyse_performance_comp %>%
   )) +
   geom_line() +
   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  # facet_wrap(.~trade_col, scales = "free") +
+  facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
   scale_y_continuous(n.breaks = 20) +
   theme(legend.position = "bottom")

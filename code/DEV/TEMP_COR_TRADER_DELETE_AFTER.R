@@ -145,8 +145,9 @@ rolling_cor_strategy <-
     profit_multiple = 1,
     end_period = 132,
     currency_conversion = currency_conversion,
-    asset_infor = asset_infor
-
+    asset_infor = asset_infor,
+    return_col_to_analyse = "period_return_24_Price",
+    return_period_lag = 25
     ) {
 
     accumulated_reg_data <- list()
@@ -175,7 +176,7 @@ rolling_cor_strategy <-
           running_volatility_period_mean = running_volatility_period_mean
         ) %>%
         ungroup() %>%
-        dplyr::select(Date, Asset, Final_Return, period_return_24_Price,
+        dplyr::select(Date, Asset, Final_Return, !!as.name(return_col_to_analyse),
                       volume_adj, stop_point, profit_point,
                       stop_return, profit_return,
                       stop_value, profit_value, adjusted_conversion,
@@ -188,18 +189,18 @@ rolling_cor_strategy <-
       temp_data <-
         portfolio_data_temp %>%
         filter(Asset %in% c(asset_grouping_data$Asset_2[i], asset_grouping_data$Asset_1[i]) ) %>%
-        dplyr::select(Date, Asset, period_return_24_Price) %>%
+        dplyr::select(Date, Asset, !!as.name(return_col_to_analyse)) %>%
         group_by(Asset) %>%
         arrange(Date, .by_group = TRUE) %>%
         group_by(Asset) %>%
-        fill(period_return_24_Price, .direction = "down") %>%
+        fill(!!as.name(return_col_to_analyse), .direction = "down") %>%
         group_by(Asset) %>%
         mutate(
-          period_return_24_Price = lag(period_return_24_Price, 24)
+          !!as.name(return_col_to_analyse) := lag(!!as.name(return_col_to_analyse), return_period_lag)
         ) %>%
         mutate(
           !!as.name(glue::glue("SlidinCumSum_{sum_rolling_period}")) :=
-            slider::slide_sum(x = period_return_24_Price, before = sum_rolling_period)
+            slider::slide_sum(x = !!as.name(return_col_to_analyse), before = sum_rolling_period)
         )
 
       temp_rolling_cor <-
@@ -266,57 +267,4 @@ rolling_cor_strategy <-
     return(Final_Returned_data)
 
   }
-
-
-trade_statment <-
-  "
-  # (EUR_USD_USD_SEK_SlidingPnormCor_1000 < 0.5 & Asset %in% c('EUR_USD', 'USD_SEK') )|
-  # (USB30Y_USD_USD_JPY_SlidingPnormCor_1000 > 0 & USB30Y_USD_USD_JPY_SlidingPnormCor_1000 < 0.5 & Asset %in% c('USB30Y_USD', 'USD_JPY') )|
-  # (GBP_USD_USD_NOK_SlidingPnormCor_1000 < 0.05 & Asset %in% c('GBP_USD', 'USD_NOK') )|
-  # (USD_CAD_XCU_USD_SlidingPnormCor_1000 > 0.1 & USD_CAD_XCU_USD_SlidingPnormCor_1000 < 0.5 & Asset %in% c('USD_CAD', 'XCU_USD') )|
-  # (AUD_USD_USD_CAD_SlidingPnormCor_1000 > 0.01 & AUD_USD_USD_CAD_SlidingPnormCor_1000 < 0.3 & Asset %in% c('AUD_USD', 'USD_CAD') )|
-  (EUR_CAD_USD_CHF_SlidingPnormCor_1000 > 0 & EUR_CAD_USD_CHF_SlidingPnormCor_1000 < 0.01 & Asset %in% c('EUR_CAD', 'USD_CHF') )
-"
-
-analyse_performance <-
-  Final_Returned_data %>%
-  filter(!is.na(Final_Return)) %>%
-  mutate(
-    trade_col = eval(parse(text = trade_statment))
-  ) %>%
-  mutate(
-    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-  )
-
-control <-
-  analyse_performance %>%
-  group_by(Date) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  filter(!is.na(Final_Return)) %>%
-  arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  mutate(trade_col = "Control")
-
-analyse_performance <-
-  analyse_performance %>%
-  filter(trade_col == "Long") %>%
-  group_by(Date) %>%
-  summarise(Final_Return = sum(Final_Return)) %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
-  mutate(trade_col = "Long")
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 20) +
-  theme(legend.position = "bottom")
 
