@@ -64,7 +64,7 @@ asset_list_oanda =
 asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 start_date = "2017-01-01"
 end_date = today() %>% as.character()
 Indices_Metals_Bonds <- list()

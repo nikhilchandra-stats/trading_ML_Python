@@ -214,7 +214,7 @@ trade_statment_AUD_ONLY <-
 "
 
 safely_upload_to_db <- safely(update_local_db_file, otherwise = "error")
-run_trades = TRUE
+run_trades = FALSE
 rm(start_date)
 
 while (current_time < end_time) {
@@ -578,13 +578,13 @@ while (current_time < end_time) {
   }
 
   if(
-    now(tzone = "Australia/Canberra") < as_datetime("2026-10-12 06:00:00", tz = "Australia/Canberra")
+    now(tzone = "Australia/Canberra") < as_datetime("2026-10-26 06:00:00", tz = "Australia/Canberra")
   ){
     Sys.sleep(600)
   }
 
   if(trades_closed == 0 &
-     now(tzone = "Australia/Canberra") >= as_datetime("2026-10-12 07:00:00", tz = "Australia/Canberra") ) {
+     now(tzone = "Australia/Canberra") >= as_datetime("2026-10-26 07:00:00", tz = "Australia/Canberra") ) {
 
     rm(positions_tagged_as_part_of_algo)
 

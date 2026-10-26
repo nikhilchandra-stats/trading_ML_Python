@@ -64,7 +64,7 @@ asset_list_oanda =
 asset_infor <- get_instrument_info()
 #---------------------Data
 load_custom_functions()
-db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 2.db"
+db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 
 assets_to_port =
   c(
@@ -85,12 +85,14 @@ model_predicted_data <-
         "EU50_EUR"
       ) %>% unique(),
     stop_factor_var = 10,
+    # stop_factor_var = 5,
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
     db_location = db_location,
     start_date = "2021-11-01",
     profit_factor_var = 50,
     risk_dollar_value_var = 5,
+    # risk_dollar_value_var = 3,
     end_period = 132,
     trade_direction = "Long",
     end_point_loss = -5,
@@ -112,6 +114,7 @@ model_predicted_data <-
     cor_skip_periods = c(1,2,4,5,6,8,10,12,14,16),
     periods_to_use_deviation = c(1,10,20,30,40,50),
     mean_periods_deviation = c(50, 100),
+
     estimate_trades = FALSE,
     trade_statement = NULL
   )
@@ -129,11 +132,64 @@ trade_statment <-
    (pnorm_1500_port > 0.67 & pnorm_1500_port <= 0.825 & Asset == 'EUR_GBP')|
    (pnorm_1500_port > 0.75 & pnorm_1500_port <= 1  & Asset == 'EU50_EUR')|
    (pnorm_1500_port > 0.8 & pnorm_1500_port <= 1 & Asset == 'EUR_USD')
+
+"
+
+trade_statment <-
+  "
+    # (pnorm_error_5_vs_100rate_100 > 0.71 & Asset == 'EUR_GBP')|
+   # (pnorm_1001_port > 0.65 & pnorm_1001_port <= 1 & Asset == 'EUR_JPY')|
+   # (pnorm_1001_port > 0.725 & pnorm_1001_port <= 1  & Asset == 'EU50_EUR')|
+   # (pnorm_1001_port > 0.7 & pnorm_1001_port <= 0.8 & Asset == 'EUR_USD')|
+   #
+
+   (pnorm_1500_port > 0.6 & pnorm_1500_port <= 1 & Asset == 'EUR_JPY')|
+   (pnorm_1500_port > 0.75 & pnorm_1500_port <= 1  & Asset == 'EU50_EUR')|
+   (pnorm_1500_port > 0.8 & pnorm_1500_port <= 1 & Asset == 'EUR_USD')|
+
+   (pnorm_1500_mean_10_port > 0.61 & Asset == 'EU50_EUR')|
+   (pnorm_1500_mean_10_port > 0.72 & pnorm_1500_mean_10_port < 0.79 & Asset == 'EUR_GBP')|
+   (pnorm_1500_mean_10_port > 0.59 & pnorm_1500_mean_10_port < 0.75 & Asset == 'EUR_USD')|
+   (pnorm_1500_mean_10_port > 0.59 & pnorm_1500_mean_10_port < 10 & Asset == 'EUR_JPY')|
+
+   (pnorm_500_roll_500_port > 0.59 & Asset == 'EU50_EUR')|
+   (pnorm_500_roll_500_port > 0.57 & Asset == 'EUR_GBP')|
+   (pnorm_500_roll_500_port > 0.57 & Asset == 'EUR_JPY')|
+   (pnorm_500_roll_500_port > 0.59 & Asset == 'EUR_USD')
+
+   # (pnorm_250_roll_250_port > 0.42 & pnorm_250_roll_250_port < 0.6 & Asset == 'EU50_EUR')|
+   # (pnorm_250_roll_250_port > 0.39  & Asset == 'EUR_JPY')|
+   # (pnorm_250_roll_250_port > 0.59  & Asset == 'EUR_USD')
+"
+
+trade_statement <-
+  "
+   (pnorm_1001_port > 0.55 & pnorm_1001_port <= 1 & Asset == 'EUR_JPY')|
+   (pnorm_1001_port > 0.64 & pnorm_1001_port <= 0.825 & Asset == 'EUR_GBP')|
+   (pnorm_1001_port > 0.55 & pnorm_1001_port <= 1  & Asset == 'EU50_EUR')|
+   (pnorm_1001_port > 0.61 & pnorm_1001_port <= 0.85 & Asset == 'EUR_USD')|
+
+   (pnorm_1500_port > 0.6 & pnorm_1500_port <= 1 & Asset == 'EUR_JPY')|
+   (pnorm_1500_port > 0.67 & pnorm_1500_port <= 0.825 & Asset == 'EUR_GBP')|
+   (pnorm_1500_port > 0.75 & pnorm_1500_port <= 1  & Asset == 'EU50_EUR')|
+   (pnorm_1500_port > 0.8 & pnorm_1500_port <= 1 & Asset == 'EUR_USD')|
+
+   (pnorm_1500_mean_10_port > 0.61 & Asset == 'EU50_EUR')|
+   (pnorm_1500_mean_10_port > 0.72 & pnorm_1500_mean_10_port < 0.79 & Asset == 'EUR_GBP')|
+   (pnorm_1500_mean_10_port > 0.59 & pnorm_1500_mean_10_port < 0.75 & Asset == 'EUR_USD')|
+   (pnorm_1500_mean_10_port > 0.59 & pnorm_1500_mean_10_port < 10 & Asset == 'EUR_JPY')|
+
+   (pnorm_500_roll_500_port > 0.59 & Asset == 'EU50_EUR')|
+   (pnorm_500_roll_500_port > 0.57 & Asset == 'EUR_GBP')|
+   (pnorm_500_roll_500_port > 0.57 & Asset == 'EUR_JPY')|
+   (pnorm_500_roll_500_port > 0.59 & Asset == 'EUR_USD')
+
 "
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset == "EUR_JPY") %>%
+  # filter(Asset == "EU50_EUR") %>%
+  filter(Date >= '2026-05-01') %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -179,236 +235,275 @@ analyse_performance %>%
 # AUC Pred Section --------------------------------------------------------
 
 names(model_predicted_data)
+db_data_store_path <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/EUR_MODEL_RESULTS.db"
+db_data_store <- connect_db(db_data_store_path)
+redo_DB <- TRUE
+kk = 0
 
-return_thresh <- 5
-auc_roc_list <- list()
-col_to_test <- "pnorm_1500_port"
-col_to_test_port <- "pnorm_1500_port"
-c = 0
+vars_to_test <-
+  names(model_predicted_data) %>%
+  keep(~str_detect(.x, "pnorm")) %>%
+  unlist()
 
-# for (i in seq(-5,15,0.1)) {
-for (i in seq(0.01,0.99, 0.01)) {
-  c = c + 1
+for (j in 1:length(vars_to_test)) {
 
-  trade_statment <-
-    glue::glue("
+  return_thresh <- 0
+  auc_roc_list <- list()
+  col_to_test <- vars_to_test[j]
+  col_to_test_port <- vars_to_test[j]
+  c = 0
+  kk = kk + 1
+
+  # for (i in seq(-5,15,0.1)) {
+  for (i in seq(0.01,0.99, 0.02)) {
+    c = c + 1
+
+    trade_statment <-
+      glue::glue("
     ({col_to_test} > i &
     {col_to_test} < 1000)
   ")
 
-  trade_statment_port <-
-    glue::glue("
+    trade_statment_port <-
+      glue::glue("
     ({col_to_test_port} > i &
     {col_to_test_port} < 1000)
   ")
 
-  trade_statment_double <-
-    glue::glue("{trade_statment} & {trade_statment_port}")
+    trade_statment_double <-
+      glue::glue("{trade_statment} & {trade_statment_port}")
 
-  total_trades_control <-
-    model_predicted_data %>%
+    total_trades_control <-
+      model_predicted_data %>%
+      group_by(Asset) %>%
+      summarise(Total_Trades_Control = n_distinct(Date),
+                Final_Return_Control = sum(Final_Return, na.rm = T),
+                # Average_Return_Control = Final_Return_Control/Total_Trades_Control
+                Average_Return_Control = mean(Final_Return, na.rm = T),
+                sd_Return_Control = sd(Final_Return, na.rm = T)
+      ) %>%
+      ungroup()
+
+    trades_per_year <-
+      model_predicted_data %>%
+      mutate(
+        trade_col = eval(parse(text = trade_statment))
+      ) %>%
+      mutate(
+        trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+      ) %>%
+      filter(trade_col == "Long") %>%
+      mutate(xx = month(Date)) %>%
+      group_by(Asset, xx) %>%
+      summarise(Total_Trades = n_distinct(Date)) %>%
+      group_by(Asset) %>%
+      summarise(Average_Trades_Per_Month = mean(Total_Trades, na.rm = T)) %>%
+      ungroup()
+
+    returns_total <-
+      model_predicted_data %>%
+      mutate(
+        trade_col = eval(parse(text = trade_statment))
+      ) %>%
+      mutate(
+        trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+      ) %>%
+      filter(trade_col == "Long") %>%
+      group_by(Asset) %>%
+      summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
+      mutate(
+        threshold = i,
+        col_to_test = col_to_test
+      ) %>%
+      ungroup() %>%
+      mutate(
+        Total_Final = sum(Final_Return, na.rm = T)
+      )
+
+    returns_total_TRU_POS <-
+      model_predicted_data %>%
+      mutate(
+        trade_col = eval(parse(text = trade_statment_port))
+      ) %>%
+      mutate(
+        trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+      ) %>%
+      group_by(Date, trade_col) %>%
+      summarise(Final_Return = sum(Final_Return, na.rm = TRUE))  %>%
+      ungroup() %>%
+      mutate(
+        pos_detect_TRUE =
+          ifelse(trade_col == "Long" & Final_Return > return_thresh, 1, 0),
+        pos_detect_Ned =
+          ifelse(trade_col == "Long" & Final_Return <= return_thresh, 1, 0),
+
+        neg_detect_TRUE =
+          ifelse(trade_col == "No Trade" & Final_Return <= return_thresh, 1, 0),
+        neg_detect_Ned =
+          ifelse(trade_col == "No Trade" & Final_Return > return_thresh, 1, 0)
+
+      ) %>%
+      summarise(
+        Total_Wins = sum(pos_detect_TRUE, na.rm=T),
+        Total_Trades = sum(pos_detect_TRUE, na.rm=T) + sum(pos_detect_Ned, na.rm=T),
+        Total_No_Trades = sum(neg_detect_Ned, na.rm=T) + sum(neg_detect_TRUE, na.rm=T),
+        TRUE_pos_rate = Total_Wins/Total_Trades,
+        TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/Total_No_Trades
+      ) %>%
+      mutate(
+        threshold = i,
+        col_to_test = col_to_test,
+        Asset = "Portfolio"
+      ) %>%
+      ungroup()
+
+    auc_roc_list[[c]] <-
+      model_predicted_data %>%
+      mutate(
+        trade_col = eval(parse(text = trade_statment))
+      ) %>%
+      mutate(
+        trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+      ) %>%
+      mutate(
+        pos_detect_TRUE =
+          ifelse(trade_col == "Long" & Final_Return > return_thresh, 1, 0),
+        pos_detect_Ned =
+          ifelse(trade_col == "Long" & Final_Return <= return_thresh, 1, 0),
+
+        neg_detect_TRUE =
+          ifelse(trade_col == "No Trade" & Final_Return <= return_thresh, 1, 0),
+        neg_detect_Ned =
+          ifelse(trade_col == "No Trade" & Final_Return > return_thresh, 1, 0)
+
+      ) %>%
+      group_by(Asset) %>%
+      summarise(
+        Total_Wins = sum(pos_detect_TRUE, na.rm=T),
+        Total_Trades = sum(pos_detect_TRUE, na.rm=T) + sum(pos_detect_Ned, na.rm=T),
+        Total_No_Trades = sum(neg_detect_Ned, na.rm=T) + sum(neg_detect_TRUE, na.rm=T),
+        TRUE_pos_rate = Total_Wins/Total_Trades,
+        TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/Total_No_Trades,
+        Average_Return = mean(ifelse(trade_col == "Long", Final_Return, NA), na.rm = T),
+        sd_Return = sd(ifelse(trade_col == "Long", Final_Return, NA), na.rm = T)
+      ) %>%
+      mutate(
+        threshold = i,
+        col_to_test = col_to_test
+      ) %>%
+      bind_rows(returns_total_TRU_POS) %>%
+      left_join(returns_total) %>%
+      fill(Total_Final, .direction = "down") %>%
+      mutate(
+        Final_Return = ifelse(is.na(Final_Return) & Total_Trades > 0, sum(Final_Return, na.rm = T), Final_Return),
+        Final_Return = ifelse(Total_Trades == 0, 0, Final_Return)
+      ) %>%
+      left_join(total_trades_control) %>%
+      mutate() %>%
+      left_join(trades_per_year) %>%
+      mutate(
+        Avg_Returns_Per_Month = Average_Return*Average_Trades_Per_Month,
+        # percentile_10th = 250*quantile(rnorm(n = 5000, mean = Average_Return, sd = sd_Return), 0.1, na.rm = T),
+        # percentile_20th = 250*quantile(rnorm(n = 5000, mean = Average_Return, sd = sd_Return), 0.2, na.rm = T),
+        # percentile_40th = 250*quantile(rnorm(n = 5000, mean = Average_Return, sd = sd_Return), 0.4, na.rm = T)
+      ) %>%
+      split(.$Asset, drop = FALSE) %>%
+      map_dfr(
+        ~ .x %>%
+          mutate(percentile_30th = 250*quantile(rnorm(n = 15000, mean = Average_Return, sd = sd_Return), 0.3, na.rm = T))
+      )
+
+  }
+
+  auc_roc <-
+    auc_roc_list %>%
+    map_dfr( ~ .x %>% filter(Total_Trades > 1000))
+
+  if(  kk== 1 & redo_DB == TRUE) {
+    write_table_sql_lite(.data = auc_roc,
+                         table_name = "EUR_MODEL_RESULTS",
+                         conn = db_data_store)
+    redo_DB = FALSE
+  } else  {
+    append_table_sql_lite(.data = auc_roc,
+                         table_name = "EUR_MODEL_RESULTS",
+                         conn = db_data_store)
+  }
+
+  # auc_roc %>%
+  #   ggplot(aes(x = threshold, y = TRUE_pos_rate)) +
+  #   geom_line() +
+  #   geom_point() +
+  #   facet_wrap(.~Asset, scales = "free") +
+  #   theme_minimal()
+  #
+  # auc_roc %>%
+  #   ggplot(aes(x = threshold, y = Final_Return)) +
+  #   geom_line() +
+  #   geom_point() +
+  #   facet_wrap(.~Asset, scales = "free") +
+  #   theme_minimal()
+  #
+  # auc_roc %>%
+  #   ggplot(aes(x = threshold, y = Average_Return)) +
+  #   geom_line() +
+  #   geom_point() +
+  #   facet_wrap(.~Asset, scales = "free") +
+  #   theme_minimal()
+  #
+  # auc_roc %>%
+  #   ggplot(aes(x = threshold, y = Avg_Returns_Per_Month)) +
+  #   geom_line() +
+  #   geom_point() +
+  #   facet_wrap(.~Asset, scales = "free") +
+  #   theme_minimal()
+  #
+  # auc_roc %>%
+  #   ggplot(aes(x = threshold, y = Total_Final)) +
+  #   geom_line() +
+  #   geom_point() +
+  #   facet_wrap(.~Asset, scales = "free") +
+  #   theme_minimal()
+  #
+  # auc_roc %>%
+  #   filter(Total_Trades >= 1000) %>%
+  #   ggplot(aes(x = threshold, y = percentile_30th)) +
+  #   geom_smooth() +
+  #   geom_point(size = 0.5) +
+  #   facet_wrap(.~Asset, scales = "free") +
+  #   theme_minimal()
+
+  auc_roc_filt <-
+    auc_roc %>%
+    filter(threshold >= 0.5) %>%
+    filter(!is.nan(TRUE_pos_rate)) %>%
     group_by(Asset) %>%
-    summarise(Total_Trades_Control = n_distinct(Date),
-              Final_Return_Control = sum(Final_Return, na.rm = T),
-              # Average_Return_Control = Final_Return_Control/Total_Trades_Control
-              Average_Return_Control = mean(Final_Return, na.rm = T),
-              sd_Return_Control = sd(Final_Return, na.rm = T)
-    ) %>%
-    ungroup()
-
-  trades_per_year <-
-    model_predicted_data %>%
-    mutate(
-      trade_col = eval(parse(text = trade_statment))
-    ) %>%
-    mutate(
-      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-    ) %>%
-    filter(trade_col == "Long") %>%
-    mutate(xx = month(Date)) %>%
-    group_by(Asset, xx) %>%
-    summarise(Total_Trades = n_distinct(Date)) %>%
+    slice_max(Final_Return) %>%
     group_by(Asset) %>%
-    summarise(Average_Trades_Per_Month = mean(Total_Trades, na.rm = T)) %>%
-    ungroup()
+    slice_head(n = 1)
 
-  returns_total <-
-    model_predicted_data %>%
-    mutate(
-      trade_col = eval(parse(text = trade_statment))
-    ) %>%
-    mutate(
-      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-    ) %>%
-    filter(trade_col == "Long") %>%
+  auc_roc_filt_max_prob <-
+    auc_roc %>%
+    filter(threshold >= 0.5) %>%
+    filter(Total_Trades > 1000) %>%
+    filter(!is.na(TRUE_pos_rate)) %>%
     group_by(Asset) %>%
-    summarise(Final_Return = sum(Final_Return, na.rm = T)) %>%
-    mutate(
-      threshold = i,
-      col_to_test = col_to_test
-    ) %>%
-    ungroup() %>%
-    mutate(
-      Total_Final = sum(Final_Return, na.rm = T)
-    )
+    slice_max(TRUE_pos_rate)
 
-  returns_total_TRU_POS <-
-    model_predicted_data %>%
-    mutate(
-      trade_col = eval(parse(text = trade_statment_port))
-    ) %>%
-    mutate(
-      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-    ) %>%
-    group_by(Date, trade_col) %>%
-    summarise(Final_Return = sum(Final_Return, na.rm = TRUE))  %>%
-    ungroup() %>%
-    mutate(
-      pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > return_thresh, 1, 0),
-      pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= return_thresh, 1, 0),
-
-      neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= return_thresh, 1, 0),
-      neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > return_thresh, 1, 0)
-
-    ) %>%
-    summarise(
-      Total_Wins = sum(pos_detect_TRUE, na.rm=T),
-      Total_Trades = sum(pos_detect_TRUE, na.rm=T) + sum(pos_detect_Ned, na.rm=T),
-      Total_No_Trades = sum(neg_detect_Ned, na.rm=T) + sum(neg_detect_TRUE, na.rm=T),
-      TRUE_pos_rate = Total_Wins/Total_Trades,
-      TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/Total_No_Trades
-    ) %>%
-    mutate(
-      threshold = i,
-      col_to_test = col_to_test,
-      Asset = "Portfolio"
-    ) %>%
-    ungroup()
-
-  auc_roc_list[[c]] <-
-    model_predicted_data %>%
-    mutate(
-      trade_col = eval(parse(text = trade_statment))
-    ) %>%
-    mutate(
-      trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
-    ) %>%
-    mutate(
-      pos_detect_TRUE =
-        ifelse(trade_col == "Long" & Final_Return > return_thresh, 1, 0),
-      pos_detect_Ned =
-        ifelse(trade_col == "Long" & Final_Return <= return_thresh, 1, 0),
-
-      neg_detect_TRUE =
-        ifelse(trade_col == "No Trade" & Final_Return <= return_thresh, 1, 0),
-      neg_detect_Ned =
-        ifelse(trade_col == "No Trade" & Final_Return > return_thresh, 1, 0)
-
-    ) %>%
-    group_by(Asset) %>%
-    summarise(
-      Total_Wins = sum(pos_detect_TRUE, na.rm=T),
-      Total_Trades = sum(pos_detect_TRUE, na.rm=T) + sum(pos_detect_Ned, na.rm=T),
-      Total_No_Trades = sum(neg_detect_Ned, na.rm=T) + sum(neg_detect_TRUE, na.rm=T),
-      TRUE_pos_rate = Total_Wins/Total_Trades,
-      TRUE_neg_rate = sum(neg_detect_TRUE, na.rm = T)/Total_No_Trades,
-      Average_Return = mean(ifelse(trade_col == "Long", Final_Return, NA), na.rm = T),
-      sd_Return = sd(ifelse(trade_col == "Long", Final_Return, NA), na.rm = T)
-    ) %>%
-    mutate(
-      threshold = i,
-      col_to_test = col_to_test
-    ) %>%
-    bind_rows(returns_total_TRU_POS) %>%
-    left_join(returns_total) %>%
-    fill(Total_Final, .direction = "down") %>%
-    mutate(
-      Final_Return = ifelse(is.na(Final_Return) & Total_Trades > 0, sum(Final_Return, na.rm = T), Final_Return),
-      Final_Return = ifelse(Total_Trades == 0, 0, Final_Return)
-    ) %>%
-    left_join(total_trades_control) %>%
-    mutate() %>%
-    left_join(trades_per_year) %>%
-    mutate(
-      Avg_Returns_Per_Month = Average_Return*Average_Trades_Per_Month,
-      # percentile_10th = 250*quantile(rnorm(n = 5000, mean = Average_Return, sd = sd_Return), 0.1, na.rm = T),
-      # percentile_20th = 250*quantile(rnorm(n = 5000, mean = Average_Return, sd = sd_Return), 0.2, na.rm = T),
-      # percentile_40th = 250*quantile(rnorm(n = 5000, mean = Average_Return, sd = sd_Return), 0.4, na.rm = T)
-    ) %>%
-    split(.$Asset, drop = FALSE) %>%
-    map_dfr(
-      ~ .x %>%
-        mutate(percentile_30th = 250*quantile(rnorm(n = 15000, mean = Average_Return, sd = sd_Return), 0.3, na.rm = T))
-    )
 
 }
 
-auc_roc <-
-  auc_roc_list %>%
-  map_dfr(bind_rows)
+all_sim_data <-
+  DBI::dbGetQuery(conn = db_data_store, "SELECT * FROM EUR_MODEL_RESULTS")
 
-auc_roc %>%
-  ggplot(aes(x = threshold, y = TRUE_pos_rate)) +
-  geom_line() +
-  geom_point() +
-  facet_wrap(.~Asset, scales = "free") +
-  theme_minimal()
-
-auc_roc %>%
-  ggplot(aes(x = threshold, y = Final_Return)) +
-  geom_line() +
-  geom_point() +
-  facet_wrap(.~Asset, scales = "free") +
-  theme_minimal()
-
-auc_roc %>%
-  ggplot(aes(x = threshold, y = Average_Return)) +
-  geom_line() +
-  geom_point() +
-  facet_wrap(.~Asset, scales = "free") +
-  theme_minimal()
-
-auc_roc %>%
-  ggplot(aes(x = threshold, y = Avg_Returns_Per_Month)) +
-  geom_line() +
-  geom_point() +
-  facet_wrap(.~Asset, scales = "free") +
-  theme_minimal()
-
-auc_roc %>%
-  ggplot(aes(x = threshold, y = Total_Final)) +
-  geom_line() +
-  geom_point() +
-  facet_wrap(.~Asset, scales = "free") +
-  theme_minimal()
-
-auc_roc %>%
-  filter(Total_Trades >= 4000) %>%
-  ggplot(aes(x = threshold, y = percentile_30th)) +
-  geom_smooth() +
-  geom_point(size = 0.5) +
-  facet_wrap(.~Asset, scales = "free") +
-  theme_minimal()
-
-auc_roc_filt <-
-  auc_roc %>%
-  # filter(threshold >= 0) %>%
-  filter(!is.nan(TRUE_pos_rate)) %>%
-  group_by(Asset) %>%
+best_returns <-
+  all_sim_data %>%
+  filter(threshold >= 0.55) %>%
+  group_by(col_to_test, Asset) %>%
   slice_max(Final_Return) %>%
+  ungroup() %>%
   group_by(Asset) %>%
-  slice_head(n = 1)
-
-auc_roc_filt <-
-  auc_roc %>%
-  filter(Total_Trades > 4000) %>%
-  filter(!is.na(percentile_30th), Final_Return > 1000) %>%
-  group_by(Asset) %>%
-  slice_max(percentile_30th)
+  slice_max(Final_Return, n = 3)
 
 # AUC Roll Mean Section ---------------------------------------------------
 

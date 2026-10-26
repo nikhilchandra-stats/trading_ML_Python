@@ -3497,7 +3497,8 @@ portfolio_no_V3_New_algo_variant <-
 
 
       ) %>%
-      ungroup()
+      ungroup() %>%
+      additional_error_rate_calc()
 
     rm(temp_reg_data_test)
     gc()
@@ -3924,10 +3925,29 @@ additional_error_rate_calc <-
           slider::slide_dbl(.x = total_error_200_roll_50_sd, .f = ~ mean(.x, na.rm = T), .before = 100 ),
         rolling_error_var_sd=
           slider::slide_dbl(.x = total_error_200_roll_50_sd, .f = ~ sd(.x, na.rm = T), .before = 100 ),
-        rolling_error_var_pnorm = pnorm(total_error_200_roll_50_sd, rolling_error_var_mean, rolling_error_var_sd)
+        rolling_error_var_pnorm = pnorm(total_error_200_roll_50_sd, rolling_error_var_mean, rolling_error_var_sd),
+
+        rolling_error_var_mean_200_100=
+          slider::slide_dbl(.x = total_error_200_roll_100_sd, .f = ~ mean(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_sd_200_100=
+          slider::slide_dbl(.x = total_error_200_roll_100_sd, .f = ~ sd(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_pnorm_200_100 = pnorm(total_error_200_roll_100_sd, rolling_error_var_mean, rolling_error_var_sd),
+
+        rolling_error_var_mean_75_50=
+          slider::slide_dbl(.x = total_error_75_roll_50_sd, .f = ~ mean(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_sd_75_50=
+          slider::slide_dbl(.x = total_error_75_roll_50_sd, .f = ~ sd(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_pnorm_75_50 = pnorm(total_error_75_roll_50_sd, rolling_error_var_mean, rolling_error_var_sd),
+
+        rolling_error_var_mean_5_50=
+          slider::slide_dbl(.x = total_error_5_roll_50_sd, .f = ~ mean(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_sd_5_50=
+          slider::slide_dbl(.x = total_error_5_roll_50_sd, .f = ~ sd(.x, na.rm = T), .before = 100 ),
+        rolling_error_var_pnorm_5_50 = pnorm(total_error_5_roll_50_sd, rolling_error_var_mean, rolling_error_var_sd)
 
       ) %>%
-      ungroup()
+      ungroup() %>%
+      dplyr::select(-contains("total_error_"))
 
     return(model_predicted_data_raw)
 

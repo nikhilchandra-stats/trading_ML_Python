@@ -66,11 +66,13 @@ asset_infor <- get_instrument_info()
 load_custom_functions()
 db_location = "C:/Users/Nikhil Chandra/Documents/Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13 M15.db"
 correlation_DB_Store <- "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/correlation_data_M15.db"
-start_date = "2022-01-01"
+start_date = "2020-01-01"
 # training_date = today() %>% as.character()
-training_date = '2024-01-01'
+training_date = '2023-01-01'
+
 # end_date = today() %>% as.character()
-end_date = '2021-01-01'
+# end_date = '2021-01-01'
+
 assets_to_port <- c("HK33_HKD", "XAU_USD", "XAG_USD", "EUR_USD", "USD_JPY", "SPX500_USD", "EUR_JPY", "EU50_EUR",
                     "JP225_USD", "UK100_GBP", "BTC_USD", "NATGAS_USD", "DE30_EUR", "WTICO_USD",
                     "FR40_EUR", "WHEAT_USD", "SOYBN_USD", "SUGAR_USD", "XCU_USD", "AUD_USD", "USD_CAD",
@@ -277,8 +279,8 @@ for (j in 1:100) {
 corr_summary <-
   get_correlation_data_summary(
     correlation_DB_Store_con = "C:/Users/Nikhil Chandra/Documents/trade_data/Day_Trader_Cor_Continuous_Models/correlation_data_M15.db",
-    date_max_filt = '2026-10-01',
-    start_date_min = '2024-01-01'
+    date_max_filt = '2024-10-01',
+    start_date_min = '2020-01-01'
   )
 biggest_negatives <-
   get_cor_biggest_negatives(
@@ -300,6 +302,9 @@ biggest_negatives_max_EV <-
 assets_to_test <-
   get_top_X_neg_cors(biggest_negatives = biggest_negatives_max_EV)
 
+assets_to_test_biggest_negs <-
+  get_top_X_neg_cors(biggest_negatives = biggest_negatives)
+
 # Assess Portoflios -------------------------------------------------------
 Indices_Metals_Bonds <- list()
 gc()
@@ -307,7 +312,7 @@ sim_start <- "2024-01-01"
 sim_end <- today() %>% as.character()
 
 all_required_assets <-
-  c(assets_to_test$Asset_2, assets_to_test$Asset_1) %>% unique()
+  c(assets_to_test_biggest_negs$Asset_2, assets_to_test_biggest_negs$Asset_1) %>% unique()
 
 
 Indices_Metals_Bonds[[1]] <-
@@ -316,7 +321,7 @@ Indices_Metals_Bonds[[1]] <-
     start_date = sim_start %>% as_date() %>% as.character(),
     end_date = sim_end %>% as_date() %>% as.character(),
     # end_date = sim_end %>% as_date() %>% as.character(),
-    time_frame = "H1",
+    time_frame = "M15",
     bid_or_ask = "ask",
     assets =all_required_assets
   ) %>%
@@ -327,7 +332,7 @@ Indices_Metals_Bonds[[2]] <-
     start_date = sim_start %>% as_date() %>% as.character(),
     end_date = sim_end %>% as_date() %>% as.character(),
     # end_date = sim_end %>% as_date() %>% as.character(),
-    time_frame = "H1",
+    time_frame = "M15",
     bid_or_ask = "bid",
     assets =all_required_assets
   ) %>%
@@ -337,34 +342,34 @@ strategy_analysis_1 <-
   rolling_cor_strategy(
     ask_data = Indices_Metals_Bonds[[1]],
     bid_data = Indices_Metals_Bonds[[2]],
-    asset_grouping_data = assets_to_test,
+    asset_grouping_data = assets_to_test_biggest_negs,
     cor_rolling_period = 200,
     sum_rolling_period = 200,
     slippage_percent = 0,
     risk_dollar_value = 5,
     profit_multiple = 1,
-    end_period = 72,
+    end_period = 132,
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    return_col_to_analyse = "period_return_72_Price",
-    return_period_lag = 72
+    return_col_to_analyse = "period_return_132_Price",
+    return_period_lag = 132
   )
 
 strategy_analysis_2 <-
   rolling_cor_strategy(
     ask_data = Indices_Metals_Bonds[[1]],
     bid_data = Indices_Metals_Bonds[[2]],
-    asset_grouping_data = assets_to_test,
+    asset_grouping_data = assets_to_test_biggest_negs,
     cor_rolling_period = 400,
     sum_rolling_period = 400,
     slippage_percent = 0,
     risk_dollar_value = 5,
     profit_multiple = 1,
-    end_period = 72,
+    end_period = 132,
     currency_conversion = currency_conversion,
     asset_infor = asset_infor,
-    return_col_to_analyse = "period_return_72_Price",
-    return_period_lag = 72
+    return_col_to_analyse = "period_return_132_Price",
+    return_period_lag = 132
   )
 
 names(strategy_analysis_1)
@@ -374,24 +379,68 @@ training_data <-
   strategy_analysis_1 %>%
   left_join(strategy_analysis_2)
 
+names(training_data)
+
 trade_statment <-
   "
+  # (
+  # (EUR_USD_USD_SEK_SlidingPnormCor_200 < 0.025) &
+  # # (EUR_USD_USD_SEK_SlidingPnormCor_400 < 0.025) &
+  # Asset %in% c('EUR_USD', 'USD_SEK')
+  # )|
   (
-  (JP225_USD_USB30Y_USD_SlidingPnormCor_400 < 0.4) &
-  # (JP225_USD_USB30Y_USD_SlidingPnormCor_200 < 0.2) &
-  Asset %in% c('JP225_USD', 'USB30Y_USD')
+  (
+  (US2000_USD_USD_CAD_SlidingPnormCor_200 > 0.9)|
+  (US2000_USD_USD_CAD_SlidingPnormCor_400 < 0.1)
+  ) &
+  Asset %in% c('US2000_USD', 'USD_CAD')
   )|
+
   (
-  (USD_CAD_CAD_JPY_SlidingPnormCor_400 < 0.05) &
-  # (USD_CAD_CAD_JPY_SlidingPnormCor_200 < 0.2) &
-  Asset %in% c('USD_CAD', 'CAD_JPY')
+  (
+  (NZD_USD_USD_NOK_SlidingPnormCor_200 < 0.01)|
+  (NZD_USD_USD_NOK_SlidingPnormCor_400 > 0.99)
+  ) &
+  Asset %in% c('NZD_USD', 'USD_NOK')
+  )|
+
+  (
+  (
+  (USD_JPY_XAU_USD_SlidingPnormCor_200 < 0.025)|
+  (USD_JPY_XAU_USD_SlidingPnormCor_400 < 0.1)
+  ) &
+  Asset %in% c('USD_JPY', 'XAU_USD')
+  )|
+
+  (
+  (
+  (AUD_USD_USD_CHF_SlidingPnormCor_200 < 0.15)|
+  (AUD_USD_USD_CHF_SlidingPnormCor_400 < 0.05)
+  ) &
+  Asset %in% c('AUD_USD', 'USD_CHF')
+  )|
+
+  (
+  (
+  (CAD_JPY_USB30Y_USD_SlidingCorSDEV_200 > 0.7)|
+  (CAD_JPY_USB30Y_USD_SlidingCorSDEV_400 < 0.1)
+  ) &
+  Asset %in% c('CAD_JPY', 'USB30Y_USD')
+  )|
+
+  (
+  (
+  (EUR_GBP_GBP_JPY_SlidingPnormCor_200 < 0.01)|
+  (EUR_GBP_GBP_JPY_SlidingPnormCor_400 < 0.01)
+  ) &
+  Asset %in% c('EUR_GBP', 'GBP_JPY')
   )
 "
 
 
 analyse_performance <-
   training_data %>%
-  filter(Asset %in% c('JP225_USD', 'USB30Y_USD') ) %>%
+  filter(Asset %in% c('EUR_GBP', 'GBP_JPY') ) %>%
   # filter(!is.na(Final_Return)) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
@@ -407,7 +456,7 @@ control <-
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
   ungroup() %>%
-  filter(!is.na(Final_Return)) %>%
+  filter(!is.na(Final_Return), !is.infinite(Final_Return)) %>%
   arrange(Date) %>%
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Control")
