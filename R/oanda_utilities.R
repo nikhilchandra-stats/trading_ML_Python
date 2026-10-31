@@ -581,6 +581,8 @@ read_all_asset_data_intra_day <- function(
 ) {
 
   read_csv_or_API = "API"
+  safely_api_data <-
+    safely(get_oanda_data_candles_normalised_intra, otherwise = NULL)
 
   if(read_csv_or_API == "API") {
 
@@ -589,8 +591,23 @@ read_all_asset_data_intra_day <- function(
 
     for (i in 1:length(asset_list_oanda)) {
 
-      extracted_asset_data[[i]] <-
-        get_oanda_data_candles_normalised_intra(
+      # extracted_asset_data[[i]] <-
+      #   get_oanda_data_candles_normalised_intra(
+      #     assets = c(asset_list_oanda[i]),
+      #     granularity = time_frame,
+      #     date_var = start_date,
+      #     date_var_start = NULL,
+      #     time = "T15:00:00.000000000Z",
+      #     how_far_back = how_far_back,
+      #     bid_or_ask = bid_or_ask,
+      #     sleep_time = 0
+      #   ) %>%
+      #   mutate(
+      #     Asset = asset_list_oanda[i]
+      #   )
+
+      temp <-
+        safely_api_data(
           assets = c(asset_list_oanda[i]),
           granularity = time_frame,
           date_var = start_date,
@@ -600,13 +617,29 @@ read_all_asset_data_intra_day <- function(
           bid_or_ask = bid_or_ask,
           sleep_time = 0
         ) %>%
-        mutate(
-          Asset = asset_list_oanda[i]
-        )
+        pluck('result')
+
+      if(!is.null(temp)) {
+
+        temp <-
+          temp %>%
+          mutate(
+            Asset = asset_list_oanda[i]
+          )
+
+      } else {
+        temp <- temp
+      }
+
+      extracted_asset_data[[i]] <- temp
 
     }
 
   }
+
+  extracted_asset_data <-
+    extracted_asset_data %>%
+    keep(~ !is.null(.x))
 
   return(extracted_asset_data)
 

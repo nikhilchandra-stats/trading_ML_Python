@@ -66,6 +66,10 @@ asset_infor <- get_instrument_info()
 load_custom_functions()
 db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
 
+
+
+# FAST_EQUITY_EXPNDED_ONLY_FAST_NON_V3 ------------------------------------
+
 tictoc::tic()
 model_predicted_data_raw <-
   portfolio_no_V3_New_algo_pnorm_version(
@@ -115,11 +119,7 @@ model_predicted_data_raw <-
   )
 tictoc::toc()
 
-model_predicted_data <-
-  model_predicted_data_raw
-
-
-# Trade Statement ---------------------------------------------------------
+model_predicted_data <- model_predicted_data_raw
 
 trade_statment <-
   "
@@ -136,7 +136,6 @@ trade_statment <-
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset == "US2000_USD") %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -155,7 +154,6 @@ control <-
 
 analyse_performance <-
   analyse_performance %>%
-  # filter(Date >= '2026-09-07') %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -164,32 +162,19 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-dim(control)[1]
-dim(analyse_performance)[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 20) +
-  theme(legend.position = "bottom")
-
 upload_results_con <-
   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-write_table_sql_lite(.data = analyse_performance,
+write_table_sql_lite(.data = analyse_performance %>%
+                       mutate(algo_name = "FAST_EQUITY_EXPNDED_ONLY_FAST_NON_V3"),
                      conn = upload_results_con,
                      table_name = "real_results_new_algo")
 
 DBI::dbDisconnect(upload_results_con)
 rm(upload_results_con)
 
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+# MIXED_NON_V3_NEW_MODEL --------------------------------------------------
 
 tictoc::tic()
 model_predicted_data_raw <-
@@ -270,7 +255,6 @@ trade_statment <-
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset == "BTC_USD") %>%
   group_by(Asset) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
@@ -291,7 +275,6 @@ control <-
 
 analyse_performance <-
   analyse_performance %>%
-  filter(Date >= "2026-09-07") %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -300,33 +283,20 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-dim(control)[1]
-dim(analyse_performance)[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  # filter(Date <= "2023-01-01") %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 20) +
-  theme(legend.position = "bottom")
-
 upload_results_con <-
   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-append_table_sql_lite(.data = analyse_performance,
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "MIXED_NON_V3_NEW_MODEL"),
                       conn = upload_results_con,
                       table_name = "real_results_new_algo")
 
 DBI::dbDisconnect(upload_results_con)
 rm(upload_results_con)
 
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+# AUD_ONLY_STOP_10_PROF_15_NON_V3_NEW_MODEL -------------------------------
 
 tictoc::tic()
 model_predicted_data_raw <-
@@ -389,8 +359,6 @@ model_predicted_data <-
 
   )
 
-
-# Trade Statement ---------------------------------------------------------
 names(model_predicted_data)
 col_to_test <- "predicted_portfolio"
 col_to_test_mean <- "pred_portfolio_10000_mean_roll_2000"
@@ -411,12 +379,10 @@ trade_statment <-
   (pnorm_error_75_vs_50_rate_50 > 0.925 & pnorm_error_75_vs_50_rate_50 < 0.99 & Asset == 'AUD_NZD')|
   (pnorm_error_200_rate_100 > 0.99 & pnorm_error_200_rate_100 <= 1 & Asset == 'AUD_CAD')
 
-
 "
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset %in% c( "AUD_CAD")) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -435,7 +401,6 @@ control <-
 
 analyse_performance <-
   analyse_performance %>%
-  # filter(Date >= '2026-09-07') %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -444,60 +409,21 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-dim(control)[1]
-dim(analyse_performance)[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  # filter(Date >= '2026-01-01') %>%
-  # filter(Date <= '2027-09-01') %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 30) +
-  theme(legend.position = "bottom", axis.text = element_text(size = 7))
-
-
-analyse_performance %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(
-    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
-    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
-    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
-    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
-    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
-    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
-    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000),
-    XX7 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1250),
-    XX8 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1500)
-  ) %>%
-  summarise(
-    min0 = min(X, na.rm = T),
-    min1 = min(XX, na.rm = T),
-    min2 = min(XX2, na.rm = T),
-    min3 = min(XX3, na.rm = T),
-    min4 = min(XX4, na.rm = T),
-    min5 = min(XX5, na.rm = T),
-    min6 = min(XX6, na.rm = T),
-    min7 = min(XX7, na.rm = T),
-    min8 = min(XX8, na.rm = T)
-  )
-
 upload_results_con <-
   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-append_table_sql_lite(.data = analyse_performance,
+append_table_sql_lite(.data =
+                        analyse_performance %>%
+                        mutate(algo_name = "AUD_ONLY_STOP_10_PROF_15_NON_V3_NEW_MODEL"),
                       conn = upload_results_con,
                       table_name = "real_results_new_algo")
 
 DBI::dbDisconnect(upload_results_con)
 rm(upload_results_con)
+
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+# USD_ONLY_STOP_10_PROF_10_NON_V3_NEW_MODEL -------------------------------
 
 tictoc::tic()
 model_predicted_data_raw <-
@@ -546,19 +472,8 @@ model_predicted_data_raw <-
   )
 tictoc::toc()
 
-model_predicted_data <-
-  model_predicted_data_raw %>%
-  mutate(
-    pnorm_50 = pcauchy(predicted, location = pred_10000_mean_roll_50, scale = pred_10000_sd_roll_50),
-    pnorm_50_roll_50 = slider::slide_dbl(.x  = pnorm_50, .f = ~ mean(.x, na.rm = T), .before = 50),
+model_predicted_data <- model_predicted_data_raw
 
-    pnorm_50_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_50, scale = pred_portfolio_10000_sd_roll_50),
-    pnorm_50_roll_50_port = slider::slide_dbl(.x  = pnorm_50_port, .f = ~ mean(.x, na.rm = T), .before = 50),
-
-  )
-
-
-# Trade Statement ---------------------------------------------------------
 names(model_predicted_data)
 col_to_test <- "predicted_portfolio"
 col_to_test_mean <- "pred_portfolio_10000_mean_roll_2000"
@@ -579,7 +494,6 @@ trade_statment <-
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset %in% c( "USD_CAD")) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -606,60 +520,20 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-dim(control)[1]
-dim(analyse_performance)[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  # filter(Date >= '2026-01-01') %>%
-  # filter(Date <= '2027-09-01') %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 30) +
-  theme(legend.position = "bottom", axis.text = element_text(size = 7))
-
-analyse_performance %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(
-    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
-    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
-    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
-    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
-    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
-    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
-    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000),
-    XX7 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1250),
-    XX8 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 2500)
-  ) %>%
-  summarise(
-    min0 = min(X, na.rm = T),
-    min1 = min(XX, na.rm = T),
-    min2 = min(XX2, na.rm = T),
-    min3 = min(XX3, na.rm = T),
-    min4 = min(XX4, na.rm = T),
-    min5 = min(XX5, na.rm = T),
-    min6 = min(XX6, na.rm = T),
-    min7 = min(XX7, na.rm = T),
-    min8 = min(XX8, na.rm = T)
-  )
-
 upload_results_con <-
   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-append_table_sql_lite(.data = analyse_performance,
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "USD_ONLY_STOP_10_PROF_10_NON_V3_NEW_MODEL"),
                       conn = upload_results_con,
                       table_name = "real_results_new_algo")
 
 DBI::dbDisconnect(upload_results_con)
 rm(upload_results_con)
 
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+# MIXED_LONG_TRAIN_NON_V3_NEW_MODEL ---------------------------------------
 
 tictoc::tic()
 model_predicted_data_raw <-
@@ -708,19 +582,8 @@ model_predicted_data_raw <-
   )
 tictoc::toc()
 
-model_predicted_data <-
-  model_predicted_data_raw %>%
-  mutate(
-    pnorm_50 = pcauchy(predicted, location = pred_10000_mean_roll_50, scale = pred_10000_sd_roll_50),
-    pnorm_50_roll_50 = slider::slide_dbl(.x  = pnorm_50, .f = ~ mean(.x, na.rm = T), .before = 50),
+model_predicted_data <- model_predicted_data_raw
 
-    pnorm_50_port = pcauchy(predicted_portfolio, location = pred_portfolio_10000_mean_roll_50, scale = pred_portfolio_10000_sd_roll_50),
-    pnorm_50_roll_50_port = slider::slide_dbl(.x  = pnorm_50_port, .f = ~ mean(.x, na.rm = T), .before = 50),
-
-  )
-
-
-# Trade Statement ---------------------------------------------------------
 names(model_predicted_data)
 col_to_test <- "predicted_portfolio"
 col_to_test_mean <- "pred_portfolio_10000_mean_roll_2000"
@@ -767,10 +630,8 @@ trade_statment <-
   (pnorm_1001_port >= 0.58 & Asset == 'EU50_EUR')
 "
 
-
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset %in% c( "WTICO_USD")) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -797,60 +658,20 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-dim(control)[1]
-dim(analyse_performance)[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  # filter(Date >= '2026-01-01') %>%
-  # filter(Date <= '2027-09-01') %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  # facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 30) +
-  theme(legend.position = "bottom", axis.text = element_text(size = 7))
-
-analyse_performance %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(
-    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
-    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
-    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
-    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
-    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
-    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
-    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000),
-    XX7 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1250),
-    XX8 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 2500)
-  ) %>%
-  summarise(
-    min0 = min(X, na.rm = T),
-    min1 = min(XX, na.rm = T),
-    min2 = min(XX2, na.rm = T),
-    min3 = min(XX3, na.rm = T),
-    min4 = min(XX4, na.rm = T),
-    min5 = min(XX5, na.rm = T),
-    min6 = min(XX6, na.rm = T),
-    min7 = min(XX7, na.rm = T),
-    min8 = min(XX8, na.rm = T)
-  )
-
 upload_results_con <-
   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-append_table_sql_lite(.data = analyse_performance,
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "MIXED_LONG_TRAIN_NON_V3_NEW_MODEL"),
                       conn = upload_results_con,
                       table_name = "real_results_new_algo")
 
 DBI::dbDisconnect(upload_results_con)
 rm(upload_results_con)
 
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+# EQUITY_GOLD_EXPNDED_ONLY_NON_V3_NEW_MODEL -------------------------------
 tictoc::tic()
 model_predicted_data_raw <-
   portfolio_no_V3_New_algo_pnorm_version(
@@ -902,11 +723,8 @@ model_predicted_data_raw <-
   )
 tictoc::toc()
 
-model_predicted_data <-
-  model_predicted_data_raw
+model_predicted_data <- model_predicted_data_raw
 
-
-# Trade Statement ---------------------------------------------------------
 names(model_predicted_data)
 col_to_test <- "predicted_portfolio"
 col_to_test_mean <- "pred_portfolio_10000_mean_roll_2000"
@@ -932,7 +750,6 @@ trade_statment <-
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset %in% c( "JP225Y_JPY")) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
   ) %>%
@@ -951,7 +768,6 @@ control <-
 
 analyse_performance <-
   analyse_performance %>%
-  # filter(Date >= '2026-09-07') %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -960,76 +776,373 @@ analyse_performance <-
   mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
   mutate(trade_col = "Long")
 
-dim(control %>% ungroup() %>%  distinct(Date))[1]
-dim(analyse_performance %>% ungroup() %>% distinct(Date))[1]
-
-
-analyse_performance %>%
-  bind_rows(control) %>%
-  # filter(Date >= '2026-01-01') %>%
-  # filter(Date <= '2027-09-01') %>%
-  ggplot(aes(x = Date, y = Final_Return_Cumulative
-             ,color = trade_col
-  )) +
-  geom_line() +
-  # geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
-  theme_minimal() +
-  scale_y_continuous(n.breaks = 30) +
-  theme(legend.position = "bottom", axis.text = element_text(size = 7))
-
-analyse_performance %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(
-    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
-    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
-    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
-    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
-    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
-    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
-    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000),
-    XX7 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1250)
-  ) %>%
-  summarise(
-    min0 = min(X, na.rm = T),
-    min1 = min(XX, na.rm = T),
-    min2 = min(XX2, na.rm = T),
-    min3 = min(XX3, na.rm = T),
-    min4 = min(XX4, na.rm = T),
-    min5 = min(XX5, na.rm = T),
-    min6 = min(XX6, na.rm = T),
-    min7 = min(XX7, na.rm = T)
-  )
-
-analyse_performance %>%
-  ungroup() %>%
-  arrange(Date) %>%
-  mutate(
-    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
-    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
-    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
-    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
-    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
-    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
-    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000)
-  ) %>%
-  summarise(
-    min0 = min(X, na.rm = T),
-    min1 = min(XX, na.rm = T),
-    min2 = min(XX2, na.rm = T),
-    min3 = min(XX3, na.rm = T),
-    min4 = min(XX4, na.rm = T),
-    min5 = min(XX5, na.rm = T),
-    min6 = min(XX6, na.rm = T)
-  )
-
 upload_results_con <-
   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
 
-append_table_sql_lite(.data = analyse_performance,
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "EQUITY_GOLD_EXPNDED_ONLY_NON_V3_NEW_MODEL"),
                       conn = upload_results_con,
                       table_name = "real_results_new_algo")
 
 DBI::dbDisconnect(upload_results_con)
 rm(upload_results_con)
+
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+# SOFT COMMOD -------------------------------------------------------------
+
+tictoc::tic()
+model_predicted_data_raw <-
+  portfolio_no_V3_New_algo_pnorm_version(
+    assets_to_port =
+      c(
+        "SOYBN_USD",
+        "SUGAR_USD",
+        "WHEAT_USD",
+        "XCU_USD"
+      ) %>% unique(),
+    stop_factor_var = 15,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    db_location = db_location,
+    start_date = "2021-01-01",
+    profit_factor_var = 20,
+    risk_dollar_value_var = 5,
+    end_period = 132,
+    trade_direction = "Long",
+    end_point_loss = -5,
+    end_point_profit = 6.7,
+    regression_length = 25000,
+    direct_return_cols = 24,
+    lag_value_error = 132 + 1,
+    low_to_price_lengths = c(400),
+    cor_period = c(50),
+    dependant_var = "Final_Return",
+    save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
+    # file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL",
+    file_name = "SOFT_COMM_LONG_TRAIN_NON_V3_NEW_MODEL",
+    training_date = "2021-02-01",
+    testing_date ="2021-01-01",
+    xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
+    xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500, 10),
+    lag_dependant = 132 + 1,
+    auto_cor_cols = 5,
+    cor_skip_periods = c(1,2,3),
+    periods_to_use_deviation = c(5,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+    mean_periods_deviation = c(10,25,50,75,100),
+
+    run_additional_calc = TRUE,
+    estimate_trades = FALSE,
+    trade_statement = NULL
+  )
+tictoc::toc()
+
+model_predicted_data <- model_predicted_data_raw
+
+col_to_test <- "predicted_portfolio"
+col_to_test_mean <- "pred_portfolio_10000_mean_roll_2000"
+col_to_test_sd <- "pred_portfolio_10000_sd_roll_2000"
+
+trade_statment <-
+  "
+ (rolling_error_var_pnorm > 0.88 & Asset == 'SUGAR_USD')|
+ (rolling_error_var_pnorm > 0.98 & Asset == 'SOYBN_USD')|
+ (pnorm_error_75_vs_50_rate_50 > 0.6 & pnorm_error_75_vs_50_rate_50 < 0.99999 & Asset == 'XCU_USD')|
+ (pnorm_error_75_vs_50_rate_50 > 0.99 & Asset == 'SUGAR_USD')|
+ (pnorm_error_5_rate_50 > 0.999999999999 & Asset == 'WHEAT_USD')|
+ (pnorm_error_200_rate_50 > 0.96 & Asset == 'SUGAR_USD')|
+ (pnorm_error_200_rate_100 > 0.96 & Asset == 'SUGAR_USD')|
+ (pnorm_error_200_rate_100 > 0.99 & Asset == 'SOYBN_USD')|
+ (pnorm_error_200_rate_100 > 0.5 & Asset == 'XCU_USD')|
+ (pnorm_100 > 0.65 & Asset == 'XCU_USD')|
+ (pnorm_error_50_rate_50 > 0.99 & Asset == 'SOYBN_USD')
+
+ # (pnorm_100 > 0.6 & Asset == 'WHEAT_USD')|
+"
+
+analyse_performance <-
+  model_predicted_data %>%
+  mutate(
+    trade_col = eval(parse(text = trade_statment))
+  ) %>%
+  mutate(
+    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+  )
+
+control <-
+  analyse_performance %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Control")
+
+analyse_performance <-
+  analyse_performance %>%
+  filter(trade_col == "Long") %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Long")
+
+upload_results_con <-
+  connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
+
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "SOFT_COMM_LONG_TRAIN_NON_V3_NEW_MODEL"),
+                      conn = upload_results_con,
+                      table_name = "real_results_new_algo")
+
+DBI::dbDisconnect(upload_results_con)
+rm(upload_results_con)
+
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+
+# trade_statement_ANTI_AUD_NZD_NON_V3_NEW_MODEL ----------------------------------------------------------------
+
+load_custom_functions()
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+tictoc::tic()
+model_predicted_data_raw <-
+  portfolio_no_V3_New_algo_pnorm_version(
+    assets_to_port =
+      c(
+        "EUR_NZD",
+        "GBP_AUD",
+        "USD_CHF",
+        "EUR_AUD",
+        "XAG_NZD"
+      ) %>% unique(),
+    # stop_factor_var = 15,
+    stop_factor_var = 15,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    db_location = db_location,
+    start_date = "2021-01-01",
+    # profit_factor_var = 5,
+    profit_factor_var = 5,
+    risk_dollar_value_var = 5,
+    end_period = 132,
+    trade_direction = "Long",
+    # end_point_loss = -5,
+    # end_point_profit = 2.5,
+    end_point_loss = -5,
+    end_point_profit = 1.6,
+    regression_length = 25000,
+    direct_return_cols = 24,
+    lag_value_error = 132 + 1,
+    low_to_price_lengths = c(400),
+    cor_period = c(50),
+    dependant_var = "Final_Return",
+    save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
+    # file_name = "EQUITY_EXPNDED_ONLY_NON_V3_NEW_MODEL",
+    file_name = "ANTI_AUD_NZD_NON_V3_NEW_MODEL",
+    training_date = "2021-02-01",
+    testing_date ="2021-01-01",
+    xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
+    xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500, 10),
+    lag_dependant = 132 + 1,
+    auto_cor_cols = 5,
+    cor_skip_periods = c(1,2,3),
+    periods_to_use_deviation = c(5,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+    mean_periods_deviation = c(10,25,50,75,100),
+
+    run_additional_calc = TRUE,
+    estimate_trades = FALSE,
+    trade_statement = NULL
+  )
+tictoc::toc()
+
+model_predicted_data <-
+  model_predicted_data_raw %>%
+  dplyr::select(Date, Asset,predicted_portfolio,
+                predicted,
+                contains('pnorm'),
+                # contains("pred"),
+                Final_Return)
+
+trade_statement <-
+  "
+  (pnorm_100 < 0.8 & pnorm_100 > 0.5 & Asset == 'EUR_NZD')|
+  (pnorm_100 < 1 & pnorm_100 > 0.7 & Asset == 'USD_CHF')|
+  (pnorm_100 < 1 & pnorm_100 > 0.7 & Asset == 'XAG_NZD')|
+  (pnorm_250 < 1 & pnorm_250 > 0.89 & Asset == 'EUR_AUD')|
+  (pnorm_250 < 0.8 & pnorm_250 > 0.7 & Asset == 'EUR_NZD')|
+  (pnorm_250 < 1 & pnorm_250 > 0.89 & Asset == 'GBP_AUD')|
+  (pnorm_250 < 1 & pnorm_250 > 0.725 & Asset == 'USD_CHF')|
+  (pnorm_250 < 1 & pnorm_250 > 0.815 & Asset == 'XAG_NZD')|
+  (pnorm_500 < 1 & pnorm_500 > 0.92 & Asset == 'EUR_AUD')|
+  (pnorm_500 < 0.8 & pnorm_500 > 0.7 & Asset == 'EUR_NZD')|
+  (pnorm_500 < 1 & pnorm_500 > 0.9 & Asset == 'GBP_AUD')|
+  (pnorm_500 < 1 & pnorm_500 > 0.75 & Asset == 'USD_CHF')|
+  (pnorm_500 < 1 & pnorm_500 > 0.855 & Asset == 'XAG_NZD')|
+  (pnorm_1001 < 1 & pnorm_1001 > 0.8 & Asset == 'EUR_AUD')|
+  (pnorm_1001 < 0.8 & pnorm_1001 > 0.7 & Asset == 'EUR_NZD')|
+  (pnorm_1001 < 0.8 & pnorm_1001 > 0.775 & Asset == 'GBP_AUD')|
+  (pnorm_1001 < 1 & pnorm_1001 > 0.69 & Asset == 'USD_CHF')|
+  (pnorm_1001 < 1 & pnorm_1001 > 0.73 & Asset == 'XAG_NZD')|
+  (pnorm_100_port > 0.83)|
+  (pnorm_250_port > 0.875)|
+  (pnorm_500_port > 0.925)|
+  (pnorm_50_port > 0.875)
+"
+
+analyse_performance <-
+  model_predicted_data %>%
+  mutate(
+    trade_col = eval(parse(text = trade_statment))
+  ) %>%
+  mutate(
+    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+  )
+
+control <-
+  analyse_performance %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Control")
+
+analyse_performance <-
+  analyse_performance %>%
+  filter(trade_col == "Long") %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Long")
+
+upload_results_con <-
+  connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
+
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "trade_statement_ANTI_AUD_NZD_NON_V3_NEW_MODEL"),
+                      conn = upload_results_con,
+                      table_name = "real_results_new_algo")
+
+DBI::dbDisconnect(upload_results_con)
+rm(upload_results_con)
+
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)
+
+
+# portfolio_GAIN_NEG_COR_V3_NEW_MODEL.R -----------------------------------
+
+load_custom_functions()
+db_location = "C:/Users/nikhi/Documents//Asset Data/Oanda_Asset_Data_Most_Assets_2025-09-13.db"
+tictoc::tic()
+model_predicted_data_raw <-
+  portfolio_no_V3_New_algo_pnorm_version(
+    assets_to_port =
+      c(
+        "CAD_JPY",
+        "NZD_JPY",
+        "AUD_JPY",
+        "GBP_JPY"
+      ) %>% unique(),
+    stop_factor_var = 10,
+    currency_conversion = currency_conversion,
+    asset_infor = asset_infor,
+    db_location = db_location,
+    start_date = "2021-01-01",
+    profit_factor_var = 15,
+    risk_dollar_value_var = 3,
+    end_period = 132,
+    trade_direction = "Long",
+    end_point_loss = -3,
+    end_point_profit = 4.5,
+    regression_length = 25000,
+    direct_return_cols = 24,
+    lag_value_error = 132 + 1,
+    low_to_price_lengths = c(400),
+    cor_period = c(50),
+    dependant_var = "Final_Return",
+    save_location = "C:/Users/nikhi/Documents//trade_data/Day_Trader_Cor_Continuous_Models/",
+    file_name = "GAIN_NEG_COR_NON_V3_NEW_MODEL",
+    training_date = "2021-02-01",
+    testing_date ="2021-01-01",
+    xtnd_ss_cols_PR_cols = c(1,5,10,15, 20, 25, 30,35, 40,45, 50,55, 60,65, 70, 75,80, 90, 100,110, 120, 130),
+    xtnd_ss_cols_BR_periods = c(100,200,300,400 ,50, 150, 250, 350, 25, 500, 10),
+    lag_dependant = 132 + 1,
+    auto_cor_cols = 5,
+    cor_skip_periods = c(1,2,3),
+    periods_to_use_deviation = c(5,10,15,20,30,40,50, 60, 70, 80, 90, 100),
+    mean_periods_deviation = c(10,25,50,75,100),
+
+    run_additional_calc = TRUE,
+    estimate_trades = FALSE,
+    trade_statement = NULL
+  )
+tictoc::toc()
+
+model_predicted_data <-
+  model_predicted_data_raw %>%
+  dplyr::select(Date, Asset,predicted_portfolio,
+                predicted,
+                contains('pnorm'),
+                # contains("pred"),
+                Final_Return)
+
+trade_statment <-
+ "
+  (pnorm_250_roll_250 > 0.6 & Asset == 'NZD_JPY')|
+  (pnorm_250_roll_250 > 0.6 & Asset == 'AUD_JPY')|
+  (pnorm_250_roll_250 > 0.6 & Asset == 'CAD_JPY')|
+  (pnorm_250_roll_250 > 0.6 & Asset == 'GBP_JPY')|
+  (pnorm_250_roll_250_port > 0.625)|
+  (pnorm_500_port < 0.8 & pnorm_500_port > 0.65 & Asset == 'CAD_JPY')|
+  (pnorm_500_port < 0.8 & pnorm_500_port > 0.65 & Asset == 'AUD_JPY')|
+  (pnorm_500_port < 0.8 & pnorm_500_port > 0.65 & Asset == 'AUD_JPY')|
+  (pnorm_500_port < 1 & pnorm_500_port > 0.65 & Asset == 'GBP_JPY')|
+  (pnorm_100 < 1 & pnorm_100 > 0.85 & Asset == 'AUD_JPY')|
+  (pnorm_100 < 1 & pnorm_100 > 0.8 & Asset == 'NZD_JPY')|
+  (pnorm_1001_port > 0.675)
+"
+
+analyse_performance <-
+  model_predicted_data %>%
+  mutate(
+    trade_col = eval(parse(text = trade_statment))
+  ) %>%
+  mutate(
+    trade_col = case_when(trade_col == TRUE ~ "Long", TRUE ~ "No Trade")
+  )
+
+control <-
+  analyse_performance %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Control")
+
+analyse_performance <-
+  analyse_performance %>%
+  filter(trade_col == "Long") %>%
+  group_by(Date) %>%
+  summarise(Final_Return = sum(Final_Return)) %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(Final_Return_Cumulative = cumsum(Final_Return)) %>%
+  mutate(trade_col = "Long")
+
+upload_results_con <-
+  connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
+
+append_table_sql_lite(.data = analyse_performance %>%
+                        mutate(algo_name = "GAIN_NEG_COR_NON_V3_NEW_MODEL"),
+                      conn = upload_results_con,
+                      table_name = "real_results_new_algo")
+
+DBI::dbDisconnect(upload_results_con)
+rm(upload_results_con)
+
+rm(model_predicted_data, model_predicted_data_raw, analyse_performance, control, trade_statment)

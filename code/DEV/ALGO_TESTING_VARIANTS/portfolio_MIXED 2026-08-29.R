@@ -112,15 +112,21 @@ model_predicted_data_raw <-
 tictoc::toc()
 
 model_predicted_data <-
-  model_predicted_data_raw
+  model_predicted_data_raw %>%
+  dplyr::select(Date, Asset,predicted_portfolio,
+                predicted,
+                contains('pnorm'),
+                # contains("pred"),
+                Final_Return)
 
 col_to_test <- "pred_10000_mean_roll_500"
 col_to_test_mean <- "pred_10000_mean_roll_2000"
 col_to_test_sd <- "pred_10000_sd_roll_2000"
 
 names(model_predicted_data)
+
 trade_statment <-
-  "
+"
   (pnorm_error_5_rate_50 > 0.525 & pnorm_error_5_rate_50 <= 1 &
   pnorm_2000_mean_1000_roll_2000_port > 0.525)|
   (pnorm_error_5_rate_100 > 0.525 & pnorm_error_5_rate_100 < 1 &
@@ -139,12 +145,31 @@ trade_statment <-
   pnorm_1001_port > 0.5)|
   (pnorm_error_5_rate_50 > 0.6 & pnorm_error_5_rate_50 < 0.9125 &
   pnorm_2000_mean_1000_roll_2000_port > 0.5)|
-  (rolling_error_var_pnorm > 0.85 & pnorm_error_200_rate_50 > 0.85)
+  (rolling_error_var_pnorm > 0.85 & pnorm_error_200_rate_50 > 0.85)"
+
+trade_statment <-
+  "
+  (pnorm_error_100_rate_50 < 0.05)|
+  (pnorm_error_5_rate_50 < 0.2)|
+  (pnorm_2000_mean_1000_roll_2000_port > 0.55)|
+  (pnorm_2000_mean_1000_roll_2000_port > 0.55)|
+  (pnorm_1500_roll_1500_port > 0.58 & pnorm_1500_roll_1500_port < 1)|
+  (pnorm_1001_roll_1001_port > 0.58 & pnorm_1001_roll_1001_port < 1)|
+  (pnorm_2000_roll_2000_port > 0.6 & pnorm_2000_roll_2000_port < 1)|
+  (pnorm_error_100_rate_100 < 0.025)
+
+  # (pnorm_error_75_vs_50_rate_50 < 0.05)|
+  # (rolling_error_var_pnorm < 0.05)|
+  # (pnorm_1001_port > 0.8)|
+  # (pnorm_500_port > 0.85)
+
 "
 
 analyse_performance <-
   model_predicted_data %>%
-  # filter(Asset == "BTC_USD") %>%
+  # filter(Asset == 'NAS100_USD') %>%
+  # filter(Date >= "2026-05-01") %>%
+  # filter(Date >= "2026-09-01") %>%
   group_by(Asset) %>%
   mutate(
     trade_col = eval(parse(text = trade_statment))
@@ -165,7 +190,6 @@ control <-
 
 analyse_performance <-
   analyse_performance %>%
-  filter(Date >= "2026-09-07") %>%
   filter(trade_col == "Long") %>%
   group_by(Date) %>%
   summarise(Final_Return = sum(Final_Return)) %>%
@@ -186,36 +210,60 @@ analyse_performance %>%
   )) +
   geom_line() +
   geom_hline(yintercept = 0, linetype = "dashed", color = 'darkred') +
-  facet_wrap(.~trade_col, scales = "free") +
+  # facet_wrap(.~trade_col, scales = "free") +
   theme_minimal() +
   scale_y_continuous(n.breaks = 20) +
   theme(legend.position = "bottom")
 
-upload_results_con <-
-  connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
+analyse_performance %>%
+  ungroup() %>%
+  arrange(Date) %>%
+  mutate(
+    X = Final_Return_Cumulative - lag(Final_Return_Cumulative, 50),
+    XX = Final_Return_Cumulative - lag(Final_Return_Cumulative, 100),
+    XX2 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 150),
+    XX3 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 200),
+    XX4 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 400),
+    XX5 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 500),
+    XX6 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1000),
+    XX7 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 1250),
+    XX8 = Final_Return_Cumulative - lag(Final_Return_Cumulative, 2500)
+  ) %>%
+  summarise(
+    min0 = min(X, na.rm = T),
+    min1 = min(XX, na.rm = T),
+    min2 = min(XX2, na.rm = T),
+    min3 = min(XX3, na.rm = T),
+    min4 = min(XX4, na.rm = T),
+    min5 = min(XX5, na.rm = T),
+    min6 = min(XX6, na.rm = T),
+    min7 = min(XX7, na.rm = T),
+    min8 = min(XX8, na.rm = T)
+  )
 
-append_table_sql_lite(.data = analyse_performance,
-                      conn = upload_results_con,
-                      table_name = "real_results_new_algo")
 
-DBI::dbDisconnect(upload_results_con)
-rm(upload_results_con)
+# upload_results_con <-
+#   connect_db("C:/Users/nikhi/Documents/trade_data/real_results_new_algo.db")
+#
+# append_table_sql_lite(.data = analyse_performance,
+#                       conn = upload_results_con,
+#                       table_name = "real_results_new_algo")
+#
+# DBI::dbDisconnect(upload_results_con)
+# rm(upload_results_con)
 
 # AUC Pred Section --------------------------------------------------------
 
 names(model_predicted_data)
-model_predicted_data_filt <-
-  model_predicted_data
-  # filter(Date <= '2024-01-01')
 
-return_thresh <- 5
+return_thresh <- 4
 auc_roc_list <- list()
-col_to_test <- "pnorm_2000_mean_1000_roll_2000_port"
-col_to_test_port <- "pnorm_2000_mean_1000_roll_2000_port"
+col_to_test <- "pnorm_500_port"
+col_to_test_port <- "pnorm_500_port"
 c = 0
 
-# for (i in seq(-10,100,5)) {
-for (i in seq(0.01,0.99, 0.02)) {
+# for (i in seq(-1,15,0.25)) {
+for (i in seq(0.01,0.99, 0.025)) {
   c = c + 1
 
   trade_statment <-
@@ -234,7 +282,7 @@ for (i in seq(0.01,0.99, 0.02)) {
     glue::glue("{trade_statment} & {trade_statment_port}")
 
   total_trades_control <-
-    model_predicted_data_filt %>%
+    model_predicted_data %>%
     group_by(Asset) %>%
     summarise(Total_Trades_Control = n_distinct(Date),
               Final_Return_Control = sum(Final_Return, na.rm = T),
@@ -242,23 +290,10 @@ for (i in seq(0.01,0.99, 0.02)) {
               Average_Return_Control = mean(Final_Return, na.rm = T),
               sd_Return_Control = sd(Final_Return, na.rm = T)
     ) %>%
-    ungroup() %>%
-    bind_rows(
-      model_predicted_data_filt %>%
-        summarise(Total_Trades_Control = n_distinct(Date),
-                  Final_Return_Control = sum(Final_Return, na.rm = T),
-                  # Average_Return_Control = Final_Return_Control/Total_Trades_Control
-                  Average_Return_Control = mean(Final_Return, na.rm = T),
-                  sd_Return_Control = sd(Final_Return, na.rm = T)
-        ) %>%
-        ungroup()  %>%
-        mutate(
-          Asset = "Portfolio"
-        )
-    )
+    ungroup()
 
   trades_per_year <-
-    model_predicted_data_filt %>%
+    model_predicted_data %>%
     mutate(
       trade_col = eval(parse(text = trade_statment))
     ) %>%
@@ -274,7 +309,7 @@ for (i in seq(0.01,0.99, 0.02)) {
     ungroup()
 
   returns_total <-
-    model_predicted_data_filt %>%
+    model_predicted_data %>%
     mutate(
       trade_col = eval(parse(text = trade_statment))
     ) %>%
@@ -294,7 +329,7 @@ for (i in seq(0.01,0.99, 0.02)) {
     )
 
   returns_total_TRU_POS <-
-    model_predicted_data_filt %>%
+    model_predicted_data %>%
     mutate(
       trade_col = eval(parse(text = trade_statment_port))
     ) %>%
@@ -331,7 +366,7 @@ for (i in seq(0.01,0.99, 0.02)) {
     ungroup()
 
   auc_roc_list[[c]] <-
-    model_predicted_data_filt %>%
+    model_predicted_data %>%
     mutate(
       trade_col = eval(parse(text = trade_statment))
     ) %>%
@@ -387,8 +422,6 @@ for (i in seq(0.01,0.99, 0.02)) {
     )
 
 }
-
-# AUC Results Pnorm -------------------------------------------------------
 
 auc_roc <-
   auc_roc_list %>%
@@ -448,11 +481,10 @@ auc_roc_filt <-
 
 auc_roc_filt <-
   auc_roc %>%
-  filter(threshold >= 0.5) %>%
-  filter(Total_Trades >= 1000) %>%
-  filter(!is.na(percentile_30th)) %>%
+  filter(Total_Trades > 4000) %>%
+  filter(!is.na(percentile_30th), Final_Return > 1000) %>%
   group_by(Asset) %>%
-  slice_max(TRUE_pos_rate)
+  slice_max(percentile_30th)
 
 # AUC Roll Mean Section ---------------------------------------------------
 

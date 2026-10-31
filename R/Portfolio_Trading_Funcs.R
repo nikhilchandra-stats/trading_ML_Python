@@ -3047,7 +3047,7 @@ portfolio_gen_model_no_V3_New <-
       filter(if_all(everything(), ~ !is.na(.))) %>%
       filter(Date <= training_end_date) %>%
       group_by(Asset) %>%
-      slice_sample(n = reg_samples) %>%
+      slice_sample(n = reg_samples, replace = FALSE) %>%
       ungroup()
 
     rm(reg_dat)
@@ -3857,6 +3857,7 @@ portfolio_no_V3_New_algo_pnorm_version <-
                     slice_max(Date) %>%
                     ungroup() %>%
                     dplyr::select(-Date)) %>%
+        filter(!is.na(Price)) %>%
         mutate(
           time_diff =
             abs(
